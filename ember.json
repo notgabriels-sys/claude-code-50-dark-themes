@@ -1,0 +1,19 @@
+{
+  "name": "Ember",
+  "base": "dark",
+  "overrides": {
+    "claude": "#E8703C",
+    "claudeShimmer": "#F1A685",
+    "text": "#EDE9E8",
+    "inactive": "#AFA19D",
+    "subtle": "#332B28",
+    "suggestion": "#E8703C",
+    "permission": "#EE9873",
+    "promptBorder": "#E8703C",
+    "promptBorderShimmer": "#F1A685",
+    "planMode": "#EE9873",
+    "userMessageBackground": "#1F1A19",
+    "userMessageBackgroundHover": "#2A2322",
+    "rate_limit_fill": "#E8703C"
+  }
+}

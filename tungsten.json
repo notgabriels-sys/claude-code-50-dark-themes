@@ -1,0 +1,19 @@
+{
+  "name": "Tungsten",
+  "base": "dark",
+  "overrides": {
+    "claude": "#FFB374",
+    "claudeShimmer": "#FFE0C6",
+    "text": "#ECEBE9",
+    "inactive": "#ADA69F",
+    "subtle": "#2F2B28",
+    "suggestion": "#FFB374",
+    "permission": "#FFD4B1",
+    "promptBorder": "#FFB374",
+    "promptBorderShimmer": "#FFE0C6",
+    "planMode": "#FFD4B1",
+    "userMessageBackground": "#1C1A17",
+    "userMessageBackgroundHover": "#272420",
+    "rate_limit_fill": "#FFB374"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "name": "Lichen",
+  "base": "dark",
+  "overrides": {
+    "claude": "#AFC49A",
+    "claudeShimmer": "#D8E2CE",
+    "text": "#EAECE9",
+    "inactive": "#A3AD9F",
+    "subtle": "#32372F",
+    "suggestion": "#AFC49A",
+    "permission": "#CEDBC1",
+    "promptBorder": "#AFC49A",
+    "promptBorderShimmer": "#D8E2CE",
+    "planMode": "#CEDBC1",
+    "userMessageBackground": "#20241E",
+    "userMessageBackgroundHover": "#2A2F27",
+    "rate_limit_fill": "#AFC49A"
+  }
+}

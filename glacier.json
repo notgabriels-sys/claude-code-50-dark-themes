@@ -1,0 +1,19 @@
+{
+  "name": "Glacier",
+  "base": "dark",
+  "overrides": {
+    "claude": "#A8DCE8",
+    "claudeShimmer": "#E9F6F9",
+    "text": "#E8ECED",
+    "inactive": "#9DA9AF",
+    "subtle": "#2E383D",
+    "suggestion": "#A8DCE8",
+    "permission": "#D8EFF5",
+    "promptBorder": "#A8DCE8",
+    "promptBorderShimmer": "#E9F6F9",
+    "planMode": "#D8EFF5",
+    "userMessageBackground": "#1F2529",
+    "userMessageBackgroundHover": "#282F35",
+    "rate_limit_fill": "#A8DCE8"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "name": "Acid",
+  "base": "dark",
+  "overrides": {
+    "claude": "#C8E62E",
+    "claudeShimmer": "#DBEF77",
+    "text": "#EDEDE8",
+    "inactive": "#ACAF9D",
+    "subtle": "#2D2F22",
+    "suggestion": "#C8E62E",
+    "permission": "#8A38D8",
+    "promptBorder": "#C8E62E",
+    "promptBorderShimmer": "#DBEF77",
+    "planMode": "#8A38D8",
+    "userMessageBackground": "#191B13",
+    "userMessageBackgroundHover": "#24271B",
+    "rate_limit_fill": "#C8E62E"
+  }
+}

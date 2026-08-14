@@ -1,0 +1,19 @@
+{
+  "name": "Deep Field",
+  "base": "dark",
+  "overrides": {
+    "claude": "#7A8CFF",
+    "claudeShimmer": "#CCD3FF",
+    "text": "#E8E9ED",
+    "inactive": "#9DA0AF",
+    "subtle": "#262936",
+    "suggestion": "#7A8CFF",
+    "permission": "#B7C1FF",
+    "promptBorder": "#7A8CFF",
+    "promptBorderShimmer": "#CCD3FF",
+    "planMode": "#B7C1FF",
+    "userMessageBackground": "#141724",
+    "userMessageBackgroundHover": "#1B1F31",
+    "rate_limit_fill": "#7A8CFF"
+  }
+}

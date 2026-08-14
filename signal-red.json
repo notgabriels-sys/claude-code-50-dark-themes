@@ -1,0 +1,19 @@
+{
+  "name": "Signal Red",
+  "base": "dark",
+  "overrides": {
+    "claude": "#E5484D",
+    "claudeShimmer": "#EF8F92",
+    "text": "#E9EAEC",
+    "inactive": "#A0A2AB",
+    "subtle": "#2B2C31",
+    "suggestion": "#E5484D",
+    "permission": "#ED7E81",
+    "promptBorder": "#E5484D",
+    "promptBorderShimmer": "#EF8F92",
+    "planMode": "#ED7E81",
+    "userMessageBackground": "#1A1B1E",
+    "userMessageBackgroundHover": "#232529",
+    "rate_limit_fill": "#E5484D"
+  }
+}

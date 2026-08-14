@@ -1,0 +1,19 @@
+{
+  "name": "Amber Room",
+  "base": "dark",
+  "overrides": {
+    "claude": "#E0A83C",
+    "claudeShimmer": "#EBC782",
+    "text": "#EDEBE8",
+    "inactive": "#AFA79D",
+    "subtle": "#342F27",
+    "suggestion": "#E0A83C",
+    "permission": "#8A6E3C",
+    "promptBorder": "#E0A83C",
+    "promptBorderShimmer": "#EBC782",
+    "planMode": "#8A6E3C",
+    "userMessageBackground": "#201D18",
+    "userMessageBackgroundHover": "#2C2821",
+    "rate_limit_fill": "#E0A83C"
+  }
+}

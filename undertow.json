@@ -1,0 +1,19 @@
+{
+  "name": "Undertow",
+  "base": "dark",
+  "overrides": {
+    "claude": "#A8D8E8",
+    "claudeShimmer": "#E9F5F9",
+    "text": "#E8ECED",
+    "inactive": "#9DA9AF",
+    "subtle": "#263136",
+    "suggestion": "#A8D8E8",
+    "permission": "#3E7A9E",
+    "promptBorder": "#A8D8E8",
+    "promptBorderShimmer": "#E9F5F9",
+    "planMode": "#3E7A9E",
+    "userMessageBackground": "#151E23",
+    "userMessageBackgroundHover": "#1D2930",
+    "rate_limit_fill": "#A8D8E8"
+  }
+}

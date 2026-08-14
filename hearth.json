@@ -1,0 +1,19 @@
+{
+  "name": "Hearth",
+  "base": "dark",
+  "overrides": {
+    "claude": "#E07840",
+    "claudeShimmer": "#EBAA86",
+    "text": "#ECEBEA",
+    "inactive": "#AAA6A1",
+    "subtle": "#302E2C",
+    "suggestion": "#E07840",
+    "permission": "#75706A",
+    "promptBorder": "#E07840",
+    "promptBorderShimmer": "#EBAA86",
+    "planMode": "#75706A",
+    "userMessageBackground": "#1D1C1B",
+    "userMessageBackgroundHover": "#282625",
+    "rate_limit_fill": "#E07840"
+  }
+}

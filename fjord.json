@@ -1,0 +1,19 @@
+{
+  "name": "Fjord",
+  "base": "dark",
+  "overrides": {
+    "claude": "#5A9EC8",
+    "claudeShimmer": "#97C2DC",
+    "text": "#E8EBED",
+    "inactive": "#9DA6AF",
+    "subtle": "#2A333C",
+    "suggestion": "#5A9EC8",
+    "permission": "#9AC8B8",
+    "promptBorder": "#5A9EC8",
+    "promptBorderShimmer": "#97C2DC",
+    "planMode": "#9AC8B8",
+    "userMessageBackground": "#1B2128",
+    "userMessageBackgroundHover": "#232B34",
+    "rate_limit_fill": "#5A9EC8"
+  }
+}

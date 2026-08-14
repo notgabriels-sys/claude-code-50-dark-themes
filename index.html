@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>50 Dark Themes for Claude Code</title>
+<meta name="description" content="A gallery of 50 hand-tuned dark themes for the Claude Code CLI. Copy a file into ~/.claude/themes and run /theme.">
+<style>
+  :root{
+    --ground:#0c0d10;
+    --ground-2:#111318;
+    --hair:#20242c;
+    --ink:#e7e9ee;
+    --mute:#8b93a3;
+    --faint:#5a6270;
+    --accent:#7ee7c7;
+    --accent-dim:#2b6b5b;
+    --radius:12px;
+    --mono: ui-monospace,"SF Mono",SFMono-Regular,"JetBrains Mono","Menlo",Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0;
+    background:
+      radial-gradient(1100px 620px at 50% -12%, #14181f 0%, rgba(20,24,31,0) 60%),
+      var(--ground);
+    color:var(--ink);
+    font-family:var(--mono);
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+    padding:clamp(20px,4vw,56px) clamp(16px,4vw,40px) 80px;
+  }
+  .wrap{max-width:1200px;margin:0 auto}
+
+  /* ---- header ---- */
+  header{margin-bottom:clamp(28px,5vw,52px)}
+  .kicker{
+    color:var(--accent);
+    letter-spacing:.32em;
+    text-transform:uppercase;
+    font-size:11px;
+    margin:0 0 18px;
+    display:flex;align-items:center;gap:10px;
+  }
+  .kicker::before{content:"";width:26px;height:1px;background:var(--accent-dim)}
+  h1{
+    font-size:clamp(30px,6.2vw,60px);
+    line-height:1.02;
+    letter-spacing:-.02em;
+    font-weight:600;
+    margin:0;
+    text-wrap:balance;
+  }
+  h1 .n{color:var(--accent)}
+  .lede{
+    color:var(--mute);
+    max-width:60ch;
+    margin:18px 0 0;
+    font-size:clamp(14px,1.6vw,16px);
+  }
+  .meta{
+    display:flex;flex-wrap:wrap;gap:8px 10px;margin-top:22px;
+    font-size:12px;color:var(--faint);
+  }
+  .tag{border:1px solid var(--hair);border-radius:999px;padding:5px 11px;color:var(--mute)}
+  .tag b{color:var(--ink);font-weight:600}
+
+  /* ---- install ---- */
+  .install{
+    margin-top:26px;
+    border:1px solid var(--hair);
+    border-radius:var(--radius);
+    background:linear-gradient(180deg,var(--ground-2),#0e1014);
+    overflow:hidden;
+  }
+  .install .bar{
+    display:flex;align-items:center;gap:8px;
+    padding:10px 14px;border-bottom:1px solid var(--hair);
+    color:var(--faint);font-size:12px;
+  }
+  .dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+  .steps{padding:16px 16px 6px;display:grid;gap:14px}
+  .step{display:grid;grid-template-columns:22px 1fr;gap:12px;align-items:start}
+  .step .i{color:var(--accent);font-size:12px;padding-top:3px}
+  .step p{margin:0;color:var(--mute);font-size:13px}
+  .step code, code.inline{
+    color:var(--ink);background:#0a0c0f;border:1px solid var(--hair);
+    border-radius:6px;padding:2px 6px;font-size:12.5px;
+  }
+  .cmd{
+    display:flex;align-items:center;justify-content:space-between;gap:12px;
+    margin:2px 16px 16px;padding:12px 14px;
+    background:#08090c;border:1px solid var(--hair);border-radius:8px;
+    color:var(--ink);font-size:13px;overflow-x:auto;
+  }
+  .cmd .prompt{color:var(--accent-dim);user-select:none}
+  .copy{
+    flex:none;cursor:pointer;border:1px solid var(--hair);background:transparent;
+    color:var(--mute);font-family:var(--mono);font-size:11px;letter-spacing:.08em;
+    text-transform:uppercase;padding:6px 10px;border-radius:6px;transition:.15s;
+  }
+  .copy:hover{color:var(--ink);border-color:var(--accent-dim)}
+  .copy:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+  /* ---- gallery ---- */
+  .gallery-head{
+    display:flex;align-items:baseline;justify-content:space-between;gap:16px;
+    margin:clamp(34px,6vw,60px) 0 18px;
+  }
+  .gallery-head h2{font-size:14px;font-weight:600;letter-spacing:.02em;margin:0;color:var(--ink)}
+  .gallery-head .count{color:var(--faint);font-size:12px}
+  .grid{
+    display:grid;gap:16px;
+    grid-template-columns:repeat(auto-fill,minmax(268px,1fr));
+  }
+  .card{
+    --a:var(--accent);
+    border:1px solid color-mix(in srgb, var(--a) 22%, transparent);
+    border-radius:var(--radius);
+    background:var(--bg,#111);
+    overflow:hidden;
+    display:flex;flex-direction:column;
+    transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+  }
+  .card:hover{
+    transform:translateY(-3px);
+    border-color:color-mix(in srgb, var(--a) 55%, transparent);
+    box-shadow:0 14px 40px -18px color-mix(in srgb, var(--a) 60%, black);
+  }
+  .card .titlebar{
+    display:flex;align-items:center;gap:8px;
+    padding:9px 12px;
+    border-bottom:1px solid color-mix(in srgb, var(--a) 14%, transparent);
+  }
+  .card .dots{display:flex;gap:5px}
+  .card .dots i{width:9px;height:9px;border-radius:50%;display:block;opacity:.7}
+  .card .tname{
+    margin-left:4px;font-size:12px;font-weight:600;letter-spacing:.02em;
+    color:var(--fg);
+  }
+  .card .hex{margin-left:auto;font-size:10.5px;color:var(--a);letter-spacing:.04em}
+  .term{padding:13px 14px 15px;font-size:12px;line-height:1.75;flex:1}
+  .term .row{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .term .acc{color:var(--a)}
+  .term .sh{color:var(--sh)}
+  .term .fg{color:var(--fg)}
+  .term .mut{color:var(--mut)}
+  .prompt-box{
+    margin-top:10px;display:flex;align-items:center;gap:8px;
+    border:1px solid color-mix(in srgb, var(--a) 45%, transparent);
+    border-radius:8px;padding:7px 10px;
+  }
+  .prompt-box .gt{color:var(--a);font-weight:700}
+  .prompt-box .txt{color:var(--fg)}
+  .caret{
+    width:7px;height:15px;background:var(--a);display:inline-block;
+    margin-left:1px;vertical-align:-3px;animation:blink 1.1s step-end infinite;
+  }
+  @keyframes blink{50%{opacity:0}}
+  .term .hint{margin-top:8px;font-size:10.5px;color:var(--mut)}
+
+  footer{
+    margin-top:clamp(40px,7vw,72px);padding-top:22px;border-top:1px solid var(--hair);
+    color:var(--faint);font-size:12px;display:flex;flex-wrap:wrap;gap:6px 18px;justify-content:space-between;
+  }
+  footer a{color:var(--mute);text-decoration:none;border-bottom:1px solid var(--hair)}
+  footer a:hover{color:var(--accent);border-color:var(--accent-dim)}
+
+  @media (prefers-reduced-motion: reduce){
+    .card{transition:none}
+    .caret{animation:none}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <p class="kicker">Claude Code · terminal themes</p>
+    <h1><span class="n">50</span> dark themes<br>for Claude&nbsp;Code</h1>
+    <p class="lede">The chat app only gives you Light / Dark / System. The Claude Code CLI reads
+      custom theme files — so here are fifty, each hand-tuned around a single accent. Drop one in,
+      run <code class="inline">/theme</code>, done.</p>
+    <div class="meta">
+      <span class="tag"><b>50</b> themes</span>
+      <span class="tag">all <b>dark</b></span>
+      <span class="tag">one <b>.json</b> each</span>
+      <span class="tag">hot-reloads</span>
+      <span class="tag">status colors stay <b>semantic</b></span>
+    </div>
+
+    <div class="install">
+      <div class="bar">
+        <span class="dot" style="background:#ff5f57"></span>
+        <span class="dot" style="background:#febc2e"></span>
+        <span class="dot" style="background:#28c840"></span>
+        <span style="margin-left:6px">install — three steps</span>
+      </div>
+      <div class="steps">
+        <div class="step"><span class="i">01</span><p>Copy any (or all) <code>.json</code> files into <code>~/.claude/themes/</code></p></div>
+        <div class="step"><span class="i">02</span><p>In Claude Code, run <code>/theme</code> — each file shows up by name</p></div>
+        <div class="step"><span class="i">03</span><p>Pick one. Edits hot-reload; no restart needed</p></div>
+      </div>
+      <div class="cmd">
+        <span><span class="prompt">$ </span>git clone https://github.com/notgabriels-sys/claude-code-50-dark-themes &amp;&amp; cp claude-code-50-dark-themes/*.json ~/.claude/themes/</span>
+        <button class="copy" id="copyBtn" aria-label="Copy install command">Copy</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="gallery-head">
+    <h2>The collection</h2>
+    <span class="count" id="count">50 themes</span>
+  </div>
+  <div class="grid" id="grid"></div>
+
+  <footer>
+    <span>50 dark themes for Claude Code</span>
+    <span>Set your terminal background to each theme's surface hex for the full effect.</span>
+  </footer>
+</div>
+
+<script>
+const THEMES = [
+  ["Absinthe","#C0D648","#D7E58B","#EBEDE8","#A9AF9D","#1D1F19"],
+  ["Acid","#C8E62E","#DBEF77","#EDEDE8","#ACAF9D","#191B13"],
+  ["Amber Room","#E0A83C","#EBC782","#EDEBE8","#AFA79D","#201D18"],
+  ["Anaglyph","#FF5548","#FFA19A","#E9E9EC","#A0A0AB","#18181B"],
+  ["Blackout","#E0A83C","#EBC782","#EAEAEB","#A2A2A9","#141415"],
+  ["Blueprint","#52C2F0","#9DDCF7","#E8EAED","#9DA5AF","#15202E"],
+  ["Cassette","#E8853C","#F1B385","#EFE4D2","#AFA69D","#231F1A"],
+  ["Clay","#C97B5A","#DDAC97","#EDEAE9","#AFA39D","#24201E"],
+  ["Cobalt Hour","#4D7CFE","#9EB8FE","#E8E9ED","#9DA2AF","#181F2F"],
+  ["Concrete","#7FA6B8","#B3CAD5","#EAEBEB","#A2A6A9","#222425"],
+  ["Coral","#F08060","#F7BCAB","#EDE9E9","#AFA09D","#221D1C"],
+  ["Crossfade","#3EC8E8","#87DDF1","#E9E9EC","#9F9FAD","#1A1A1E"],
+  ["Deep Field","#7A8CFF","#CCD3FF","#E8E9ED","#9DA0AF","#141724"],
+  ["Dubplate","#E8D44A","#F1E592","#ECEBE9","#ABA8A0","#1B1A18"],
+  ["Ember","#E8703C","#F1A685","#EDE9E8","#AFA19D","#1F1A19"],
+  ["Fathom","#38A8C8","#78C4DA","#E8EBED","#9DA7AF","#121B21"],
+  ["Fjord","#5A9EC8","#97C2DC","#E8EBED","#9DA6AF","#1B2128"],
+  ["Furnace","#FF5A36","#FF9D88","#EDE8E8","#AF9D9E","#1E1516"],
+  ["Glacier","#A8DCE8","#E9F6F9","#E8ECED","#9DA9AF","#1F2529"],
+  ["Graphite","#C9CFD6","#F7F8F9","#E9EAEC","#A0A4AB","#1D1E20"],
+  ["Greenhouse","#58C89A","#95DCBF","#E8EDEC","#9DAFA9","#1A2320"],
+  ["Harbor","#62A8D8","#A3CCE8","#E8EBED","#9DA6AF","#1D242A"],
+  ["Hearth","#E07840","#EBAA86","#ECEBEA","#AAA6A1","#1D1C1B"],
+  ["Ink","#A9B8CE","#DDE3EC","#E8E9ED","#9DA2AF","#161A22"],
+  ["Iris","#8C8CE8","#D0D0F6","#E8E8ED","#9D9DAF","#181825"],
+  ["Lagoon","#4FD8E8","#97E8F1","#E8ECED","#9DAAAF","#152023"],
+  ["Lichen","#AFC49A","#D8E2CE","#EAECE9","#A3AD9F","#20241E"],
+  ["Moss","#93BF6F","#BDD8A7","#E9EDE9","#9DAFA0","#1E241F"],
+  ["Mulberry","#D05880","#E298B0","#EDE8EB","#AF9DA6","#24191F"],
+  ["Nachtschicht","#E3B341","#EDCF88","#E8EAED","#9DA4AF","#1B1E22"],
+  ["Night Vision","#52E07A","#97ECAF","#E9ECEA","#9FADA3","#151916"],
+  ["Nightshade","#8656C6","#B293DB","#EBE8ED","#A69DAF","#19161D"],
+  ["Off Air","#D35147","#E38F89","#ECEAEA","#AAA4A1","#201E1D"],
+  ["Orchid","#C86AD8","#E0ABE9","#EDE8ED","#AC9DAF","#1F1820"],
+  ["Oxide","#C16044","#D59481","#EDE9E9","#AFA09D","#221D1C"],
+  ["Petrol","#2FB8C6","#6BD1DC","#E8EDED","#9DACAF","#152528"],
+  ["Plasma","#E858C8","#F2A0E0","#EDE8ED","#AF9DAF","#221622"],
+  ["Signal Red","#E5484D","#EF8F92","#E9EAEC","#A0A2AB","#1A1B1E"],
+  ["Sonar","#40E0C0","#86EBD7","#E8EBED","#9DA6AF","#121921"],
+  ["Soot","#9C958C","#C2BDB8","#EDEAE9","#AFA49D","#1C1917"],
+  ["Static","#E4E6E8","#FFFFFF","#EBEBEB","#A6A6A6","#212121"],
+  ["Terminal","#33D17A","#76E0A5","#E9EDE9","#9DAF9D","#171C17"],
+  ["Tidepool","#3FC8B0","#7EDACA","#E8EDED","#9DAFAF","#162222"],
+  ["Tungsten","#FFB374","#FFE0C6","#ECEBE9","#ADA69F","#1C1A17"],
+  ["Ultraviolet","#9D6BFF","#D3BDFF","#EAE8ED","#A49DAF","#1B1523"],
+  ["Undergrowth","#4FA872","#84C59D","#E8EDEB","#9DAFA6","#18201C"],
+  ["Undertow","#A8D8E8","#E9F5F9","#E8ECED","#9DA9AF","#151E23"],
+  ["VU Meter","#46D160","#87E198","#EAEAEB","#A4A4A8","#161617"],
+  ["Velvet","#C0A8E8","#EFE9F9","#ECE8ED","#A99DAF","#231C26"],
+  ["Verdigris","#6FC4A8","#A9DCCB","#E8EDED","#9DAFAC","#1C2625"]
+];
+
+const slug = n => n.toLowerCase().replace(/ /g,"-");
+const esc = s => s.replace(/[&<>]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+
+const grid = document.getElementById("grid");
+grid.innerHTML = THEMES.map(([name,accent,shimmer,text,mute,bg]) => `
+  <article class="card" style="--bg:${bg};--a:${accent};--sh:${shimmer};--fg:${text};--mut:${mute}">
+    <div class="titlebar">
+      <div class="dots"><i style="background:${accent}"></i><i style="background:${mute};opacity:.4"></i><i style="background:${mute};opacity:.25"></i></div>
+      <span class="tname">${esc(name)}</span>
+      <span class="hex">${accent}</span>
+    </div>
+    <div class="term">
+      <div class="row"><span class="acc">✻</span> <span class="sh">Claude Code</span> <span class="mut">· ${esc(name.toLowerCase())}</span></div>
+      <div class="row"><span class="acc">●</span> <span class="fg">Applied theme &ldquo;${esc(name)}&rdquo;</span></div>
+      <div class="row"><span class="mut">&nbsp;&nbsp;3 files changed · staged</span></div>
+      <div class="prompt-box">
+        <span class="gt">&gt;</span><span class="txt">theme ${slug(name)}</span><span class="caret" aria-hidden="true"></span>
+      </div>
+      <div class="hint">/theme &nbsp;·&nbsp; ⏎ send &nbsp;·&nbsp; esc to interrupt</div>
+    </div>
+  </article>`).join("");
+
+document.getElementById("count").textContent = THEMES.length + " themes";
+
+const btn = document.getElementById("copyBtn");
+const CMD = "git clone https://github.com/notgabriels-sys/claude-code-50-dark-themes && cp claude-code-50-dark-themes/*.json ~/.claude/themes/";
+btn.addEventListener("click", async () => {
+  try{ await navigator.clipboard.writeText(CMD); btn.textContent="Copied"; }
+  catch{ btn.textContent="Copy failed"; }
+  setTimeout(()=>btn.textContent="Copy",1400);
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,19 @@
+{
+  "name": "Night Vision",
+  "base": "dark",
+  "overrides": {
+    "claude": "#52E07A",
+    "claudeShimmer": "#97ECAF",
+    "text": "#E9ECEA",
+    "inactive": "#9FADA3",
+    "subtle": "#262C28",
+    "suggestion": "#52E07A",
+    "permission": "#86E9A2",
+    "promptBorder": "#52E07A",
+    "promptBorderShimmer": "#97ECAF",
+    "planMode": "#86E9A2",
+    "userMessageBackground": "#151916",
+    "userMessageBackgroundHover": "#1E2420",
+    "rate_limit_fill": "#52E07A"
+  }
+}

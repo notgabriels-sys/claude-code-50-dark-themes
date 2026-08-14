@@ -1,0 +1,19 @@
+{
+  "name": "Absinthe",
+  "base": "dark",
+  "overrides": {
+    "claude": "#C0D648",
+    "claudeShimmer": "#D7E58B",
+    "text": "#EBEDE8",
+    "inactive": "#A9AF9D",
+    "subtle": "#303328",
+    "suggestion": "#C0D648",
+    "permission": "#D1E17A",
+    "promptBorder": "#C0D648",
+    "promptBorderShimmer": "#D7E58B",
+    "planMode": "#D1E17A",
+    "userMessageBackground": "#1D1F19",
+    "userMessageBackgroundHover": "#282A22",
+    "rate_limit_fill": "#C0D648"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "name": "Plasma",
+  "base": "dark",
+  "overrides": {
+    "claude": "#E858C8",
+    "claudeShimmer": "#F2A0E0",
+    "text": "#EDE8ED",
+    "inactive": "#AF9DAF",
+    "subtle": "#362636",
+    "suggestion": "#E858C8",
+    "permission": "#7A58E8",
+    "promptBorder": "#E858C8",
+    "promptBorderShimmer": "#F2A0E0",
+    "planMode": "#7A58E8",
+    "userMessageBackground": "#221622",
+    "userMessageBackgroundHover": "#2E1E2E",
+    "rate_limit_fill": "#E858C8"
+  }
+}

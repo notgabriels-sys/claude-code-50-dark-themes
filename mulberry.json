@@ -1,0 +1,19 @@
+{
+  "name": "Mulberry",
+  "base": "dark",
+  "overrides": {
+    "claude": "#D05880",
+    "claudeShimmer": "#E298B0",
+    "text": "#EDE8EB",
+    "inactive": "#AF9DA6",
+    "subtle": "#392830",
+    "suggestion": "#D05880",
+    "permission": "#DD88A4",
+    "promptBorder": "#D05880",
+    "promptBorderShimmer": "#E298B0",
+    "planMode": "#DD88A4",
+    "userMessageBackground": "#24191F",
+    "userMessageBackgroundHover": "#302129",
+    "rate_limit_fill": "#D05880"
+  }
+}

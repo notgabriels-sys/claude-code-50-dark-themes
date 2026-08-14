@@ -1,0 +1,19 @@
+{
+  "name": "Soot",
+  "base": "dark",
+  "overrides": {
+    "claude": "#9C958C",
+    "claudeShimmer": "#C2BDB8",
+    "text": "#EDEAE9",
+    "inactive": "#AFA49D",
+    "subtle": "#302A27",
+    "suggestion": "#9C958C",
+    "permission": "#B8B3AD",
+    "promptBorder": "#9C958C",
+    "promptBorderShimmer": "#C2BDB8",
+    "planMode": "#B8B3AD",
+    "userMessageBackground": "#1C1917",
+    "userMessageBackgroundHover": "#272320",
+    "rate_limit_fill": "#9C958C"
+  }
+}

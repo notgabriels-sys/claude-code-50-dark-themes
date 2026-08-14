@@ -1,0 +1,19 @@
+{
+  "name": "Moss",
+  "base": "dark",
+  "overrides": {
+    "claude": "#93BF6F",
+    "claudeShimmer": "#BDD8A7",
+    "text": "#E9EDE9",
+    "inactive": "#9DAFA0",
+    "subtle": "#2E3830",
+    "suggestion": "#93BF6F",
+    "permission": "#B3D299",
+    "promptBorder": "#93BF6F",
+    "promptBorderShimmer": "#BDD8A7",
+    "planMode": "#B3D299",
+    "userMessageBackground": "#1E241F",
+    "userMessageBackgroundHover": "#272F29",
+    "rate_limit_fill": "#93BF6F"
+  }
+}

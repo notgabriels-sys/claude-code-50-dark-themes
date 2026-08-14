@@ -1,0 +1,19 @@
+{
+  "name": "Anaglyph",
+  "base": "dark",
+  "overrides": {
+    "claude": "#FF5548",
+    "claudeShimmer": "#FFA19A",
+    "text": "#E9E9EC",
+    "inactive": "#A0A0AB",
+    "subtle": "#29292E",
+    "suggestion": "#FF5548",
+    "permission": "#48C8FF",
+    "promptBorder": "#FF5548",
+    "promptBorderShimmer": "#FFA19A",
+    "planMode": "#48C8FF",
+    "userMessageBackground": "#18181B",
+    "userMessageBackgroundHover": "#222226",
+    "rate_limit_fill": "#FF5548"
+  }
+}

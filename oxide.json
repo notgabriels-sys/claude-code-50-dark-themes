@@ -1,0 +1,19 @@
+{
+  "name": "Oxide",
+  "base": "dark",
+  "overrides": {
+    "claude": "#C16044",
+    "claudeShimmer": "#D59481",
+    "text": "#EDE9E9",
+    "inactive": "#AFA09D",
+    "subtle": "#352D2C",
+    "suggestion": "#C16044",
+    "permission": "#8C7A6E",
+    "promptBorder": "#C16044",
+    "promptBorderShimmer": "#D59481",
+    "planMode": "#8C7A6E",
+    "userMessageBackground": "#221D1C",
+    "userMessageBackgroundHover": "#2D2725",
+    "rate_limit_fill": "#C16044"
+  }
+}

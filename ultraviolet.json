@@ -1,0 +1,19 @@
+{
+  "name": "Ultraviolet",
+  "base": "dark",
+  "overrides": {
+    "claude": "#9D6BFF",
+    "claudeShimmer": "#D3BDFF",
+    "text": "#EAE8ED",
+    "inactive": "#A49DAF",
+    "subtle": "#2D2636",
+    "suggestion": "#9D6BFF",
+    "permission": "#C6A8FF",
+    "promptBorder": "#9D6BFF",
+    "promptBorderShimmer": "#D3BDFF",
+    "planMode": "#C6A8FF",
+    "userMessageBackground": "#1B1523",
+    "userMessageBackgroundHover": "#251D30",
+    "rate_limit_fill": "#9D6BFF"
+  }
+}
