@@ -12,8 +12,8 @@
     "promptBorder": "#E8853C",
     "promptBorderShimmer": "#F1B385",
     "planMode": "#4AA8A0",
-    "userMessageBackground": "#231F1A",
-    "userMessageBackgroundHover": "#2F2923",
+    "userMessageBackground": "#2F2923",
+    "userMessageBackgroundHover": "#3B332C",
     "rate_limit_fill": "#E8853C"
   }
 }

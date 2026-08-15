@@ -27,7 +27,7 @@ Then run `/theme` in Claude Code and pick one.
 - `text` / `inactive` / `subtle`: foreground, secondary text, faint borders
 - `promptBorder`, `suggestion`, `rate_limit_fill`: accent-matched
 - `permission`, `planMode`: second accent where the theme has one
-- `userMessageBackground` (+hover): theme surface color (fullscreen mode)
+- `userMessageBackground` (+hover): raised surface, one step above the theme `bg`
 
 Left at the base `dark` preset on purpose: `success`, `error`, `warning`, diff colors —
 so status colors stay semantically green/red/yellow in every theme.
@@ -36,7 +36,15 @@ so status colors stay semantically green/red/yellow in every theme.
 
 Claude Code cannot set your terminal's background color — the terminal app owns that.
 For the full effect, set your terminal background to the theme's `bg` hex
-(listed in the gallery page, e.g. Graphite = #131417-range).
+(listed in the gallery page, e.g. Graphite = #1D1E20).
+
+### Transparent terminals
+
+Claude Code paints `userMessageBackground` opaquely — it does not inherit your terminal's
+transparency. So these themes set it one step *above* the theme `bg` rather than equal to it.
+On a transparent terminal the user-message block then reads as a deliberately raised panel,
+instead of an opaque patch in the exact color of the background you can otherwise see through.
+On an opaque terminal it just reads as a subtle raised surface.
 
 ## The 50 themes
 
