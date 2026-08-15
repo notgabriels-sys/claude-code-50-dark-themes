@@ -7,14 +7,15 @@
 <meta name="description" content="A gallery of 50 hand-tuned dark themes for the Claude Code CLI. Copy a file into ~/.claude/themes and run /theme.">
 <style>
   :root{
-    --ground:#0c0d10;
-    --ground-2:#111318;
-    --hair:#20242c;
-    --ink:#e7e9ee;
-    --mute:#8b93a3;
-    --faint:#5a6270;
-    --accent:#7ee7c7;
-    --accent-dim:#2b6b5b;
+    /* Graphite theme — grayscale, from graphite.json */
+    --ground:#0f1011;
+    --ground-2:#17181a;
+    --hair:#2e2f33;
+    --ink:#e9eaec;
+    --mute:#a0a4ab;
+    --faint:#6a6e74;
+    --accent:#c9cfd6;
+    --accent-dim:#585c62;
     --radius:12px;
     --mono: ui-monospace,"SF Mono",SFMono-Regular,"JetBrains Mono","Menlo",Consolas,monospace;
   }
@@ -23,7 +24,7 @@
   body{
     margin:0;
     background:
-      radial-gradient(1100px 620px at 50% -12%, #14181f 0%, rgba(20,24,31,0) 60%),
+      radial-gradient(1100px 620px at 50% -12%, #1d1e20 0%, rgba(29,30,32,0) 60%),
       var(--ground);
     color:var(--ink);
     font-family:var(--mono);
@@ -71,7 +72,7 @@
     margin-top:26px;
     border:1px solid var(--hair);
     border-radius:var(--radius);
-    background:linear-gradient(180deg,var(--ground-2),#0e1014);
+    background:linear-gradient(180deg,var(--ground-2),#101112);
     overflow:hidden;
   }
   .install .bar{
@@ -85,13 +86,13 @@
   .step .i{color:var(--accent);font-size:12px;padding-top:3px}
   .step p{margin:0;color:var(--mute);font-size:13px}
   .step code, code.inline{
-    color:var(--ink);background:#0a0c0f;border:1px solid var(--hair);
+    color:var(--ink);background:#0c0c0d;border:1px solid var(--hair);
     border-radius:6px;padding:2px 6px;font-size:12.5px;
   }
   .cmd{
     display:flex;align-items:center;justify-content:space-between;gap:12px;
     margin:2px 16px 16px;padding:12px 14px;
-    background:#08090c;border:1px solid var(--hair);border-radius:8px;
+    background:#0a0a0b;border:1px solid var(--hair);border-radius:8px;
     color:var(--ink);font-size:13px;overflow-x:auto;
   }
   .cmd .prompt{color:var(--accent-dim);user-select:none}
@@ -191,9 +192,9 @@
 
     <div class="install">
       <div class="bar">
-        <span class="dot" style="background:#ff5f57"></span>
-        <span class="dot" style="background:#febc2e"></span>
-        <span class="dot" style="background:#28c840"></span>
+        <span class="dot" style="background:#c9cfd6"></span>
+        <span class="dot" style="background:#8b8f96"></span>
+        <span class="dot" style="background:#585c62"></span>
         <span style="margin-left:6px">install — three steps</span>
       </div>
       <div class="steps">
