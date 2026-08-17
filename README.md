@@ -46,6 +46,12 @@ On a transparent terminal the user-message block then reads as a deliberately ra
 instead of an opaque patch in the exact color of the background you can otherwise see through.
 On an opaque terminal it just reads as a subtle raised surface.
 
+## Same palettes, on the web
+
+These 50 palettes also ship as a set of dark website templates — portfolio, SaaS landing,
+docs, pricing, changelog, waitlist, link-in-bio and a résumé, each a single `index.html`
+with no build step. **[Live demo →](https://notgabriels-sys.github.io/dark-html-templates-demo/)**
+
 ## The 50 themes
 
 Absinthe · Acid · Amber Room · Anaglyph · Blackout · Blueprint · Cassette · Clay ·
