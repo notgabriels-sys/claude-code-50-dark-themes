@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://notgabriels-sys.github.io/claude-code-50-dark-themes/sitemap.xml
