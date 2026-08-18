@@ -182,6 +182,27 @@
     .card{transition:none}
     .caret{animation:none}
   }
+
+  .cta{margin:26px 0 4px;padding:20px 22px;border:1px solid var(--hair);border-left:3px solid var(--accent);
+       border-radius:12px;background:rgba(255,255,255,.02)}
+  .cta p{margin:0;font-size:15px;line-height:1.6;color:var(--mute)}
+  .cta a{color:var(--accent);text-decoration:none;font-weight:600;border-bottom:1px solid var(--accent-dim)}
+  .cta a:hover{border-color:var(--accent)}
+  .more{margin:52px 0 0;padding-top:30px;border-top:1px solid var(--hair)}
+  .more h2{font-size:15px;letter-spacing:.14em;text-transform:uppercase;color:var(--mute);
+           font-weight:700;margin:0 0 6px}
+  .more>p{margin:0 0 18px;color:var(--mute);font-size:14.5px;line-height:1.6}
+  .tools{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
+  .tool{display:block;padding:15px 17px;border:1px solid var(--hair);border-radius:11px;
+        text-decoration:none;color:var(--ink);transition:border-color .15s}
+  .tool:hover{border-color:var(--accent-dim)}
+  .tool b{display:block;color:var(--ink);font-size:14.5px;font-weight:650;margin-bottom:4px}
+  .tool span{display:block;color:var(--mute);font-size:13px;line-height:1.5}
+  .tool i{font-style:normal;color:var(--accent);font-size:12.5px;font-weight:600}
+  .kit{display:block;margin-top:14px;padding:16px 18px;border:1px solid var(--accent-dim);
+       border-radius:11px;text-decoration:none;text-align:center;color:var(--ink);font-size:14.5px}
+  .kit:hover{border-color:var(--accent)}
+  .kit b{color:var(--accent)}
 </style>
 </head>
 <body>
@@ -219,11 +240,34 @@
     </div>
   </header>
 
+  <div class="cta">
+    <p>All 50 are free and MIT — clone the repo, or
+    <a href="https://notgabriel.gumroad.com/l/slhbym">grab the zip</a>
+    (name your price, $0 is fine).</p>
+  </div>
+
   <div class="gallery-head">
     <h2>The collection</h2>
     <span class="count" id="count">50 themes</span>
   </div>
   <div class="grid" id="grid"></div>
+
+  <section class="more">
+    <h2>More dark tools</h2>
+    <p>Same palettes, same care, applied elsewhere. One-time purchases, no subscriptions.</p>
+    <div class="tools">
+      <a class="tool" href="https://notgabriel.gumroad.com/l/ckthsb"><b>Dark UI Kit</b><span>One CSS file — buttons, forms, cards, tabs, modal. No build step.</span><i>€12</i></a>
+      <a class="tool" href="https://notgabriel.gumroad.com/l/cfcvmy"><b>Dark HTML Templates</b><span>8 single-file pages — portfolio, SaaS, docs, pricing.</span><i>$19</i></a>
+      <a class="tool" href="https://notgabriel.gumroad.com/l/xjcbji"><b>Dark Email Templates</b><span>Transactional email — welcome, receipt, reset, OTP.</span><i>€9</i></a>
+      <a class="tool" href="https://notgabriel.gumroad.com/l/bunkhy"><b>Social &amp; OG Templates</b><span>Exact-size share images — OG cards, X header, thumbnails.</span><i>€9</i></a>
+      <a class="tool" href="https://notgabriel.gumroad.com/l/wmlrk"><b>R&eacute;sum&eacute; &amp; CV Templates</b><span>Dark on screen, clean black-on-white in PDF.</span><i>€9</i></a>
+      <a class="tool" href="https://notgabriel.gumroad.com/l/kxsfa"><b>Dev Cheatsheets</b><span>git, vim, tmux, regex, bash — plus Vol.&nbsp;2 for SQL, CSS, HTTP.</span><i>€7</i></a>
+      <a class="tool" href="https://notgabriel.gumroad.com/l/wgtbkq"><b>Keyboard Shortcuts</b><span>Keycap reference cards — VS Code, macOS, Vim, tmux.</span><i>€7</i></a>
+      <a class="tool" href="https://notgabriel.gumroad.com/l/jqrdfy"><b>Dark Wallpapers</b><span>4K aurora gradients, desktop &amp; mobile.</span><i>€6</i></a>
+      <a class="tool" href="https://notgabriel.gumroad.com/l/xcxeb"><b>50 Dark Palettes</b><span>These palettes as CSS, SCSS, Tailwind, .ase and .gpl.</span><i>$9</i></a>
+    </div>
+    <a class="kit" href="https://notgabriel.gumroad.com/l/wuhehk"><b>Everything Dark — the complete kit</b> · all of the above, $39</a>
+  </section>
 
   <footer>
     <span>50 dark themes for Claude Code</span>

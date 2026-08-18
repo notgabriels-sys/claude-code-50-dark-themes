@@ -5,6 +5,9 @@ Light / Dark / System, so these install into Claude Code, which does support cus
 
 **→ Visual gallery: [open `index.html`](index.html)** (all 50 previewed in their own colors).
 
+Prefer a zip to a `git clone`? The same 50 themes are a **free download** here:
+**[get the pack →](https://notgabriel.gumroad.com/l/slhbym)** (name your price, $0 is fine).
+
 ## Quick install
 
 ```bash
@@ -60,3 +63,27 @@ Fjord · Furnace · Glacier · Graphite · Greenhouse · Harbor · Hearth · Ink
 Lagoon · Lichen · Moss · Mulberry · Nachtschicht · Night Vision · Nightshade · Off Air ·
 Orchid · Oxide · Petrol · Plasma · Signal Red · Sonar · Soot · Static · Terminal ·
 Tidepool · Tungsten · Ultraviolet · Undergrowth · Undertow · VU Meter · Velvet · Verdigris
+
+
+## More dark tools
+
+Same palettes and the same care, applied elsewhere. All one-time purchases, no subscriptions.
+
+| | |
+|---|---|
+| **[Dark UI Kit](https://notgabriel.gumroad.com/l/ckthsb)** — one CSS file, no build step | buttons, forms, cards, tabs, modal · €12 |
+| **[Dark HTML Templates](https://notgabriel.gumroad.com/l/cfcvmy)** — 8 single-file pages | portfolio, SaaS, docs, pricing · $19 |
+| **[Dark Email Templates](https://notgabriel.gumroad.com/l/xjcbji)** — transactional email | welcome, receipt, reset, OTP · €9 |
+| **[Social & OG Templates](https://notgabriel.gumroad.com/l/bunkhy)** — exact-size share images | OG cards, X header, thumbnails · €9 |
+| **[Résumé & CV Templates](https://notgabriel.gumroad.com/l/wmlrk)** — prints clean to PDF | 5 layouts + cover letter · €9 |
+| **[Dev Cheatsheets](https://notgabriel.gumroad.com/l/kxsfa)** + **[Vol. 2](https://notgabriel.gumroad.com/l/kykega)** | git, vim, tmux, SQL, CSS, HTTP · €7 each |
+| **[Keyboard Shortcuts](https://notgabriel.gumroad.com/l/wgtbkq)** — keycap reference cards | VS Code, macOS, Vim, tmux · €7 |
+| **[Dark Wallpapers](https://notgabriel.gumroad.com/l/bqgfv)** + **[Vol. 2 · Aurora](https://notgabriel.gumroad.com/l/jqrdfy)** | 4K, desktop & mobile · from €6 |
+| **[50 Dark Palettes](https://notgabriel.gumroad.com/l/xcxeb)** — for designers & devs | CSS, SCSS, Tailwind, .ase, .gpl · $9 |
+
+**[Everything Dark — the complete kit →](https://notgabriel.gumroad.com/l/wuhehk)** (all of the above, $39)
+
+---
+
+Themes in this repo are free and stay free — MIT. If they saved you some fiddling,
+a ⭐ helps other people find them.
