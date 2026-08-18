@@ -83,6 +83,12 @@ Same palettes and the same care, applied elsewhere. All one-time purchases, no s
 
 **[Everything Dark — the complete kit →](https://notgabriel.gumroad.com/l/wuhehk)** (all of the above, $39)
 
+### See them running first
+
+**[Live demos →](https://notgabriels-sys.github.io/dark-templates-demo/)** — business documents,
+slide decks and app screens, running in your browser. No signup, nothing to download.
+The [HTML templates demo](https://notgabriels-sys.github.io/dark-html-templates-demo/) is separate.
+
 ---
 
 Themes in this repo are free and stay free — MIT. If they saved you some fiddling,
