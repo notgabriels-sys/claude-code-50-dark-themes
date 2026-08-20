@@ -38,6 +38,7 @@ final class FileInventoryTests: XCTestCase {
         let snapshot = try await FileInventory().inventory(root: fixture.root)
 
         XCTAssertEqual(snapshot.entries.first { $0.relativePath.value == "outside.wav" }?.kind, .symbolicLink)
+        XCTAssertFalse(snapshot.entries.contains { $0.relativePath.value == "outside.wav/sentinel.txt" })
         XCTAssertFalse(snapshot.entries.contains { $0.sha256 != nil })
         XCTAssertTrue(snapshot.findings.contains { $0.ruleID == "filesystem.symlink-not-followed" })
     }
@@ -100,7 +101,7 @@ private final class TemporaryInventoryFixture {
     func createEscapingSymlink(named name: String) throws {
         try FileManager.default.createSymbolicLink(
             at: root.appendingPathComponent(name),
-            withDestinationURL: externalRoot.appendingPathComponent("sentinel.txt")
+            withDestinationURL: externalRoot
         )
     }
 
