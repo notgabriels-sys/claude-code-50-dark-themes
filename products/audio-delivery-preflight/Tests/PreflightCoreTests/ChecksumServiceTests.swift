@@ -20,7 +20,7 @@ final class ChecksumServiceTests: XCTestCase {
         _ = try fixture.write("same bytes", to: "Masters/two.wav")
 
         let inventory = try await FileInventory().inventory(root: fixture.root)
-        let checksummed = await ChecksumService().checksummedInventory(entries: inventory.entries, root: fixture.root)
+        let checksummed = try await ChecksumService().checksummedInventory(entries: inventory.entries, root: fixture.root)
         let groups = ChecksumService().duplicateGroups(entries: checksummed.entries)
 
         XCTAssertEqual(groups.count, 1)
@@ -34,7 +34,7 @@ final class ChecksumServiceTests: XCTestCase {
         _ = try fixture.write("second", to: "Masters/two.wav")
 
         let inventory = try await FileInventory().inventory(root: fixture.root)
-        let checksummed = await ChecksumService().checksummedInventory(entries: inventory.entries, root: fixture.root)
+        let checksummed = try await ChecksumService().checksummedInventory(entries: inventory.entries, root: fixture.root)
 
         XCTAssertTrue(ChecksumService().duplicateGroups(entries: checksummed.entries).isEmpty)
     }
@@ -64,7 +64,7 @@ final class ChecksumServiceTests: XCTestCase {
         defer { fixture.remove() }
         let missingEntry = try inventoryEntry(path: "Masters/missing.wav", category: .audio)
 
-        let snapshot = await ChecksumService().checksummedInventory(entries: [missingEntry], root: fixture.root)
+        let snapshot = try await ChecksumService().checksummedInventory(entries: [missingEntry], root: fixture.root)
 
         XCTAssertNil(snapshot.entries[0].sha256)
         XCTAssertEqual(snapshot.entries[0].inspectionStatus, .failed)
@@ -84,7 +84,7 @@ final class ChecksumServiceTests: XCTestCase {
             swap.replaceAncestorWithEscapingSymlink(for: relativePath, at: componentIndex)
         })
 
-        let snapshot = await service.checksummedInventory(entries: inventory.entries, root: fixture.root)
+        let snapshot = try await service.checksummedInventory(entries: inventory.entries, root: fixture.root)
 
         XCTAssertTrue(swap.didSwap)
         XCTAssertNil(swap.error)
@@ -94,6 +94,36 @@ final class ChecksumServiceTests: XCTestCase {
         let finding = try XCTUnwrap(snapshot.findings.first { $0.ruleID == "checksum.read-failed" })
         XCTAssertFalse(finding.explanation.contains(fixture.root.path))
         XCTAssertFalse(finding.explanation.contains(externalSentinel.path))
+    }
+
+    func testCancellationDuringChecksumPropagatesCancellationInsteadOfReadFailure() async throws {
+        let fixture = try TemporaryChecksumFixture.make()
+        defer { fixture.remove() }
+        _ = try fixture.write(Data(repeating: 0xA5, count: 128 * 1024), to: "Masters/Track.wav")
+        let inventory = try await FileInventory().inventory(root: fixture.root)
+        let gate = ChecksumReadGate()
+        let service = ChecksumService(onBeforeReadingChunk: {
+            gate.blockUntilReleased()
+        })
+        let entries = inventory.entries
+        let root = fixture.root
+
+        let task = Task { () -> Bool in
+            do {
+                _ = try await service.checksummedInventory(entries: entries, root: root)
+                return false
+            } catch is CancellationError {
+                return true
+            } catch {
+                return false
+            }
+        }
+        await fulfillment(of: [gate.readStarted], timeout: 2)
+        task.cancel()
+        gate.release()
+        let didPropagateCancellation = await task.value
+
+        XCTAssertTrue(didPropagateCancellation)
     }
 
     private func inventoryEntry(
@@ -135,9 +165,13 @@ private final class TemporaryChecksumFixture {
     }
 
     func write(_ contents: String, to relativePath: String) throws -> URL {
+        try write(Data(contents.utf8), to: relativePath)
+    }
+
+    func write(_ contents: Data, to relativePath: String) throws -> URL {
         let url = root.appendingPathComponent(relativePath)
         try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-        try Data(contents.utf8).write(to: url)
+        try contents.write(to: url)
         return url
     }
 
@@ -156,6 +190,20 @@ private final class TemporaryChecksumFixture {
     func remove() {
         try? FileManager.default.removeItem(at: root)
         try? FileManager.default.removeItem(at: externalRoot)
+    }
+}
+
+private final class ChecksumReadGate: @unchecked Sendable {
+    let readStarted = XCTestExpectation(description: "checksum read started")
+    private let released = DispatchSemaphore(value: 0)
+
+    func blockUntilReleased() {
+        readStarted.fulfill()
+        released.wait()
+    }
+
+    func release() {
+        released.signal()
     }
 }
 

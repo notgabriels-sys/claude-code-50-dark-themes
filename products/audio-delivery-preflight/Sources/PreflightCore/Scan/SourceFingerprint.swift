@@ -1,3 +1,4 @@
+import CryptoKit
 import Darwin
 import Foundation
 
@@ -41,23 +42,7 @@ public struct SourceFingerprint: Sendable, Codable, Equatable {
 
         var files: [File] = []
         for entry in entries where entry.kind == .regular {
-            let descriptor = try TrustedFileAccess.openRegularFile(
-                relativePath: entry.relativePath,
-                from: rootDescriptor
-            )
-            defer { Darwin.close(descriptor) }
-            var status = stat()
-            guard Darwin.fstat(descriptor, &status) == 0 else {
-                throw TrustedFileAccessError.statusFailed
-            }
-            files.append(
-                File(
-                    relativePath: entry.relativePath,
-                    byteSize: Int64(status.st_size),
-                    modificationDate: Self.modificationDate(from: status),
-                    sha256: entry.sha256
-                )
-            )
+            files.append(try Self.fingerprint(entry: entry, from: rootDescriptor))
         }
         return SourceFingerprint(files: files)
     }
@@ -85,16 +70,46 @@ public struct SourceFingerprint: Sendable, Codable, Equatable {
         return Date(timeIntervalSince1970: seconds + nanoseconds)
     }
 
-    /// Compares the source facts observed before and after a scan. A checksum is
-    /// compared only when both observations already contain one; the service
-    /// never writes a checksum or any other evidence into the selected source.
+    private static func fingerprint(entry: InventoryEntry, from rootDescriptor: Int32) throws -> File {
+        let descriptor = try TrustedFileAccess.openRegularFile(
+            relativePath: entry.relativePath,
+            from: rootDescriptor
+        )
+        defer { Darwin.close(descriptor) }
+        var status = stat()
+        guard Darwin.fstat(descriptor, &status) == 0 else {
+            throw TrustedFileAccessError.statusFailed
+        }
+        return File(
+            relativePath: entry.relativePath,
+            byteSize: Int64(status.st_size),
+            modificationDate: modificationDate(from: status),
+            sha256: try sha256(from: descriptor)
+        )
+    }
+
+    private static func sha256(from descriptor: Int32) throws -> String {
+        let handle = FileHandle(fileDescriptor: descriptor, closeOnDealloc: false)
+        var hasher = SHA256()
+        while true {
+            try Task.checkCancellation()
+            guard let chunk = try handle.read(upToCount: 64 * 1024), !chunk.isEmpty else {
+                return hasher.finalize().map { String(format: "%02x", $0) }.joined()
+            }
+            hasher.update(data: chunk)
+        }
+    }
+
+    /// Compares source facts observed before and after a scan. Each production
+    /// fingerprint calculates its checksum from the trusted file descriptor;
+    /// the service never writes evidence into the selected source.
     public func matches(_ other: SourceFingerprint) -> Bool {
         guard files.count == other.files.count else { return false }
         return zip(files, other.files).allSatisfy { before, after in
             before.relativePath == after.relativePath
                 && before.byteSize == after.byteSize
                 && before.modificationDate == after.modificationDate
-                && (before.sha256 == nil || after.sha256 == nil || before.sha256 == after.sha256)
+                && before.sha256 == after.sha256
         }
     }
 

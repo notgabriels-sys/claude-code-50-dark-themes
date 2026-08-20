@@ -63,7 +63,7 @@ public struct ScanService: ScanServicing, Sendable {
             let inspected = await inspect(entries: inventoried.entries, root: root)
 
             try Task.checkCancellation()
-            let checksummed = await checksums.checksummedInventory(entries: inspected.entries, root: root)
+            let checksummed = try await checksums.checksummedInventory(entries: inspected.entries, root: root)
 
             try Task.checkCancellation()
             var findings = ruleEngine.evaluate(
@@ -76,7 +76,8 @@ public struct ScanService: ScanServicing, Sendable {
             )
 
             try Task.checkCancellation()
-            let after = try fingerprinting.fingerprint(root: root, entries: checksummed.entries)
+            let postInventory = try await inventory.inventory(root: root)
+            let after = try fingerprinting.fingerprint(root: root, entries: postInventory.entries)
             if !before.matches(after) {
                 findings.append(sourceChangedFinding(engineVersion: request.engineVersion))
             }
@@ -245,6 +246,10 @@ public struct ScanService: ScanServicing, Sendable {
             title = "Preset could not be resolved"
             explanation = "The selected preset could not be resolved safely."
         case PreflightError.invalidScanRequest:
+            ruleID = "filesystem.root-access-failed"
+            title = "Selected root could not be accessed"
+            explanation = "The selected source root could not be accessed safely."
+        case is TrustedFileAccessError:
             ruleID = "filesystem.root-access-failed"
             title = "Selected root could not be accessed"
             explanation = "The selected source root could not be accessed safely."

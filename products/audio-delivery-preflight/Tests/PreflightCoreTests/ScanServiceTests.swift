@@ -33,6 +33,7 @@ final class ScanServiceTests: XCTestCase {
                 "image:Artwork/Cover.png",
                 "checksum",
                 "rules",
+                "inventory",
                 "fingerprint.after",
             ]
         )
@@ -106,7 +107,7 @@ final class ScanServiceTests: XCTestCase {
         XCTAssertTrue(invalidRoot.findings[0].affectedPaths.isEmpty)
     }
 
-    func testSourceMutationBetweenFingerprintsProducesErrorAndCannotBeReady() async throws {
+    func testSameLengthSourceMutationWithRestoredMtimeProducesErrorAndCannotBeReady() async throws {
         let fixture = try ScanMutationFixture.make()
         defer { fixture.remove() }
         let preset = try PresetResolver().resolve(Preset(identifier: "test", name: "Test"))
@@ -114,7 +115,7 @@ final class ScanServiceTests: XCTestCase {
         let service = ScanService(
             inventory: ScanInventorySpy(entries: [master]),
             checksums: ScanChecksumSpy(),
-            audioInspector: ScanMutatingAudioInspector(),
+            audioInspector: SameLengthMtimeRestoringAudioInspector(),
             imageInspector: ScanImageInspectorSpy(),
             presetResolver: ScanPresetResolverSpy(resolvedPreset: preset),
             ruleEngine: ScanRuleEngineSpy(),
@@ -128,6 +129,65 @@ final class ScanServiceTests: XCTestCase {
         XCTAssertEqual(finding.severity, .error)
         XCTAssertEqual(result.overallStatus, .requirementsNotMet)
         XCTAssertNotEqual(result.overallStatus, .ready)
+    }
+
+    func testFileAddedDuringScanProducesErrorWithoutEvaluatingTheNewFile() async throws {
+        let fixture = try ScanPackageFixture.make()
+        defer { fixture.remove() }
+        let preset = try PresetResolver().resolve(BuiltInPresets.generalAudio)
+        let service = ScanService(
+            inventory: FileInventory(),
+            checksums: ChecksumService(),
+            audioInspector: ScanAddingAudioInspector(),
+            imageInspector: ScanImageInspectorSpy(),
+            presetResolver: PresetResolver(),
+            ruleEngine: RuleEngine(),
+            fingerprinting: SourceFingerprint(),
+            now: { Date(timeIntervalSince1970: 1_000) }
+        )
+
+        let result = await service.scan(request(root: fixture.root, preset: preset))
+
+        XCTAssertTrue(result.findings.contains { $0.ruleID == "filesystem.source-changed-during-scan" && $0.severity == .error })
+        XCTAssertNotEqual(result.overallStatus, .ready)
+        XCTAssertFalse(result.inventory.contains { $0.relativePath.value == "Added/during-scan.txt" })
+    }
+
+    func testRootRemovedAfterInventoryReturnsTypedIncompleteResultWithoutPaths() async throws {
+        let fixture = try ScanMutationFixture.make()
+        defer { fixture.remove() }
+        let preset = try PresetResolver().resolve(Preset(identifier: "test", name: "Test"))
+        let service = ScanService(
+            inventory: RootRemovingInventory(),
+            checksums: ScanChecksumSpy(),
+            audioInspector: ScanAudioInspectorSpy(),
+            imageInspector: ScanImageInspectorSpy(),
+            presetResolver: ScanPresetResolverSpy(resolvedPreset: preset),
+            ruleEngine: ScanRuleEngineSpy(),
+            fingerprinting: SourceFingerprint(),
+            now: { Date(timeIntervalSince1970: 1_000) }
+        )
+
+        let result = await service.scan(request(root: fixture.root, preset: preset))
+
+        XCTAssertEqual(result.overallStatus, .incomplete)
+        XCTAssertEqual(result.findings.map(\.ruleID), ["filesystem.root-access-failed"])
+        XCTAssertTrue(result.findings[0].affectedPaths.isEmpty)
+        XCTAssertFalse(result.findings[0].explanation.contains(fixture.root.path))
+    }
+
+    func testFailedInspectionSurvivesSuccessfulProductionChecksum() async throws {
+        let fixture = try ScanMutationFixture.make()
+        defer { fixture.remove() }
+        let preset = try PresetResolver().resolve(BuiltInPresets.generalAudio)
+
+        let result = await ScanService().scan(request(root: fixture.root, preset: preset))
+
+        let entry = try XCTUnwrap(result.inventory.first { $0.relativePath.value == "Masters/Main Master.wav" })
+        XCTAssertEqual(entry.inspectionStatus, .failed)
+        XCTAssertNotNil(entry.sha256)
+        XCTAssertTrue(result.findings.contains { $0.ruleID == "inspection.audio-unreadable" })
+        XCTAssertEqual(result.overallStatus, .requirementsNotMet)
     }
 
     func testProductionServiceReadiesDigitalReleaseWithoutChangingSourceFiles() async throws {
@@ -207,6 +267,14 @@ private struct ScanInventorySpy: FileInventorying {
 private struct ThrowingInventorySpy: FileInventorying {
     func inventory(root: URL) async throws -> InventorySnapshot {
         throw PreflightError.invalidScanRequest(reason: "Root is unavailable.")
+    }
+}
+
+private struct RootRemovingInventory: FileInventorying {
+    func inventory(root: URL) async throws -> InventorySnapshot {
+        let snapshot = try await FileInventory().inventory(root: root)
+        try FileManager.default.removeItem(at: root)
+        return snapshot
     }
 }
 
@@ -307,9 +375,25 @@ private struct ScanImageInspectorSpy: ImageInspecting {
     }
 }
 
-private struct ScanMutatingAudioInspector: AudioInspecting {
+private struct SameLengthMtimeRestoringAudioInspector: AudioInspecting {
     func inspect(source: TrustedMediaSource) async -> InspectionOutcome<AudioProperties> {
-        try? Data("changed-source-bytes".utf8).write(to: source.root.appendingPathComponent(source.relativePath.value))
+        let url = source.root.appendingPathComponent(source.relativePath.value)
+        guard let attributes = try? FileManager.default.attributesOfItem(atPath: url.path),
+              let modificationDate = attributes[.modificationDate] as? Date
+        else {
+            return InspectionOutcome(status: .failed, value: AudioProperties(isReadable: false), findings: [])
+        }
+        try? Data("changed--source-bytes".utf8).write(to: url)
+        try? FileManager.default.setAttributes([.modificationDate: modificationDate], ofItemAtPath: url.path)
+        return InspectionOutcome(status: .succeeded, value: AudioProperties(isReadable: true), findings: [])
+    }
+}
+
+private struct ScanAddingAudioInspector: AudioInspecting {
+    func inspect(source: TrustedMediaSource) async -> InspectionOutcome<AudioProperties> {
+        let added = source.root.appendingPathComponent("Added/during-scan.txt")
+        try? FileManager.default.createDirectory(at: added.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try? Data("added during scan".utf8).write(to: added)
         return InspectionOutcome(status: .succeeded, value: AudioProperties(isReadable: true), findings: [])
     }
 }
@@ -377,7 +461,7 @@ private final class ScanFingerprintSpy: @unchecked Sendable, SourceFingerprintin
         let ordinal = callCount
         lock.unlock()
         recorder?.record(ordinal == 1 ? "fingerprint.before" : "fingerprint.after")
-        return SourceFingerprint(entries: entries)
+        return SourceFingerprint()
     }
 }
 
