@@ -1,8 +1,8 @@
 import AVFoundation
 import AudioToolbox
 import CoreMedia
+import Darwin
 import Foundation
-import UniformTypeIdentifiers
 
 public struct InspectionOutcome<Value: Sendable>: Sendable {
     public let status: InspectionStatus
@@ -17,40 +17,53 @@ public struct InspectionOutcome<Value: Sendable>: Sendable {
 }
 
 public protocol AudioInspecting: Sendable {
-    func inspect(url: URL) async -> InspectionOutcome<AudioProperties>
+    func inspect(source: TrustedMediaSource) async -> InspectionOutcome<AudioProperties>
 }
 
 public struct AudioInspector: AudioInspecting {
-    public init() {}
+    private let stagingDirectory: URL
+    private let onBeforeOpeningPathComponent: TrustedFileAccess.OpenPathComponentHook?
 
-    public func inspect(url: URL) async -> InspectionOutcome<AudioProperties> {
-        guard !Self.isSymbolicLink(url) else {
-            return Self.unreadableOutcome()
-        }
+    public init() {
+        self.stagingDirectory = FileManager.default.temporaryDirectory
+        self.onBeforeOpeningPathComponent = nil
+    }
 
-        let contentCandidate = Self.contentCandidate(for: url)
-        let container = Self.containerName(for: url) ?? contentCandidate?.container
+    init(onBeforeOpeningPathComponent: @escaping TrustedFileAccess.OpenPathComponentHook) {
+        self.stagingDirectory = FileManager.default.temporaryDirectory
+        self.onBeforeOpeningPathComponent = onBeforeOpeningPathComponent
+    }
+
+    init(
+        stagingDirectory: URL,
+        onBeforeOpeningPathComponent: TrustedFileAccess.OpenPathComponentHook? = nil
+    ) {
+        self.stagingDirectory = stagingDirectory
+        self.onBeforeOpeningPathComponent = onBeforeOpeningPathComponent
+    }
+
+    public func inspect(source: TrustedMediaSource) async -> InspectionOutcome<AudioProperties> {
         do {
-            return try await Self.inspect(
-                asset: AVURLAsset(url: url),
-                container: container
+            let contents = try TrustedFileAccess.readRegularFile(
+                source: source,
+                onBeforeOpeningPathComponent: onBeforeOpeningPathComponent
             )
-        } catch {
-            guard let contentCandidate else {
-                return Self.unreadableOutcome()
-            }
+            let candidate = Self.contentCandidate(for: contents.data)
+            let stagingURL = try Self.createStagingFile(data: contents.data, in: stagingDirectory)
+            defer { try? FileManager.default.removeItem(at: stagingURL) }
 
-            do {
-                return try await Self.inspect(
-                    asset: AVURLAsset(
-                        url: url,
-                        options: [AVURLAssetOverrideMIMETypeKey: contentCandidate.mimeType]
-                    ),
-                    container: container
+            let asset: AVURLAsset
+            if let candidate {
+                asset = AVURLAsset(
+                    url: stagingURL,
+                    options: [AVURLAssetOverrideMIMETypeKey: candidate.mimeType]
                 )
-            } catch {
-                return Self.unreadableOutcome()
+            } else {
+                asset = AVURLAsset(url: stagingURL)
             }
+            return try await Self.inspect(asset: asset, container: candidate?.container)
+        } catch {
+            return Self.unreadableOutcome()
         }
     }
 
@@ -79,6 +92,37 @@ public struct AudioInspector: AudioInspecting {
         )
     }
 
+    private static func createStagingFile(data: Data, in directory: URL) throws -> URL {
+        guard directory.isFileURL else {
+            throw InspectionError.invalidStagingDirectory
+        }
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        var template = directory.appendingPathComponent("audio-inspector-XXXXXXXX").path.utf8CString
+        let descriptor = template.withUnsafeMutableBufferPointer { buffer in
+            Darwin.mkstemp(buffer.baseAddress!)
+        }
+        guard descriptor >= 0 else {
+            throw InspectionError.stagingCreationFailed
+        }
+        let path = template.withUnsafeBufferPointer { buffer in
+            String(cString: buffer.baseAddress!)
+        }
+        let url = URL(fileURLWithPath: path)
+        var completed = false
+        defer {
+            Darwin.close(descriptor)
+            if !completed {
+                try? FileManager.default.removeItem(at: url)
+            }
+        }
+        guard Darwin.fchmod(descriptor, S_IRUSR | S_IWUSR) == 0 else {
+            throw InspectionError.stagingPermissionFailed
+        }
+        try FileHandle(fileDescriptor: descriptor, closeOnDealloc: false).write(contentsOf: data)
+        completed = true
+        return url
+    }
+
     private static func streamDescription(from description: CMFormatDescription) -> AudioStreamBasicDescription? {
         guard CMFormatDescriptionGetMediaType(description) == kCMMediaType_Audio else {
             return nil
@@ -86,46 +130,36 @@ public struct AudioInspector: AudioInspecting {
         return CMAudioFormatDescriptionGetStreamBasicDescription(description)?.pointee
     }
 
-    private static func isSymbolicLink(_ url: URL) -> Bool {
-        (try? url.standardizedFileURL.resourceValues(forKeys: [.isSymbolicLinkKey]).isSymbolicLink) == true
-    }
-
-    private static func contentCandidate(for url: URL) -> (mimeType: String, container: String)? {
-        guard let handle = try? FileHandle(forReadingFrom: url) else {
-            return nil
-        }
-        defer { try? handle.close() }
-
-        guard let bytes = try? handle.read(upToCount: 12) else {
-            return nil
-        }
-
-        if bytes.starts(with: Data("RIFF".utf8)), bytes.dropFirst(8).starts(with: Data("WAVE".utf8)) {
+    private static func contentCandidate(for data: Data) -> (mimeType: String, container: String)? {
+        if data.starts(with: Data("RIFF".utf8)), data.dropFirst(8).starts(with: Data("WAVE".utf8)) {
             return ("audio/vnd.wave", "WAV")
         }
-        if bytes.starts(with: Data("FORM".utf8)), bytes.dropFirst(8).starts(with: Data("AIFF".utf8)) || bytes.dropFirst(8).starts(with: Data("AIFC".utf8)) {
+        if data.starts(with: Data("FORM".utf8)), data.dropFirst(8).starts(with: Data("AIFF".utf8)) || data.dropFirst(8).starts(with: Data("AIFC".utf8)) {
             return ("audio/aiff", "AIFF")
         }
-        if bytes.starts(with: Data("fLaC".utf8)) {
+        if data.starts(with: Data("fLaC".utf8)) {
             return ("audio/flac", "FLAC")
         }
-        if bytes.starts(with: Data("ID3".utf8)) || (bytes.count >= 2 && bytes[bytes.startIndex] == 0xFF && (bytes[bytes.index(after: bytes.startIndex)] & 0xE0) == 0xE0) {
+        if data.starts(with: Data("ID3".utf8)) || (data.count >= 2 && data[data.startIndex] == 0xFF && (data[data.index(after: data.startIndex)] & 0xE0) == 0xE0) {
             return ("audio/mpeg", "MP3")
         }
-        if bytes.count >= 12,
-           bytes.dropFirst(4).starts(with: Data("ftyp".utf8)),
-           bytes.dropFirst(8).starts(with: Data("M4A".utf8)) {
+        if data.count >= 12,
+           data.dropFirst(4).starts(with: Data("ftyp".utf8)),
+           data.dropFirst(8).starts(with: Data("M4A".utf8)) {
             return ("audio/mp4", "M4A")
         }
-
         return nil
     }
 
     private static func encodingName(from streamDescription: AudioStreamBasicDescription) -> String? {
-        guard streamDescription.mFormatID == kAudioFormatLinearPCM else {
-            return nil
+        switch streamDescription.mFormatID {
+        case kAudioFormatLinearPCM:
+            "Linear PCM"
+        case kAudioFormatMPEG4AAC:
+            "AAC"
+        default:
+            nil
         }
-        return "Linear PCM"
     }
 
     private static func pcmBitDepth(from streamDescription: AudioStreamBasicDescription) -> Int? {
@@ -133,32 +167,6 @@ public struct AudioInspector: AudioInspecting {
             return nil
         }
         return Int(streamDescription.mBitsPerChannel)
-    }
-
-    private static func containerName(for url: URL) -> String? {
-        switch url.pathExtension.lowercased() {
-        case "aif", "aiff": "AIFF"
-        case "flac": "FLAC"
-        case "m4a": "M4A"
-        case "mp3": "MP3"
-        case "wav": "WAV"
-        default:
-            contentTypeContainerName(for: url)
-        }
-    }
-
-    private static func contentTypeContainerName(for url: URL) -> String? {
-        guard let contentType = try? url.resourceValues(forKeys: [.contentTypeKey]).contentType else {
-            return nil
-        }
-        return switch contentType.preferredFilenameExtension?.lowercased() {
-        case "aif", "aiff": "AIFF"
-        case "flac": "FLAC"
-        case "m4a": "M4A"
-        case "mp3": "MP3"
-        case "wav": "WAV"
-        default: nil
-        }
     }
 
     private static func unreadableOutcome() -> InspectionOutcome<AudioProperties> {
@@ -170,10 +178,10 @@ public struct AudioInspector: AudioInspecting {
                     ruleID: "audio.unreadable",
                     severity: .error,
                     title: "Audio file could not be read",
-                    explanation: "The file could not be inspected as readable audio.",
+                    explanation: "The selected audio file could not be read safely.",
                     affectedPaths: [],
                     evidence: [.init(label: "isReadable", value: .boolean(false))],
-                    expected: "A readable audio file.",
+                    expected: "A readable regular audio file inside the selected root.",
                     suggestedAction: "Replace or re-export the audio file.",
                     origin: .engine,
                     engineVersion: "0.1.0"
@@ -183,6 +191,9 @@ public struct AudioInspector: AudioInspecting {
     }
 
     private enum InspectionError: Error {
+        case invalidStagingDirectory
+        case stagingCreationFailed
+        case stagingPermissionFailed
         case noAudioTrack
     }
 }

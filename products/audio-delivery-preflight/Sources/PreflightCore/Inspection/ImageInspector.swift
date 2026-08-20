@@ -3,20 +3,27 @@ import Foundation
 import ImageIO
 
 public protocol ImageInspecting: Sendable {
-    func inspect(url: URL) -> InspectionOutcome<ImageProperties>
+    func inspect(source: TrustedMediaSource) -> InspectionOutcome<ImageProperties>
 }
 
 public struct ImageInspector: ImageInspecting {
-    public init() {}
+    private let onBeforeOpeningPathComponent: TrustedFileAccess.OpenPathComponentHook?
 
-    public func inspect(url: URL) -> InspectionOutcome<ImageProperties> {
-        guard !Self.isSymbolicLink(url) else {
-            return Self.unreadableOutcome()
-        }
+    public init() {
+        self.onBeforeOpeningPathComponent = nil
+    }
 
-        guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
-              let sourceType = CGImageSourceGetType(source),
-              let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any]
+    init(onBeforeOpeningPathComponent: TrustedFileAccess.OpenPathComponentHook?) {
+        self.onBeforeOpeningPathComponent = onBeforeOpeningPathComponent
+    }
+
+    public func inspect(source: TrustedMediaSource) -> InspectionOutcome<ImageProperties> {
+        guard let contents = try? TrustedFileAccess.readRegularFile(
+            source: source,
+            onBeforeOpeningPathComponent: onBeforeOpeningPathComponent
+        ), let imageSource = CGImageSourceCreateWithData(contents.data as CFData, nil),
+        let sourceType = CGImageSourceGetType(imageSource),
+        let properties = CGImageSourceCopyPropertiesAtIndex(imageSource, 0, nil) as? [CFString: Any]
         else {
             return Self.unreadableOutcome()
         }
@@ -26,9 +33,8 @@ public struct ImageInspector: ImageInspecting {
         let aspectRatio = width.flatMap { width in
             height.flatMap { height in height > 0 ? Double(width) / Double(height) : nil }
         }
-        let byteSize = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize).map(Int64.init)
         let hasAlpha = (properties[kCGImagePropertyHasAlpha] as? NSNumber)?.boolValue
-            ?? CGImageSourceCreateImageAtIndex(source, 0, nil).flatMap(Self.hasAlpha(in:))
+            ?? CGImageSourceCreateImageAtIndex(imageSource, 0, nil).flatMap(Self.hasAlpha(in:))
 
         return InspectionOutcome(
             status: .succeeded,
@@ -39,7 +45,7 @@ public struct ImageInspector: ImageInspecting {
                 format: sourceType as String,
                 colorModel: properties[kCGImagePropertyColorModel] as? String,
                 hasAlpha: hasAlpha,
-                byteSize: byteSize,
+                byteSize: contents.byteSize,
                 isReadable: true
             ),
             findings: []
@@ -57,10 +63,6 @@ public struct ImageInspector: ImageInspecting {
         }
     }
 
-    private static func isSymbolicLink(_ url: URL) -> Bool {
-        (try? url.standardizedFileURL.resourceValues(forKeys: [.isSymbolicLinkKey]).isSymbolicLink) == true
-    }
-
     private static func unreadableOutcome() -> InspectionOutcome<ImageProperties> {
         InspectionOutcome(
             status: .failed,
@@ -70,10 +72,10 @@ public struct ImageInspector: ImageInspecting {
                     ruleID: "image.unreadable",
                     severity: .error,
                     title: "Image file could not be read",
-                    explanation: "The file could not be inspected as a readable image.",
+                    explanation: "The selected image file could not be read safely.",
                     affectedPaths: [],
                     evidence: [.init(label: "isReadable", value: .boolean(false))],
-                    expected: "A readable image file.",
+                    expected: "A readable regular image file inside the selected root.",
                     suggestedAction: "Replace or re-export the image file.",
                     origin: .engine,
                     engineVersion: "0.1.0"

@@ -29,7 +29,7 @@ public struct ChecksumService: ChecksumCalculating {
     }
 
     public func sha256(for fileURL: URL) async throws -> String {
-        let descriptor = try Self.openRegularFile(at: fileURL.standardizedFileURL)
+        let descriptor = try TrustedFileAccess.openRegularFile(at: fileURL.standardizedFileURL)
         defer { Darwin.close(descriptor) }
         return try Self.sha256(from: descriptor)
     }
@@ -41,7 +41,7 @@ public struct ChecksumService: ChecksumCalculating {
         let rootDescriptor: Int32?
 
         do {
-            rootDescriptor = try Self.openTrustedRoot(at: standardizedRoot)
+            rootDescriptor = try TrustedFileAccess.openTrustedRoot(at: standardizedRoot)
         } catch {
             rootDescriptor = nil
         }
@@ -69,7 +69,11 @@ public struct ChecksumService: ChecksumCalculating {
             }
 
             do {
-                let descriptor = try openRegularFile(relativePath: entry.relativePath, from: rootDescriptor)
+                let descriptor = try TrustedFileAccess.openRegularFile(
+                    relativePath: entry.relativePath,
+                    from: rootDescriptor,
+                    onBeforeOpeningPathComponent: onBeforeOpeningPathComponent
+                )
                 defer { Darwin.close(descriptor) }
                 let digest = try Self.sha256(from: descriptor)
                 checksummedEntries.append(Self.copying(entry, sha256: digest, inspectionStatus: .succeeded))
@@ -106,115 +110,6 @@ public struct ChecksumService: ChecksumCalculating {
             )
         }
         .sorted { Self.unicodeScalarLessThan($0.sha256, $1.sha256) }
-    }
-
-    private func openRegularFile(relativePath: RelativePath, from rootDescriptor: Int32) throws -> Int32 {
-        let components = relativePath.value.split(separator: "/")
-        guard let finalComponent = components.last else {
-            throw FileDescriptorError.invalidRelativePath
-        }
-
-        var parentDescriptor = Darwin.dup(rootDescriptor)
-        guard parentDescriptor >= 0 else {
-            throw FileDescriptorError.openFailed
-        }
-        defer { Darwin.close(parentDescriptor) }
-
-        for (componentIndex, component) in components.dropLast().enumerated() {
-            onBeforeOpeningPathComponent?(relativePath, componentIndex)
-            let childDescriptor = try Self.openAt(
-                parentDescriptor,
-                name: String(component),
-                flags: O_RDONLY | O_DIRECTORY | O_NOFOLLOW
-            )
-            do {
-                try Self.requireDirectory(childDescriptor)
-            } catch {
-                Darwin.close(childDescriptor)
-                throw error
-            }
-            Darwin.close(parentDescriptor)
-            parentDescriptor = childDescriptor
-        }
-
-        onBeforeOpeningPathComponent?(relativePath, components.count - 1)
-        let fileDescriptor = try Self.openAt(
-            parentDescriptor,
-            name: String(finalComponent),
-            flags: O_RDONLY | O_NOFOLLOW
-        )
-        do {
-            try Self.requireRegularFile(fileDescriptor)
-        } catch {
-            Darwin.close(fileDescriptor)
-            throw error
-        }
-        return fileDescriptor
-    }
-
-    private static func openTrustedRoot(at root: URL) throws -> Int32 {
-        let descriptor = try openURL(root, flags: O_RDONLY | O_DIRECTORY | O_NOFOLLOW)
-        do {
-            try requireDirectory(descriptor)
-        } catch {
-            Darwin.close(descriptor)
-            throw error
-        }
-        return descriptor
-    }
-
-    private static func openRegularFile(at fileURL: URL) throws -> Int32 {
-        let descriptor = try openURL(fileURL, flags: O_RDONLY | O_NOFOLLOW)
-        do {
-            try requireRegularFile(descriptor)
-        } catch {
-            Darwin.close(descriptor)
-            throw error
-        }
-        return descriptor
-    }
-
-    private static func openURL(_ url: URL, flags: Int32) throws -> Int32 {
-        let descriptor: Int32 = url.withUnsafeFileSystemRepresentation { representation in
-            guard let representation else {
-                return -1
-            }
-            return Darwin.open(representation, flags)
-        }
-        guard descriptor >= 0 else {
-            throw FileDescriptorError.openFailed
-        }
-        return descriptor
-    }
-
-    private static func openAt(_ directoryDescriptor: Int32, name: String, flags: Int32) throws -> Int32 {
-        let descriptor = name.withCString { representation in
-            Darwin.openat(directoryDescriptor, representation, flags)
-        }
-        guard descriptor >= 0 else {
-            throw FileDescriptorError.openFailed
-        }
-        return descriptor
-    }
-
-    private static func requireDirectory(_ descriptor: Int32) throws {
-        var fileStatus = stat()
-        guard Darwin.fstat(descriptor, &fileStatus) == 0 else {
-            throw FileDescriptorError.statusFailed
-        }
-        guard fileStatus.st_mode & S_IFMT == S_IFDIR else {
-            throw FileDescriptorError.unexpectedFileKind
-        }
-    }
-
-    private static func requireRegularFile(_ descriptor: Int32) throws {
-        var fileStatus = stat()
-        guard Darwin.fstat(descriptor, &fileStatus) == 0 else {
-            throw FileDescriptorError.statusFailed
-        }
-        guard fileStatus.st_mode & S_IFMT == S_IFREG else {
-            throw FileDescriptorError.unexpectedFileKind
-        }
     }
 
     private static func sha256(from descriptor: Int32) throws -> String {
@@ -274,11 +169,4 @@ public struct ChecksumService: ChecksumCalculating {
     private static func unicodeScalarLessThan(_ left: String, _ right: String) -> Bool {
         left.unicodeScalars.lexicographicallyPrecedes(right.unicodeScalars)
     }
-}
-
-private enum FileDescriptorError: Error {
-    case invalidRelativePath
-    case openFailed
-    case statusFailed
-    case unexpectedFileKind
 }

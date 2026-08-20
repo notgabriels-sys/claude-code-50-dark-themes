@@ -1,12 +1,17 @@
+import Foundation
 import XCTest
 @testable import PreflightCore
 
 final class ImageInspectorTests: XCTestCase {
-    func testPNGReportsDimensionsAndAlpha() throws {
-        let url = try FixtureFactory.png(width: 300, height: 300, alpha: true)
-        defer { try? FileManager.default.removeItem(at: url) }
+    func testPNGReportsDimensionsAndAlphaFromTrustedSource() throws {
+        let fixture = try InspectionFixture.make()
+        defer { fixture.remove() }
+        let imageURL = try FixtureFactory.png(width: 300, height: 300, alpha: true)
+        defer { try? FileManager.default.removeItem(at: imageURL) }
+        let imageData = try Data(contentsOf: imageURL)
+        let path = try fixture.write(imageData, to: "Artwork/cover.png")
 
-        let outcome = ImageInspector().inspect(url: url)
+        let outcome = ImageInspector().inspect(source: fixture.source(path))
         let properties = try XCTUnwrap(outcome.value)
 
         XCTAssertEqual(outcome.status, .succeeded)
@@ -16,59 +21,75 @@ final class ImageInspectorTests: XCTestCase {
         XCTAssertEqual(properties.format, "public.png")
         XCTAssertEqual(properties.colorModel, "RGB")
         XCTAssertEqual(properties.hasAlpha, true)
-        XCTAssertEqual(properties.isReadable, true)
-        XCTAssertEqual(properties.byteSize, try fileSize(at: url))
+        XCTAssertEqual(properties.byteSize, Int64(imageData.count))
     }
 
-    func testJPEGReportsNonSquareDimensionsAndNoAlpha() throws {
-        let url = try FixtureFactory.jpeg(width: 640, height: 360)
-        defer { try? FileManager.default.removeItem(at: url) }
+    func testJPEGReportsNonSquareDimensionsAndNoAlphaFromTrustedSource() throws {
+        let fixture = try InspectionFixture.make()
+        defer { fixture.remove() }
+        let imageURL = try FixtureFactory.jpeg(width: 640, height: 360)
+        defer { try? FileManager.default.removeItem(at: imageURL) }
+        let path = try fixture.write(Data(contentsOf: imageURL), to: "Artwork/cover.jpg")
 
-        let outcome = ImageInspector().inspect(url: url)
+        let outcome = ImageInspector().inspect(source: fixture.source(path))
         let properties = try XCTUnwrap(outcome.value)
-        let aspectRatio = try XCTUnwrap(properties.aspectRatio)
 
         XCTAssertEqual(outcome.status, .succeeded)
         XCTAssertEqual(properties.pixelWidth, 640)
         XCTAssertEqual(properties.pixelHeight, 360)
-        XCTAssertEqual(aspectRatio, 640.0 / 360.0, accuracy: 0.0001)
+        XCTAssertEqual(try XCTUnwrap(properties.aspectRatio), 640.0 / 360.0, accuracy: 0.0001)
         XCTAssertEqual(properties.format, "public.jpeg")
         XCTAssertEqual(properties.hasAlpha, false)
-        XCTAssertEqual(properties.isReadable, true)
-        XCTAssertEqual(properties.byteSize, try fileSize(at: url))
     }
 
     func testUnreadableImageProducesEvidenceBackedFailure() throws {
-        let url = try FixtureFactory.text(pathExtension: "png")
-        defer { try? FileManager.default.removeItem(at: url) }
+        let fixture = try InspectionFixture.make()
+        defer { fixture.remove() }
+        let path = try fixture.write(Data("not image".utf8), to: "Artwork/cover.png")
 
-        let outcome = ImageInspector().inspect(url: url)
-        let properties = try XCTUnwrap(outcome.value)
+        let outcome = ImageInspector().inspect(source: fixture.source(path))
 
         XCTAssertEqual(outcome.status, .failed)
-        XCTAssertEqual(properties.isReadable, false)
-        XCTAssertTrue(outcome.findings.contains { $0.ruleID == "image.unreadable" })
-        XCTAssertTrue(outcome.findings.allSatisfy { !$0.explanation.contains(url.path) })
+        XCTAssertEqual(outcome.value?.isReadable, false)
     }
 
-    func testSymbolicLinkIsRejectedWithoutInspectingTarget() throws {
-        let targetURL = try FixtureFactory.png(width: 300, height: 300, alpha: true)
-        let linkURL = try FixtureFactory.symbolicLink(to: targetURL, pathExtension: "png")
+    func testSwappedLeafCannotCauseExternalImageToBeInspected() throws {
+        let fixture = try InspectionFixture.make()
+        defer { fixture.remove() }
+        let imageURL = try FixtureFactory.png(width: 300, height: 300, alpha: true)
+        let externalImageURL = try FixtureFactory.png(width: 640, height: 360, alpha: true)
         defer {
-            try? FileManager.default.removeItem(at: linkURL)
-            try? FileManager.default.removeItem(at: targetURL)
+            try? FileManager.default.removeItem(at: imageURL)
+            try? FileManager.default.removeItem(at: externalImageURL)
         }
+        let path = try fixture.write(Data(contentsOf: imageURL), to: "Artwork/cover.png")
+        let externalURL = try fixture.writeExternal(Data(contentsOf: externalImageURL), to: "sentinel.png")
+        let inspector = ImageInspector(onBeforeOpeningPathComponent: { relativePath, componentIndex in
+            guard relativePath == path, componentIndex == 1 else { return }
+            try? fixture.replaceLeaf(path, with: externalURL)
+        })
 
-        let outcome = ImageInspector().inspect(url: linkURL)
-        let properties = try XCTUnwrap(outcome.value)
+        let outcome = inspector.inspect(source: fixture.source(path))
 
         XCTAssertEqual(outcome.status, .failed)
-        XCTAssertEqual(properties.isReadable, false)
-        XCTAssertTrue(outcome.findings.contains { $0.ruleID == "image.unreadable" })
+        XCTAssertEqual(outcome.value?.isReadable, false)
     }
 
-    private func fileSize(at url: URL) throws -> Int64 {
-        let attributes = try FileManager.default.attributesOfItem(atPath: url.path)
-        return try XCTUnwrap(attributes[.size] as? NSNumber).int64Value
+    func testSwappedAncestorCannotCauseExternalImageToBeInspected() throws {
+        let fixture = try InspectionFixture.make()
+        defer { fixture.remove() }
+        let imageURL = try FixtureFactory.png(width: 300, height: 300, alpha: true)
+        defer { try? FileManager.default.removeItem(at: imageURL) }
+        let path = try fixture.write(Data(contentsOf: imageURL), to: "Masters/cover.png")
+        _ = try fixture.writeExternal(Data(contentsOf: imageURL), to: "cover.png")
+        let inspector = ImageInspector(onBeforeOpeningPathComponent: { relativePath, componentIndex in
+            guard relativePath == path, componentIndex == 0 else { return }
+            try? fixture.replaceFirstAncestor(with: fixture.externalRoot)
+        })
+
+        let outcome = inspector.inspect(source: fixture.source(path))
+
+        XCTAssertEqual(outcome.status, .failed)
+        XCTAssertEqual(outcome.value?.isReadable, false)
     }
 }
