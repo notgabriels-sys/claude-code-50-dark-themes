@@ -114,6 +114,17 @@
   .copy:hover{color:var(--ink);border-color:var(--accent-dim)}
   .copy:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 
+  /* ---- jump navigation ---- */
+  .jumpnav{
+    display:flex;flex-wrap:wrap;gap:8px;margin:0 0 18px;
+  }
+  .jumpnav a{
+    color:var(--mute);text-decoration:none;border:1px solid var(--hair);
+    border-radius:999px;padding:7px 12px;font-size:11.5px;transition:.15s;
+  }
+  .jumpnav a:hover{color:var(--ink);border-color:var(--accent-dim)}
+  .jumpnav a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
   /* ---- gallery ---- */
   .gallery-head{
     display:flex;align-items:baseline;justify-content:space-between;gap:16px;
@@ -240,28 +251,35 @@
     </div>
   </header>
 
+  <nav class="jumpnav" aria-label="Page sections">
+    <a href="#themes">Free themes</a>
+    <a href="#demos">Live demos</a>
+    <a href="#tools">Dark tools</a>
+    <a href="#audio">Mixing &amp; mastering</a>
+  </nav>
+
   <div class="cta">
     <p>All 50 are free and MIT — clone the repo, or
     <a href="https://notgabriel.gumroad.com/l/slhbym">grab the zip</a>
     (name your price, $0 is fine).</p>
   </div>
 
-  <div class="gallery-head">
+  <section class="more featured-demos" id="demos">
+    <h2>See the other templates running</h2>
+    <p>Real pages in your browser — no signup, nothing to download.</p>
+    <div class="tools">
+      <a class="tool" href="https://notgabriels-sys.github.io/dark-templates-demo/"><b>Business docs, decks &amp; app screens</b><span>Invoices that print clean, 16:9 slide decks, dashboard and sign-in screens.</span><i>Demo</i></a>
+      <a class="tool" href="https://notgabriels-sys.github.io/dark-html-templates-demo/"><b>Website templates</b><span>Portfolio, SaaS landing, docs, pricing, changelog and waitlist pages.</span><i>Demo</i></a>
+    </div>
+  </section>
+
+  <div class="gallery-head" id="themes">
     <h2>The collection</h2>
     <span class="count" id="count">50 themes</span>
   </div>
   <div class="grid" id="grid"></div>
 
-  <section class="more">
-    <h2>See them running</h2>
-    <p>Live demos in your browser — no signup, nothing to download.</p>
-    <div class="tools">
-      <a class="tool" href="https://notgabriels-sys.github.io/dark-templates-demo/"><b>Business docs, decks &amp; app screens</b><span>Invoices that print clean, 16:9 slide decks, dashboard and sign-in screens.</span><i>Demo</i></a>
-      <a class="tool" href="https://notgabriels-sys.github.io/dark-html-templates-demo/"><b>Website templates</b><span>Portfolio, SaaS landing, docs, pricing, changelog, waitlist.</span><i>Demo</i></a>
-    </div>
-  </section>
-
-  <section class="more">
+  <section class="more" id="tools">
     <h2>More dark tools</h2>
     <p>Same palettes, same care, applied elsewhere. One-time purchases, no subscriptions.</p>
     <div class="tools">
@@ -280,7 +298,7 @@
     <a class="kit" href="https://notgabriel.gumroad.com/l/wuhehk"><b>Everything Dark — the complete kit</b> · all of the above, $39</a>
   </section>
 
-  <section class="more">
+  <section class="more" id="audio">
     <h2>Mixing &amp; mastering</h2>
     <p>Studio work rather than a download. Booked and paid through PayPal.</p>
     <div class="tools">
