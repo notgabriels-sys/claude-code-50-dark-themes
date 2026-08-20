@@ -1,6 +1,8 @@
 # Publishing handoff
 
-Status: published; practical DAW usage approved, seller state reloaded, delivery file read back and checkout inspected 2026-08-20. A delivered-download checksum comparison remains.
+Status: published and customer delivery verified 2026-08-20. Practical DAW usage was approved, the seller state was reloaded, a zero-charge creator checkout was completed, and the delivered ZIP matched the approved source archive byte-for-byte.
+
+Release verdict: READY — TECHNICAL QC PASSED.
 
 ## Product
 
@@ -29,10 +31,13 @@ Completed:
 5. Saved delivery file read back as ZIP, 16.6 MB.
 6. Public product page opened at the custom URL.
 7. Checkout displayed item price €12, VAT €2.28 and total €14.28 in the current German creator-checkout context. Buyer country can change tax treatment.
+8. The checkout contained only this product and displayed Gumroad's explicit creator test-purchase notice that the payment method would not be charged; no card fields were requested.
+9. The successful purchase exposed `Techno_Mix_Preflight_Toolkit_by_Hologram_People.zip` as the customer download, displayed as 16.6 MB.
+10. The delivered ZIP was downloaded as a 17,438,627-byte file. `unzip -t` reported no errors and its SHA-256 value matched the approved source archive exactly: `c41180fdc1c798a44ea0cd4aa7099b2a6adcf1a10281d9e14dc3e6624eb7ce9e`.
+11. The extracted delivered copy passed the complete 24-WAV archive verifier, including file count and folders, stereo 48 kHz/24-bit format, 8-second duration, zero boundaries, RMS and peak limits, channel-isolation behavior, and intended phase relationships.
 
-Remaining:
+Optional follow-up:
 
-1. Perform a seller-side test delivery, download the delivered ZIP and compare its SHA-256 value.
-2. Repeat a fully signed-out checkout inspection if an anonymous browser surface becomes available.
+1. Repeat a fully signed-out checkout inspection if an anonymous browser surface becomes available. This can verify buyer-context tax presentation but does not block the completed publication or delivery gates.
 
-The product is published and publicly purchasable. A paid or creator test purchase was not submitted, so delivered-file identity remains unproven.
+The product is published and publicly purchasable. Customer-delivery identity is proven by the successful zero-charge creator purchase, downloaded-archive integrity check, exact checksum match, and post-download audio verification.
