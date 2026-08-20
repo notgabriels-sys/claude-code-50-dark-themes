@@ -1,40 +1,46 @@
 # Publishing handoff
 
-The Gumroad product is already public with the verified v1.0 customer archive. The hardened local v1.1
-upgrade is `READY TO UPLOAD`, but it has not been uploaded, saved or delivered by Gumroad. Do not
-describe v1.1 or its worked example as live until the provider and buyer-delivery checks below pass.
+The Gumroad product is public with the hardened v1.1 archive. The seller editor, public listing,
+provider-hosted download and buyer-delivered download were all verified independently after the live
+update.
 
-Upgrade verdict: `READY TO UPLOAD - LIVE UPDATE NOT APPLIED`.
+Release verdict: `LIVE - PROVIDER AND BUYER DELIVERY VERIFIED`.
 
-## Current verified live state - v1.0
+## Current verified live state - v1.1
 
 - Product: Mix Revision & Mastering Handoff Kit
 - Identity: Gabriel Garcia Alonso / Hologram People
 - Price: €14 EUR
 - Gumroad product ID: `pmiicv`
-- Gumroad state: PUBLISHED - verified 2026-08-20
+- Gumroad state: PUBLISHED - seller editor and public page verified 2026-08-20 23:27 CEST
 - Public URL: `https://notgabriel.gumroad.com/l/mix-revision-mastering-handoff-kit`
-- Public page rechecked 2026-08-20 21:27 CEST: HTTP 200, `is_published: true`, permalink `pmiicv`,
-  product currency EUR and base price 1,400 cents
-- Public description still lists the eleven templates and guide without the worked example, confirming
-  that the staged v1.1 copy has not replaced the live v1.0 presentation
-- Provider-hosted customer ZIP: 21,357 bytes
-- Provider-hosted customer ZIP SHA-256: `63a9fd1004ad244f5591c64331eb6b753610b9df8307a2a006448c3c3ec06ed0`
+- Seller read-back after save and reload: exact title, EUR currency, €14 amount, `Unpublish` state and
+  `30-day money back guarantee`
+- Persisted customer content: exactly one file named `Mix_Revision_and_Mastering_Handoff_Kit.zip`
+- Provider-hosted customer ZIP: 31,995 bytes
+- Provider-hosted customer ZIP SHA-256: `0844b8700df0a573d700c4ec0d16226f99a4e37f9c2b7b98c4492921eee70711`
+- Provider-hosted ZIP: `unzip -t` and full clean-extraction package verification PASSED
+- Public page rechecked 2026-08-20 23:27 CEST: HTTP 200, worked-example copy present, product currency
+  EUR and base price 1,400 cents
+- Clean Germany checkout: €14 subtotal, €2.66 VAT, €16.66 total, no tip selected
+- Creator checkout explicitly stated that the purchase was a test purchase and the payment method
+  would not be charged
 - Creator test purchase: PASSED - zero-charge order and customer delivery verified 2026-08-20
-- Purchase-delivered ZIP: integrity and full extracted-package verification PASSED
+- Purchase-delivered ZIP: 31,995 bytes with the exact v1.1 checksum above
+- Purchase-delivered ZIP: `unzip -t` and full clean-extraction package verification PASSED
 
-Gumroad's content editor displayed the persisted v1.0 ZIP as `0 byte`, but both the provider-hosted
-editor download and the purchase-delivered download returned 21,357-byte archives with the exact v1.0
-checksum above. Treat this as a display defect unless a future downloaded checksum differs.
+Gumroad's content editor displays the persisted v1.1 ZIP as `0 byte` after reload. This is the same
+provider display defect seen with v1.0: both the provider-hosted download and the purchase-delivered
+download returned the complete 31,995-byte archive with the exact v1.1 checksum.
 
-## Staged local upgrade - v1.1
+## Published v1.1 package
 
 - Customer ZIP: `dist/Mix_Revision_and_Mastering_Handoff_Kit.zip`
 - Customer ZIP size: 31,995 bytes
 - Customer ZIP SHA-256: `0844b8700df0a573d700c4ec0d16226f99a4e37f9c2b7b98c4492921eee70711`
 - Guide SHA-256: `3bba99bace9ec53b26720ea98f19ec26022f4c46a6a78b39da9dfe892153c907`
-- Provider state for v1.1: NOT UPLOADED OR VERIFIED
-- Buyer-delivery state for v1.1: NOT TESTED
+- Provider state for v1.1: LIVE AND VERIFIED
+- Buyer-delivery state for v1.1: LIVE AND VERIFIED
 
 Changes from v1.0:
 
@@ -71,7 +77,7 @@ Generated QA evidence:
 - `qa/RELEASE_REPORT.json`
 - `VISUAL_QA.json`
 
-## Staged upload assets
+## Published presentation assets
 
 - Landscape cover: `cover-1280x720.png` - 1280 x 720 - SHA-256 `cce6772bb2b23cc7e5b4770732663e3738076f5208fc5b3e72eb61f502c2034b`
 - Square thumbnail: `thumbnail-800x800.png` - 800 x 800 - SHA-256 `294975a330b359ab8b71b1cbe22138da92d11f419ee54c4a9f10db17b464ed14`
@@ -86,15 +92,18 @@ A consolidated XLSX companion was considered but not generated because the requi
 spreadsheet runtime was unavailable in this session. It is not promised by the listing and does not
 block the universal Markdown, CSV and TXT product.
 
-## Live-update gate
+## Completed live-verification gate
 
-1. Gabriel reviews the v1.1 ZIP utility, worked example, storefront images and updated listing.
-2. Gabriel confirms that the current €14 price and current Gumroad refund-policy setting should remain.
-3. Replace the Gumroad customer file with the exact v1.1 ZIP and update the description to mention the worked example.
-4. Save, reload the seller editor, and read back the persisted title, price, refund policy, media and customer file.
-5. Download the provider-hosted file and require SHA-256 `0844b8700df0a573d700c4ec0d16226f99a4e37f9c2b7b98c4492921eee70711`.
-6. Reopen the public product page and inspect a clean buyer checkout.
-7. Complete another zero-charge creator test purchase, download the delivered ZIP and require the same v1.1 checksum.
+1. Gabriel approved the v1.1 package review, retained €14 and retained the 30-day money-back guarantee.
+2. The exact v1.1 ZIP replaced the v1.0 customer file; only one customer archive remains.
+3. The storefront description and summary now state that the package includes a completed fictional worked example.
+4. Save, reload and seller-field read-back passed.
+5. The provider-hosted file matched SHA-256 `0844b8700df0a573d700c4ec0d16226f99a4e37f9c2b7b98c4492921eee70711`.
+6. The public product page and a clean buyer checkout were inspected.
+7. A zero-charge creator test purchase succeeded, and the delivered file matched the same checksum.
 
-The verified v1.0 product remains public. The v1.1 upgrade is not live until both the provider-hosted and
-purchase-delivered downloads match its checksum.
+## Superseded v1.0 record
+
+- Previous provider-hosted customer ZIP: 21,357 bytes
+- Previous ZIP SHA-256: `63a9fd1004ad244f5591c64331eb6b753610b9df8307a2a006448c3c3ec06ed0`
+- v1.0 was replaced by the verified v1.1 archive on 2026-08-20.

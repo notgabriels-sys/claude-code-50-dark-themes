@@ -106,7 +106,7 @@ try {
 }
 const report = {
   verdict: visualQa.verified
-    ? 'READY TO UPLOAD - LIVE UPDATE NOT APPLIED'
+    ? 'PACKAGE VERIFIED - PUBLISHING STATE RECORDED SEPARATELY'
     : 'AUTOMATED PACKAGE QA PASSED - FINAL VISUAL REVIEW REQUIRED',
   checked_at: new Date().toISOString(),
   product: 'Mix Revision & Mastering Handoff Kit',
