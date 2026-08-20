@@ -1,6 +1,7 @@
 # Publishing handoff
 
-Status: archive verified; representative listening and live-store verification remain.
+Status: unpublished Gumroad draft created and listing details saved; asset uploads, representative
+listening and live-store verification remain.
 
 ## Product
 
@@ -9,6 +10,15 @@ Status: archive verified; representative listening and live-store verification r
 - Price: €15
 - Format: one 83 MB ZIP containing 48 stereo, 24-bit/48 kHz WAV files, README, licence and manifest
 - Store order: Gumroad first; Bandcamp may use the same archive and artwork afterward
+
+## Gumroad draft
+
+- Product ID: `rhzsc`
+- Editor: `https://gumroad.com/products/rhzsc/edit`
+- Intended public slug: `industrial-tension-fx`
+- Saved state: exact title, Hologram People attribution, EUR currency, €15 base price, description
+  and summary
+- Publication state: unpublished
 
 ## Upload files
 

@@ -151,7 +151,8 @@ const report = {
   failures,
   measurements,
 };
-await writeFile(join(reportRoot, "QA_REPORT.json"), `${JSON.stringify(report, null, 2)}\n`);
+const reportFilename = archiveReopen ? "QA_REPORT_ARCHIVE.json" : "QA_REPORT.json";
+await writeFile(join(reportRoot, reportFilename), `${JSON.stringify(report, null, 2)}\n`);
 
 if (failures.length > 0) {
   console.error(failures.join("\n"));

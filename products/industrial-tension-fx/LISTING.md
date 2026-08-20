@@ -17,10 +17,10 @@ techno arrangements that need movement without spectacle.
 
 Pressure without the festival vocabulary.
 
-Industrial Tension & Transition FX is a set of 48 transition tools built for industrial, hypnotic
-and emotional techno. The pack moves through sub-frequency drops, tuned metallic decay, rising noise,
-descending pressure and low harmonic drones. The sounds are direct enough to place quickly, but retain
-enough headroom to distort, filter, stretch and resample into your own system.
+Created by Hologram People, Industrial Tension & Transition FX is a set of 48 transition tools built
+for industrial, hypnotic and emotional techno. The pack moves through sub-frequency drops, tuned
+metallic decay, rising noise, descending pressure and low harmonic drones. The sounds are direct enough
+to place quickly, but retain enough headroom to distort, filter, stretch and resample into your own system.
 
 Everything was synthesized from noise, resonators, oscillation and modulation. There are no recycled
 source recordings, construction-kit loops or plugin dependencies.
