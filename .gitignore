@@ -1,3 +1,8 @@
 
 # accidental clone-inside-clone from the README install command
 claude-code-50-dark-themes/
+
+# Generated sample-pack media and sale archives (kept locally, not in Git history)
+products/industrial-tension-fx/pack/
+products/industrial-tension-fx/dist/
+products/industrial-tension-fx/qa/
