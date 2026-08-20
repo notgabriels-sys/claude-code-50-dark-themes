@@ -74,7 +74,12 @@ cannot silently inherit the approval.
 
 ## Remaining post-purchase gate
 
-Complete a seller-side test delivery or Gumroad test purchase, download the delivered ZIP, and
-compare its SHA-256 value with `dist/SHA256SUMS.txt`. Do not make a real financial transaction without
-separate confirmation at the charge step. The product is live; this remaining gate concerns proof of
-post-purchase delivery, not publication state.
+Gumroad's official `Testing a purchase` instructions confirm that a logged-in creator sees `Test card`,
+is not charged for buying their own product, receives both seller and buyer test emails, and can
+download the delivered file. The current signed-in cart also contains `Dark Email Templates — 10-Pack`.
+Do not delete that cart item or submit the final test `Pay` action without exact action-time approval.
+
+After approval, remove only the unrelated Dark Email Templates cart item, complete the zero-charge
+test purchase for Industrial Tension & Transition FX, download the customer-delivered ZIP, and compare
+its SHA-256 value with `dist/SHA256SUMS.txt`. The product is already live; this remaining gate concerns
+proof of post-purchase delivery, not publication state.
