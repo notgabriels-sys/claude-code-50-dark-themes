@@ -40,7 +40,15 @@ The sounds are not forced to one common loudness. Their different transient shap
 
 Immediate download after purchase.
 
+## Public preview
+
+- Preview title: `Hypnotic Percussion Grid — Audition Reel`
+- Preview file: `qa/HPG_Audition_Reel.mp3`
+- Duration: 8.085 seconds
+- Format: 320 kbps stereo MP3 at 48 kHz
+
 ## Needs verification before publishing
 
-- Final human audition approval
+- Final checksum-bound human audition approval
+- Final refund-policy selection in Gumroad
 - Final public Gumroad URL
