@@ -176,6 +176,77 @@ final class ScanServiceTests: XCTestCase {
         XCTAssertFalse(result.findings[0].explanation.contains(fixture.root.path))
     }
 
+    func testRootRemovedImmediatelyBeforeSecondInventoryReturnsTypedIncompleteResult() async throws {
+        let fixture = try ScanMutationFixture.make()
+        defer { fixture.remove() }
+        let preset = try PresetResolver().resolve(Preset(identifier: "test", name: "Test"))
+        let service = ScanService(
+            inventory: SecondInventoryRootRemoving(),
+            checksums: ChecksumService(),
+            audioInspector: ScanAudioInspectorSpy(),
+            imageInspector: ScanImageInspectorSpy(),
+            presetResolver: ScanPresetResolverSpy(resolvedPreset: preset),
+            ruleEngine: ScanRuleEngineSpy(),
+            fingerprinting: SourceFingerprint(),
+            now: { Date(timeIntervalSince1970: 1_000) }
+        )
+
+        let result = await service.scan(request(root: fixture.root, preset: preset))
+
+        XCTAssertEqual(result.overallStatus, .incomplete)
+        XCTAssertEqual(result.findings.map(\.ruleID), ["filesystem.root-access-failed"])
+        XCTAssertTrue(result.findings[0].affectedPaths.isEmpty)
+        XCTAssertFalse(result.findings[0].explanation.contains(fixture.root.path))
+    }
+
+    func testSymlinkAddedDuringScanProducesSourceChangedWithoutFollowingTarget() async throws {
+        let fixture = try ScanPackageFixture.make()
+        defer { fixture.remove() }
+        let preset = try PresetResolver().resolve(BuiltInPresets.generalAudio)
+        let service = ScanService(
+            inventory: FileInventory(),
+            checksums: ChecksumService(),
+            audioInspector: ScanAddingSymlinkAudioInspector(),
+            imageInspector: ScanImageInspectorSpy(),
+            presetResolver: PresetResolver(),
+            ruleEngine: RuleEngine(),
+            fingerprinting: SourceFingerprint(),
+            now: { Date(timeIntervalSince1970: 1_000) }
+        )
+
+        let result = await service.scan(request(root: fixture.root, preset: preset))
+
+        XCTAssertNoThrow(try FileManager.default.destinationOfSymbolicLink(atPath: fixture.root.appendingPathComponent("Added/during-scan-link").path))
+        let liveInventory = try await FileInventory().inventory(root: fixture.root)
+        XCTAssertEqual(liveInventory.entries.first { $0.relativePath.value == "Added/during-scan-link" }?.kind, .symbolicLink)
+        XCTAssertTrue(result.findings.contains { $0.ruleID == "filesystem.source-changed-during-scan" && $0.severity == .error })
+        XCTAssertNotEqual(result.overallStatus, .ready)
+        XCTAssertFalse(result.inventory.contains { $0.relativePath.value == "Added/during-scan-link" })
+    }
+
+    func testRegularFileReplacedBySymlinkDuringScanProducesSourceChangedWithoutFollowingTarget() async throws {
+        let fixture = try ScanMutationFixture.make()
+        defer { fixture.remove() }
+        let preset = try PresetResolver().resolve(Preset(identifier: "test", name: "Test"))
+        let service = ScanService(
+            inventory: FileInventory(),
+            checksums: ChecksumService(),
+            audioInspector: ScanReplacingRegularWithSymlinkAudioInspector(),
+            imageInspector: ScanImageInspectorSpy(),
+            presetResolver: ScanPresetResolverSpy(resolvedPreset: preset),
+            ruleEngine: ScanRuleEngineSpy(),
+            fingerprinting: SourceFingerprint(),
+            now: { Date(timeIntervalSince1970: 1_000) }
+        )
+
+        let result = await service.scan(request(root: fixture.root, preset: preset))
+
+        XCTAssertNoThrow(try FileManager.default.destinationOfSymbolicLink(atPath: fixture.root.appendingPathComponent("Masters/Main Master.wav").path))
+        XCTAssertTrue(result.findings.contains { $0.ruleID == "filesystem.source-changed-during-scan" && $0.severity == .error })
+        XCTAssertNotEqual(result.overallStatus, .ready)
+        XCTAssertFalse(result.findings.contains { $0.explanation.contains("/dev/null") })
+    }
+
     func testFailedInspectionSurvivesSuccessfulProductionChecksum() async throws {
         let fixture = try ScanMutationFixture.make()
         defer { fixture.remove() }
@@ -275,6 +346,19 @@ private struct RootRemovingInventory: FileInventorying {
         let snapshot = try await FileInventory().inventory(root: root)
         try FileManager.default.removeItem(at: root)
         return snapshot
+    }
+}
+
+private actor SecondInventoryRootRemoving: FileInventorying {
+    private var callCount = 0
+
+    func inventory(root: URL) async throws -> InventorySnapshot {
+        callCount += 1
+        let call = callCount
+        if call == 2 {
+            try FileManager.default.removeItem(at: root)
+        }
+        return try await FileInventory().inventory(root: root)
     }
 }
 
@@ -394,6 +478,27 @@ private struct ScanAddingAudioInspector: AudioInspecting {
         let added = source.root.appendingPathComponent("Added/during-scan.txt")
         try? FileManager.default.createDirectory(at: added.deletingLastPathComponent(), withIntermediateDirectories: true)
         try? Data("added during scan".utf8).write(to: added)
+        return InspectionOutcome(status: .succeeded, value: AudioProperties(isReadable: true), findings: [])
+    }
+}
+
+private struct ScanAddingSymlinkAudioInspector: AudioInspecting {
+    func inspect(source: TrustedMediaSource) async -> InspectionOutcome<AudioProperties> {
+        let link = source.root.appendingPathComponent("Added/during-scan-link")
+        try? FileManager.default.createDirectory(at: link.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try? FileManager.default.createSymbolicLink(
+            at: link,
+            withDestinationURL: source.root.appendingPathComponent("Masters/Main Master.wav")
+        )
+        return InspectionOutcome(status: .succeeded, value: AudioProperties(isReadable: true), findings: [])
+    }
+}
+
+private struct ScanReplacingRegularWithSymlinkAudioInspector: AudioInspecting {
+    func inspect(source: TrustedMediaSource) async -> InspectionOutcome<AudioProperties> {
+        let url = source.root.appendingPathComponent(source.relativePath.value)
+        try? FileManager.default.removeItem(at: url)
+        try? FileManager.default.createSymbolicLink(at: url, withDestinationURL: URL(fileURLWithPath: "/dev/null"))
         return InspectionOutcome(status: .succeeded, value: AudioProperties(isReadable: true), findings: [])
     }
 }

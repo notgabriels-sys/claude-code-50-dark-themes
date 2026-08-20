@@ -90,6 +90,49 @@ final class FileInventoryTests: XCTestCase {
         XCTAssertTrue(snapshot.findings.contains { $0.ruleID == "filesystem.unreadable-entry" })
         XCTAssertTrue(snapshot.entries.contains { $0.relativePath.value == "Masters/accessible.wav" })
     }
+
+    func testCancellationDuringEnumerationPropagatesCancellation() async throws {
+        let fixture = try TemporaryInventoryFixture.make()
+        defer { fixture.remove() }
+        try fixture.write("one", to: "Masters/one.wav")
+        try fixture.write("two", to: "Masters/two.wav")
+        let gate = InventoryEnumerationGate()
+        let inventory = FileInventory(onBeforeEnumeratingEntry: {
+            gate.blockUntilReleased()
+        })
+        let root = fixture.root
+
+        let task = Task { () -> Bool in
+            do {
+                _ = try await inventory.inventory(root: root)
+                return false
+            } catch is CancellationError {
+                return true
+            } catch {
+                return false
+            }
+        }
+        await fulfillment(of: [gate.entryStarted], timeout: 2)
+        task.cancel()
+        gate.release()
+
+        let didPropagateCancellation = await task.value
+        XCTAssertTrue(didPropagateCancellation)
+    }
+}
+
+private final class InventoryEnumerationGate: @unchecked Sendable {
+    let entryStarted = XCTestExpectation(description: "inventory entry started")
+    private let released = DispatchSemaphore(value: 0)
+
+    func blockUntilReleased() {
+        entryStarted.fulfill()
+        released.wait()
+    }
+
+    func release() {
+        released.signal()
+    }
 }
 
 private final class TemporaryInventoryFixture {

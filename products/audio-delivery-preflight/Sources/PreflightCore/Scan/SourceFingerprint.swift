@@ -7,6 +7,16 @@ public protocol SourceFingerprinting: Sendable {
 }
 
 public struct SourceFingerprint: Sendable, Codable, Equatable {
+    public struct InventoryWitness: Sendable, Codable, Equatable {
+        public let relativePath: RelativePath
+        public let kind: FileKind
+
+        public init(relativePath: RelativePath, kind: FileKind) {
+            self.relativePath = relativePath
+            self.kind = kind
+        }
+    }
+
     public struct File: Sendable, Codable, Equatable {
         public let relativePath: RelativePath
         public let byteSize: Int64?
@@ -27,13 +37,16 @@ public struct SourceFingerprint: Sendable, Codable, Equatable {
     }
 
     public let files: [File]
+    public let inventoryWitness: [InventoryWitness]
 
     public init() {
         self.files = []
+        self.inventoryWitness = []
     }
 
     public init(entries: [InventoryEntry]) {
         self.files = Self.files(from: entries)
+        self.inventoryWitness = Self.inventoryWitness(from: entries)
     }
 
     public func fingerprint(root: URL, entries: [InventoryEntry]) throws -> SourceFingerprint {
@@ -44,11 +57,14 @@ public struct SourceFingerprint: Sendable, Codable, Equatable {
         for entry in entries where entry.kind == .regular {
             files.append(try Self.fingerprint(entry: entry, from: rootDescriptor))
         }
-        return SourceFingerprint(files: files)
+        return SourceFingerprint(files: files, inventoryWitness: Self.inventoryWitness(from: entries))
     }
 
-    private init(files: [File]) {
+    private init(files: [File], inventoryWitness: [InventoryWitness]) {
         self.files = files.sorted { $0.relativePath.value.unicodeScalars.lexicographicallyPrecedes($1.relativePath.value.unicodeScalars) }
+        self.inventoryWitness = inventoryWitness.sorted { left, right in
+            left.relativePath.value.unicodeScalars.lexicographicallyPrecedes(right.relativePath.value.unicodeScalars)
+        }
     }
 
     private static func files(from entries: [InventoryEntry]) -> [File] {
@@ -62,6 +78,10 @@ public struct SourceFingerprint: Sendable, Codable, Equatable {
                     sha256: $0.sha256
                 )
             }
+    }
+
+    private static func inventoryWitness(from entries: [InventoryEntry]) -> [InventoryWitness] {
+        entries.map { InventoryWitness(relativePath: $0.relativePath, kind: $0.kind) }
     }
 
     private static func modificationDate(from status: stat) -> Date {
@@ -104,7 +124,7 @@ public struct SourceFingerprint: Sendable, Codable, Equatable {
     /// fingerprint calculates its checksum from the trusted file descriptor;
     /// the service never writes evidence into the selected source.
     public func matches(_ other: SourceFingerprint) -> Bool {
-        guard files.count == other.files.count else { return false }
+        guard inventoryWitness == other.inventoryWitness, files.count == other.files.count else { return false }
         return zip(files, other.files).allSatisfy { before, after in
             before.relativePath == after.relativePath
                 && before.byteSize == after.byteSize

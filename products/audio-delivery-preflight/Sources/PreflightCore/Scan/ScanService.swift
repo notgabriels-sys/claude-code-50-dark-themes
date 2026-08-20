@@ -76,7 +76,19 @@ public struct ScanService: ScanServicing, Sendable {
             )
 
             try Task.checkCancellation()
-            let postInventory = try await inventory.inventory(root: root)
+            let postInventory: InventorySnapshot
+            do {
+                postInventory = try await inventory.inventory(root: root)
+            } catch is CancellationError {
+                throw CancellationError()
+            } catch {
+                return incompleteResult(
+                    request: request,
+                    root: root,
+                    startedAt: startedAt,
+                    finding: rootAccessFinding(engineVersion: request.engineVersion)
+                )
+            }
             let after = try fingerprinting.fingerprint(root: root, entries: postInventory.entries)
             if !before.matches(after) {
                 findings.append(sourceChangedFinding(engineVersion: request.engineVersion))
@@ -236,6 +248,21 @@ public struct ScanService: ScanServicing, Sendable {
         )
     }
 
+    private func rootAccessFinding(engineVersion: String) -> Finding {
+        Finding(
+            ruleID: "filesystem.root-access-failed",
+            severity: .error,
+            title: "Selected root could not be accessed",
+            explanation: "The selected source root could not be accessed safely.",
+            affectedPaths: [],
+            evidence: [],
+            expected: "A readable selected source root throughout the scan.",
+            suggestedAction: "Restore access to the selected source and run the scan again.",
+            origin: .engine,
+            engineVersion: engineVersion
+        )
+    }
+
     private func failureFinding(for error: Error, engineVersion: String) -> Finding {
         let ruleID: String
         let title: String
@@ -246,13 +273,9 @@ public struct ScanService: ScanServicing, Sendable {
             title = "Preset could not be resolved"
             explanation = "The selected preset could not be resolved safely."
         case PreflightError.invalidScanRequest:
-            ruleID = "filesystem.root-access-failed"
-            title = "Selected root could not be accessed"
-            explanation = "The selected source root could not be accessed safely."
+            return rootAccessFinding(engineVersion: engineVersion)
         case is TrustedFileAccessError:
-            ruleID = "filesystem.root-access-failed"
-            title = "Selected root could not be accessed"
-            explanation = "The selected source root could not be accessed safely."
+            return rootAccessFinding(engineVersion: engineVersion)
         case is PreflightError:
             ruleID = "scan.precondition-failed"
             title = "Scan precondition could not be verified"

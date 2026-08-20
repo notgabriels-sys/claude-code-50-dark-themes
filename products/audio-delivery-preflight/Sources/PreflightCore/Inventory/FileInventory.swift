@@ -23,12 +23,25 @@ public struct FileInventory: FileInventorying {
         .fileSizeKey,
         .contentModificationDateKey,
     ]
+    private let onBeforeEnumeratingEntry: (@Sendable () -> Void)?
 
-    public init() {}
+    public init() {
+        self.onBeforeEnumeratingEntry = nil
+    }
+
+    init(onBeforeEnumeratingEntry: @escaping @Sendable () -> Void) {
+        self.onBeforeEnumeratingEntry = onBeforeEnumeratingEntry
+    }
 
     public func inventory(root: URL) async throws -> InventorySnapshot {
+        try Task.checkCancellation()
         let standardizedRoot = root.standardizedFileURL
-        let rootValues = try standardizedRoot.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey])
+        let rootValues: URLResourceValues
+        do {
+            rootValues = try standardizedRoot.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey])
+        } catch {
+            throw PreflightError.invalidScanRequest(reason: "The selected inventory root could not be accessed safely.")
+        }
         guard rootValues.isSymbolicLink != true else {
             throw PreflightError.invalidScanRequest(reason: "The selected inventory root must not be a symbolic link.")
         }
@@ -42,6 +55,9 @@ public struct FileInventory: FileInventorying {
             includingPropertiesForKeys: Array(Self.resourceKeys),
             options: [],
             errorHandler: { url, error in
+                if Task.isCancelled {
+                    return false
+                }
                 findings.append(Self.finding(
                     ruleID: "filesystem.enumeration-failed",
                     severity: .warning,
@@ -56,7 +72,13 @@ public struct FileInventory: FileInventorying {
         }
 
         var entries: [InventoryEntry] = []
-        while let url = enumerator.nextObject() as? URL {
+        while true {
+            try Task.checkCancellation()
+            onBeforeEnumeratingEntry?()
+            try Task.checkCancellation()
+            guard let url = enumerator.nextObject() as? URL else {
+                break
+            }
             let standardizedURL = url.standardizedFileURL
             guard let relativePath = Self.validatedRelativePath(for: standardizedURL, root: standardizedRoot) else {
                 findings.append(Self.finding(
