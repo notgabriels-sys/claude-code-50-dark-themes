@@ -47,7 +47,9 @@ jobs; their dynamics are preserved so they can be gain-staged in the arrangement
 
 Immediate download after purchase.
 
-## Needs verification before publishing
+## Release verification
 
-- Final human audition approval of the representative reel and selected files
-- Final public Gumroad or Bandcamp URL
+- Human audition: approved by Gabriel on 2026-08-20 and checksum-bound in `AUDIO_APPROVAL.json`
+- Gumroad publication: verified live on 2026-08-20
+- Public URL: https://notgabriel.gumroad.com/l/industrial-tension-fx
+- Post-purchase delivered-file checksum: pending a seller-side test delivery or approved test purchase

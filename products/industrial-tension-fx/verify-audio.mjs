@@ -1,14 +1,26 @@
 import { execFileSync, spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
+import { createReadStream } from "node:fs";
 import { mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
 import { dirname, extname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = dirname(fileURLToPath(import.meta.url));
-const archiveReopen = Boolean(process.argv[2]);
-const packRoot = process.argv[2]
-  ? resolve(process.argv[2])
+const args = process.argv.slice(2);
+const packRootArgument = args.find((argument) => !argument.startsWith("--"));
+const approvalRequested = args.includes("--human-approved");
+const archiveReopen = Boolean(packRootArgument);
+const packRoot = packRootArgument
+  ? resolve(packRootArgument)
   : join(root, "pack", "Industrial_Tension_FX_by_Hologram_People");
 const reportRoot = join(root, "qa");
+const approvalPath = join(root, "AUDIO_APPROVAL.json");
+const customerArchivePath = join(
+  root,
+  "dist",
+  "Industrial_Tension_and_Transition_FX_by_Hologram_People.zip",
+);
+const auditionReelPath = join(root, "qa", "ITFX_Audition_Reel.mp3");
 const expectedFolders = new Map([
   ["01_Impacts", 10],
   ["02_Risers", 10],
@@ -35,6 +47,16 @@ function run(command, args) {
     const output = `${error.stdout ?? ""}${error.stderr ?? ""}`;
     throw new Error(`${command} failed:\n${output}`);
   }
+}
+
+function sha256File(path) {
+  return new Promise((resolveHash, rejectHash) => {
+    const hash = createHash("sha256");
+    const stream = createReadStream(path);
+    stream.on("data", (chunk) => hash.update(chunk));
+    stream.on("error", rejectHash);
+    stream.on("end", () => resolveHash(hash.digest("hex")));
+  });
 }
 
 function inspectBoundarySamples(wav) {
@@ -124,20 +146,60 @@ for (const file of wavFiles) {
   console.log(`${relativePath}: ${truePeakDbfs.toFixed(1)} dBTP, ${integratedLufs.toFixed(1)} LUFS`);
 }
 
+let humanApproval = {
+  status: "UNVERIFIED",
+  evidence: "No checksum-bound human approval was requested for this verification run.",
+};
+if (approvalRequested) {
+  try {
+    const approval = JSON.parse(await readFile(approvalPath, "utf8"));
+    const [archiveSha256, auditionReelSha256] = await Promise.all([
+      sha256File(customerArchivePath),
+      sha256File(auditionReelPath),
+    ]);
+    const approvalFailures = [];
+    if (approval.status !== "CONFIRMED") approvalFailures.push("Approval record is not CONFIRMED.");
+    if (approval.customer_archive_sha256 !== archiveSha256) {
+      approvalFailures.push("Customer archive checksum does not match the approved archive.");
+    }
+    if (approval.audition_reel_sha256 !== auditionReelSha256) {
+      approvalFailures.push("Audition reel checksum does not match the approved reel.");
+    }
+    failures.push(...approvalFailures);
+    humanApproval = {
+      ...approval,
+      status: approvalFailures.length === 0 ? "CONFIRMED" : "BLOCKED",
+      verified_customer_archive_sha256: archiveSha256,
+      verified_audition_reel_sha256: auditionReelSha256,
+    };
+  } catch (error) {
+    failures.push(`Human approval could not be verified: ${error.message}`);
+    humanApproval = {
+      status: "BLOCKED",
+      evidence: `Human approval could not be verified: ${error.message}`,
+    };
+  }
+}
+
 await mkdir(reportRoot, { recursive: true });
+const ready = failures.length === 0 && archiveReopen && humanApproval.status === "CONFIRMED";
 const report = {
   verdict:
-    failures.length === 0
-      ? archiveReopen
-        ? "ARCHIVE VERIFIED — LISTENING REQUIRED"
-        : "RENDERED — QC INCOMPLETE"
-      : "BLOCKED — REQUIREMENTS OR MEDIA MISSING",
+    failures.length > 0
+      ? "BLOCKED — REQUIREMENTS OR MEDIA MISSING"
+      : ready
+        ? "READY — TECHNICAL QC PASSED"
+        : "RENDERED — QC INCOMPLETE",
   reason:
-    failures.length === 0
-      ? archiveReopen
-        ? "The final ZIP was reopened and all automated technical checks passed; representative critical listening is still required."
-        : "Automated technical checks passed; representative critical listening and final archive reopen are still required."
-      : "One or more automated technical checks failed.",
+    failures.length > 0
+      ? "One or more technical or approval-integrity checks failed."
+      : ready
+        ? "The final ZIP was reopened, all automated technical checks passed, and Gabriel's checksum-bound listening approval was verified."
+        : archiveReopen
+          ? "The final ZIP was reopened and all automated technical checks passed; checksum-bound human listening approval remains unverified."
+          : humanApproval.status === "CONFIRMED"
+            ? "Automated technical checks and checksum-bound human listening approval passed; final archive reopen remains required."
+            : "Automated technical checks passed; representative critical listening and final archive reopen are still required.",
   checked_at: new Date().toISOString(),
   provisional_delivery_contract: {
     destination: "Gumroad and Bandcamp-ready digital sample pack",
@@ -148,6 +210,7 @@ const report = {
     true_peak_ceiling_dbfs: -1,
     expected_files: 48,
   },
+  human_approval: humanApproval,
   failures,
   measurements,
 };
@@ -159,8 +222,12 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    archiveReopen
-      ? `Archive reopen QA passed for ${measurements.length} files. Representative listening remains.`
-      : `Automated QA passed for ${measurements.length} files. Listening and archive checks remain.`,
+    ready
+      ? `Archive reopen QA and checksum-bound human approval passed for ${measurements.length} files.`
+      : archiveReopen
+        ? `Archive reopen QA passed for ${measurements.length} files. Checksum-bound human approval remains.`
+        : humanApproval.status === "CONFIRMED"
+          ? `Automated QA and checksum-bound human approval passed for ${measurements.length} files. Archive reopen remains.`
+          : `Automated QA passed for ${measurements.length} files. Listening and archive checks remain.`,
   );
 }

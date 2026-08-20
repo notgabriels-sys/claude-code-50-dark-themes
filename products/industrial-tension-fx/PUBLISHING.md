@@ -1,9 +1,9 @@
 # Publishing handoff
 
-Status: fully populated, saved Gumroad draft. Cover, thumbnail, public MP3 preview and paid ZIP
-were uploaded and verified again after a fresh provider reload on 2026-08-20. The product remains
-unpublished; representative listening, customer-policy approval, publication, signed-out checkout
-and delivered-file verification remain.
+Status: published on Gumroad on 2026-08-20 after Gabriel approved the audio and 30-day guarantee.
+Cover, thumbnail, polished public MP3 preview, €15 EUR price and paid ZIP were verified after a fresh
+provider reload. The live public page and clean checkout metadata were also verified. A completed
+post-purchase delivery remains unverified because no real purchase was submitted.
 
 ## Product
 
@@ -13,23 +13,22 @@ and delivered-file verification remain.
 - Format: one 83 MB ZIP containing 48 stereo, 24-bit/48 kHz WAV files, README, licence and manifest
 - Store order: Gumroad first; Bandcamp may use the same archive and artwork afterward
 
-## Gumroad draft
+## Gumroad live product
 
 - Product ID: `rhzsc`
 - Editor: `https://gumroad.com/products/rhzsc/edit`
-- Intended public slug: `industrial-tension-fx`
+- Public URL: `https://notgabriel.gumroad.com/l/industrial-tension-fx`
+- Public slug: `industrial-tension-fx`
 - Saved state: exact title, Hologram People attribution, EUR currency, €15 base price, description
   and summary
-- Publication state: unpublished
-- Provider status shown in the product preview: `This product is not currently for sale.`
+- Publication state: published; provider showed `Published!` and exposes an `Unpublish` control
 - Cover: saved and visible in the provider preview after reload
 - Thumbnail: saved and visible as `Thumbnail image` after reload
-- Public preview: `ITFX_Audition_Reel`, MP3, 1.4 MB, saved and playable after reload
+- Public preview: `Industrial Tension FX — Audition Reel`, MP3, 1.4 MB, saved and playable after reload
 - Customer delivery: `Industrial_Tension_and_Transition_FX_by_Hologram_People`, ZIP, 83.3 MB,
   saved after reload with a provider-backed download URL
 - Gumroad-generated product detail: `Size — 83.3 MB`
-- Current refund display: `30-day money back guarantee`; this customer commitment was already
-  selected in the draft and has not yet been explicitly approved for publication
+- Refund display: `30-day money back guarantee`, explicitly approved by Gabriel before publication
 - Current account byline in the embedded preview: `Sysgga`; the product copy itself explicitly
   identifies the creator as Hologram People
 
@@ -39,11 +38,13 @@ and delivered-file verification remain.
   currently used.
 - The receipt preview identifies the seller as `Sysgga` and routes customer questions to the
   Gumroad account's existing support email.
-- The receipt product-price row displays `€15`, but the same preview also contains `$15`, `$17.53`
-  and Gumroad's notice that charges are processed in USD. Treat those preview conversions as
-  unverified until the signed-out buyer checkout is inspected after publication.
-- Opening Share returned Gumroad's explicit unpublished-product alert, confirming that no public
-  launch occurred during asset setup.
+- The public page displays €15 and selects Euro as the detected currency. Clean, cookie-free checkout
+  data reports product currency `eur`, `price_cents: 1500` and a €15 presentment amount.
+- Gumroad may add location-dependent VAT or convert the buyer's display currency. A signed-in German
+  cart displayed this product as US$17.53 and also contained an older Dark Email Templates item; that
+  unrelated cart item was not removed or modified, and no payment was submitted.
+- The live URL returned HTTP 200 and clean public metadata contains the exact title, €15 EUR price
+  and polished audition-reel title.
 
 ## Uploaded files
 
@@ -55,28 +56,25 @@ and delivered-file verification remain.
 - Audio preview: `qa/ITFX_Audition_Reel.mp3` — uploaded and provider-reloaded
 - Store copy: `LISTING.md`
 
-## Human gate before publishing
+## Human approval
 
-Listen to `qa/ITFX_Audition_Reel.mp3` on studio monitors or trusted headphones. Check for clicks,
-unwanted harshness, excessive sub energy, poor transitions and any sound that does not fit the
-Hologram People identity. Do not publish if the reel fails this check.
+Gabriel explicitly approved the audio for publication on 2026-08-20. `AUDIO_APPROVAL.json` binds
+that approval to the exact audition-reel and customer-archive SHA-256 values so regenerated media
+cannot silently inherit the approval.
 
-## Remaining release gates
+## Completed release gates
 
-1. Gabriel listens to the representative reel and selected full-resolution WAVs and explicitly
-   approves the audio for sale.
-2. Confirm the customer-facing refund policy. Do not publish an accidental default commitment.
-3. Rename the visible preview heading from the file stem `ITFX_Audition_Reel` to a polished title,
-   recommended: `Industrial Tension FX — Audition Reel`.
-4. Keep the product identity as Hologram People. Do not present it as a Fate Through release or a
-   Lack of Fate product, and do not add it to the Everything Dark template bundle.
-5. Publish, reload the product editor and confirm that the exact title, €15 price, cover, thumbnail,
-   preview MP3 and 83.3 MB ZIP remain attached.
-6. Open the public product page signed out and record both the displayed €15 product price and the
-   actual checkout charge/currency; resolve any contradiction with the receipt preview before
-   announcing the product.
-7. Complete a seller-side test delivery or Gumroad test purchase, download the delivered ZIP, and
-   compare its SHA-256 value with `dist/SHA256SUMS.txt`.
+1. Audio and refund-policy approval recorded.
+2. Public preview renamed to `Industrial Tension FX — Audition Reel`.
+3. Hologram People identity preserved; no Fate Through or Lack of Fate attribution and no addition
+   to the Everything Dark template bundle.
+4. Product published and provider-reloaded; exact title, €15 price, cover, thumbnail, preview MP3
+   and 83.3 MB ZIP remain attached.
+5. Public URL, HTTP 200 response and clean €15 EUR checkout metadata verified.
 
-The product is only “out for sale” after steps 5–7 succeed. A populated draft or provider-stored
-upload does not count as publication, checkout verification or delivered-file verification.
+## Remaining post-purchase gate
+
+Complete a seller-side test delivery or Gumroad test purchase, download the delivered ZIP, and
+compare its SHA-256 value with `dist/SHA256SUMS.txt`. Do not make a real financial transaction without
+separate confirmation at the charge step. The product is live; this remaining gate concerns proof of
+post-purchase delivery, not publication state.
