@@ -226,6 +226,18 @@ final class ScanServiceTests: XCTestCase {
         XCTAssertNotEqual(result.overallStatus, .ready)
     }
 
+    func testPartialPostInventoryInvalidRelativePathReturnsTypedIncompleteResult() async throws {
+        try await assertPartialPostInventoryFindingIsIncomplete(
+            ruleID: "filesystem.invalid-relative-path"
+        )
+    }
+
+    func testPartialPostInventoryMetadataUnreadableReturnsTypedIncompleteResult() async throws {
+        try await assertPartialPostInventoryFindingIsIncomplete(
+            ruleID: "filesystem.metadata-unreadable"
+        )
+    }
+
     func testPublicSourceFingerprintInitializerUsesCanonicalOrdering() throws {
         let master = try entry("Masters/Main Master.wav", category: .audio)
         let artwork = try entry("Artwork/Cover.png", category: .artwork)
@@ -340,6 +352,50 @@ final class ScanServiceTests: XCTestCase {
             kind: .regular
         )
     }
+
+    private func assertPartialPostInventoryFindingIsIncomplete(
+        ruleID: String,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) async throws {
+        let fixture = try ScanPackageFixture.make()
+        defer { fixture.remove() }
+        let preset = try PresetResolver().resolve(BuiltInPresets.digitalRelease)
+        let service = ScanService(
+            inventory: PartialPostInventoryWithFinding(ruleID: ruleID),
+            checksums: ChecksumService(),
+            audioInspector: AudioInspector(),
+            imageInspector: ImageInspector(),
+            presetResolver: PresetResolver(),
+            ruleEngine: RuleEngine(),
+            fingerprinting: SourceFingerprint(),
+            now: { Date(timeIntervalSince1970: 1_000) }
+        )
+
+        let result = await service.scan(request(root: fixture.root, preset: preset))
+        let omittedDescendant = fixture.root.appendingPathComponent(
+            "Masters/.post-scan-omitted/descendant-link"
+        )
+        let findingText = result.findings.flatMap {
+            [$0.title, $0.explanation, $0.expected, $0.suggestedAction]
+        }.joined(separator: " ")
+
+        XCTAssertEqual(
+            try FileManager.default.destinationOfSymbolicLink(atPath: omittedDescendant.path),
+            "/dev/null",
+            file: file,
+            line: line
+        )
+        XCTAssertEqual(result.overallStatus, .incomplete, file: file, line: line)
+        XCTAssertEqual(result.findings.map(\.ruleID), ["filesystem.root-access-failed"], file: file, line: line)
+        XCTAssertTrue(result.inventory.isEmpty, file: file, line: line)
+        XCTAssertTrue(result.findings.allSatisfy { $0.affectedPaths.isEmpty }, file: file, line: line)
+        XCTAssertTrue(result.findings.allSatisfy { $0.evidence.isEmpty }, file: file, line: line)
+        XCTAssertFalse(findingText.contains(fixture.root.path), file: file, line: line)
+        XCTAssertFalse(findingText.contains("/dev/null"), file: file, line: line)
+        XCTAssertFalse(findingText.contains(".post-scan-omitted"), file: file, line: line)
+        XCTAssertNotEqual(result.overallStatus, .ready, file: file, line: line)
+    }
 }
 
 private final class ScanPhaseRecorder: @unchecked Sendable {
@@ -422,6 +478,50 @@ private actor PartialPostInventoryWithEnumerationFailure: FileInventorying {
                     evidence: [],
                     expected: "A bounded inventory of the selected root.",
                     suggestedAction: "Review the affected filesystem entry.",
+                    origin: .engine,
+                    engineVersion: "test-engine"
+                )]
+            )
+        }
+
+        let snapshot = try await FileInventory().inventory(root: root)
+        firstSnapshot = snapshot
+        return snapshot
+    }
+}
+
+private actor PartialPostInventoryWithFinding: FileInventorying {
+    let ruleID: String
+    private var firstSnapshot: InventorySnapshot?
+
+    init(ruleID: String) {
+        self.ruleID = ruleID
+    }
+
+    func inventory(root: URL) async throws -> InventorySnapshot {
+        if let firstSnapshot {
+            let omittedDescendant = root.appendingPathComponent(
+                "Masters/.post-scan-omitted/descendant-link"
+            )
+            try FileManager.default.createDirectory(
+                at: omittedDescendant.deletingLastPathComponent(),
+                withIntermediateDirectories: true
+            )
+            try FileManager.default.createSymbolicLink(
+                at: omittedDescendant,
+                withDestinationURL: URL(fileURLWithPath: "/dev/null")
+            )
+            return InventorySnapshot(
+                entries: firstSnapshot.entries,
+                findings: [Finding(
+                    ruleID: ruleID,
+                    severity: .warning,
+                    title: "Post inventory is incomplete",
+                    explanation: "The entry at \(root.path) could expose /dev/null.",
+                    affectedPaths: [],
+                    evidence: [],
+                    expected: "A complete bounded inventory of the selected root.",
+                    suggestedAction: "Review the omitted .post-scan-omitted subtree.",
                     origin: .engine,
                     engineVersion: "test-engine"
                 )]

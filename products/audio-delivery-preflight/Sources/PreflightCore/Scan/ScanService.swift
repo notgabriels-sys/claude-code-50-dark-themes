@@ -275,7 +275,7 @@ public struct ScanService: ScanServicing, Sendable {
     private func postInventoryHasIncompleteEvidence(_ snapshot: InventorySnapshot) -> Bool {
         snapshot.findings.contains { finding in
             switch finding.ruleID {
-            case "filesystem.enumeration-failed", "filesystem.metadata-unreadable":
+            case "filesystem.enumeration-failed", "filesystem.metadata-unreadable", "filesystem.invalid-relative-path":
                 true
             default:
                 false
