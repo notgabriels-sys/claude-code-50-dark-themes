@@ -21,14 +21,6 @@ public protocol AudioInspecting: Sendable {
 }
 
 public struct AudioInspector: AudioInspecting {
-    private static let fallbackMIMETypes = [
-        (mimeType: "audio/vnd.wave", container: "WAV"),
-        (mimeType: "audio/aiff", container: "AIFF"),
-        (mimeType: "audio/flac", container: "FLAC"),
-        (mimeType: "audio/mpeg", container: "MP3"),
-        (mimeType: "audio/mp4", container: "M4A"),
-    ]
-
     public init() {}
 
     public func inspect(url: URL) async -> InspectionOutcome<AudioProperties> {
@@ -36,26 +28,29 @@ public struct AudioInspector: AudioInspecting {
             return Self.unreadableOutcome()
         }
 
+        let contentCandidate = Self.contentCandidate(for: url)
+        let container = Self.containerName(for: url) ?? contentCandidate?.container
         do {
             return try await Self.inspect(
                 asset: AVURLAsset(url: url),
-                container: Self.containerName(for: url)
+                container: container
             )
         } catch {
-            for fallback in Self.fallbackMIMETypes {
-                do {
-                    return try await Self.inspect(
-                        asset: AVURLAsset(
-                            url: url,
-                            options: [AVURLAssetOverrideMIMETypeKey: fallback.mimeType]
-                        ),
-                        container: Self.containerName(for: url) ?? fallback.container
-                    )
-                } catch {
-                    continue
-                }
+            guard let contentCandidate else {
+                return Self.unreadableOutcome()
             }
-            return Self.unreadableOutcome()
+
+            do {
+                return try await Self.inspect(
+                    asset: AVURLAsset(
+                        url: url,
+                        options: [AVURLAssetOverrideMIMETypeKey: contentCandidate.mimeType]
+                    ),
+                    container: container
+                )
+            } catch {
+                return Self.unreadableOutcome()
+            }
         }
     }
 
@@ -93,6 +88,37 @@ public struct AudioInspector: AudioInspecting {
 
     private static func isSymbolicLink(_ url: URL) -> Bool {
         (try? url.standardizedFileURL.resourceValues(forKeys: [.isSymbolicLinkKey]).isSymbolicLink) == true
+    }
+
+    private static func contentCandidate(for url: URL) -> (mimeType: String, container: String)? {
+        guard let handle = try? FileHandle(forReadingFrom: url) else {
+            return nil
+        }
+        defer { try? handle.close() }
+
+        guard let bytes = try? handle.read(upToCount: 12) else {
+            return nil
+        }
+
+        if bytes.starts(with: Data("RIFF".utf8)), bytes.dropFirst(8).starts(with: Data("WAVE".utf8)) {
+            return ("audio/vnd.wave", "WAV")
+        }
+        if bytes.starts(with: Data("FORM".utf8)), bytes.dropFirst(8).starts(with: Data("AIFF".utf8)) || bytes.dropFirst(8).starts(with: Data("AIFC".utf8)) {
+            return ("audio/aiff", "AIFF")
+        }
+        if bytes.starts(with: Data("fLaC".utf8)) {
+            return ("audio/flac", "FLAC")
+        }
+        if bytes.starts(with: Data("ID3".utf8)) || (bytes.count >= 2 && bytes[bytes.startIndex] == 0xFF && (bytes[bytes.index(after: bytes.startIndex)] & 0xE0) == 0xE0) {
+            return ("audio/mpeg", "MP3")
+        }
+        if bytes.count >= 12,
+           bytes.dropFirst(4).starts(with: Data("ftyp".utf8)),
+           bytes.dropFirst(8).starts(with: Data("M4A".utf8)) {
+            return ("audio/mp4", "M4A")
+        }
+
+        return nil
     }
 
     private static func encodingName(from streamDescription: AudioStreamBasicDescription) -> String? {
