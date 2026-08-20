@@ -35,6 +35,7 @@ Completed:
 9. The successful purchase exposed `Techno_Mix_Preflight_Toolkit_by_Hologram_People.zip` as the customer download, displayed as 16.6 MB.
 10. The delivered ZIP was downloaded as a 17,438,627-byte file. `unzip -t` reported no errors and its SHA-256 value matched the approved source archive exactly: `c41180fdc1c798a44ea0cd4aa7099b2a6adcf1a10281d9e14dc3e6624eb7ce9e`.
 11. The extracted delivered copy passed the complete 24-WAV archive verifier, including file count and folders, stereo 48 kHz/24-bit format, 8-second duration, zero boundaries, RMS and peak limits, channel-isolation behavior, and intended phase relationships.
+12. The customer-delivered PDF reopened as five pages and retained more than 6,000 characters of readable extracted text.
 
 Optional follow-up:
 
