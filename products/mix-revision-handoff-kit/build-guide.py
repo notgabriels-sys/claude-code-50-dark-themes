@@ -4,6 +4,7 @@
 from pathlib import Path
 import sys
 
+from reportlab import rl_config
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_LEFT
 from reportlab.lib.pagesizes import A4
@@ -16,6 +17,9 @@ from reportlab.platypus import (
 
 OUT = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(__file__).with_name("Mix_Revision_and_Mastering_Handoff_Guide.pdf")
 OUT.parent.mkdir(parents=True, exist_ok=True)
+
+# Stable PDF metadata keeps package checksums reproducible across clean builds.
+rl_config.invariant = 1
 
 INK = colors.HexColor("#171817")
 PAPER = colors.HexColor("#F2EEE5")
@@ -52,6 +56,8 @@ base = getSampleStyleSheet()
 styles = {
     "eyebrow": ParagraphStyle("eyebrow", parent=base["Normal"], fontName="Helvetica-Bold", fontSize=8,
         leading=10, textColor=ACCENT, spaceAfter=7, tracking=1.2),
+    "rowtag": ParagraphStyle("rowtag", parent=base["Normal"], fontName="Helvetica-Bold", fontSize=7.8,
+        leading=9.5, textColor=ACCENT, spaceAfter=0, tracking=0.45),
     "title": ParagraphStyle("title", parent=base["Title"], fontName="Helvetica-Bold", fontSize=31,
         leading=31, textColor=INK, alignment=TA_LEFT, spaceAfter=10),
     "subtitle": ParagraphStyle("subtitle", parent=base["Normal"], fontName="Helvetica", fontSize=12,
@@ -92,8 +98,8 @@ def callout(text):
 
 
 def flow_table(rows):
-    data = [[p(a, "eyebrow"), p(b, "body"), p(c, "small")] for a,b,c in rows]
-    table = Table(data, colWidths=[19*mm, 95*mm, 60*mm], repeatRows=0)
+    data = [[p(a, "rowtag"), p(b, "body"), p(c, "small")] for a,b,c in rows]
+    table = Table(data, colWidths=[25*mm, 89*mm, 60*mm], repeatRows=0)
     table.setStyle(TableStyle([
         ("VALIGN", (0,0), (-1,-1), "TOP"),
         ("LINEBELOW", (0,0), (-1,-2), 0.35, LINE),
@@ -107,7 +113,7 @@ story = []
 story += [Spacer(1, 24*mm), p("A PRACTICAL, DAW-AGNOSTIC SYSTEM", "eyebrow"),
           p("Mix Revision &<br/>Mastering Handoff", "title"),
           p("Collect clear feedback. Control versions. Approve the exact file. Deliver with evidence.", "subtitle"),
-          Spacer(1, 8*mm), callout("ELEVEN EDITABLE TEMPLATES + THIS WORKFLOW GUIDE"),
+          Spacer(1, 8*mm), callout("ELEVEN EDITABLE TEMPLATES + WORKED EXAMPLE + GUIDE"),
           Spacer(1, 18*mm), p("Built for independent artists, producers and engineers who need a reliable path from first mix to accepted delivery without turning the process into project-management theatre.", "body"),
           Spacer(1, 4*mm), p("Gabriel Garcia Alonso / Hologram People", "eyebrow"),
           PageBreak()]
@@ -129,19 +135,19 @@ bullet("One consolidated feedback document per round, owned by one decision-make
 bullet("One approval record for the exact file entering mastering or final delivery."), PageBreak()]
 
 story += page_heading("02", "Brief, references and review", "Useful references explain a decision. They do not ask one track to become another.")
-story += [p("01 — Project brief", "h2"), p("Complete identity, scope and creative direction before technical work. Treat missing assets, plugin dependencies and destination requirements as visible blockers. If the release destination has not supplied a specification, write UNVERIFIED instead of inventing one."),
-p("02 — Reference track log", "h2"), p("For each reference, state the exact purpose and section: low-end movement in the first drop, vocal depth in the chorus, transient density in the final minute. Level-match before making tonal or loudness comparisons, and record the decision the reference actually supports."),
+story += [p("01 - Project brief", "h2"), p("Complete identity, scope and creative direction before technical work. Treat missing assets, plugin dependencies and destination requirements as visible blockers. If the release destination has not supplied a specification, write UNVERIFIED instead of inventing one."),
+p("02 - Reference track log", "h2"), p("For each reference, state the exact purpose and section: low-end movement in the first drop, vocal depth in the chorus, transient density in the final minute. Level-match before making tonal or loudness comparisons, and record the decision the reference actually supports."),
 p("A disciplined review pass", "h2"),
 bullet("Confirm the exact filename or version ID before playback."),
 bullet("Listen once for direction before collecting isolated fixes."),
 bullet("Use timestamps and name the element, observation and desired outcome."),
 bullet("Separate mix corrections from new production, arrangement or editing requests."),
 bullet("Check that comments from different decision-makers do not conflict."),
-Spacer(1, 6*mm), callout("Weak: “Make it hit harder.”  Stronger: “02:14–02:30, kick loses impact when the synth opens; restore physical weight without increasing the synth’s brightness.”"), PageBreak()]
+Spacer(1, 6*mm), callout("Weak: “Make it hit harder.”  Stronger: “02:14-02:30, kick loses impact when the synth opens; restore physical weight without increasing the synth’s brightness.”"), PageBreak()]
 
 story += page_heading("03", "Revisions and version identity", "A clean revision history protects creative memory and prevents people reviewing the wrong render.")
-story += [p("03 — Mix revision log", "h2"), p("Create one row when a version is sent. Link it to the source session and feedback round. Record what was requested, what was completed, and any deliberate deviation or question. Status describes the review state; it does not replace approval evidence."),
-p("04 — Consolidated feedback", "h2"), p("One person combines all comments into a single document. The document should preserve what already works, identify the highest-priority problem, and state whether the mix still matches the brief. Conflicts return to the decision-makers before revision work begins."),
+story += [p("03 - Mix revision log", "h2"), p("Create one row when a version is sent. Link it to the source session and feedback round. Record what was requested, what was completed, and any deliberate deviation or question. Status describes the review state; it does not replace approval evidence."),
+p("04 - Consolidated feedback", "h2"), p("One person combines all comments into a single document. The document should preserve what already works, identify the highest-priority problem, and state whether the mix still matches the brief. Conflicts return to the decision-makers before revision work begins."),
 p("Filename structure", "h2"), p("A useful filename carries identity, role, version and date. Add format information when multiple deliverables could otherwise collide. Example: <b>ARTIST_TITLE_MAIN_v03_20260820_48k24b.wav</b>. Never use FINAL, FINAL2 or LATEST as the only version control."),
 p("Version-state vocabulary", "h2"),
 flow_table([
@@ -153,8 +159,8 @@ flow_table([
 ]), PageBreak()]
 
 story += page_heading("04", "Approval and mastering handoff", "Approval closes a defined decision. The mastering brief carries intent without prescribing the engineer’s entire method.")
-story += [p("05 — Approval record", "h2"), p("Record the exact filename, version ID, size and optional checksum. Preserve who approved it, when, in which timezone and where the evidence lives. State whether the file is approved for mastering, approved as the final master, or accepted with documented deviations."),
-p("06 — Mastering brief", "h2"), p("Lead with listening context, desired emotional or physical qualities, and what must not change. Then describe intentional mix-bus processing, limiting or clipping, supplied alternates and known concerns. Technical targets belong only in the destination section and must name their authoritative source."),
+story += [p("05 - Approval record", "h2"), p("Record the exact filename, version ID, size and optional checksum. Preserve who approved it, when, in which timezone and where the evidence lives. State whether the file is approved for mastering, approved as the final master, or accepted with documented deviations."),
+p("06 - Mastering brief", "h2"), p("Lead with listening context, desired emotional or physical qualities, and what must not change. Then describe intentional mix-bus processing, limiting or clipping, supplied alternates and known concerns. Technical targets belong only in the destination section and must name their authoritative source."),
 p("What not to assume", "h2"),
 bullet("There is no universal loudness or true-peak target for every release."),
 bullet("There is no universal amount of required mix headroom."),
@@ -164,9 +170,9 @@ bullet("A mastering handoff does not reopen an already approved mix unless a pro
 Spacer(1, 7*mm), callout("If a requirement is absent, mark it UNVERIFIED and identify who can confirm it. Unknown is a valid state; a guessed specification is not."), PageBreak()]
 
 story += page_heading("05", "Export, QC and delivery", "Delivery is complete only when the package matches the confirmed brief and can be reopened independently.")
-story += [p("07–09 — Requirements, matrix and filenames", "h2"), p("First convert the recipient’s request into explicit states: CONFIRMED, UNVERIFIED, BLOCKED or NOT APPLICABLE. Then create one export-matrix row per main mix, alternate, instrumental, edit or stem. Generate filenames before export and collision-check them as a set."),
-p("10 — Final QC", "h2"), p("Inspect identity and file headers, then audition the beginning, loudest passage, a transition, a representative quiet passage, and the complete ending. Check technical values only against the confirmed destination brief. For stems, reconstruct the mix where required."),
-p("11 — Delivery manifest", "h2"), p("Inventory exactly what was delivered. File size and SHA-256 checksum can prove that a recipient received the same bytes you verified. Record transfer completion and recipient acceptance separately: upload success alone is not acceptance."),
+story += [p("07-09 - Requirements, matrix and filenames", "h2"), p("First convert the recipient’s request into explicit states: CONFIRMED, UNVERIFIED, BLOCKED or NOT APPLICABLE. Then create one export-matrix row per main mix, alternate, instrumental, edit or stem. Generate filenames before export and collision-check them as a set."),
+p("10 - Final QC", "h2"), p("Inspect identity and file headers, then audition the beginning, loudest passage, a transition, a representative quiet passage, and the complete ending. Check technical values only against the confirmed destination brief. For stems, reconstruct the mix where required."),
+p("11 - Delivery manifest", "h2"), p("Inventory exactly what was delivered. File size and SHA-256 checksum can prove that a recipient received the same bytes you verified. Record transfer completion and recipient acceptance separately: upload success alone is not acceptance."),
 p("Final gate", "h2"),
 flow_table([
     ("READY", "Technical QC passed", "All required checks completed."),
@@ -186,13 +192,13 @@ story += [flow_table([
     ("EXPORT", "Build 08 and 09", "One required asset per row."),
     ("VERIFY", "Run 10 and complete 11", "Reopen, inspect, transfer, accept."),
 ]), Spacer(1, 8*mm), p("Field states", "h2"),
-bullet("CONFIRMED — read from the governing source or explicitly agreed."),
-bullet("UNVERIFIED — expected but not yet checked against an authority."),
-bullet("BLOCKED — cannot proceed safely without missing information or media."),
-bullet("NOT APPLICABLE — deliberately excluded for this destination."),
+bullet("CONFIRMED - read from the governing source or explicitly agreed."),
+bullet("UNVERIFIED - expected but not yet checked against an authority."),
+bullet("BLOCKED - cannot proceed safely without missing information or media."),
+bullet("NOT APPLICABLE - deliberately excluded for this destination."),
 Spacer(1, 7*mm), p("Scope note", "h2"), p("This kit is a workflow resource. It is not a legal contract, does not define commercial terms, and does not replace specifications supplied by a label, distributor, manufacturer, broadcaster, platform or mastering engineer."),
 Spacer(1, 8*mm), callout("The goal is simple: every important decision should point to an exact version, an accountable person and a verifiable next state."),
-Spacer(1, 11*mm), p("MIX REVISION & MASTERING HANDOFF KIT  /  v1.0", "eyebrow")]
+Spacer(1, 11*mm), p("MIX REVISION & MASTERING HANDOFF KIT  /  v1.1", "eyebrow")]
 
 GuideDoc(str(OUT)).build(story)
 print(OUT)

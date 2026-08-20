@@ -1,4 +1,4 @@
-# Gumroad Listing — Mix Revision & Mastering Handoff Kit
+# Gumroad Listing - Mix Revision & Mastering Handoff Kit
 
 ## Product name
 
@@ -10,7 +10,7 @@ Mix Revision & Mastering Handoff Kit
 
 ## Short description
 
-Eleven editable templates for clear mix feedback, controlled versions, exact approvals and reliable mastering delivery.
+Eleven editable templates, a completed worked example and a concise guide for clear mix feedback, controlled versions, exact approvals and reliable mastering delivery.
 
 ## Description
 
@@ -32,8 +32,9 @@ Included:
 - Final QC checklist
 - Delivery manifest
 - Seven-page workflow guide
+- Completed fictional worked example showing the full system in use
 
-Files are supplied as editable Markdown, CSV and TXT templates, plus a PDF guide. They open in ordinary text editors and spreadsheet apps. No Notion account, subscription or specific DAW is required.
+Files are supplied as editable Markdown, CSV and TXT templates, plus a PDF guide. The blank templates and worked example are kept in separate folders. They open in ordinary text editors and spreadsheet apps. No Notion account, subscription or specific DAW is required.
 
 This is a workflow resource, not a legal contract or universal delivery specification.
 

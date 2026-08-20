@@ -1,26 +1,29 @@
 # Delivery Requirements
 
-Mark every line CONFIRMED, UNVERIFIED, BLOCKED or NOT APPLICABLE.
+Mark every requirement CONFIRMED, UNVERIFIED, BLOCKED or NOT APPLICABLE. Name the governing source
+or the person responsible for confirming it.
 
-- Destination / recipient:
-- Deadline and timezone:
-- Expected asset count:
-- Exact version identity:
-- Sample rate:
-- Bit depth:
-- Channel layout:
-- Loudness requirement and source:
-- True-peak requirement and source:
-- Common start / timecode:
-- Tail / silence requirements:
-- Processing included or excluded:
-- Filename convention:
-- Metadata:
-- Artwork / documents:
-- Archive structure:
-- Transfer method:
-- Checksum required:
-- Recipient acceptance evidence:
+| Requirement | Status | Value | Authoritative source / owner |
+|---|---|---|---|
+| Destination / recipient | | | |
+| Deadline and timezone | | | |
+| Expected asset count | | | |
+| Exact version identity | | | |
+| Sample rate | | | |
+| Bit depth | | | |
+| Channel layout | | | |
+| Loudness requirement | | | |
+| True-peak requirement | | | |
+| Common start / timecode | | | |
+| Tail / silence requirements | | | |
+| Processing included or excluded | | | |
+| Filename convention | | | |
+| Metadata | | | |
+| Artwork / documents | | | |
+| Archive structure | | | |
+| Transfer method | | | |
+| Checksum required | | | |
+| Recipient acceptance evidence | | | |
 
 ## Blockers
 

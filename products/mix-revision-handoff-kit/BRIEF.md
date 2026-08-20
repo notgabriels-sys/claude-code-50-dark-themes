@@ -10,7 +10,7 @@ repeatable handoff system without requiring a particular DAW, cloud platform or 
 
 - Identity: Gabriel Garcia Alonso / Hologram People
 - Buyer: independent artists, producers, mix engineers and small labels
-- Product: eleven editable workflow templates plus one concise operating guide
+- Product: eleven editable workflow templates, one completed fictional example and one concise operating guide
 - Format: Markdown, CSV, TXT and PDF
 - Dependencies: none
 - Store: Gumroad first
@@ -29,5 +29,6 @@ repeatable handoff system without requiring a particular DAW, cloud platform or 
 2. Validate CSV column consistency and required headings.
 3. Create and visually inspect the operating guide PDF.
 4. Package README, licence, manifest, templates and guide.
-5. Seal the ZIP, reopen it and revalidate all customer files.
-6. Publish only after Gabriel approves the product utility and storefront presentation.
+5. Exercise the complete workflow with a clearly labelled fictional project.
+6. Seal the ZIP, reopen it and revalidate all customer files.
+7. Publish only after Gabriel approves the product utility and storefront presentation.

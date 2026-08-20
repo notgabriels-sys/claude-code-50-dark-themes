@@ -3,7 +3,8 @@ by Gabriel Garcia Alonso / Hologram People
 ------------------------------------------------
 
 Eleven editable templates for collecting mix feedback, controlling versions, preparing mastering
-handoffs and proving what was approved and delivered.
+handoffs and proving what was approved and delivered. A completed fictional example shows how the
+records connect across one project.
 
 START
 
@@ -13,6 +14,7 @@ START
 4. Consolidate all feedback for a round in 04_CONSOLIDATED_FEEDBACK.md.
 5. Record explicit sign-off in 05_APPROVAL_RECORD.md.
 6. Complete the mastering brief, export matrix and final QC before delivery.
+7. Use the Worked_Example folder as a reference only; duplicate the blank Templates folder for real work.
 
 FILES
 
@@ -28,7 +30,22 @@ FILES
 10_FINAL_QC_CHECKLIST.txt       file-level pre-delivery inspection
 11_DELIVERY_MANIFEST.csv        delivered-file inventory and checksum record
 
+FOLDERS
+
+Templates                       blank customer-editable files
+Worked_Example                  completed fictional copies of all eleven files
+
+FIELD STATES
+
+CONFIRMED                       checked against the governing source or explicitly agreed
+UNVERIFIED                      expected but not yet checked against an authority
+BLOCKED                         cannot proceed safely without missing information or media
+NOT APPLICABLE                  deliberately excluded for this destination
+
 The kit is DAW-agnostic. Markdown files open in any text editor; CSV files open in spreadsheet apps;
 TXT files open everywhere. The PDF explains the complete workflow.
+
+Keep one stable version ID per sent render. Do not overwrite a version that has already been reviewed.
+Record upload completion and recipient acceptance separately.
 
 This is a workflow resource, not a legal contract or universal technical specification.
