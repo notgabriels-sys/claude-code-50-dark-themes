@@ -68,7 +68,32 @@ final class ChecksumServiceTests: XCTestCase {
 
         XCTAssertNil(snapshot.entries[0].sha256)
         XCTAssertEqual(snapshot.entries[0].inspectionStatus, .failed)
-        XCTAssertTrue(snapshot.findings.contains { $0.ruleID == "checksum.read-failed" })
+        let finding = try XCTUnwrap(snapshot.findings.first { $0.ruleID == "checksum.read-failed" })
+        XCTAssertEqual(finding.explanation, "The regular file could not be read safely.")
+        XCTAssertFalse(finding.explanation.contains(fixture.root.path))
+    }
+
+    func testAncestorSymlinkSwapAtOpenBoundaryLeavesChecksumUnknownAndRedactsPaths() async throws {
+        let fixture = try TemporaryChecksumFixture.make()
+        defer { fixture.remove() }
+        _ = try fixture.write("master", to: "Masters/Track.wav")
+        let externalSentinel = try fixture.createExternalSentinel(contents: "PRIVATE")
+        let inventory = try await FileInventory().inventory(root: fixture.root)
+        let swap = ChecksumAncestorSwap(fixture: fixture)
+        let service = ChecksumService(onBeforeOpeningPathComponent: { relativePath, componentIndex in
+            swap.replaceAncestorWithEscapingSymlink(for: relativePath, at: componentIndex)
+        })
+
+        let snapshot = await service.checksummedInventory(entries: inventory.entries, root: fixture.root)
+
+        XCTAssertTrue(swap.didSwap)
+        XCTAssertNil(swap.error)
+        let entry = try XCTUnwrap(snapshot.entries.first { $0.relativePath.value == "Masters/Track.wav" })
+        XCTAssertNil(entry.sha256)
+        XCTAssertEqual(entry.inspectionStatus, .failed)
+        let finding = try XCTUnwrap(snapshot.findings.first { $0.ruleID == "checksum.read-failed" })
+        XCTAssertFalse(finding.explanation.contains(fixture.root.path))
+        XCTAssertFalse(finding.explanation.contains(externalSentinel.path))
     }
 
     private func inventoryEntry(
@@ -91,16 +116,22 @@ final class ChecksumServiceTests: XCTestCase {
 
 private final class TemporaryChecksumFixture {
     let root: URL
+    private let externalRoot: URL
 
-    private init(root: URL) {
+    private init(root: URL, externalRoot: URL) {
         self.root = root
+        self.externalRoot = externalRoot
     }
 
     static func make() throws -> TemporaryChecksumFixture {
-        let root = FileManager.default.temporaryDirectory
+        let temporaryDirectory = FileManager.default.temporaryDirectory
+        let root = temporaryDirectory
             .appendingPathComponent("ChecksumServiceTests-\\(UUID().uuidString)", isDirectory: true)
+        let externalRoot = temporaryDirectory
+            .appendingPathComponent("ChecksumServiceExternal-\\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
-        return TemporaryChecksumFixture(root: root)
+        try FileManager.default.createDirectory(at: externalRoot, withIntermediateDirectories: true)
+        return TemporaryChecksumFixture(root: root, externalRoot: externalRoot)
     }
 
     func write(_ contents: String, to relativePath: String) throws -> URL {
@@ -110,7 +141,43 @@ private final class TemporaryChecksumFixture {
         return url
     }
 
+    func createExternalSentinel(contents: String) throws -> URL {
+        let sentinel = externalRoot.appendingPathComponent("sentinel.txt")
+        try Data(contents.utf8).write(to: sentinel)
+        return sentinel
+    }
+
+    func replaceDirectoryWithEscapingSymlink(_ relativePath: String) throws {
+        let directory = root.appendingPathComponent(relativePath)
+        try FileManager.default.removeItem(at: directory)
+        try FileManager.default.createSymbolicLink(at: directory, withDestinationURL: externalRoot)
+    }
+
     func remove() {
         try? FileManager.default.removeItem(at: root)
+        try? FileManager.default.removeItem(at: externalRoot)
+    }
+}
+
+private final class ChecksumAncestorSwap: @unchecked Sendable {
+    private let fixture: TemporaryChecksumFixture
+    private(set) var didSwap = false
+    private(set) var error: Error?
+
+    init(fixture: TemporaryChecksumFixture) {
+        self.fixture = fixture
+    }
+
+    func replaceAncestorWithEscapingSymlink(for relativePath: RelativePath, at componentIndex: Int) {
+        guard relativePath.value == "Masters/Track.wav", componentIndex == 0, !didSwap else {
+            return
+        }
+
+        do {
+            try fixture.replaceDirectoryWithEscapingSymlink("Masters")
+            didSwap = true
+        } catch {
+            self.error = error
+        }
     }
 }

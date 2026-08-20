@@ -28,7 +28,10 @@ public struct FileInventory: FileInventorying {
 
     public func inventory(root: URL) async throws -> InventorySnapshot {
         let standardizedRoot = root.standardizedFileURL
-        let rootValues = try standardizedRoot.resourceValues(forKeys: [.isDirectoryKey])
+        let rootValues = try standardizedRoot.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey])
+        guard rootValues.isSymbolicLink != true else {
+            throw PreflightError.invalidScanRequest(reason: "The selected inventory root must not be a symbolic link.")
+        }
         guard rootValues.isDirectory == true else {
             throw PreflightError.invalidScanRequest(reason: "The selected inventory root must be a directory.")
         }
@@ -43,7 +46,7 @@ public struct FileInventory: FileInventorying {
                     ruleID: "filesystem.enumeration-failed",
                     severity: .warning,
                     title: "Directory entry could not be enumerated",
-                    explanation: error.localizedDescription,
+                    explanation: "The directory entry could not be enumerated safely.",
                     affectedPaths: Self.validatedRelativePath(for: url, root: standardizedRoot).map { [$0] } ?? []
                 ))
                 return true
@@ -76,7 +79,7 @@ public struct FileInventory: FileInventorying {
                     ruleID: "filesystem.resource-read-failed",
                     severity: .warning,
                     title: "Directory entry metadata could not be read",
-                    explanation: error.localizedDescription,
+                    explanation: "The directory entry metadata could not be read safely.",
                     affectedPaths: [relativePath]
                 ))
                 enumerator.skipDescendants()

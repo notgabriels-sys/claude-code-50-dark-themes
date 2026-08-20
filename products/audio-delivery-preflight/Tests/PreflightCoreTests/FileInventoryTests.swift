@@ -32,7 +32,7 @@ final class FileInventoryTests: XCTestCase {
     func testSymlinkOutsideRootIsRecordedAndNotFollowed() async throws {
         let fixture = try TemporaryInventoryFixture.make()
         defer { fixture.remove() }
-        try fixture.createExternalSentinel(contents: "PRIVATE")
+        let externalSentinel = try fixture.createExternalSentinel(contents: "PRIVATE")
         try fixture.createEscapingSymlink(named: "outside.wav")
 
         let snapshot = try await FileInventory().inventory(root: fixture.root)
@@ -41,6 +41,28 @@ final class FileInventoryTests: XCTestCase {
         XCTAssertFalse(snapshot.entries.contains { $0.relativePath.value == "outside.wav/sentinel.txt" })
         XCTAssertFalse(snapshot.entries.contains { $0.sha256 != nil })
         XCTAssertTrue(snapshot.findings.contains { $0.ruleID == "filesystem.symlink-not-followed" })
+        for finding in snapshot.findings {
+            XCTAssertFalse(finding.explanation.contains(fixture.root.path))
+            XCTAssertFalse(finding.explanation.contains(externalSentinel.path))
+        }
+    }
+
+    func testSymlinkRootIsRejectedBeforeEnumeration() async throws {
+        let fixture = try TemporaryInventoryFixture.make()
+        defer { fixture.remove() }
+        _ = try fixture.createExternalSentinel(contents: "PRIVATE")
+        let suppliedRoot = try fixture.createEscapingRootSymlink(named: "selected-root")
+        defer { try? FileManager.default.removeItem(at: suppliedRoot) }
+
+        do {
+            _ = try await FileInventory().inventory(root: suppliedRoot)
+            XCTFail("A symbolic-link root must be rejected before enumeration.")
+        } catch let error as PreflightError {
+            XCTAssertEqual(
+                error,
+                .invalidScanRequest(reason: "The selected inventory root must not be a symbolic link.")
+            )
+        }
     }
 
     func testSpecialEntriesBecomeFindingsWithoutStoppingInventory() async throws {
@@ -94,8 +116,11 @@ private final class TemporaryInventoryFixture {
         try Data(contents.utf8).write(to: url)
     }
 
-    func createExternalSentinel(contents: String) throws {
-        try Data(contents.utf8).write(to: externalRoot.appendingPathComponent("sentinel.txt"))
+    @discardableResult
+    func createExternalSentinel(contents: String) throws -> URL {
+        let sentinel = externalRoot.appendingPathComponent("sentinel.txt")
+        try Data(contents.utf8).write(to: sentinel)
+        return sentinel
     }
 
     func createEscapingSymlink(named name: String) throws {
@@ -103,6 +128,12 @@ private final class TemporaryInventoryFixture {
             at: root.appendingPathComponent(name),
             withDestinationURL: externalRoot
         )
+    }
+
+    func createEscapingRootSymlink(named name: String) throws -> URL {
+        let symlink = root.deletingLastPathComponent().appendingPathComponent(name)
+        try FileManager.default.createSymbolicLink(at: symlink, withDestinationURL: externalRoot)
+        return symlink
     }
 
     func createFIFO(named name: String) throws {
