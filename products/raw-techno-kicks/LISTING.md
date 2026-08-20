@@ -46,5 +46,14 @@ Immediate download after purchase.
 
 ## Needs verification before publishing
 
-- Final human audition approval
+- Checksum-bound human audition approval
+- Final €15 price approval
+- Final Gumroad refund-policy selection
 - Final public Gumroad or Bandcamp URL
+
+## Public preview
+
+- Proposed preview title: `Raw Techno Kick Architecture — Audition Reel`
+- Preview file: `qa/RTKA_Audition_Reel.mp3`
+- Duration: 19.42 seconds
+- Format: 320 kbps stereo MP3 at 48 kHz
