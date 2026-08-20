@@ -1,5 +1,7 @@
 # 50 dark themes for Claude Code
 
+[![Verify themes and shop](https://github.com/notgabriels-sys/claude-code-50-dark-themes/actions/workflows/verify.yml/badge.svg)](https://github.com/notgabriels-sys/claude-code-50-dark-themes/actions/workflows/verify.yml)
+
 Custom themes for the Claude Code CLI. The chat app (claude.ai / desktop) only supports
 Light / Dark / System, so these install into Claude Code, which does support custom themes.
 
@@ -97,3 +99,6 @@ The [HTML templates demo](https://notgabriels-sys.github.io/dark-html-templates-
 
 Themes in this repo are free and stay free — MIT. If they saved you some fiddling,
 a ⭐ helps other people find them.
+
+Contributions are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) before adding or changing a theme;
+the repository verifies the theme schema, gallery parity, installation command and payment links on every push.
