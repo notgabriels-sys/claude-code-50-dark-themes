@@ -70,4 +70,93 @@ final class PresetTests: XCTestCase {
             XCTAssertEqual(error as? PreflightError, .invalidPreset(field: "audio.sampleRate", reason: "The minimum cannot exceed the maximum."))
         }
     }
+
+    func testResolvedPresetDecodingRejectsTamperedIdentitySummary() throws {
+        let resolved = try PresetResolver().resolve(BuiltInPresets.digitalRelease)
+
+        for (field, replacement) in [
+            ("schemaVersion", "tampered"),
+            ("identifier", "not-digital-release"),
+            ("name", "Not Digital Release"),
+        ] {
+            var object = try encodedObject(resolved)
+            object[field] = replacement
+
+            XCTAssertThrowsError(try JSONDecoder().decode(ResolvedPreset.self, from: try JSONSerialization.data(withJSONObject: object)))
+        }
+    }
+
+    func testResolvedPresetDecodingRejectsTamperedRequirementsSummary() throws {
+        let resolved = try PresetResolver().resolve(BuiltInPresets.digitalRelease)
+        var object = try encodedObject(resolved)
+        object["requirements"] = []
+
+        XCTAssertThrowsError(try JSONDecoder().decode(ResolvedPreset.self, from: try JSONSerialization.data(withJSONObject: object)))
+    }
+
+    func testResolverRejectsNonFiniteNumericBoundsWithoutJSONEncoding() throws {
+        let infinity = Preset(
+            identifier: "infinity",
+            name: "Infinity",
+            audio: AudioRequirement(sampleRate: NumericConstraint(minimum: .infinity))
+        )
+        let nan = Preset(
+            identifier: "nan",
+            name: "NaN",
+            audio: AudioRequirement(bitDepth: NumericConstraint(maximum: .nan))
+        )
+
+        XCTAssertThrowsError(try PresetResolver().resolve(infinity)) { error in
+            XCTAssertEqual(error as? PreflightError, .invalidPreset(field: "audio.sampleRate", reason: "The bound must be finite."))
+        }
+        XCTAssertThrowsError(try PresetResolver().resolve(nan)) { error in
+            XCTAssertEqual(error as? PreflightError, .invalidPreset(field: "audio.bitDepth", reason: "The bound must be finite."))
+        }
+    }
+
+    func testResolverRejectsNonPositiveAndFractionalDiscreteRequirements() throws {
+        let zeroSampleRate = Preset(
+            identifier: "zero-rate",
+            name: "Zero rate",
+            audio: AudioRequirement(sampleRate: NumericConstraint(minimum: 0))
+        )
+        let fractionalBitDepth = Preset(
+            identifier: "fractional-depth",
+            name: "Fractional depth",
+            audio: AudioRequirement(bitDepth: NumericConstraint(exactly: 24.5))
+        )
+        let fractionalChannels = Preset(
+            identifier: "fractional-channels",
+            name: "Fractional channels",
+            roles: [DeliveryRole(identifier: "main", pattern: ".*", required: true, channelCount: NumericConstraint(exactly: 2.5))]
+        )
+        let negativeArtwork = Preset(
+            identifier: "negative-artwork",
+            name: "Negative artwork",
+            artwork: ArtworkRequirement(minimumWidth: -1)
+        )
+
+        XCTAssertThrowsError(try PresetResolver().resolve(zeroSampleRate)) { error in
+            XCTAssertEqual(error as? PreflightError, .invalidPreset(field: "audio.sampleRate", reason: "The bound must be greater than zero."))
+        }
+        XCTAssertThrowsError(try PresetResolver().resolve(fractionalBitDepth)) { error in
+            XCTAssertEqual(error as? PreflightError, .invalidPreset(field: "audio.bitDepth", reason: "The bound must be an integer."))
+        }
+        XCTAssertThrowsError(try PresetResolver().resolve(fractionalChannels)) { error in
+            XCTAssertEqual(error as? PreflightError, .invalidPreset(field: "roles.main.channelCount", reason: "The bound must be an integer."))
+        }
+        XCTAssertThrowsError(try PresetResolver().resolve(negativeArtwork)) { error in
+            XCTAssertEqual(error as? PreflightError, .invalidPreset(field: "artwork.minimumWidth", reason: "The minimum must be greater than zero."))
+        }
+    }
+
+    func testArtworkRequirementDecodingRejectsFractionalDimensions() throws {
+        let data = Data("{\"minimumWidth\":100.5,\"minimumHeight\":null,\"requiresSquare\":false,\"severity\":\"warning\"}".utf8)
+
+        XCTAssertThrowsError(try JSONDecoder().decode(ArtworkRequirement.self, from: data))
+    }
+
+    private func encodedObject(_ preset: ResolvedPreset) throws -> [String: Any] {
+        try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(preset)) as? [String: Any])
+    }
 }

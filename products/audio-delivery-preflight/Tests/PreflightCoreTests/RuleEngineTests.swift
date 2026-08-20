@@ -47,6 +47,28 @@ final class RuleEngineTests: XCTestCase {
         XCTAssertEqual(finding.origin, .preset)
     }
 
+    func testDigitalReleaseDoesNotTreatUnmasteredOrMasteringNotesAsMainMaster() throws {
+        let preset = try PresetResolver().resolve(BuiltInPresets.digitalRelease)
+        let entries = [audio("Masters/Unmastered.wav"), audio("Masters/Mastering Notes.wav")]
+
+        let finding = try XCTUnwrap(evaluate(entries, preset: preset).first { $0.ruleID == "role.missing.main-master" })
+
+        XCTAssertEqual(finding.severity, .error)
+        XCTAssertFalse(evaluate(entries, preset: preset).contains { $0.ruleID == "role.ambiguous.main-master" })
+    }
+
+    func testResolvedRoleBearingPresetRetainsRoleEvaluationAcrossCodableBoundary() throws {
+        let preset = Preset(
+            identifier: "custom-role",
+            name: "Custom role",
+            roles: [DeliveryRole(identifier: "required-file", pattern: "(?i)required\\.wav$", required: true, category: .audio, readability: .error, severity: .error, ambiguitySeverity: .warning)]
+        )
+        let resolved = try PresetResolver().resolve(preset)
+        let decoded = try JSONDecoder().decode(ResolvedPreset.self, from: JSONEncoder().encode(resolved))
+
+        XCTAssertFalse(evaluate([audio("Delivery/required.wav")], preset: decoded).contains { $0.ruleID == "role.missing.required-file" })
+    }
+
     func testMultipleMainMastersProduceAmbiguityWithoutSilentWinner() throws {
         let preset = try PresetResolver().resolve(BuiltInPresets.digitalRelease)
         let entries = [audio("Masters/Main Master.wav"), audio("Masters/Main Master v2.wav")]

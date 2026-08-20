@@ -186,9 +186,5 @@ private extension Finding {
 }
 
 private extension ResolvedPreset {
-    static let fixture = ResolvedPreset(
-        identifier: "test",
-        name: "Test preset",
-        requirements: []
-    )
+    static let fixture = try! PresetResolver().resolve(Preset(identifier: "test", name: "Test preset"))
 }

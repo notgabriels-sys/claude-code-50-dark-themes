@@ -220,6 +220,17 @@ public struct PresetResolver: PresetResolving {
 
     private func validate(_ constraint: NumericConstraint?, field: String) throws {
         guard let constraint else { return }
+        for value in [constraint.minimum, constraint.maximum].compactMap({ $0 }) {
+            guard value.isFinite else {
+                throw PreflightError.invalidPreset(field: field, reason: "The bound must be finite.")
+            }
+            guard value > 0 else {
+                throw PreflightError.invalidPreset(field: field, reason: "The bound must be greater than zero.")
+            }
+            guard value.rounded() == value else {
+                throw PreflightError.invalidPreset(field: field, reason: "The bound must be an integer.")
+            }
+        }
         if let minimum = constraint.minimum, let maximum = constraint.maximum, minimum > maximum {
             throw PreflightError.invalidPreset(field: field, reason: "The minimum cannot exceed the maximum.")
         }

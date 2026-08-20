@@ -331,21 +331,6 @@ public struct ResolvedPreset: Sendable, Codable, Equatable {
     public let definition: Preset
     let compiledRoles: [CompiledDeliveryRole]
 
-    public init(
-        schemaVersion: String = "1.0",
-        identifier: String,
-        name: String,
-        requirements: [ResolvedRequirement],
-        definition: Preset? = nil
-    ) {
-        self.schemaVersion = schemaVersion
-        self.identifier = identifier
-        self.name = name
-        self.requirements = requirements
-        self.definition = definition ?? Preset(identifier: identifier, name: name)
-        self.compiledRoles = []
-    }
-
     init(
         schemaVersion: String,
         identifier: String,
@@ -378,14 +363,20 @@ public struct ResolvedPreset: Sendable, Codable, Equatable {
         let requirements = try container.decode([ResolvedRequirement].self, forKey: .requirements)
         let definition = try container.decode(Preset.self, forKey: .definition)
         let resolvedDefinition = try PresetResolver().resolve(definition)
-        self.init(
-            schemaVersion: schemaVersion,
-            identifier: identifier,
-            name: name,
-            requirements: requirements,
-            definition: definition,
-            compiledRoles: resolvedDefinition.compiledRoles
-        )
+
+        guard schemaVersion == resolvedDefinition.schemaVersion else {
+            throw DecodingError.dataCorruptedError(forKey: .schemaVersion, in: container, debugDescription: "The resolved preset schema version does not match its definition.")
+        }
+        guard identifier == resolvedDefinition.identifier else {
+            throw DecodingError.dataCorruptedError(forKey: .identifier, in: container, debugDescription: "The resolved preset identifier does not match its definition.")
+        }
+        guard name == resolvedDefinition.name else {
+            throw DecodingError.dataCorruptedError(forKey: .name, in: container, debugDescription: "The resolved preset name does not match its definition.")
+        }
+        guard requirements == resolvedDefinition.requirements else {
+            throw DecodingError.dataCorruptedError(forKey: .requirements, in: container, debugDescription: "The resolved preset requirements do not match its definition.")
+        }
+        self = resolvedDefinition
     }
 
     public func encode(to encoder: Encoder) throws {
