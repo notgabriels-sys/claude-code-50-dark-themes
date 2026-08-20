@@ -89,6 +89,15 @@ public struct ScanService: ScanServicing, Sendable {
                     finding: rootAccessFinding(engineVersion: request.engineVersion)
                 )
             }
+            try Task.checkCancellation()
+            guard !postInventoryHasIncompleteEvidence(postInventory) else {
+                return incompleteResult(
+                    request: request,
+                    root: root,
+                    startedAt: startedAt,
+                    finding: rootAccessFinding(engineVersion: request.engineVersion)
+                )
+            }
             let after = try fingerprinting.fingerprint(root: root, entries: postInventory.entries)
             if !before.matches(after) {
                 findings.append(sourceChangedFinding(engineVersion: request.engineVersion))
@@ -261,6 +270,17 @@ public struct ScanService: ScanServicing, Sendable {
             origin: .engine,
             engineVersion: engineVersion
         )
+    }
+
+    private func postInventoryHasIncompleteEvidence(_ snapshot: InventorySnapshot) -> Bool {
+        snapshot.findings.contains { finding in
+            switch finding.ruleID {
+            case "filesystem.enumeration-failed", "filesystem.metadata-unreadable":
+                true
+            default:
+                false
+            }
+        }
     }
 
     private func failureFinding(for error: Error, engineVersion: String) -> Finding {

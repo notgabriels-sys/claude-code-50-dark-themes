@@ -45,8 +45,7 @@ public struct SourceFingerprint: Sendable, Codable, Equatable {
     }
 
     public init(entries: [InventoryEntry]) {
-        self.files = Self.files(from: entries)
-        self.inventoryWitness = Self.inventoryWitness(from: entries)
+        self.init(files: Self.files(from: entries), inventoryWitness: Self.inventoryWitness(from: entries))
     }
 
     public func fingerprint(root: URL, entries: [InventoryEntry]) throws -> SourceFingerprint {

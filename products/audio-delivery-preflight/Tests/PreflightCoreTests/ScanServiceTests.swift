@@ -199,6 +199,45 @@ final class ScanServiceTests: XCTestCase {
         XCTAssertFalse(result.findings[0].explanation.contains(fixture.root.path))
     }
 
+    func testPartialPostInventoryEnumerationFailureReturnsTypedIncompleteResult() async throws {
+        let fixture = try ScanPackageFixture.make()
+        defer { fixture.remove() }
+        let preset = try PresetResolver().resolve(BuiltInPresets.digitalRelease)
+        let service = ScanService(
+            inventory: PartialPostInventoryWithEnumerationFailure(),
+            checksums: ChecksumService(),
+            audioInspector: AudioInspector(),
+            imageInspector: ImageInspector(),
+            presetResolver: PresetResolver(),
+            ruleEngine: RuleEngine(),
+            fingerprinting: SourceFingerprint(),
+            now: { Date(timeIntervalSince1970: 1_000) }
+        )
+
+        let result = await service.scan(request(root: fixture.root, preset: preset))
+
+        XCTAssertNoThrow(try FileManager.default.destinationOfSymbolicLink(atPath: fixture.root.appendingPathComponent("Masters/.post-scan-hidden-link").path))
+        XCTAssertEqual(result.overallStatus, .incomplete)
+        XCTAssertEqual(result.findings.map(\.ruleID), ["filesystem.root-access-failed"])
+        let rootFinding = result.findings.first { $0.ruleID == "filesystem.root-access-failed" }
+        XCTAssertTrue(rootFinding?.affectedPaths.isEmpty ?? false)
+        XCTAssertFalse(rootFinding?.explanation.contains(fixture.root.path) ?? true)
+        XCTAssertFalse(result.findings.contains { $0.explanation.contains("/dev/null") })
+        XCTAssertNotEqual(result.overallStatus, .ready)
+    }
+
+    func testPublicSourceFingerprintInitializerUsesCanonicalOrdering() throws {
+        let master = try entry("Masters/Main Master.wav", category: .audio)
+        let artwork = try entry("Artwork/Cover.png", category: .artwork)
+
+        let first = SourceFingerprint(entries: [master, artwork])
+        let reordered = SourceFingerprint(entries: [artwork, master])
+
+        XCTAssertEqual(first.files.map(\.relativePath.value), ["Artwork/Cover.png", "Masters/Main Master.wav"])
+        XCTAssertEqual(first.inventoryWitness.map(\.relativePath.value), ["Artwork/Cover.png", "Masters/Main Master.wav"])
+        XCTAssertTrue(first.matches(reordered))
+    }
+
     func testSymlinkAddedDuringScanProducesSourceChangedWithoutFollowingTarget() async throws {
         let fixture = try ScanPackageFixture.make()
         defer { fixture.remove() }
@@ -359,6 +398,39 @@ private actor SecondInventoryRootRemoving: FileInventorying {
             try FileManager.default.removeItem(at: root)
         }
         return try await FileInventory().inventory(root: root)
+    }
+}
+
+private actor PartialPostInventoryWithEnumerationFailure: FileInventorying {
+    private var firstSnapshot: InventorySnapshot?
+
+    func inventory(root: URL) async throws -> InventorySnapshot {
+        if let firstSnapshot {
+            let hiddenLink = root.appendingPathComponent("Masters/.post-scan-hidden-link")
+            try FileManager.default.createSymbolicLink(
+                at: hiddenLink,
+                withDestinationURL: URL(fileURLWithPath: "/dev/null")
+            )
+            return InventorySnapshot(
+                entries: firstSnapshot.entries,
+                findings: [Finding(
+                    ruleID: "filesystem.enumeration-failed",
+                    severity: .warning,
+                    title: "Directory entry could not be enumerated",
+                    explanation: "The directory entry could not be enumerated safely.",
+                    affectedPaths: [try RelativePath("Masters")],
+                    evidence: [],
+                    expected: "A bounded inventory of the selected root.",
+                    suggestedAction: "Review the affected filesystem entry.",
+                    origin: .engine,
+                    engineVersion: "test-engine"
+                )]
+            )
+        }
+
+        let snapshot = try await FileInventory().inventory(root: root)
+        firstSnapshot = snapshot
+        return snapshot
     }
 }
 

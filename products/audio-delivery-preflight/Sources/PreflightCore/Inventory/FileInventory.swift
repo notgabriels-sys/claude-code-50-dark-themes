@@ -98,7 +98,7 @@ public struct FileInventory: FileInventorying {
             } catch {
                 entries.append(Self.entry(relativePath: relativePath, url: standardizedURL, values: nil, kind: .special))
                 findings.append(Self.finding(
-                    ruleID: "filesystem.resource-read-failed",
+                    ruleID: "filesystem.metadata-unreadable",
                     severity: .warning,
                     title: "Directory entry metadata could not be read",
                     explanation: "The directory entry metadata could not be read safely.",
