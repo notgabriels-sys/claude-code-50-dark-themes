@@ -328,17 +328,81 @@ public struct ResolvedPreset: Sendable, Codable, Equatable {
     public let identifier: String
     public let name: String
     public let requirements: [ResolvedRequirement]
+    public let definition: Preset
+    let compiledRoles: [CompiledDeliveryRole]
 
     public init(
         schemaVersion: String = "1.0",
         identifier: String,
         name: String,
-        requirements: [ResolvedRequirement]
+        requirements: [ResolvedRequirement],
+        definition: Preset? = nil
     ) {
         self.schemaVersion = schemaVersion
         self.identifier = identifier
         self.name = name
         self.requirements = requirements
+        self.definition = definition ?? Preset(identifier: identifier, name: name)
+        self.compiledRoles = []
+    }
+
+    init(
+        schemaVersion: String,
+        identifier: String,
+        name: String,
+        requirements: [ResolvedRequirement],
+        definition: Preset,
+        compiledRoles: [CompiledDeliveryRole]
+    ) {
+        self.schemaVersion = schemaVersion
+        self.identifier = identifier
+        self.name = name
+        self.requirements = requirements
+        self.definition = definition
+        self.compiledRoles = compiledRoles
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case schemaVersion
+        case identifier
+        case name
+        case requirements
+        case definition
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let schemaVersion = try container.decode(String.self, forKey: .schemaVersion)
+        let identifier = try container.decode(String.self, forKey: .identifier)
+        let name = try container.decode(String.self, forKey: .name)
+        let requirements = try container.decode([ResolvedRequirement].self, forKey: .requirements)
+        let definition = try container.decode(Preset.self, forKey: .definition)
+        let resolvedDefinition = try PresetResolver().resolve(definition)
+        self.init(
+            schemaVersion: schemaVersion,
+            identifier: identifier,
+            name: name,
+            requirements: requirements,
+            definition: definition,
+            compiledRoles: resolvedDefinition.compiledRoles
+        )
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(schemaVersion, forKey: .schemaVersion)
+        try container.encode(identifier, forKey: .identifier)
+        try container.encode(name, forKey: .name)
+        try container.encode(requirements, forKey: .requirements)
+        try container.encode(definition, forKey: .definition)
+    }
+
+    public static func == (left: ResolvedPreset, right: ResolvedPreset) -> Bool {
+        left.schemaVersion == right.schemaVersion
+            && left.identifier == right.identifier
+            && left.name == right.name
+            && left.requirements == right.requirements
+            && left.definition == right.definition
     }
 }
 
