@@ -1,7 +1,6 @@
 import AVFoundation
 import AudioToolbox
 import CoreMedia
-import Darwin
 import Foundation
 
 public struct InspectionOutcome<Value: Sendable>: Sendable {
@@ -23,43 +22,49 @@ public protocol AudioInspecting: Sendable {
 public struct AudioInspector: AudioInspecting {
     private let stagingDirectory: URL
     private let onBeforeOpeningPathComponent: TrustedFileAccess.OpenPathComponentHook?
+    private let onAfterCopyingChunk: TrustedFileAccess.CopyProgressHook?
 
     public init() {
-        self.stagingDirectory = FileManager.default.temporaryDirectory
+        self.stagingDirectory = FileManager.default.temporaryDirectory.resolvingSymlinksInPath()
         self.onBeforeOpeningPathComponent = nil
+        self.onAfterCopyingChunk = nil
     }
 
     init(onBeforeOpeningPathComponent: @escaping TrustedFileAccess.OpenPathComponentHook) {
-        self.stagingDirectory = FileManager.default.temporaryDirectory
+        self.stagingDirectory = FileManager.default.temporaryDirectory.resolvingSymlinksInPath()
         self.onBeforeOpeningPathComponent = onBeforeOpeningPathComponent
+        self.onAfterCopyingChunk = nil
     }
 
     init(
         stagingDirectory: URL,
-        onBeforeOpeningPathComponent: TrustedFileAccess.OpenPathComponentHook? = nil
+        onBeforeOpeningPathComponent: TrustedFileAccess.OpenPathComponentHook? = nil,
+        onAfterCopyingChunk: TrustedFileAccess.CopyProgressHook? = nil
     ) {
         self.stagingDirectory = stagingDirectory
         self.onBeforeOpeningPathComponent = onBeforeOpeningPathComponent
+        self.onAfterCopyingChunk = onAfterCopyingChunk
     }
 
     public func inspect(source: TrustedMediaSource) async -> InspectionOutcome<AudioProperties> {
         do {
-            let contents = try TrustedFileAccess.readRegularFile(
+            let snapshot = try TrustedFileAccess.stageRegularFile(
                 source: source,
-                onBeforeOpeningPathComponent: onBeforeOpeningPathComponent
+                in: stagingDirectory,
+                onBeforeOpeningPathComponent: onBeforeOpeningPathComponent,
+                onAfterCopyingChunk: onAfterCopyingChunk
             )
-            let candidate = Self.contentCandidate(for: contents.data)
-            let stagingURL = try Self.createStagingFile(data: contents.data, in: stagingDirectory)
-            defer { try? FileManager.default.removeItem(at: stagingURL) }
+            defer { try? FileManager.default.removeItem(at: snapshot.stagingURL) }
+            let candidate = Self.contentCandidate(for: snapshot.header)
 
             let asset: AVURLAsset
             if let candidate {
                 asset = AVURLAsset(
-                    url: stagingURL,
+                    url: snapshot.stagingURL,
                     options: [AVURLAssetOverrideMIMETypeKey: candidate.mimeType]
                 )
             } else {
-                asset = AVURLAsset(url: stagingURL)
+                asset = AVURLAsset(url: snapshot.stagingURL)
             }
             return try await Self.inspect(asset: asset, container: candidate?.container)
         } catch {
@@ -92,37 +97,6 @@ public struct AudioInspector: AudioInspecting {
         )
     }
 
-    private static func createStagingFile(data: Data, in directory: URL) throws -> URL {
-        guard directory.isFileURL else {
-            throw InspectionError.invalidStagingDirectory
-        }
-        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        var template = directory.appendingPathComponent("audio-inspector-XXXXXXXX").path.utf8CString
-        let descriptor = template.withUnsafeMutableBufferPointer { buffer in
-            Darwin.mkstemp(buffer.baseAddress!)
-        }
-        guard descriptor >= 0 else {
-            throw InspectionError.stagingCreationFailed
-        }
-        let path = template.withUnsafeBufferPointer { buffer in
-            String(cString: buffer.baseAddress!)
-        }
-        let url = URL(fileURLWithPath: path)
-        var completed = false
-        defer {
-            Darwin.close(descriptor)
-            if !completed {
-                try? FileManager.default.removeItem(at: url)
-            }
-        }
-        guard Darwin.fchmod(descriptor, S_IRUSR | S_IWUSR) == 0 else {
-            throw InspectionError.stagingPermissionFailed
-        }
-        try FileHandle(fileDescriptor: descriptor, closeOnDealloc: false).write(contentsOf: data)
-        completed = true
-        return url
-    }
-
     private static func streamDescription(from description: CMFormatDescription) -> AudioStreamBasicDescription? {
         guard CMFormatDescriptionGetMediaType(description) == kCMMediaType_Audio else {
             return nil
@@ -152,11 +126,21 @@ public struct AudioInspector: AudioInspecting {
     }
 
     private static func encodingName(from streamDescription: AudioStreamBasicDescription) -> String? {
-        switch streamDescription.mFormatID {
+        encodingName(for: streamDescription.mFormatID)
+    }
+
+    static func encodingName(for formatID: AudioFormatID) -> String? {
+        switch formatID {
         case kAudioFormatLinearPCM:
             "Linear PCM"
         case kAudioFormatMPEG4AAC:
             "AAC"
+        case kAudioFormatAppleLossless:
+            "ALAC"
+        case kAudioFormatMPEGLayer3:
+            "MP3"
+        case kAudioFormatFLAC:
+            "FLAC"
         default:
             nil
         }
@@ -191,9 +175,6 @@ public struct AudioInspector: AudioInspecting {
     }
 
     private enum InspectionError: Error {
-        case invalidStagingDirectory
-        case stagingCreationFailed
-        case stagingPermissionFailed
         case noAudioTrack
     }
 }

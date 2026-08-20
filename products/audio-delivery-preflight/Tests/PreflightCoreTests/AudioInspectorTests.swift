@@ -1,3 +1,4 @@
+import AudioToolbox
 import Foundation
 import XCTest
 @testable import PreflightCore
@@ -48,6 +49,13 @@ final class AudioInspectorTests: XCTestCase {
         XCTAssertEqual(outcome.value?.channelCount, 1)
         XCTAssertEqual(outcome.value?.sampleRate, 44_100)
         XCTAssertNil(outcome.value?.pcmBitDepth)
+    }
+
+    func testFrameworkProvenCompressedIdentifiersMapToStableNamesAndUnknownRemainsNil() {
+        XCTAssertEqual(AudioInspector.encodingName(for: kAudioFormatAppleLossless), "ALAC")
+        XCTAssertEqual(AudioInspector.encodingName(for: kAudioFormatMPEGLayer3), "MP3")
+        XCTAssertEqual(AudioInspector.encodingName(for: kAudioFormatFLAC), "FLAC")
+        XCTAssertNil(AudioInspector.encodingName(for: 0x3F3F3F3F))
     }
 
     func testWAVBytesNamedMP3ReportValidatedWAVContainer() async throws {
@@ -128,6 +136,72 @@ final class AudioInspectorTests: XCTestCase {
         XCTAssertEqual(successOutcome.status, .succeeded)
         XCTAssertEqual(try fixture.stagingFiles(), [])
         XCTAssertEqual(failureOutcome.status, .failed)
+        XCTAssertEqual(try fixture.stagingFiles(), [])
+    }
+
+    func testGrowingAudioSourceIsRejectedWithoutCopyingBeyondInitialSnapshot() async throws {
+        let fixture = try InspectionFixture.make()
+        defer { fixture.remove() }
+        let originalData = FixtureFactory.wavData(
+            channels: 1,
+            sampleRate: 44_100,
+            bitDepth: 16,
+            frameCount: 44_100
+        )
+        let path = try fixture.write(originalData, to: "Masters/growing.wav")
+        let mutation = OneShotMutation()
+        let progress = CopyProgressRecorder()
+        let appendedData = Data(repeating: 0xA5, count: 32 * 1_024)
+        let inspector = AudioInspector(
+            stagingDirectory: fixture.stagingDirectory,
+            onAfterCopyingChunk: { relativePath, copiedByteCount in
+                guard relativePath == path else { return }
+                progress.record(copiedByteCount)
+                mutation.perform {
+                    try fixture.append(appendedData, to: path)
+                }
+            }
+        )
+
+        let outcome = await inspector.inspect(source: fixture.source(path))
+
+        XCTAssertTrue(mutation.didPerform)
+        XCTAssertNil(mutation.error)
+        XCTAssertEqual(progress.maximumByteCount, Int64(originalData.count))
+        XCTAssertEqual(try fixture.byteSize(of: path), Int64(originalData.count + appendedData.count))
+        XCTAssertEqual(outcome.status, .failed)
+        XCTAssertEqual(outcome.value?.isReadable, false)
+        XCTAssertEqual(try fixture.stagingFiles(), [])
+    }
+
+    func testSameSizeAudioSourceMutationIsRejected() async throws {
+        let fixture = try InspectionFixture.make()
+        defer { fixture.remove() }
+        let originalData = FixtureFactory.wavData(
+            channels: 1,
+            sampleRate: 44_100,
+            bitDepth: 16,
+            frameCount: 44_100
+        )
+        let path = try fixture.write(originalData, to: "Masters/mutating.wav")
+        let mutation = OneShotMutation()
+        let inspector = AudioInspector(
+            stagingDirectory: fixture.stagingDirectory,
+            onAfterCopyingChunk: { relativePath, _ in
+                guard relativePath == path else { return }
+                mutation.perform {
+                    try fixture.overwriteLastByte(of: path, with: 0x7F)
+                }
+            }
+        )
+
+        let outcome = await inspector.inspect(source: fixture.source(path))
+
+        XCTAssertTrue(mutation.didPerform)
+        XCTAssertNil(mutation.error)
+        XCTAssertEqual(try fixture.byteSize(of: path), Int64(originalData.count))
+        XCTAssertEqual(outcome.status, .failed)
+        XCTAssertEqual(outcome.value?.isReadable, false)
         XCTAssertEqual(try fixture.stagingFiles(), [])
     }
 }

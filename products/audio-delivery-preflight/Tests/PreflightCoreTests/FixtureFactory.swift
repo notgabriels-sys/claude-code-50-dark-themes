@@ -187,6 +187,38 @@ final class InspectionFixture: @unchecked Sendable {
         return url
     }
 
+    func append(_ data: Data, to relativePath: RelativePath) throws {
+        let handle = try FileHandle(forWritingTo: root.appendingPathComponent(relativePath.value))
+        defer { try? handle.close() }
+        try handle.seekToEnd()
+        try handle.write(contentsOf: data)
+    }
+
+    func overwriteLastByte(of relativePath: RelativePath, with byte: UInt8) throws {
+        let url = root.appendingPathComponent(relativePath.value)
+        let byteSize = try byteSize(of: relativePath)
+        guard byteSize > 0 else {
+            throw InspectionFixtureError.emptyFile
+        }
+        let handle = try FileHandle(forWritingTo: url)
+        try handle.seek(toOffset: UInt64(byteSize - 1))
+        try handle.write(contentsOf: Data([byte]))
+        try handle.close()
+        try FileManager.default.setAttributes(
+            [.modificationDate: Date(timeIntervalSince1970: 946_684_800)],
+            ofItemAtPath: url.path
+        )
+    }
+
+    func byteSize(of relativePath: RelativePath) throws -> Int64 {
+        let values = try root.appendingPathComponent(relativePath.value)
+            .resourceValues(forKeys: [.fileSizeKey])
+        guard let fileSize = values.fileSize else {
+            throw InspectionFixtureError.missingFileSize
+        }
+        return Int64(fileSize)
+    }
+
     func source(_ relativePath: RelativePath) -> TrustedMediaSource {
         TrustedMediaSource(root: root, relativePath: relativePath)
     }
@@ -211,6 +243,64 @@ final class InspectionFixture: @unchecked Sendable {
         try? FileManager.default.removeItem(at: root)
         try? FileManager.default.removeItem(at: externalRoot)
         try? FileManager.default.removeItem(at: stagingDirectory)
+    }
+}
+
+private enum InspectionFixtureError: Error {
+    case emptyFile
+    case missingFileSize
+}
+
+final class OneShotMutation: @unchecked Sendable {
+    private let lock = NSLock()
+    private var hasPerformed = false
+    private var storedError: Error?
+
+    var didPerform: Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return hasPerformed
+    }
+
+    var error: Error? {
+        lock.lock()
+        defer { lock.unlock() }
+        return storedError
+    }
+
+    func perform(_ operation: () throws -> Void) {
+        lock.lock()
+        guard !hasPerformed else {
+            lock.unlock()
+            return
+        }
+        hasPerformed = true
+        lock.unlock()
+
+        do {
+            try operation()
+        } catch {
+            lock.lock()
+            storedError = error
+            lock.unlock()
+        }
+    }
+}
+
+final class CopyProgressRecorder: @unchecked Sendable {
+    private let lock = NSLock()
+    private var byteCounts: [Int64] = []
+
+    var maximumByteCount: Int64? {
+        lock.lock()
+        defer { lock.unlock() }
+        return byteCounts.max()
+    }
+
+    func record(_ byteCount: Int64) {
+        lock.lock()
+        byteCounts.append(byteCount)
+        lock.unlock()
     }
 }
 

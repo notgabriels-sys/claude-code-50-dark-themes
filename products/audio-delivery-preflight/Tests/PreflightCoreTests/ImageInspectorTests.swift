@@ -92,4 +92,37 @@ final class ImageInspectorTests: XCTestCase {
         XCTAssertEqual(outcome.status, .failed)
         XCTAssertEqual(outcome.value?.isReadable, false)
     }
+
+    func testGrowingImageSourceIsRejectedWithoutCopyingBeyondInitialSnapshot() throws {
+        let fixture = try InspectionFixture.make()
+        defer { fixture.remove() }
+        let imageURL = try FixtureFactory.png(width: 300, height: 300, alpha: true)
+        defer { try? FileManager.default.removeItem(at: imageURL) }
+        var originalData = try Data(contentsOf: imageURL)
+        originalData.append(Data(repeating: 0, count: 128 * 1_024))
+        let path = try fixture.write(originalData, to: "Artwork/growing.png")
+        let mutation = OneShotMutation()
+        let progress = CopyProgressRecorder()
+        let appendedData = Data(repeating: 0xA5, count: 32 * 1_024)
+        let inspector = ImageInspector(
+            stagingDirectory: fixture.stagingDirectory,
+            onAfterCopyingChunk: { relativePath, copiedByteCount in
+                guard relativePath == path else { return }
+                progress.record(copiedByteCount)
+                mutation.perform {
+                    try fixture.append(appendedData, to: path)
+                }
+            }
+        )
+
+        let outcome = inspector.inspect(source: fixture.source(path))
+
+        XCTAssertTrue(mutation.didPerform)
+        XCTAssertNil(mutation.error)
+        XCTAssertEqual(progress.maximumByteCount, Int64(originalData.count))
+        XCTAssertEqual(try fixture.byteSize(of: path), Int64(originalData.count + appendedData.count))
+        XCTAssertEqual(outcome.status, .failed)
+        XCTAssertEqual(outcome.value?.isReadable, false)
+        XCTAssertEqual(try fixture.stagingFiles(), [])
+    }
 }

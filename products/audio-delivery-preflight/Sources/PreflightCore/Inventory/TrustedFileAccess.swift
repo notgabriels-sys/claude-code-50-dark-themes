@@ -11,39 +11,77 @@ public struct TrustedMediaSource: Sendable {
     }
 }
 
-struct TrustedFileContents: Sendable {
-    let data: Data
+struct TrustedFileSnapshot: Sendable {
+    let stagingURL: URL
     let byteSize: Int64
+    let header: Data
 }
 
 enum TrustedFileAccess {
-    typealias OpenPathComponentHook = @Sendable (RelativePath, Int) -> Void
+    private static let copyChunkSize = 64 * 1_024
+    private static let headerByteCount = 12
 
-    static func readRegularFile(
+    typealias OpenPathComponentHook = @Sendable (RelativePath, Int) -> Void
+    typealias CopyProgressHook = @Sendable (RelativePath, Int64) -> Void
+
+    static func stageRegularFile(
         source: TrustedMediaSource,
-        onBeforeOpeningPathComponent: OpenPathComponentHook? = nil
-    ) throws -> TrustedFileContents {
+        in stagingDirectory: URL,
+        onBeforeOpeningPathComponent: OpenPathComponentHook? = nil,
+        onAfterCopyingChunk: CopyProgressHook? = nil
+    ) throws -> TrustedFileSnapshot {
         let rootDescriptor = try openTrustedRoot(at: source.root)
         defer { Darwin.close(rootDescriptor) }
-        let fileDescriptor = try openRegularFile(
+        let sourceDescriptor = try openRegularFile(
             relativePath: source.relativePath,
             from: rootDescriptor,
             onBeforeOpeningPathComponent: onBeforeOpeningPathComponent
         )
-        defer { Darwin.close(fileDescriptor) }
+        defer { Darwin.close(sourceDescriptor) }
 
-        var fileStatus = stat()
-        guard Darwin.fstat(fileDescriptor, &fileStatus) == 0 else {
-            throw TrustedFileAccessError.statusFailed
+        let initialStatus = try status(of: sourceDescriptor)
+        guard initialStatus.st_size >= 0 else {
+            throw TrustedFileAccessError.invalidFileSize
         }
 
-        let handle = FileHandle(fileDescriptor: fileDescriptor, closeOnDealloc: false)
-        var data = Data()
-        while let chunk = try handle.read(upToCount: 64 * 1024), !chunk.isEmpty {
-            data.append(chunk)
+        let stagingFile = try createStagingFile(in: stagingDirectory)
+        var completed = false
+        defer {
+            Darwin.close(stagingFile.descriptor)
+            if !completed {
+                try? FileManager.default.removeItem(at: stagingFile.url)
+            }
         }
 
-        return TrustedFileContents(data: data, byteSize: Int64(fileStatus.st_size))
+        try requireSufficientCapacity(
+            for: Int64(initialStatus.st_size),
+            onFileSystemContaining: stagingFile.descriptor
+        )
+        let header = try copyExactly(
+            Int64(initialStatus.st_size),
+            from: sourceDescriptor,
+            to: stagingFile.descriptor,
+            relativePath: source.relativePath,
+            onAfterCopyingChunk: onAfterCopyingChunk
+        )
+        let finalSourceStatus = try status(of: sourceDescriptor)
+        guard sourceIsUnchanged(from: initialStatus, to: finalSourceStatus) else {
+            throw TrustedFileAccessError.sourceChanged
+        }
+        let stagingStatus = try status(of: stagingFile.descriptor)
+        guard stagingStatus.st_size == initialStatus.st_size else {
+            throw TrustedFileAccessError.incompleteCopy
+        }
+        guard Darwin.fsync(stagingFile.descriptor) == 0 else {
+            throw TrustedFileAccessError.writeFailed
+        }
+
+        completed = true
+        return TrustedFileSnapshot(
+            stagingURL: stagingFile.url,
+            byteSize: Int64(initialStatus.st_size),
+            header: header
+        )
     }
 
     static func openTrustedRoot(at root: URL) throws -> Int32 {
@@ -145,6 +183,152 @@ enum TrustedFileAccess {
         return descriptor
     }
 
+    private static func createStagingFile(in directory: URL) throws -> (url: URL, descriptor: Int32) {
+        guard directory.isFileURL else {
+            throw TrustedFileAccessError.nonFileStagingDirectory
+        }
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        var template = directory.appendingPathComponent("media-inspector-XXXXXXXX").path.utf8CString
+        let descriptor = template.withUnsafeMutableBufferPointer { buffer in
+            Darwin.mkstemp(buffer.baseAddress!)
+        }
+        guard descriptor >= 0 else {
+            throw TrustedFileAccessError.stagingCreationFailed
+        }
+        let path = template.withUnsafeBufferPointer { buffer in
+            String(cString: buffer.baseAddress!)
+        }
+        let url = URL(fileURLWithPath: path)
+        guard Darwin.fchmod(descriptor, S_IRUSR | S_IWUSR) == 0 else {
+            Darwin.close(descriptor)
+            try? FileManager.default.removeItem(at: url)
+            throw TrustedFileAccessError.stagingPermissionFailed
+        }
+        return (url, descriptor)
+    }
+
+    private static func requireSufficientCapacity(
+        for byteSize: Int64,
+        onFileSystemContaining descriptor: Int32
+    ) throws {
+        guard byteSize >= 0 else {
+            throw TrustedFileAccessError.invalidFileSize
+        }
+        var fileSystemStatus = statfs()
+        guard Darwin.fstatfs(descriptor, &fileSystemStatus) == 0 else {
+            throw TrustedFileAccessError.capacityCheckFailed
+        }
+        let (availableBytes, overflow) = UInt64(fileSystemStatus.f_bavail)
+            .multipliedReportingOverflow(by: UInt64(fileSystemStatus.f_bsize))
+        guard overflow || UInt64(byteSize) <= availableBytes else {
+            throw TrustedFileAccessError.insufficientStagingCapacity
+        }
+    }
+
+    private static func copyExactly(
+        _ byteSize: Int64,
+        from sourceDescriptor: Int32,
+        to destinationDescriptor: Int32,
+        relativePath: RelativePath,
+        onAfterCopyingChunk: CopyProgressHook?
+    ) throws -> Data {
+        var buffer = [UInt8](repeating: 0, count: copyChunkSize)
+        var remainingByteCount = byteSize
+        var copiedByteCount: Int64 = 0
+        var header = Data()
+
+        while remainingByteCount > 0 {
+            let requestedByteCount = min(buffer.count, Int(remainingByteCount))
+            let readByteCount = try read(
+                from: sourceDescriptor,
+                into: &buffer,
+                byteCount: requestedByteCount
+            )
+            guard readByteCount > 0 else {
+                throw TrustedFileAccessError.incompleteCopy
+            }
+
+            if header.count < headerByteCount {
+                let headerBytesNeeded = min(headerByteCount - header.count, readByteCount)
+                header.append(contentsOf: buffer.prefix(headerBytesNeeded))
+            }
+            try write(
+                buffer,
+                byteCount: readByteCount,
+                to: destinationDescriptor
+            )
+            copiedByteCount += Int64(readByteCount)
+            remainingByteCount -= Int64(readByteCount)
+            onAfterCopyingChunk?(relativePath, copiedByteCount)
+        }
+
+        return header
+    }
+
+    private static func read(
+        from descriptor: Int32,
+        into buffer: inout [UInt8],
+        byteCount: Int
+    ) throws -> Int {
+        while true {
+            let result = buffer.withUnsafeMutableBytes { bytes in
+                Darwin.read(descriptor, bytes.baseAddress, byteCount)
+            }
+            if result >= 0 {
+                return result
+            }
+            guard errno == EINTR else {
+                throw TrustedFileAccessError.readFailed
+            }
+        }
+    }
+
+    private static func write(
+        _ buffer: [UInt8],
+        byteCount: Int,
+        to descriptor: Int32
+    ) throws {
+        var writtenByteCount = 0
+        while writtenByteCount < byteCount {
+            let result = buffer.withUnsafeBytes { bytes in
+                Darwin.write(
+                    descriptor,
+                    bytes.baseAddress?.advanced(by: writtenByteCount),
+                    byteCount - writtenByteCount
+                )
+            }
+            if result > 0 {
+                writtenByteCount += result
+            } else if result < 0, errno == EINTR {
+                continue
+            } else {
+                throw TrustedFileAccessError.writeFailed
+            }
+        }
+    }
+
+    private static func status(of descriptor: Int32) throws -> stat {
+        var fileStatus = stat()
+        guard Darwin.fstat(descriptor, &fileStatus) == 0 else {
+            throw TrustedFileAccessError.statusFailed
+        }
+        return fileStatus
+    }
+
+    private static func sourceIsUnchanged(from initial: stat, to final: stat) -> Bool {
+        initial.st_dev == final.st_dev
+            && initial.st_ino == final.st_ino
+            && initial.st_mode == final.st_mode
+            && initial.st_nlink == final.st_nlink
+            && initial.st_uid == final.st_uid
+            && initial.st_gid == final.st_gid
+            && initial.st_size == final.st_size
+            && initial.st_mtimespec.tv_sec == final.st_mtimespec.tv_sec
+            && initial.st_mtimespec.tv_nsec == final.st_mtimespec.tv_nsec
+            && initial.st_ctimespec.tv_sec == final.st_ctimespec.tv_sec
+            && initial.st_ctimespec.tv_nsec == final.st_ctimespec.tv_nsec
+    }
+
     private static func requireDirectory(_ descriptor: Int32) throws {
         var fileStatus = stat()
         guard Darwin.fstat(descriptor, &fileStatus) == 0 else {
@@ -167,9 +351,19 @@ enum TrustedFileAccess {
 }
 
 enum TrustedFileAccessError: Error {
+    case capacityCheckFailed
+    case incompleteCopy
+    case insufficientStagingCapacity
     case invalidRelativePath
+    case invalidFileSize
     case nonFileRoot
+    case nonFileStagingDirectory
     case openFailed
+    case readFailed
+    case sourceChanged
+    case stagingCreationFailed
+    case stagingPermissionFailed
     case statusFailed
     case unexpectedFileKind
+    case writeFailed
 }

@@ -7,23 +7,49 @@ public protocol ImageInspecting: Sendable {
 }
 
 public struct ImageInspector: ImageInspecting {
+    private let stagingDirectory: URL
     private let onBeforeOpeningPathComponent: TrustedFileAccess.OpenPathComponentHook?
+    private let onAfterCopyingChunk: TrustedFileAccess.CopyProgressHook?
 
     public init() {
+        self.stagingDirectory = FileManager.default.temporaryDirectory.resolvingSymlinksInPath()
         self.onBeforeOpeningPathComponent = nil
+        self.onAfterCopyingChunk = nil
     }
 
     init(onBeforeOpeningPathComponent: TrustedFileAccess.OpenPathComponentHook?) {
+        self.stagingDirectory = FileManager.default.temporaryDirectory.resolvingSymlinksInPath()
         self.onBeforeOpeningPathComponent = onBeforeOpeningPathComponent
+        self.onAfterCopyingChunk = nil
+    }
+
+    init(
+        stagingDirectory: URL,
+        onBeforeOpeningPathComponent: TrustedFileAccess.OpenPathComponentHook? = nil,
+        onAfterCopyingChunk: TrustedFileAccess.CopyProgressHook? = nil
+    ) {
+        self.stagingDirectory = stagingDirectory
+        self.onBeforeOpeningPathComponent = onBeforeOpeningPathComponent
+        self.onAfterCopyingChunk = onAfterCopyingChunk
     }
 
     public func inspect(source: TrustedMediaSource) -> InspectionOutcome<ImageProperties> {
-        guard let contents = try? TrustedFileAccess.readRegularFile(
-            source: source,
-            onBeforeOpeningPathComponent: onBeforeOpeningPathComponent
-        ), let imageSource = CGImageSourceCreateWithData(contents.data as CFData, nil),
-        let sourceType = CGImageSourceGetType(imageSource),
-        let properties = CGImageSourceCopyPropertiesAtIndex(imageSource, 0, nil) as? [CFString: Any]
+        let snapshot: TrustedFileSnapshot
+        do {
+            snapshot = try TrustedFileAccess.stageRegularFile(
+                source: source,
+                in: stagingDirectory,
+                onBeforeOpeningPathComponent: onBeforeOpeningPathComponent,
+                onAfterCopyingChunk: onAfterCopyingChunk
+            )
+        } catch {
+            return Self.unreadableOutcome()
+        }
+        defer { try? FileManager.default.removeItem(at: snapshot.stagingURL) }
+
+        guard let imageSource = CGImageSourceCreateWithURL(snapshot.stagingURL as CFURL, nil),
+              let sourceType = CGImageSourceGetType(imageSource),
+              let properties = CGImageSourceCopyPropertiesAtIndex(imageSource, 0, nil) as? [CFString: Any]
         else {
             return Self.unreadableOutcome()
         }
@@ -45,7 +71,7 @@ public struct ImageInspector: ImageInspecting {
                 format: sourceType as String,
                 colorModel: properties[kCGImagePropertyColorModel] as? String,
                 hasAlpha: hasAlpha,
-                byteSize: contents.byteSize,
+                byteSize: snapshot.byteSize,
                 isReadable: true
             ),
             findings: []
