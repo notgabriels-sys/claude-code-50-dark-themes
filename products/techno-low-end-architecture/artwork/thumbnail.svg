@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="800" viewBox="0 0 800 800">
+  <rect width="800" height="800" fill="#080a0d"/>
+  <rect x="42" y="42" width="716" height="716" fill="none" stroke="#252a31"/>
+  <g font-family="Helvetica Neue, Arial, sans-serif">
+    <text x="68" y="88" fill="#d8d9d5" font-size="14" font-weight="600" letter-spacing="4">HOLOGRAM PEOPLE</text>
+    <text x="66" y="186" fill="#f1efe8" font-size="72" font-weight="800" letter-spacing="-2">TECHNO</text>
+    <text x="66" y="254" fill="#f1efe8" font-size="72" font-weight="800" letter-spacing="-2">LOW-END</text>
+    <text x="66" y="322" fill="#f1efe8" font-size="72" font-weight="800" letter-spacing="-2">ARCHITECTURE</text>
+    <text x="70" y="367" fill="#3d7cff" font-size="14" font-weight="600" letter-spacing="4">48 ORIGINAL WAV FILES</text>
+  </g>
+  <g transform="translate(68 432)">
+    <rect width="664" height="236" fill="#090c10" stroke="#1c222a"/>
+    <g stroke="#1b232d"><path d="M0 59H664M0 118H664M0 177H664"/><path d="M55 0V236M110 0V236M165 0V236M220 0V236M275 0V236M330 0V236M385 0V236M440 0V236M495 0V236M550 0V236M605 0V236"/></g>
+    <path d="M0 176 C28 163 43 207 71 181 S119 154 148 185 S198 208 225 174 S277 153 303 187 S356 207 384 171 S436 155 463 184 S515 207 543 176 S604 155 664 183" fill="none" stroke="#3d7cff" stroke-width="5"/>
+    <path d="M0 137 C41 127 66 151 104 137 S174 122 215 140 S285 151 330 133 S407 125 449 141 S530 150 575 132 S632 130 664 138" fill="none" stroke="#204e9c" stroke-width="2"/>
+    <g fill="#3d7cff">
+      <rect x="24" y="176" width="5" height="39"/><rect x="79" y="180" width="5" height="27"/><rect x="134" y="168" width="5" height="52"/>
+      <rect x="189" y="178" width="5" height="31"/><rect x="244" y="164" width="5" height="58"/><rect x="299" y="175" width="5" height="39"/>
+      <rect x="354" y="162" width="5" height="61"/><rect x="409" y="174" width="5" height="42"/><rect x="464" y="168" width="5" height="52"/>
+      <rect x="519" y="177" width="5" height="35"/><rect x="574" y="165" width="5" height="57"/><rect x="629" y="174" width="5" height="43"/>
+    </g>
+  </g>
+  <text x="68" y="718" fill="#888c91" font-family="Helvetica Neue, Arial, sans-serif" font-size="12" letter-spacing="2">SUB · STAB · RUMBLE · MOTION</text>
+</svg>
