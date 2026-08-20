@@ -3,21 +3,23 @@ import Foundation
 public enum PreflightError: Error, Sendable, Codable, Equatable {
     case invalidScanRequest(reason: String)
     case invalidPreset(field: String, reason: String)
-    case inventoryFailed(path: String, reason: String)
-    case inspectionFailed(path: String, reason: String)
+    case invalidRelativePath(reason: String)
+    case inventoryFailed(relativePath: RelativePath, reason: String)
+    case inspectionFailed(relativePath: RelativePath, reason: String)
     case exportFailed(reason: String)
     case cancelled
 
     private enum CodingKeys: String, CodingKey {
         case type
         case field
-        case path
+        case relativePath
         case reason
     }
 
     private enum Kind: String, Codable {
         case invalidScanRequest
         case invalidPreset
+        case invalidRelativePath
         case inventoryFailed
         case inspectionFailed
         case exportFailed
@@ -34,14 +36,16 @@ public enum PreflightError: Error, Sendable, Codable, Equatable {
                 field: try container.decode(String.self, forKey: .field),
                 reason: try container.decode(String.self, forKey: .reason)
             )
+        case .invalidRelativePath:
+            self = .invalidRelativePath(reason: try container.decode(String.self, forKey: .reason))
         case .inventoryFailed:
             self = .inventoryFailed(
-                path: try container.decode(String.self, forKey: .path),
+                relativePath: try container.decode(RelativePath.self, forKey: .relativePath),
                 reason: try container.decode(String.self, forKey: .reason)
             )
         case .inspectionFailed:
             self = .inspectionFailed(
-                path: try container.decode(String.self, forKey: .path),
+                relativePath: try container.decode(RelativePath.self, forKey: .relativePath),
                 reason: try container.decode(String.self, forKey: .reason)
             )
         case .exportFailed:
@@ -61,13 +65,16 @@ public enum PreflightError: Error, Sendable, Codable, Equatable {
             try container.encode(Kind.invalidPreset, forKey: .type)
             try container.encode(field, forKey: .field)
             try container.encode(reason, forKey: .reason)
-        case .inventoryFailed(let path, let reason):
-            try container.encode(Kind.inventoryFailed, forKey: .type)
-            try container.encode(path, forKey: .path)
+        case .invalidRelativePath(let reason):
+            try container.encode(Kind.invalidRelativePath, forKey: .type)
             try container.encode(reason, forKey: .reason)
-        case .inspectionFailed(let path, let reason):
+        case .inventoryFailed(let relativePath, let reason):
+            try container.encode(Kind.inventoryFailed, forKey: .type)
+            try container.encode(relativePath, forKey: .relativePath)
+            try container.encode(reason, forKey: .reason)
+        case .inspectionFailed(let relativePath, let reason):
             try container.encode(Kind.inspectionFailed, forKey: .type)
-            try container.encode(path, forKey: .path)
+            try container.encode(relativePath, forKey: .relativePath)
             try container.encode(reason, forKey: .reason)
         case .exportFailed(let reason):
             try container.encode(Kind.exportFailed, forKey: .type)

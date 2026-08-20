@@ -52,6 +52,38 @@ public enum RuleOrigin: String, Codable, Sendable, Equatable {
     case preset
 }
 
+public struct RelativePath: Sendable, Codable, Equatable, Hashable {
+    public let value: String
+
+    public init(_ value: String) throws {
+        guard !value.isEmpty else {
+            throw PreflightError.invalidRelativePath(reason: "A relative path cannot be empty.")
+        }
+
+        guard !value.hasPrefix("/") else {
+            throw PreflightError.invalidRelativePath(reason: "An absolute path cannot be exported.")
+        }
+
+        let components = value.split(separator: "/", omittingEmptySubsequences: false)
+        guard components.allSatisfy({ component in
+            !component.isEmpty && component != "." && component != ".."
+        }) else {
+            throw PreflightError.invalidRelativePath(reason: "A relative path cannot contain empty, current-directory, or parent-directory components.")
+        }
+
+        self.value = value
+    }
+
+    public init(from decoder: Decoder) throws {
+        try self.init(decoder.singleValueContainer().decode(String.self))
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode(value)
+    }
+}
+
 public enum EvidenceValue: Sendable, Codable, Equatable {
     case string(String)
     case number(Double)
@@ -128,7 +160,7 @@ public struct Finding: Sendable, Codable, Equatable {
     public let severity: FindingSeverity
     public let title: String
     public let explanation: String
-    public let affectedPaths: [String]
+    public let affectedPaths: [RelativePath]
     public let evidence: [Evidence]
     public let expected: String
     public let suggestedAction: String
@@ -141,7 +173,7 @@ public struct Finding: Sendable, Codable, Equatable {
         severity: FindingSeverity,
         title: String,
         explanation: String,
-        affectedPaths: [String],
+        affectedPaths: [RelativePath],
         evidence: [Evidence],
         expected: String,
         suggestedAction: String,
@@ -225,7 +257,7 @@ public struct ImageProperties: Sendable, Codable, Equatable {
 }
 
 public struct InventoryEntry: Sendable, Codable, Equatable {
-    public let relativePath: String
+    public let relativePath: RelativePath
     public let normalizedFilename: String
     public let normalizedExtension: String
     public let category: FileCategory
@@ -239,7 +271,7 @@ public struct InventoryEntry: Sendable, Codable, Equatable {
     public let evidence: [Evidence]
 
     public init(
-        relativePath: String,
+        relativePath: RelativePath,
         normalizedFilename: String,
         normalizedExtension: String,
         category: FileCategory,
