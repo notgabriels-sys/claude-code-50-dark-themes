@@ -223,7 +223,7 @@
     <h1><span class="n">50</span> dark themes<br>for Claude&nbsp;Code</h1>
     <p class="lede">The chat app only gives you Light / Dark / System. The Claude Code CLI reads
       custom theme files — so here are fifty, each hand-tuned around a single accent. Drop one in,
-      run <code class="inline">/theme</code>, done.</p>
+      run <code class="inline">/theme</code>, done. Requires Claude Code v2.1.118 or later.</p>
     <div class="meta">
       <span class="tag"><b>50</b> themes</span>
       <span class="tag">all <b>dark</b></span>
@@ -240,12 +240,12 @@
         <span style="margin-left:6px">install — three steps</span>
       </div>
       <div class="steps">
-        <div class="step"><span class="i">01</span><p>Copy any (or all) <code>.json</code> files into <code>~/.claude/themes/</code></p></div>
-        <div class="step"><span class="i">02</span><p>In Claude Code, run <code>/theme</code> — each file shows up by name</p></div>
-        <div class="step"><span class="i">03</span><p>Pick one. Edits hot-reload; no restart needed</p></div>
+        <div class="step"><span class="i">01</span><p>Use Claude Code v2.1.118 or later. Create <code>~/.claude/themes/</code> if it does not exist</p></div>
+        <div class="step"><span class="i">02</span><p>Copy any (or all) <code>.json</code> files into <code>~/.claude/themes/</code></p></div>
+        <div class="step"><span class="i">03</span><p>Run <code>/theme</code> and pick one. If the folder was just created, restart Claude Code once</p></div>
       </div>
       <div class="cmd">
-        <span><span class="prompt">$ </span>git clone https://github.com/notgabriels-sys/claude-code-50-dark-themes &amp;&amp; cp claude-code-50-dark-themes/*.json ~/.claude/themes/</span>
+        <span><span class="prompt">$ </span>git clone https://github.com/notgabriels-sys/claude-code-50-dark-themes &amp;&amp; mkdir -p ~/.claude/themes &amp;&amp; cp claude-code-50-dark-themes/*.json ~/.claude/themes/</span>
         <button class="copy" id="copyBtn" aria-label="Copy install command">Copy</button>
       </div>
     </div>
@@ -393,7 +393,7 @@ grid.innerHTML = THEMES.map(([name,accent,shimmer,text,mute,bg]) => `
 document.getElementById("count").textContent = THEMES.length + " themes";
 
 const btn = document.getElementById("copyBtn");
-const CMD = "git clone https://github.com/notgabriels-sys/claude-code-50-dark-themes && cp claude-code-50-dark-themes/*.json ~/.claude/themes/";
+const CMD = "git clone https://github.com/notgabriels-sys/claude-code-50-dark-themes && mkdir -p ~/.claude/themes && cp claude-code-50-dark-themes/*.json ~/.claude/themes/";
 btn.addEventListener("click", async () => {
   try{ await navigator.clipboard.writeText(CMD); btn.textContent="Copied"; }
   catch{ btn.textContent="Copy failed"; }

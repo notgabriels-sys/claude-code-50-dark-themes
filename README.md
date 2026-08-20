@@ -3,6 +3,8 @@
 Custom themes for the Claude Code CLI. The chat app (claude.ai / desktop) only supports
 Light / Dark / System, so these install into Claude Code, which does support custom themes.
 
+Requires **Claude Code v2.1.118 or later**, the release that introduced named custom themes.
+
 **→ Visual gallery: [open `index.html`](index.html)** (all 50 previewed in their own colors).
 
 Prefer a zip to a `git clone`? The same 50 themes are a **free download** here:
@@ -12,6 +14,7 @@ Prefer a zip to a `git clone`? The same 50 themes are a **free download** here:
 
 ```bash
 git clone https://github.com/notgabriels-sys/claude-code-50-dark-themes
+mkdir -p ~/.claude/themes
 cp claude-code-50-dark-themes/*.json ~/.claude/themes/
 ```
 
@@ -19,9 +22,10 @@ Then run `/theme` in Claude Code and pick one.
 
 ## Install (step by step)
 
-1. Copy any (or all) of the .json files into `~/.claude/themes/`
-2. In Claude Code, run `/theme` — each file appears in the list by name
-3. Select one. Edits to the files hot-reload; no restart needed
+1. Update Claude Code to v2.1.118 or later
+2. Create `~/.claude/themes/` if needed, then copy any (or all) of the `.json` files into it
+3. In Claude Code, run `/theme` — each file appears in the list by name
+4. Select one. Edits to the files hot-reload; no restart needed
    (if `~/.claude/themes/` didn't exist before, restart Claude Code once)
 
 ## What each file sets
