@@ -2,8 +2,8 @@
 
 Status: published on Gumroad on 2026-08-20 after Gabriel approved the audio and 30-day guarantee.
 Cover, thumbnail, polished public MP3 preview, €15 EUR price and paid ZIP were verified after a fresh
-provider reload. The live public page and clean checkout metadata were also verified. A completed
-post-purchase delivery remains unverified because no real purchase was submitted.
+provider reload. The live public page, clean checkout metadata and zero-charge creator test purchase
+were also verified. The customer-delivered ZIP exactly matches the approved release archive.
 
 ## Product
 
@@ -40,9 +40,11 @@ post-purchase delivery remains unverified because no real purchase was submitted
   Gumroad account's existing support email.
 - The public page displays €15 and selects Euro as the detected currency. Clean, cookie-free checkout
   data reports product currency `eur`, `price_cents: 1500` and a €15 presentment amount.
-- Gumroad may add location-dependent VAT or convert the buyer's display currency. A signed-in German
-  cart displayed this product as US$17.53 and also contained an older Dark Email Templates item; that
-  unrelated cart item was not removed or modified, and no payment was submitted.
+- Gumroad may add location-dependent VAT or convert the buyer's display currency. During the final
+  signed-in German test, the cart displayed a €15 subtotal, €2.85 VAT and €17.85 total.
+- The unrelated `Dark Email Templates — 10-Pack` item was removed before testing. The final checkout
+  contained only this product, showed no card fields, and explicitly stated that it was a creator test
+  purchase and the payment method would not be charged.
 - The live URL returned HTTP 200 and clean public metadata contains the exact title, €15 EUR price
   and polished audition-reel title.
 
@@ -71,15 +73,19 @@ cannot silently inherit the approval.
 4. Product published and provider-reloaded; exact title, €15 price, cover, thumbnail, preview MP3
    and 83.3 MB ZIP remain attached.
 5. Public URL, HTTP 200 response and clean €15 EUR checkout metadata verified.
+6. Zero-charge creator test purchase completed; Gumroad showed a successful receipt and exposed the
+   83.3 MB customer ZIP from the purchased-content page.
+7. Customer-delivered ZIP downloaded, reopened with no compressed-data errors and matched the
+   approved release SHA-256 exactly.
 
-## Remaining post-purchase gate
+## Completed post-purchase delivery gate
 
-Gumroad's official `Testing a purchase` instructions confirm that a logged-in creator sees `Test card`,
-is not charged for buying their own product, receives both seller and buyer test emails, and can
-download the delivered file. The current signed-in cart also contains `Dark Email Templates — 10-Pack`.
-Do not delete that cart item or submit the final test `Pay` action without exact action-time approval.
+The signed-in creator checkout explicitly identified the order as a test purchase and stated that the
+payment method would not be charged. Submitting `Pay` returned a successful receipt and Gumroad's
+purchased-content page exposed `Industrial_Tension_and_Transition_FX_by_Hologram_People`, ZIP,
+83.3 MB. Gumroad also reported that it sent the receipt to the signed-in buyer email.
 
-After approval, remove only the unrelated Dark Email Templates cart item, complete the zero-charge
-test purchase for Industrial Tension & Transition FX, download the customer-delivered ZIP, and compare
-its SHA-256 value with `dist/SHA256SUMS.txt`. The product is already live; this remaining gate concerns
-proof of post-purchase delivery, not publication state.
+The downloaded file was 87,347,884 bytes. `unzip -t` reported no errors, and its SHA-256 was
+`65c6c6dbc7325d9bbec383d80b60a36cbfe0da0b507d4a992d8dad1c1f25706b`, exactly matching the approved
+release archive and `dist/SHA256SUMS.txt`. Publication, checkout and post-purchase file delivery are
+therefore all directly verified.
