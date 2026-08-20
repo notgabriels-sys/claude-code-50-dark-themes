@@ -74,7 +74,7 @@ public enum BuiltInPresets {
             DeliveryRole(
                 identifier: "metadata-or-credits",
                 name: "metadata or credits document",
-                pattern: "(?i)(^|/).*(metadata|credits).*\\.(csv|doc|docx|pdf|rtf|txt)$",
+                pattern: "(?i)(^|/).*(metadata|credits).*\\.(csv|doc|docx|md|pdf|rtf|txt)$",
                 required: true,
                 category: .document,
                 readability: .warning,

@@ -185,7 +185,7 @@ public struct FileInventory: FileInventorying {
             return .artwork
         }
 
-        if ["csv", "doc", "docx", "pdf", "rtf", "txt"].contains(extensionName) {
+        if ["csv", "doc", "docx", "md", "pdf", "rtf", "txt"].contains(extensionName) {
             return .document
         }
 

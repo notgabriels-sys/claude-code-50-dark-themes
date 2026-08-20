@@ -6,6 +6,10 @@ public protocol ChecksumCalculating: Sendable {
     func sha256(for fileURL: URL) async throws -> String
 }
 
+public protocol InventoryChecksumming: ChecksumCalculating {
+    func checksummedInventory(entries: [InventoryEntry], root: URL) async -> InventorySnapshot
+}
+
 public struct DuplicateGroup: Sendable, Codable, Equatable {
     public let sha256: String
     public let paths: [RelativePath]
@@ -16,7 +20,7 @@ public struct DuplicateGroup: Sendable, Codable, Equatable {
     }
 }
 
-public struct ChecksumService: ChecksumCalculating {
+public struct ChecksumService: InventoryChecksumming {
     private static let chunkSize = 64 * 1024
     private let onBeforeOpeningPathComponent: (@Sendable (RelativePath, Int) -> Void)?
 
@@ -52,6 +56,9 @@ public struct ChecksumService: ChecksumCalculating {
         }
 
         for entry in entries {
+            if Task.isCancelled {
+                return InventorySnapshot(entries: checksummedEntries, findings: findings)
+            }
             guard entry.kind == .regular, entry.category != .serviceFile else {
                 checksummedEntries.append(entry)
                 continue
