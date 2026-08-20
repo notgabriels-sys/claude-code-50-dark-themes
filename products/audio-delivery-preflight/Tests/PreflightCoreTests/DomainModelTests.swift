@@ -62,9 +62,21 @@ final class DomainModelTests: XCTestCase {
         XCTAssertEqual(try JSONDecoder().decode([EvidenceValue].self, from: data), values)
     }
 
-    func testRelativePathRejectsAbsoluteTraversalAndNonCanonicalValues() {
-        for path in ["/Users/gabriel/Masters/Track.wav", "../Track.wav", "Masters/../Track.wav", "Masters//Track.wav", "./Track.wav"] {
+    func testRelativePathRejectsAbsoluteTraversalAndNonCanonicalValues() throws {
+        for path in [
+            "/Users/gabriel/Masters/Track.wav",
+            "../Track.wav",
+            "Masters/../Track.wav",
+            "Masters//Track.wav",
+            "./Track.wav",
+            "C:/Users/gabriel/Masters/Track.wav",
+            "c:/Users/gabriel/Masters/Track.wav",
+            "\\\\server\\share\\Track.wav",
+            "\\Users\\gabriel\\Masters\\Track.wav",
+            "..\\Track.wav",
+        ] {
             XCTAssertThrowsError(try RelativePath(path))
+            XCTAssertThrowsError(try JSONDecoder().decode(RelativePath.self, from: JSONEncoder().encode(path)))
         }
 
         XCTAssertThrowsError(try JSONDecoder().decode(RelativePath.self, from: Data("\"../Track.wav\"".utf8)))
@@ -121,6 +133,38 @@ final class DomainModelTests: XCTestCase {
         let data = try JSONEncoder().encode(error)
 
         XCTAssertEqual(try JSONDecoder().decode(PreflightError.self, from: data), error)
+    }
+
+    func testPreflightErrorEncodesValidatedPathsUsingCanonicalRelativePathKey() throws {
+        let error = PreflightError.inventoryFailed(
+            relativePath: try RelativePath("Masters/Track.wav"),
+            reason: "Unreadable"
+        )
+
+        let data = try JSONEncoder().encode(error)
+        let object = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+
+        XCTAssertEqual(object["relativePath"] as? String, "Masters/Track.wav")
+        XCTAssertNil(object["path"])
+    }
+
+    func testPreflightErrorDecodesSafeLegacyPathAndRejectsUnsafeLegacyPaths() throws {
+        let safeLegacy = Data("{\"type\":\"inspectionFailed\",\"path\":\"Masters/Track.wav\",\"reason\":\"Unreadable\"}".utf8)
+
+        XCTAssertEqual(
+            try JSONDecoder().decode(PreflightError.self, from: safeLegacy),
+            .inspectionFailed(relativePath: try RelativePath("Masters/Track.wav"), reason: "Unreadable")
+        )
+
+        for unsafePath in ["/Users/gabriel/Masters/Track.wav", "../Track.wav"] {
+            let legacy = try JSONEncoder().encode([
+                "type": "inventoryFailed",
+                "path": unsafePath,
+                "reason": "Unreadable",
+            ])
+
+            XCTAssertThrowsError(try JSONDecoder().decode(PreflightError.self, from: legacy))
+        }
     }
 }
 

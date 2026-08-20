@@ -64,6 +64,18 @@ public struct RelativePath: Sendable, Codable, Equatable, Hashable {
             throw PreflightError.invalidRelativePath(reason: "An absolute path cannot be exported.")
         }
 
+        let bytes = Array(value.utf8)
+        let hasWindowsDrivePrefix = bytes.count >= 2
+            && ((bytes[0] >= 65 && bytes[0] <= 90) || (bytes[0] >= 97 && bytes[0] <= 122))
+            && bytes[1] == 58
+        guard !hasWindowsDrivePrefix else {
+            throw PreflightError.invalidRelativePath(reason: "A drive-qualified path cannot be exported.")
+        }
+
+        guard !value.contains("\\") else {
+            throw PreflightError.invalidRelativePath(reason: "A serialized relative path must use forward slashes only.")
+        }
+
         let components = value.split(separator: "/", omittingEmptySubsequences: false)
         guard components.allSatisfy({ component in
             !component.isEmpty && component != "." && component != ".."

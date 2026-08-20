@@ -13,6 +13,7 @@ public enum PreflightError: Error, Sendable, Codable, Equatable {
         case type
         case field
         case relativePath
+        case path
         case reason
     }
 
@@ -40,12 +41,12 @@ public enum PreflightError: Error, Sendable, Codable, Equatable {
             self = .invalidRelativePath(reason: try container.decode(String.self, forKey: .reason))
         case .inventoryFailed:
             self = .inventoryFailed(
-                relativePath: try container.decode(RelativePath.self, forKey: .relativePath),
+                relativePath: try Self.decodeRelativePath(from: container),
                 reason: try container.decode(String.self, forKey: .reason)
             )
         case .inspectionFailed:
             self = .inspectionFailed(
-                relativePath: try container.decode(RelativePath.self, forKey: .relativePath),
+                relativePath: try Self.decodeRelativePath(from: container),
                 reason: try container.decode(String.self, forKey: .reason)
             )
         case .exportFailed:
@@ -82,5 +83,15 @@ public enum PreflightError: Error, Sendable, Codable, Equatable {
         case .cancelled:
             try container.encode(Kind.cancelled, forKey: .type)
         }
+    }
+
+    private static func decodeRelativePath(
+        from container: KeyedDecodingContainer<CodingKeys>
+    ) throws -> RelativePath {
+        if container.contains(.relativePath) {
+            return try container.decode(RelativePath.self, forKey: .relativePath)
+        }
+
+        return try RelativePath(container.decode(String.self, forKey: .path))
     }
 }
