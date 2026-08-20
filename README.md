@@ -79,6 +79,7 @@ Same palettes and the same care, applied elsewhere. All one-time purchases, no s
 |---|---|
 | **[Dark UI Kit](https://notgabriel.gumroad.com/l/ckthsb)** — one CSS file, no build step | buttons, forms, cards, tabs, modal · €12 |
 | **[Dark HTML Templates](https://notgabriel.gumroad.com/l/cfcvmy)** — 8 single-file pages | portfolio, SaaS, docs, pricing · $19 |
+| **[Dark App Screens](https://notgabriel.gumroad.com/l/dark-app-screens)** — 6 product screens + 50 themes | sign-in, dashboard, data table, settings, inbox, error pages · €14 |
 | **[Dark Email Templates](https://notgabriel.gumroad.com/l/xjcbji)** — transactional email | welcome, receipt, reset, OTP · €9 |
 | **[Social & OG Templates](https://notgabriel.gumroad.com/l/bunkhy)** — exact-size share images | OG cards, X header, thumbnails · €9 |
 | **[Résumé & CV Templates — live demo](https://notgabriels-sys.github.io/dark-html-templates-demo/resume/)** — prints clean to PDF | 5 layouts + cover letter · checkout temporarily withheld |
