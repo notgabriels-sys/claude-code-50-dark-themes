@@ -42,6 +42,12 @@ Additional exact-commit release-binary probes observed:
 - synthetic AAC-LC M4A bytes with documented SHA-256 `f995d9f26e1ea62f9f3a12e6569f870e28b25a0d1ee3da9169076a8137aed089`, renamed to `Masters/Main Master.wav`, returned `requirementsNotMet` with exit code 2, retained inspected `M4A`/`AAC` evidence, emitted both `audio.filename-content-mismatch` and `role.disallowed-encoding.main-master`, emitted no unreadable-audio conflict, and retained identical source SHA-256/size/subsecond-mtime/mode evidence; and
 - the repository verifier passed with 50 themes, 50 gallery cards, 3 PayPal links, and the safe extension-install command. The storefront and payment surfaces were not changed by this product fix wave.
 
+## Documentation-correction evidence
+
+On 2026-08-21, the full deterministic gate ran with exit code 0 on correction commit `b1afd1b4061e65d4f7ecb8bda81850ed6d1e6010`. That commit contains the bounded-metadata documentation correction and observed 189 tests with 0 failures, successful release builds of both products, the `ready` fixture/report/immutability/trusted-tool checks, and the renamed-AAC (exit 2) plus invalid-Custom-role (exit 3) release probes.
+
+The subsequent documentation-only seal commit records this exact tested correction SHA. It changes only this verification record; it does not represent a second executable-code verification target.
+
 ## Requirement-to-evidence map
 
 | Non-deferred requirement | Evidence |
