@@ -19,7 +19,7 @@ The script resolves its own product root and, with strict shell error handling:
 5. independently regenerates the original `valid-digital-release` fixture and compares every generated file with the committed bytes;
 6. runs the release CLI with the Digital Release preset and explicit HTML, JSON, and SHA-256 destinations outside the fixture;
 7. requires `ready`, checks stable JSON fields and relative paths, and rejects any report containing the fixture's absolute root;
-8. compares source-relative SHA-256, size, modification time, and mode before and after the scan; and
+8. compares source-relative SHA-256, size, fractional/subsecond modification time (`stat %Fm` under the fixed `C` locale), and mode before and after the scan; and
 9. compares the reported WAV and PNG measurements with `afinfo` and `sips`.
 
 The generated fixture contains only repository-generated test data: a one-second stereo 48 kHz 24-bit PCM WAV, a 3000 x 3000 RGB PNG, and synthetic credits text.
@@ -31,7 +31,7 @@ The isolated committed-candidate run on 2026-08-21 observed:
 - `Audio Delivery Preflight 0.1.0` from the version command;
 - a Digital Release result of `ready` with 6 inventory entries, 0 errors, and 0 warnings;
 - successful HTML, JSON, and checksum-manifest writes outside the fixture; and
-- matching fixture provenance, source immutability evidence, report privacy checks, and `afinfo`/`sips` measurements.
+- matching fixture provenance, source SHA-256/size/subsecond-mtime/mode evidence, report privacy checks, and `afinfo`/`sips` measurements.
 
 ## Requirement-to-evidence map
 
@@ -39,7 +39,7 @@ The isolated committed-candidate run on 2026-08-21 observed:
 |---|---|
 | macOS 14 deployment floor and Swift 6 language mode | `Package.swift`; both release products compile in the deterministic gate. Oldest-supported-host execution remains a separate gate. |
 | Local scan engine with no intended network request | `PreflightCore` and presentation targets contain no networking API; `PRIVACY.md` documents the boundary. Network-observed/offline validation of the final distribution build remains open. |
-| Source files are never intentionally deleted, moved, renamed, converted, normalized, rewritten, or uploaded | Filesystem-boundary unit tests, scan fingerprint tests, report-destination tests, and the generated fixture's before/after SHA-256, size, mtime, and mode comparison. |
+| Source files are never intentionally deleted, moved, renamed, converted, normalized, rewritten, or uploaded | Filesystem-boundary unit tests, scan fingerprint tests, report-destination tests, and the generated fixture's before/after SHA-256, size, fractional/subsecond mtime, and mode comparison. |
 | Symbolic links are recorded and never followed; regular-file access remains beneath the selected root | Inventory, checksum, audio, image, scan-race, and report-destination regression suites. |
 | Failed measurements remain unknown | Domain, inspector, checksum, rule, and scan-orchestration tests. |
 | Transparent built-in presets and role matching | Preset and rule-engine tests plus `audio-preflight preset show digital-release`; requirements print before the CLI scan summary. |

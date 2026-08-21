@@ -7,6 +7,7 @@ FIXTURE_DIR="$PRODUCT_DIR/Tests/Fixtures/valid-digital-release"
 VERIFY_TMP=$(mktemp -d /private/tmp/audio-preflight-verify.XXXXXX)
 export CLANG_MODULE_CACHE_PATH="$VERIFY_TMP/clang-module-cache"
 export SWIFT_MODULECACHE_PATH="$VERIFY_TMP/swift-module-cache"
+export LC_ALL=C
 
 cleanup() {
     rm -rf -- "$VERIFY_TMP"
@@ -17,11 +18,12 @@ snapshot_fixture() {
     local destination=$1
     (
         cd "$FIXTURE_DIR"
-        find . -type f -print0 \
-            | LC_ALL=C sort -z \
+        /usr/bin/find . -type f -print0 \
+            | /usr/bin/sort -z \
             | while IFS= read -r -d '' relative_file; do
-                digest=$(shasum -a 256 "$relative_file" | awk '{print $1}')
-                stat -f '%N\t%z\t%m\t%Lp' "$relative_file" | sed "s#^$relative_file#$digest\t${relative_file#./}#"
+                digest=$(/usr/bin/shasum -a 256 "$relative_file" | /usr/bin/awk '{print $1}')
+                /usr/bin/stat -f '%N\t%z\t%Fm\t%Lp' "$relative_file" \
+                    | /usr/bin/sed "s#^$relative_file#$digest\t${relative_file#./}#"
             done
     ) > "$destination"
 }
@@ -38,13 +40,13 @@ GENERATED_FIXTURE="$VERIFY_TMP/generated-valid-digital-release"
 swift "$SCRIPT_DIR/generate-valid-digital-release-fixture.swift" "$GENERATED_FIXTURE"
 (
     cd "$FIXTURE_DIR"
-    find . -type f -print0 | LC_ALL=C sort -z | xargs -0 shasum -a 256
+    /usr/bin/find . -type f -print0 | /usr/bin/sort -z | /usr/bin/xargs -0 /usr/bin/shasum -a 256
 ) > "$VERIFY_TMP/committed-fixture.sha256"
 (
     cd "$GENERATED_FIXTURE"
-    find . -type f -print0 | LC_ALL=C sort -z | xargs -0 shasum -a 256
+    /usr/bin/find . -type f -print0 | /usr/bin/sort -z | /usr/bin/xargs -0 /usr/bin/shasum -a 256
 ) > "$VERIFY_TMP/generated-fixture.sha256"
-cmp "$VERIFY_TMP/committed-fixture.sha256" "$VERIFY_TMP/generated-fixture.sha256"
+/usr/bin/cmp "$VERIFY_TMP/committed-fixture.sha256" "$VERIFY_TMP/generated-fixture.sha256"
 
 snapshot_fixture "$VERIFY_TMP/source-before.tsv"
 REPORT_DIR="$VERIFY_TMP/reports"
@@ -55,33 +57,42 @@ mkdir -p "$REPORT_DIR"
     --report-json "$REPORT_DIR/report.json" \
     --checksums "$REPORT_DIR/SHA256SUMS.txt"
 snapshot_fixture "$VERIFY_TMP/source-after.tsv"
-cmp "$VERIFY_TMP/source-before.tsv" "$VERIFY_TMP/source-after.tsv"
+/usr/bin/cmp "$VERIFY_TMP/source-before.tsv" "$VERIFY_TMP/source-after.tsv"
 
-rg -q '"overallStatus" : "ready"' "$REPORT_DIR/report.json"
-rg -q '"relativePath" : "Masters\\/Main Master.wav"' "$REPORT_DIR/report.json"
-rg -q '"sampleRate" : 48000' "$REPORT_DIR/report.json"
-rg -q '"pcmBitDepth" : 24' "$REPORT_DIR/report.json"
-rg -q '"pixelWidth" : 3000' "$REPORT_DIR/report.json"
-rg -q '"pixelHeight" : 3000' "$REPORT_DIR/report.json"
-rg -q 'Masters/Main Master.wav' "$REPORT_DIR/report.html"
-for manifest_file in "Artwork/Cover.png" "Credits/credits.md" "Masters/Main Master.wav"; do
-    manifest_digest=$(shasum -a 256 "$FIXTURE_DIR/$manifest_file" | awk '{print $1}')
-    rg -F -x -q "$manifest_digest  $manifest_file" "$REPORT_DIR/SHA256SUMS.txt"
-done
-if rg -F -q "$FIXTURE_DIR" "$REPORT_DIR"; then
+/usr/bin/grep -E -q -- '"overallStatus" : "ready"' "$REPORT_DIR/report.json"
+/usr/bin/grep -E -q -- '"relativePath" : "Masters\\/Main Master.wav"' "$REPORT_DIR/report.json"
+/usr/bin/grep -E -q -- '"sampleRate" : 48000' "$REPORT_DIR/report.json"
+/usr/bin/grep -E -q -- '"pcmBitDepth" : 24' "$REPORT_DIR/report.json"
+/usr/bin/grep -E -q -- '"pixelWidth" : 3000' "$REPORT_DIR/report.json"
+/usr/bin/grep -E -q -- '"pixelHeight" : 3000' "$REPORT_DIR/report.json"
+/usr/bin/grep -F -q -- 'Masters/Main Master.wav' "$REPORT_DIR/report.html"
+
+EXPECTED_MANIFEST="$VERIFY_TMP/expected-SHA256SUMS.txt"
+(
+    cd "$FIXTURE_DIR"
+    /usr/bin/find . -type f ! -name '.DS_Store' ! -name '._*' -print0 \
+        | /usr/bin/sort -z \
+        | while IFS= read -r -d '' manifest_file; do
+            manifest_digest=$(/usr/bin/shasum -a 256 "$manifest_file" | /usr/bin/awk '{print $1}')
+            /usr/bin/printf '%s  %s\n' "$manifest_digest" "${manifest_file#./}"
+        done
+) > "$EXPECTED_MANIFEST"
+/usr/bin/cmp "$EXPECTED_MANIFEST" "$REPORT_DIR/SHA256SUMS.txt"
+
+if /usr/bin/grep -R -F -q -- "$FIXTURE_DIR" "$REPORT_DIR"; then
     print -u2 -- "A report exposed the absolute fixture path."
     exit 1
 fi
 
 afinfo "$FIXTURE_DIR/Masters/Main Master.wav" > "$VERIFY_TMP/afinfo.txt"
 sips -g pixelWidth -g pixelHeight "$FIXTURE_DIR/Artwork/Cover.png" > "$VERIFY_TMP/sips.txt"
-rg -q '2 ch' "$VERIFY_TMP/afinfo.txt"
-rg -q '48000 Hz' "$VERIFY_TMP/afinfo.txt"
-rg -q '24-bit .*integer' "$VERIFY_TMP/afinfo.txt"
-rg -q 'pixelWidth: 3000' "$VERIFY_TMP/sips.txt"
-rg -q 'pixelHeight: 3000' "$VERIFY_TMP/sips.txt"
+/usr/bin/grep -E -q -- '2 ch' "$VERIFY_TMP/afinfo.txt"
+/usr/bin/grep -E -q -- '48000 Hz' "$VERIFY_TMP/afinfo.txt"
+/usr/bin/grep -E -q -- '24-bit .*integer' "$VERIFY_TMP/afinfo.txt"
+/usr/bin/grep -E -q -- 'pixelWidth: 3000' "$VERIFY_TMP/sips.txt"
+/usr/bin/grep -E -q -- 'pixelHeight: 3000' "$VERIFY_TMP/sips.txt"
 
 print -- "Fixture provenance: generated bytes match committed bytes."
 print -- "Digital Release CLI: ready; HTML, JSON, and SHA-256 reports verified."
-print -- "Source immutability: SHA-256, size, mtime, and mode unchanged."
+print -- "Source immutability: SHA-256, size, subsecond mtime, and mode unchanged."
 print -- "Trusted tools: afinfo and sips agree with reported fixture properties."
