@@ -14,8 +14,8 @@ This checklist separates repository evidence, a local archive, a customer-tested
 - [x] Marketing version fixed as `0.1.0`; build version fixed as `1`.
 - [x] Minimum deployment target fixed as macOS 14.0.
 - [x] Privacy and limitations documents included.
-- [ ] Final application icon reviewed and included.
-- [ ] Customer license selected and included. “All rights reserved” metadata is not a substitute for customer license terms.
+- [x] Final application icon selected and included.
+- [ ] Customer license terms selected in `CUSTOMER_LICENSE_DRAFT.md`; seller legal identity, governing terms, review, acceptance, rename, and customer-archive inclusion remain open.
 - [ ] Known critical bugs reviewed immediately before release.
 
 ## Package
@@ -62,7 +62,8 @@ Partial local smoke evidence: the packaged start screen, accessibility labels, p
 
 ## Commercial release
 
-- [ ] Decide the customer license, support channel, refund terms, and update policy.
+- [x] Commercial defaults selected: €24 one-time, GUI plus CLI, one user on up to three personally controlled Macs, version-1 updates, receipt-reply support, and 14-day refund policy.
+- [ ] Seller reviews and accepts the customer license and legally required seller/consumer information.
 - [ ] Create the provider product only in the intended seller account.
 - [ ] Read back the real product name, amount, currency, tax treatment, attached archive, and customer-delivery settings.
 - [ ] Confirm the product page accurately states signing/notarization and supported-macOS status.

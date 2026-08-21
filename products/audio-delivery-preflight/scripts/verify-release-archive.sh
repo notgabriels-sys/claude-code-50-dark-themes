@@ -39,12 +39,14 @@ plist="$app/Contents/Info.plist"
 for required in "$plist" "$release_root/README.md" "$release_root/PRIVACY.md" "$release_root/LIMITATIONS.md" "$release_root/UNSIGNED.txt"; do
   [[ -f "$required" ]] || { print -u2 "missing release file: ${required:t}"; exit 65; }
 done
+[[ -f "$app/Contents/Resources/AppIcon.icns" ]] || { print -u2 "missing application icon"; exit 65; }
 find "$release_root" -type l -print -quit | grep -q . && { print -u2 "release contains symbolic links"; exit 65; }
 
 plutil -lint "$plist" >/dev/null
 [[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$plist")" == "com.gabrielgarciaalonso.AudioDeliveryPreflight" ]] || { print -u2 "bundle identifier mismatch"; exit 65; }
 [[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$plist")" == "$version" ]] || { print -u2 "bundle version mismatch"; exit 65; }
 [[ "$(/usr/libexec/PlistBuddy -c 'Print :LSMinimumSystemVersion' "$plist")" == "14.0" ]] || { print -u2 "minimum macOS version mismatch"; exit 65; }
+[[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIconFile' "$plist")" == "AppIcon" ]] || { print -u2 "application icon metadata mismatch"; exit 65; }
 codesign --verify --deep --strict "$app"
 codesign --verify --strict "$release_root/audio-preflight"
 app_signature=$(codesign -d --verbose=4 "$app" 2>&1)
