@@ -10,3 +10,7 @@ const (
 // Value is linked into each release executable with -X. It starts at Current
 // so local development builds report the same source version.
 var Value = Current
+
+// Revision is linked into release executables after the packager verifies
+// that the tracked source tree is clean.
+var Revision = "development"

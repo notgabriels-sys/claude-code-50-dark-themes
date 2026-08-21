@@ -633,7 +633,7 @@ func realExecutableTaggedAndLinkedVersion(t *testing.T, platform, taggedVersion,
 		t.Fatal(err)
 	}
 	path := filepath.Join(t.TempDir(), "audio-preflight")
-	link := "-buildid= -X github.com/gabrielgarciaalonso/audio-delivery-preflight-cli/internal/version.Value=" + linkedVersion
+	link := "-buildid= -X github.com/gabrielgarciaalonso/audio-delivery-preflight-cli/internal/version.Value=" + linkedVersion + " -X github.com/gabrielgarciaalonso/audio-delivery-preflight-cli/internal/version.Revision=" + strings.Repeat("a", 40)
 	tag := "audio_preflight_v" + strings.ReplaceAll(taggedVersion, ".", "_")
 	cmd := exec.Command("go", "build", "-trimpath", "-buildvcs=false", "-buildmode=exe", "-tags="+tag, "-ldflags="+link, "-o", path, "./cmd/audio-preflight")
 	cmd.Dir = root

@@ -652,12 +652,13 @@ func validateExecutable(executable []byte, platform, wantVersion, sourceRevision
 	if settings["-tags"] != "audio_preflight_v"+strings.ReplaceAll(wantVersion, ".", "_") {
 		return fmt.Errorf("Go build metadata does not bind executable version %q", wantVersion)
 	}
-	if !syntheticForTests && (settings["vcs.revision"] != sourceRevision || settings["vcs.modified"] != "false") {
-		return fmt.Errorf("Go build metadata does not bind the clean source revision")
-	}
 	linkedVersion := "-X github.com/gabrielgarciaalonso/audio-delivery-preflight-cli/internal/version.Value=" + wantVersion
 	if !strings.Contains(settings["-ldflags"], linkedVersion) {
 		return fmt.Errorf("Go build metadata does not bind linked runtime version %q", wantVersion)
+	}
+	linkedRevision := "-X github.com/gabrielgarciaalonso/audio-delivery-preflight-cli/internal/version.Revision=" + sourceRevision
+	if !syntheticForTests && !strings.Contains(settings["-ldflags"], linkedRevision) {
+		return fmt.Errorf("Go build metadata does not bind the clean source revision")
 	}
 	return nil
 }

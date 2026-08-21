@@ -74,7 +74,7 @@ func run(platform, outputDirectory string, mode release.Mode, acceptedLicense st
 	defer os.RemoveAll(stage)
 	parts := strings.Split(platform, "-")
 	binary := filepath.Join(stage, "audio-preflight")
-	link := "-buildid= -X github.com/gabrielgarciaalonso/audio-delivery-preflight-cli/internal/version.Value=" + version.Current
+	link := "-buildid= -X github.com/gabrielgarciaalonso/audio-delivery-preflight-cli/internal/version.Value=" + version.Current + " -X github.com/gabrielgarciaalonso/audio-delivery-preflight-cli/internal/version.Revision=" + sourceRevision
 	build := exec.Command("go", "build", "-trimpath", "-buildvcs=true", "-buildmode=exe", "-tags="+versionTag(version.Current), "-ldflags="+link, "-o", binary, "./cmd/audio-preflight")
 	build.Env = append(os.Environ(), "CGO_ENABLED=0", "GOOS="+parts[0], "GOARCH="+parts[1])
 	build.Stdout, build.Stderr = os.Stdout, os.Stderr
