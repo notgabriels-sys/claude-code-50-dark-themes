@@ -153,6 +153,11 @@ final class CLITests: XCTestCase {
             ("/private/tmp/preflight/report", "/private/tmp/preflight/./report"),
             ("/private/tmp/preflight/Report.JSON", "/private/tmp/preflight/report.json"),
             ("/private/tmp/preflight/Café.json", "/private/tmp/preflight/Cafe\u{301}.json"),
+            ("/private/tmp/preflight/ss.json", "/private/tmp/preflight/ß.json"),
+            ("/private/tmp/preflight/σ.json", "/private/tmp/preflight/ς.json"),
+            ("/private/tmp/preflight/s.json", "/private/tmp/preflight/ſ.json"),
+            ("/private/tmp/preflight/μ.json", "/private/tmp/preflight/µ.json"),
+            ("/private/tmp/preflight/ff.json", "/private/tmp/preflight/ﬀ.json"),
         ]
 
         for (first, second) in aliases {
@@ -173,6 +178,51 @@ final class CLITests: XCTestCase {
             XCTAssertEqual(calls.writeCalls, 0)
             XCTAssertTrue(output.stderr.contains("Invalid command or configuration"))
             XCTAssertFalse(output.stderr.contains(first))
+        }
+    }
+
+    func testUnicodeFoldedDestinationAliasesCollideWithSourceInventory() async throws {
+        let aliases = [
+            ("ss.json", "ß.json"),
+            ("σ.json", "ς.json"),
+            ("s.json", "ſ.json"),
+            ("μ.json", "µ.json"),
+            ("ff.json", "ﬀ.json"),
+        ]
+        let root = URL(fileURLWithPath: "/private/tmp/Selected Delivery", isDirectory: true)
+
+        for (sourceName, destinationName) in aliases {
+            let output = OutputCapture()
+            let calls = CallCapture()
+            let result = try scanResult(
+                status: .ready,
+                inventory: [
+                    InventoryEntry(
+                        relativePath: try RelativePath("Reports/\(sourceName)"),
+                        normalizedFilename: "source",
+                        normalizedExtension: "json",
+                        category: .other,
+                        kind: .regular
+                    ),
+                ]
+            )
+            var testEnvironment = environment(output: output, result: result)
+            testEnvironment.inspectReportDestination = { _ in .absent }
+            testEnvironment.scan = { _ in calls.recordScan(); return result }
+            testEnvironment.writeAtomically = { _, _ in calls.recordWrite() }
+
+            let exitCode = await CLI().run(
+                arguments: [
+                    "scan", root.path,
+                    "--report-json", root.appendingPathComponent("Reports/\(destinationName)").path,
+                ],
+                environment: testEnvironment
+            )
+
+            XCTAssertEqual(exitCode, 3, "aliases: \(sourceName), \(destinationName)")
+            XCTAssertEqual(calls.scanCalls, 1, "aliases: \(sourceName), \(destinationName)")
+            XCTAssertEqual(calls.writeCalls, 0, "aliases: \(sourceName), \(destinationName)")
+            XCTAssertFalse(output.stderr.contains(root.path), "aliases: \(sourceName), \(destinationName)")
         }
     }
 

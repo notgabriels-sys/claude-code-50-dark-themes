@@ -401,8 +401,9 @@ public struct CLI: Sendable {
             }
         }
         guard fsync(temporaryDescriptor) == 0 else { throw unsafeReportDestinationError() }
-        guard close(temporaryDescriptor) == 0 else { throw unsafeReportDestinationError() }
+        let descriptorToClose = temporaryDescriptor
         temporaryDescriptor = -1
+        guard close(descriptorToClose) == 0 else { throw unsafeReportDestinationError() }
 
         let renameStatus: Int32 = temporaryName.withCString { temporaryPointer in
             filename.withCString { filenamePointer in
@@ -447,5 +448,11 @@ public struct CLI: Sendable {
 }
 
 private func conservativePathKey(_ value: String) -> String {
-    value.precomposedStringWithCanonicalMapping.lowercased(with: Locale(identifier: "en_US_POSIX"))
+    value
+        .precomposedStringWithCanonicalMapping
+        .folding(
+            options: [.caseInsensitive, .widthInsensitive, .diacriticInsensitive],
+            locale: Locale(identifier: "en_US_POSIX")
+        )
+        .precomposedStringWithCanonicalMapping
 }
