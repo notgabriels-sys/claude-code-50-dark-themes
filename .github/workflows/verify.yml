@@ -17,3 +17,34 @@ jobs:
         with:
           node-version: 22
       - run: node scripts/verify.mjs
+
+  audio-preflight-cli-private-candidates:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: products/audio-delivery-preflight-cli
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26.x'
+      - name: Format check
+        run: test -z "$(gofmt -l $(find . -name '*.go' -type f))"
+      - name: Linux tests
+        run: go test ./...
+      - name: Linux race detector
+        run: go test -race ./...
+      - name: Static analysis
+        run: go vet ./...
+      - name: Build and verify every private candidate
+        run: |
+          mkdir private-candidates
+          for platform in darwin-arm64 darwin-amd64 linux-amd64; do
+            ./scripts/package.sh -platform "$platform" -output-dir private-candidates
+            ./scripts/verify-archive.sh \
+              -archive "private-candidates/audio-preflight-cli-private-candidate_1.0.0_${platform}.tar.gz" \
+              -platform "$platform"
+          done
+
+      # The job intentionally does not upload, release, tag, or publish these
+      # private candidates. They disappear with the ephemeral CI workspace.

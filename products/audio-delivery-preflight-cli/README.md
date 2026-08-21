@@ -48,3 +48,30 @@ go test -race ./...
 go vet ./...
 GOOS=linux GOARCH=amd64 go build -trimpath -o audio-preflight-linux-amd64 ./cmd/audio-preflight
 ```
+
+## Private candidate packaging
+
+Version 1.0.0 has reproducible package commands for `darwin-arm64`,
+`darwin-amd64`, and `linux-amd64`:
+
+```bash
+mkdir private-candidates
+./scripts/package.sh -platform darwin-arm64 -output-dir private-candidates
+./scripts/verify-archive.sh \
+  -archive private-candidates/audio-preflight-cli-private-candidate_1.0.0_darwin-arm64.tar.gz \
+  -platform darwin-arm64
+```
+
+The command refuses to overwrite either the archive or its sidecar SHA-256
+file. It compiles with `-trimpath`, disabled VCS stamping, a fixed linker build
+ID, fixed archive ownership/timestamps/modes/order, verifies the result without
+extracting it, and writes a sidecar archive digest.
+
+Every generated archive is deliberately named **private candidate**. It
+contains this README, `PRIVACY.md`, `LIMITATIONS.md`, examples, checksum
+instructions, `SHA256SUMS.txt`, and `CUSTOMER_LICENSE_DRAFT.md`. The draft is
+not accepted customer terms. No package command uploads an artifact, creates a
+Gumroad object, releases software, or publishes anything. See
+[`PRODUCT_DECISIONS.md`](PRODUCT_DECISIONS.md) and
+[`RELEASE_CHECKLIST.md`](RELEASE_CHECKLIST.md) for the EUR 19 CLI-only proposal
+and owner-controlled legal/commercial gates.
