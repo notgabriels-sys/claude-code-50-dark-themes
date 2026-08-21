@@ -72,6 +72,60 @@ final class AudioInspectorTests: XCTestCase {
         XCTAssertEqual(metadata, ["artist": "Fixture Artist", "title": "Fixture Title"])
     }
 
+    func testMetadataKeyAndCombiningValueAreBoundedByUTF8Bytes() async throws {
+        let key = "K" + String(repeating: "\u{0301}", count: 100)
+        let value = "A" + String(repeating: "\u{0301}", count: 5_000)
+
+        let metadata = try await AudioInspector.metadataDictionary(from: [
+            metadataItem(key: key, value: value),
+        ])
+        let boundedKey = try XCTUnwrap(metadata.keys.first)
+        let boundedValue = try XCTUnwrap(metadata[boundedKey])
+
+        XCTAssertEqual(boundedKey.utf8.count, 127)
+        XCTAssertEqual(boundedKey.unicodeScalars.count, 64)
+        XCTAssertEqual(boundedValue.utf8.count, 4_095)
+        XCTAssertEqual(boundedValue.unicodeScalars.count, 2_048)
+    }
+
+    func testMetadataFourByteScalarsAreNotSplitAtValueBudget() async throws {
+        let metadata = try await AudioInspector.metadataDictionary(from: [
+            metadataItem(key: "title", value: String(repeating: "😀", count: 2_000)),
+        ])
+        let value = try XCTUnwrap(metadata["title"])
+
+        XCTAssertEqual(value.utf8.count, 4_096)
+        XCTAssertEqual(value.unicodeScalars.count, 1_024)
+        XCTAssertEqual(value.last, "😀")
+    }
+
+    func testMetadataDuplicateKeysResolveDeterministicallyAfterKeyTruncation() async throws {
+        let commonPrefix = String(repeating: "a", count: 128)
+        let alpha = metadataItem(key: commonPrefix + "-alpha", value: "Alpha")
+        let zulu = metadataItem(key: commonPrefix + "-zulu", value: "Zulu")
+
+        let forward = try await AudioInspector.metadataDictionary(from: [zulu, alpha])
+        let reversed = try await AudioInspector.metadataDictionary(from: [alpha, zulu])
+
+        XCTAssertEqual(forward, [commonPrefix: "Alpha"])
+        XCTAssertEqual(reversed, forward)
+    }
+
+    func testMetadataAggregateBudgetBoundsJSONReadyDictionaryDeterministically() async throws {
+        let largeValue = String(repeating: "\"", count: 4_096)
+        let items = (0..<64).map { index in
+            metadataItem(key: String(format: "field-%02d", index), value: largeValue)
+        }
+
+        let forward = try await AudioInspector.metadataDictionary(from: items)
+        let reversed = try await AudioInspector.metadataDictionary(from: items.reversed())
+        let encoded = try JSONSerialization.data(withJSONObject: forward, options: [.sortedKeys])
+
+        XCTAssertEqual(forward, reversed)
+        XCTAssertEqual(Set(forward.keys), ["field-00", "field-01", "field-02"])
+        XCTAssertLessThanOrEqual(encoded.count, 32_768)
+    }
+
     func testWAVBytesNamedMP3ReportValidatedWAVContainer() async throws {
         let fixture = try InspectionFixture.make()
         defer { fixture.remove() }
@@ -256,6 +310,14 @@ final class AudioInspectorTests: XCTestCase {
 
         XCTAssertTrue(didPropagateCancellation)
         XCTAssertEqual(try fixture.stagingFiles(), [])
+    }
+
+    private func metadataItem(key: String, value: String) -> AVMetadataItem {
+        let item = AVMutableMetadataItem()
+        item.keySpace = .common
+        item.key = key as NSString
+        item.value = value as NSString
+        return item
     }
 }
 

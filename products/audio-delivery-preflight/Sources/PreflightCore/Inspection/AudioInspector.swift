@@ -20,6 +20,11 @@ public protocol AudioInspecting: Sendable {
 }
 
 public struct AudioInspector: AudioInspecting {
+    private static let metadataItemLimit = 64
+    private static let metadataKeyUTF8ByteLimit = 128
+    private static let metadataValueUTF8ByteLimit = 4_096
+    private static let metadataAggregateJSONUTF8ByteLimit = 32_768
+
     private let stagingDirectory: URL
     private let onBeforeOpeningPathComponent: TrustedFileAccess.OpenPathComponentHook?
     private let onAfterCopyingChunk: TrustedFileAccess.CopyProgressHook?
@@ -124,11 +129,10 @@ public struct AudioInspector: AudioInspecting {
 
     static func metadataDictionary(from items: [AVMetadataItem]) async throws -> [String: String] {
         var fields: [(key: String, value: String)] = []
-        for item in items.prefix(64) {
+        for item in items.prefix(metadataItemLimit) {
             try Task.checkCancellation()
             guard let key = item.commonKey?.rawValue.trimmingCharacters(in: .whitespacesAndNewlines),
-                  !key.isEmpty,
-                  key.count <= 128
+                  !key.isEmpty
             else {
                 continue
             }
@@ -146,16 +150,58 @@ public struct AudioInspector: AudioInspecting {
             else {
                 continue
             }
-            fields.append((key.lowercased(), String(value.prefix(4_096))))
+            let boundedKey = utf8Prefix(
+                key.lowercased(),
+                maximumByteCount: metadataKeyUTF8ByteLimit
+            )
+            let boundedValue = utf8Prefix(
+                value,
+                maximumByteCount: metadataValueUTF8ByteLimit
+            )
+            guard !boundedKey.isEmpty, !boundedValue.isEmpty else {
+                continue
+            }
+            fields.append((boundedKey, boundedValue))
         }
 
-        return fields.sorted {
+        let sortedFields = fields.sorted {
             $0.key == $1.key ? $0.value.unicodeScalars.lexicographicallyPrecedes($1.value.unicodeScalars) : $0.key.unicodeScalars.lexicographicallyPrecedes($1.key.unicodeScalars)
-        }.reduce(into: [:]) { result, field in
-            if result[field.key] == nil {
-                result[field.key] = field.value
-            }
         }
+        var result: [String: String] = [:]
+        for field in sortedFields {
+            guard result[field.key] == nil else {
+                continue
+            }
+
+            var candidate = result
+            candidate[field.key] = field.value
+            guard let serialized = try? JSONSerialization.data(
+                withJSONObject: candidate,
+                options: [.sortedKeys]
+            ), serialized.count <= metadataAggregateJSONUTF8ByteLimit
+            else {
+                break
+            }
+            result = candidate
+        }
+        return result
+    }
+
+    private static func utf8Prefix(_ value: String, maximumByteCount: Int) -> String {
+        var result = ""
+        result.reserveCapacity(min(value.utf8.count, maximumByteCount))
+        var byteCount = 0
+
+        for scalar in value.unicodeScalars {
+            let scalarByteCount = String(scalar).utf8.count
+            guard byteCount + scalarByteCount <= maximumByteCount else {
+                break
+            }
+            result.unicodeScalars.append(scalar)
+            byteCount += scalarByteCount
+        }
+
+        return result
     }
 
     private static func streamDescription(from description: CMFormatDescription) -> AudioStreamBasicDescription? {

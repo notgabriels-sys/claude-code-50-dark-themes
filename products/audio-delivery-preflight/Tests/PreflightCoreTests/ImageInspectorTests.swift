@@ -128,4 +128,52 @@ final class ImageInspectorTests: XCTestCase {
         XCTAssertEqual(outcome.value?.isReadable, false)
         XCTAssertEqual(try fixture.stagingFiles(), [])
     }
+
+    func testCancellationAfterStagingPropagatesAndCleansStaging() async throws {
+        let fixture = try InspectionFixture.make()
+        defer { fixture.remove() }
+        let imageURL = try FixtureFactory.png(width: 300, height: 300, alpha: true)
+        defer { try? FileManager.default.removeItem(at: imageURL) }
+        let path = try fixture.write(Data(contentsOf: imageURL), to: "Artwork/cancellable.png")
+        let gate = ImageInspectionStageGate()
+        let inspector = ImageInspector(
+            stagingDirectory: fixture.stagingDirectory,
+            onAfterStaging: {
+                gate.blockUntilReleased()
+            }
+        )
+
+        let task = Task { () -> Bool in
+            do {
+                _ = try await inspector.inspect(source: fixture.source(path))
+                return false
+            } catch is CancellationError {
+                return true
+            } catch {
+                return false
+            }
+        }
+        await fulfillment(of: [gate.stagingCompleted], timeout: 2)
+        XCTAssertEqual(try fixture.stagingFiles().count, 1)
+        task.cancel()
+        gate.release()
+        let didPropagateCancellation = await task.value
+
+        XCTAssertTrue(didPropagateCancellation)
+        XCTAssertEqual(try fixture.stagingFiles(), [])
+    }
+}
+
+private final class ImageInspectionStageGate: @unchecked Sendable {
+    let stagingCompleted = XCTestExpectation(description: "image staging completed")
+    private let released = DispatchSemaphore(value: 0)
+
+    func blockUntilReleased() {
+        stagingCompleted.fulfill()
+        released.wait()
+    }
+
+    func release() {
+        released.signal()
+    }
 }

@@ -10,27 +10,32 @@ public struct ImageInspector: ImageInspecting {
     private let stagingDirectory: URL
     private let onBeforeOpeningPathComponent: TrustedFileAccess.OpenPathComponentHook?
     private let onAfterCopyingChunk: TrustedFileAccess.CopyProgressHook?
+    private let onAfterStaging: (@Sendable () -> Void)?
 
     public init() {
         self.stagingDirectory = FileManager.default.temporaryDirectory.resolvingSymlinksInPath()
         self.onBeforeOpeningPathComponent = nil
         self.onAfterCopyingChunk = nil
+        self.onAfterStaging = nil
     }
 
     init(onBeforeOpeningPathComponent: TrustedFileAccess.OpenPathComponentHook?) {
         self.stagingDirectory = FileManager.default.temporaryDirectory.resolvingSymlinksInPath()
         self.onBeforeOpeningPathComponent = onBeforeOpeningPathComponent
         self.onAfterCopyingChunk = nil
+        self.onAfterStaging = nil
     }
 
     init(
         stagingDirectory: URL,
         onBeforeOpeningPathComponent: TrustedFileAccess.OpenPathComponentHook? = nil,
-        onAfterCopyingChunk: TrustedFileAccess.CopyProgressHook? = nil
+        onAfterCopyingChunk: TrustedFileAccess.CopyProgressHook? = nil,
+        onAfterStaging: (@Sendable () -> Void)? = nil
     ) {
         self.stagingDirectory = stagingDirectory
         self.onBeforeOpeningPathComponent = onBeforeOpeningPathComponent
         self.onAfterCopyingChunk = onAfterCopyingChunk
+        self.onAfterStaging = onAfterStaging
     }
 
     public func inspect(source: TrustedMediaSource) async throws -> InspectionOutcome<ImageProperties> {
@@ -43,7 +48,6 @@ public struct ImageInspector: ImageInspecting {
                 onBeforeOpeningPathComponent: onBeforeOpeningPathComponent,
                 onAfterCopyingChunk: onAfterCopyingChunk
             )
-            try Task.checkCancellation()
         } catch is CancellationError {
             throw CancellationError()
         } catch {
@@ -51,6 +55,7 @@ public struct ImageInspector: ImageInspecting {
         }
         defer { try? FileManager.default.removeItem(at: snapshot.stagingURL) }
 
+        onAfterStaging?()
         try Task.checkCancellation()
         guard let imageSource = CGImageSourceCreateWithURL(snapshot.stagingURL as CFURL, nil) else {
             return Self.unreadableOutcome(path: source.relativePath)

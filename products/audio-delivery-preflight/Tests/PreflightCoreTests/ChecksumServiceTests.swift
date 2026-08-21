@@ -3,6 +3,15 @@ import XCTest
 @testable import PreflightCore
 
 final class ChecksumServiceTests: XCTestCase {
+    func testTemporaryFixturesUseDistinctRoots() throws {
+        let first = try TemporaryChecksumFixture.make()
+        defer { first.remove() }
+        let second = try TemporaryChecksumFixture.make()
+        defer { second.remove() }
+
+        XCTAssertNotEqual(first.root, second.root)
+    }
+
     func testSHA256OfABCMatchesKnownDigest() async throws {
         let fixture = try TemporaryChecksumFixture.make()
         defer { fixture.remove() }
@@ -175,9 +184,9 @@ private final class TemporaryChecksumFixture {
     static func make() throws -> TemporaryChecksumFixture {
         let temporaryDirectory = URL(fileURLWithPath: "/private/tmp", isDirectory: true)
         let root = temporaryDirectory
-            .appendingPathComponent("ChecksumServiceTests-\\(UUID().uuidString)", isDirectory: true)
+            .appendingPathComponent("ChecksumServiceTests-\(UUID().uuidString)", isDirectory: true)
         let externalRoot = temporaryDirectory
-            .appendingPathComponent("ChecksumServiceExternal-\\(UUID().uuidString)", isDirectory: true)
+            .appendingPathComponent("ChecksumServiceExternal-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         try FileManager.default.createDirectory(at: externalRoot, withIntermediateDirectories: true)
         return TemporaryChecksumFixture(root: root, externalRoot: externalRoot)
