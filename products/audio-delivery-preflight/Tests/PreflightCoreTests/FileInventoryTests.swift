@@ -161,6 +161,181 @@ final class FileInventoryTests: XCTestCase {
         let didPropagateCancellation = await task.value
         XCTAssertTrue(didPropagateCancellation)
     }
+
+    func testStandardInventoryBudgetsMatchTheDocumentedLimits() {
+        XCTAssertEqual(InventoryLimits.standard.maximumTotalEntries, 50_000)
+        XCTAssertEqual(InventoryLimits.standard.maximumDepth, 32)
+        XCTAssertEqual(InventoryLimits.standard.maximumNamesPerDirectory, 20_000)
+        XCTAssertEqual(InventoryLimits.standard.maximumRelativePathByteCount, 4_096)
+        XCTAssertEqual(InventoryLimits.standard.maximumAggregateRelativePathByteCount, 16 * 1_024 * 1_024)
+    }
+
+    func testTotalEntryBudgetAllowsTheBoundaryAndRejectsTheNextEntry() async throws {
+        let limits = InventoryLimits(
+            maximumTotalEntries: 2,
+            maximumDepth: 4,
+            maximumNamesPerDirectory: 4,
+            maximumRelativePathByteCount: 64,
+            maximumAggregateRelativePathByteCount: 128
+        )
+        let boundary = try TemporaryInventoryFixture.make()
+        defer { boundary.remove() }
+        try boundary.write("one", to: "a")
+        try boundary.write("two", to: "b")
+
+        let boundarySnapshot = try await FileInventory(limits: limits).inventory(root: boundary.root)
+        XCTAssertEqual(boundarySnapshot.entries.count, 2)
+
+        let exceeded = try TemporaryInventoryFixture.make()
+        defer { exceeded.remove() }
+        try exceeded.write("one", to: "a")
+        try exceeded.write("two", to: "b")
+        try exceeded.write("three", to: "c")
+
+        await assertInventoryLimit(
+            .totalEntries,
+            limit: 2,
+            from: FileInventory(limits: limits),
+            root: exceeded.root
+        )
+    }
+
+    func testDepthBudgetAllowsTheBoundaryAndRejectsTheNextLevel() async throws {
+        let limits = InventoryLimits(
+            maximumTotalEntries: 10,
+            maximumDepth: 2,
+            maximumNamesPerDirectory: 10,
+            maximumRelativePathByteCount: 64,
+            maximumAggregateRelativePathByteCount: 256
+        )
+        let boundary = try TemporaryInventoryFixture.make()
+        defer { boundary.remove() }
+        try boundary.write("file", to: "one/file")
+
+        let boundarySnapshot = try await FileInventory(limits: limits).inventory(root: boundary.root)
+        XCTAssertTrue(boundarySnapshot.entries.contains { $0.relativePath.value == "one/file" })
+
+        let exceeded = try TemporaryInventoryFixture.make()
+        defer { exceeded.remove() }
+        try exceeded.write("file", to: "one/two/file")
+
+        await assertInventoryLimit(
+            .depth,
+            limit: 2,
+            from: FileInventory(limits: limits),
+            root: exceeded.root
+        )
+    }
+
+    func testNamesPerDirectoryBudgetAllowsTheBoundaryAndRejectsBeforeAccumulatingAnotherName() async throws {
+        let limits = InventoryLimits(
+            maximumTotalEntries: 10,
+            maximumDepth: 2,
+            maximumNamesPerDirectory: 2,
+            maximumRelativePathByteCount: 64,
+            maximumAggregateRelativePathByteCount: 256
+        )
+        let boundary = try TemporaryInventoryFixture.make()
+        defer { boundary.remove() }
+        try boundary.write("one", to: "a")
+        try boundary.write("two", to: "b")
+
+        let boundarySnapshot = try await FileInventory(limits: limits).inventory(root: boundary.root)
+        XCTAssertEqual(boundarySnapshot.entries.count, 2)
+
+        let exceeded = try TemporaryInventoryFixture.make()
+        defer { exceeded.remove() }
+        try exceeded.write("one", to: "a")
+        try exceeded.write("two", to: "b")
+        try exceeded.write("three", to: "c")
+
+        await assertInventoryLimit(
+            .namesPerDirectory,
+            limit: 2,
+            from: FileInventory(limits: limits),
+            root: exceeded.root
+        )
+    }
+
+    func testRelativePathByteBudgetAllowsTheBoundaryAndRejectsTheNextByte() async throws {
+        let limits = InventoryLimits(
+            maximumTotalEntries: 10,
+            maximumDepth: 2,
+            maximumNamesPerDirectory: 10,
+            maximumRelativePathByteCount: 8,
+            maximumAggregateRelativePathByteCount: 64
+        )
+        let boundary = try TemporaryInventoryFixture.make()
+        defer { boundary.remove() }
+        try boundary.write("file", to: "12345678")
+
+        let boundarySnapshot = try await FileInventory(limits: limits).inventory(root: boundary.root)
+        XCTAssertEqual(boundarySnapshot.entries.first?.relativePath.value, "12345678")
+
+        let exceeded = try TemporaryInventoryFixture.make()
+        defer { exceeded.remove() }
+        try exceeded.write("file", to: "123456789")
+
+        await assertInventoryLimit(
+            .relativePathBytes,
+            limit: 8,
+            from: FileInventory(limits: limits),
+            root: exceeded.root
+        )
+    }
+
+    func testAggregateRelativePathByteBudgetAllowsTheBoundaryAndRejectsTheNextByte() async throws {
+        let limits = InventoryLimits(
+            maximumTotalEntries: 10,
+            maximumDepth: 2,
+            maximumNamesPerDirectory: 10,
+            maximumRelativePathByteCount: 16,
+            maximumAggregateRelativePathByteCount: 7
+        )
+        let boundary = try TemporaryInventoryFixture.make()
+        defer { boundary.remove() }
+        try boundary.write("one", to: "aaa")
+        try boundary.write("two", to: "bbbb")
+
+        let boundarySnapshot = try await FileInventory(limits: limits).inventory(root: boundary.root)
+        XCTAssertEqual(boundarySnapshot.entries.count, 2)
+
+        let exceeded = try TemporaryInventoryFixture.make()
+        defer { exceeded.remove() }
+        try exceeded.write("one", to: "aaa")
+        try exceeded.write("two", to: "bbbb")
+        try exceeded.write("three", to: "c")
+
+        await assertInventoryLimit(
+            .aggregateRelativePathBytes,
+            limit: 7,
+            from: FileInventory(limits: limits),
+            root: exceeded.root
+        )
+    }
+
+    private func assertInventoryLimit(
+        _ resource: InventoryLimitResource,
+        limit: Int,
+        from inventory: FileInventory,
+        root: URL,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) async {
+        do {
+            _ = try await inventory.inventory(root: root)
+            XCTFail("Expected the inventory budget to be exceeded.", file: file, line: line)
+        } catch let error as PreflightError {
+            XCTAssertEqual(
+                error,
+                .inventoryLimitExceeded(resource: resource, limit: limit),
+                file: file,
+                line: line
+            )
+        } catch {
+            XCTFail("Unexpected error: \(error)", file: file, line: line)
+        }
+    }
 }
 
 private final class InventoryEnumerationGate: @unchecked Sendable {

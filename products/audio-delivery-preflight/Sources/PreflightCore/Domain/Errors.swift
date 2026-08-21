@@ -1,9 +1,18 @@
 import Foundation
 
+public enum InventoryLimitResource: String, Sendable, Codable, Equatable {
+    case totalEntries
+    case depth
+    case namesPerDirectory
+    case relativePathBytes
+    case aggregateRelativePathBytes
+}
+
 public enum PreflightError: Error, Sendable, Codable, Equatable {
     case invalidScanRequest(reason: String)
     case invalidPreset(field: String, reason: String)
     case invalidRelativePath(reason: String)
+    case inventoryLimitExceeded(resource: InventoryLimitResource, limit: Int)
     case inventoryFailed(relativePath: RelativePath, reason: String)
     case inspectionFailed(relativePath: RelativePath, reason: String)
     case exportFailed(reason: String)
@@ -14,6 +23,8 @@ public enum PreflightError: Error, Sendable, Codable, Equatable {
         case field
         case relativePath
         case path
+        case resource
+        case limit
         case reason
     }
 
@@ -21,6 +32,7 @@ public enum PreflightError: Error, Sendable, Codable, Equatable {
         case invalidScanRequest
         case invalidPreset
         case invalidRelativePath
+        case inventoryLimitExceeded
         case inventoryFailed
         case inspectionFailed
         case exportFailed
@@ -39,6 +51,11 @@ public enum PreflightError: Error, Sendable, Codable, Equatable {
             )
         case .invalidRelativePath:
             self = .invalidRelativePath(reason: try container.decode(String.self, forKey: .reason))
+        case .inventoryLimitExceeded:
+            self = .inventoryLimitExceeded(
+                resource: try container.decode(InventoryLimitResource.self, forKey: .resource),
+                limit: try container.decode(Int.self, forKey: .limit)
+            )
         case .inventoryFailed:
             self = .inventoryFailed(
                 relativePath: try Self.decodeRelativePath(from: container),
@@ -69,6 +86,10 @@ public enum PreflightError: Error, Sendable, Codable, Equatable {
         case .invalidRelativePath(let reason):
             try container.encode(Kind.invalidRelativePath, forKey: .type)
             try container.encode(reason, forKey: .reason)
+        case .inventoryLimitExceeded(let resource, let limit):
+            try container.encode(Kind.inventoryLimitExceeded, forKey: .type)
+            try container.encode(resource, forKey: .resource)
+            try container.encode(limit, forKey: .limit)
         case .inventoryFailed(let relativePath, let reason):
             try container.encode(Kind.inventoryFailed, forKey: .type)
             try container.encode(relativePath, forKey: .relativePath)

@@ -184,12 +184,16 @@ else
 fi
 snapshot_directory "$CUSTOM_AAC_DIR" "$VERIFY_TMP/custom-aac-after.tsv"
 /usr/bin/cmp "$VERIFY_TMP/custom-aac-before.tsv" "$VERIFY_TMP/custom-aac-after.tsv"
-if (( CUSTOM_AAC_EXIT != 2 && CUSTOM_AAC_EXIT != 3 )); then
-    print -u2 -- "Invalid Custom-role release probe returned exit $CUSTOM_AAC_EXIT instead of 2 or 3."
+if (( CUSTOM_AAC_EXIT != 3 )); then
+    print -u2 -- "Invalid Custom-role release probe returned exit $CUSTOM_AAC_EXIT instead of 3."
     exit 1
 fi
-if /usr/bin/grep -F -q -- 'Status: ready' "$VERIFY_TMP/custom-aac.stdout"; then
-    print -u2 -- "Invalid Custom-role release probe returned a ready status."
+if ! /usr/bin/grep -F -q -- 'Invalid command or configuration.' "$VERIFY_TMP/custom-aac.stderr"; then
+    print -u2 -- "Invalid Custom-role release probe did not report invalid configuration."
+    exit 1
+fi
+if /usr/bin/grep -E -q -- 'Resolved requirements|Scan summary:|Status:' "$VERIFY_TMP/custom-aac.stdout"; then
+    print -u2 -- "Invalid Custom-role release probe reached requirement or scan output."
     exit 1
 fi
 

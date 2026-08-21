@@ -106,6 +106,30 @@ final class DomainModelTests: XCTestCase {
         XCTAssertThrowsError(try JSONDecoder().decode(RelativePath.self, from: Data("\"/Users/gabriel/Masters/Track.wav\"".utf8)))
     }
 
+    func testRelativePathRejectsEveryC0DELAndC1ControlScalarWithTypedError() throws {
+        let controlValues = Array(0x00...0x1F) + [0x7F] + Array(0x80...0x9F)
+
+        for value in controlValues {
+            let scalar = try XCTUnwrap(UnicodeScalar(value))
+            let path = "Masters/Track\(String(scalar)).wav"
+
+            XCTAssertThrowsError(try RelativePath(path), "U+\(String(value, radix: 16, uppercase: true))") { error in
+                guard let error = error as? PreflightError else {
+                    return XCTFail("Expected PreflightError, received \(error)")
+                }
+                guard case .invalidRelativePath = error else {
+                    return XCTFail("Expected invalidRelativePath, received \(error)")
+                }
+            }
+        }
+    }
+
+    func testRelativePathPreservesPrintableUnicode() throws {
+        let path = "Música/日本語-🎛️-Café.wav"
+
+        XCTAssertEqual(try RelativePath(path).value, path)
+    }
+
     func testEncodedScanResultContainsOnlyValidatedRelativeSourcePaths() throws {
         let master = try RelativePath("Masters/Track.wav")
         let artwork = try RelativePath("Artwork/cover.png")

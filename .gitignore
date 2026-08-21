@@ -23,3 +23,6 @@ products/mix-revision-handoff-kit/tmp/
 products/techno-low-end-architecture/pack/
 products/techno-low-end-architecture/dist/
 products/techno-low-end-architecture/qa/
+
+# Internal subagent/task scratch evidence is local-only, not release content.
+.superpowers/

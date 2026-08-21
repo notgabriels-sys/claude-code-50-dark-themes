@@ -107,6 +107,101 @@ final class ScanServiceTests: XCTestCase {
         XCTAssertTrue(invalidRoot.findings[0].affectedPaths.isEmpty)
     }
 
+    func testInventoryBudgetFailureReturnsExactVisibleIncompleteFinding() async throws {
+        let preset = try PresetResolver().resolve(Preset(identifier: "test", name: "Test"))
+        let service = ScanService(
+            inventory: InventoryLimitThrowingSpy(resource: .totalEntries, limit: 50_000),
+            checksums: ScanChecksumSpy(),
+            audioInspector: ScanAudioInspectorSpy(),
+            imageInspector: ScanImageInspectorSpy(),
+            presetResolver: ScanPresetResolverSpy(resolvedPreset: preset),
+            ruleEngine: ScanRuleEngineSpy(),
+            fingerprinting: ScanFingerprintSpy(),
+            now: { Date(timeIntervalSince1970: 1_000) }
+        )
+
+        let result = await service.scan(
+            request(root: URL(fileURLWithPath: "/tmp/Delivery", isDirectory: true), preset: preset)
+        )
+
+        XCTAssertEqual(result.overallStatus, .incomplete)
+        XCTAssertEqual(result.findings.map(\.ruleID), ["filesystem.inventory-limit.total-entries"])
+        XCTAssertEqual(result.findings.first?.severity, .error)
+        XCTAssertEqual(result.findings.first?.title, "Inventory total-entry budget exceeded")
+        XCTAssertEqual(result.findings.first?.evidence, [
+            Evidence(label: "resource", value: .string("totalEntries")),
+            Evidence(label: "limit", value: .integer(50_000)),
+        ])
+        XCTAssertTrue(result.inventory.isEmpty)
+        XCTAssertNil(result.completedAt)
+        XCTAssertNotEqual(result.overallStatus, .ready)
+    }
+
+    func testEveryInventoryBudgetMapsToItsSpecificVisibleFinding() async throws {
+        let preset = try PresetResolver().resolve(Preset(identifier: "test", name: "Test"))
+        let cases: [(InventoryLimitResource, Int, String)] = [
+            (.totalEntries, 50_000, "filesystem.inventory-limit.total-entries"),
+            (.depth, 32, "filesystem.inventory-limit.depth"),
+            (.namesPerDirectory, 20_000, "filesystem.inventory-limit.names-per-directory"),
+            (.relativePathBytes, 4_096, "filesystem.inventory-limit.relative-path-bytes"),
+            (
+                .aggregateRelativePathBytes,
+                16 * 1_024 * 1_024,
+                "filesystem.inventory-limit.aggregate-relative-path-bytes"
+            ),
+        ]
+
+        for (resource, limit, expectedRuleID) in cases {
+            let service = ScanService(
+                inventory: InventoryLimitThrowingSpy(resource: resource, limit: limit),
+                checksums: ScanChecksumSpy(),
+                audioInspector: ScanAudioInspectorSpy(),
+                imageInspector: ScanImageInspectorSpy(),
+                presetResolver: ScanPresetResolverSpy(resolvedPreset: preset),
+                ruleEngine: ScanRuleEngineSpy(),
+                fingerprinting: ScanFingerprintSpy(),
+                now: { Date(timeIntervalSince1970: 1_000) }
+            )
+
+            let result = await service.scan(
+                request(root: URL(fileURLWithPath: "/tmp/Delivery", isDirectory: true), preset: preset)
+            )
+
+            XCTAssertEqual(result.overallStatus, .incomplete, resource.rawValue)
+            XCTAssertEqual(result.findings.map(\.ruleID), [expectedRuleID], resource.rawValue)
+            XCTAssertEqual(result.findings.first?.evidence, [
+                Evidence(label: "resource", value: .string(resource.rawValue)),
+                Evidence(label: "limit", value: .integer(limit)),
+            ])
+        }
+    }
+
+    func testBudgetExceededDuringPostInventoryKeepsSpecificIncompleteFinding() async throws {
+        let preset = try PresetResolver().resolve(Preset(identifier: "test", name: "Test"))
+        let service = ScanService(
+            inventory: PostInventoryLimitThrowingSpy(resource: .depth, limit: 32),
+            checksums: ScanChecksumSpy(),
+            audioInspector: ScanAudioInspectorSpy(),
+            imageInspector: ScanImageInspectorSpy(),
+            presetResolver: ScanPresetResolverSpy(resolvedPreset: preset),
+            ruleEngine: ScanRuleEngineSpy(),
+            fingerprinting: ScanFingerprintSpy(),
+            now: { Date(timeIntervalSince1970: 1_000) }
+        )
+
+        let result = await service.scan(
+            request(root: URL(fileURLWithPath: "/tmp/Delivery", isDirectory: true), preset: preset)
+        )
+
+        XCTAssertEqual(result.overallStatus, .incomplete)
+        XCTAssertEqual(result.findings.map(\.ruleID), ["filesystem.inventory-limit.depth"])
+        XCTAssertEqual(result.findings.first?.evidence, [
+            Evidence(label: "resource", value: .string("depth")),
+            Evidence(label: "limit", value: .integer(32)),
+        ])
+        XCTAssertTrue(result.inventory.isEmpty)
+    }
+
     func testSameLengthSourceMutationWithRestoredMtimeProducesErrorAndCannotBeReady() async throws {
         let fixture = try ScanMutationFixture.make()
         defer { fixture.remove() }
@@ -475,6 +570,34 @@ private struct ScanInventorySpy: FileInventorying {
 private struct ThrowingInventorySpy: FileInventorying {
     func inventory(root: URL) async throws -> InventorySnapshot {
         throw PreflightError.invalidScanRequest(reason: "Root is unavailable.")
+    }
+}
+
+private struct InventoryLimitThrowingSpy: FileInventorying {
+    let resource: InventoryLimitResource
+    let limit: Int
+
+    func inventory(root: URL) async throws -> InventorySnapshot {
+        throw PreflightError.inventoryLimitExceeded(resource: resource, limit: limit)
+    }
+}
+
+private actor PostInventoryLimitThrowingSpy: FileInventorying {
+    let resource: InventoryLimitResource
+    let limit: Int
+    private var callCount = 0
+
+    init(resource: InventoryLimitResource, limit: Int) {
+        self.resource = resource
+        self.limit = limit
+    }
+
+    func inventory(root: URL) async throws -> InventorySnapshot {
+        callCount += 1
+        if callCount == 2 {
+            throw PreflightError.inventoryLimitExceeded(resource: resource, limit: limit)
+        }
+        return InventorySnapshot(entries: [], findings: [])
     }
 }
 

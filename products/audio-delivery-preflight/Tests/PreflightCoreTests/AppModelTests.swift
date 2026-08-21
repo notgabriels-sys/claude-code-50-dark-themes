@@ -392,7 +392,7 @@ final class AppModelTests: XCTestCase {
                         CustomRoleDraft(identifier: "duplicate", name: "Second", pattern: ".*", category: .document),
                     ]
                 },
-                expectedMessage: "Custom preset error. Delivery roles: Role identifiers must be unique: duplicate.",
+                expectedMessage: "Custom preset error. Delivery roles: Role identifiers must be unique after normalization: duplicate.",
                 preservedValue: { $0.customPresetDraft.roles.map(\.identifier).joined(separator: ",") },
                 expectedValue: "duplicate,duplicate"
             ),
@@ -519,6 +519,33 @@ final class AppModelTests: XCTestCase {
         XCTAssertEqual(model.exportConfirmationMessage, "Exported SHA-256 checksums.")
     }
 
+    func testChecksumGenerationFailureDoesNotWriteOrReportSuccess() async throws {
+        let invalid = InventoryEntry(
+            relativePath: try RelativePath("Masters/Missing Digest.wav"),
+            normalizedFilename: "missing digest.wav",
+            normalizedExtension: "wav",
+            category: .audio,
+            kind: .regular,
+            checksumStatus: .succeeded
+        )
+        let scan = ScanCapture(result: try result(status: .ready, inventory: [invalid]))
+        let export = ExportCapture()
+        let model = AppModel(environment: environment(scan: scan, export: export))
+        XCTAssertTrue(model.selectFolder(folderURL()))
+        model.startScan()
+        await waitUntil { model.phase == .results }
+        model.showExport()
+
+        await model.export(.checksums, to: URL(fileURLWithPath: "/private/tmp/SHA256SUMS.txt"))
+
+        let exportCallCount = await export.callCount
+        XCTAssertEqual(exportCallCount, 0)
+        XCTAssertEqual(model.phase, .results)
+        XCTAssertEqual(model.errorMessage, "Report export failed. The scan result is unchanged.")
+        XCTAssertNil(model.lastExportedFormat)
+        XCTAssertNil(model.exportConfirmationMessage)
+    }
+
     func testReopeningExportClearsPriorSuccessConfirmation() async throws {
         let scan = ScanCapture(result: try result(status: .ready))
         let model = AppModel(environment: environment(scan: scan, export: ExportCapture()))
@@ -637,7 +664,8 @@ final class AppModelTests: XCTestCase {
     private func result(
         status: OverallStatus,
         findings: [Finding]? = nil,
-        roleAssignments: [RoleAssignment] = []
+        roleAssignments: [RoleAssignment] = [],
+        inventory: [InventoryEntry] = []
     ) throws -> ScanResult {
         let resolved = try PresetResolver().resolve(BuiltInPresets.generalAudio)
         let resolvedFindings: [Finding]
@@ -657,7 +685,7 @@ final class AppModelTests: XCTestCase {
             engineVersion: "0.1.0",
             startedAt: Date(timeIntervalSince1970: 0),
             completedAt: status == .incomplete ? nil : Date(timeIntervalSince1970: 1),
-            inventory: [],
+            inventory: inventory,
             roleAssignments: roleAssignments,
             findings: resolvedFindings,
             overallStatus: status

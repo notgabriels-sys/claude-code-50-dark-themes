@@ -437,7 +437,7 @@ final class AppModel {
         case .json:
             try JSONReportWriter().data(for: result)
         case .checksums:
-            Data(ChecksumManifestWriter().text(for: result).utf8)
+            Data(try ChecksumManifestWriter().text(for: result).utf8)
         }
     }
 

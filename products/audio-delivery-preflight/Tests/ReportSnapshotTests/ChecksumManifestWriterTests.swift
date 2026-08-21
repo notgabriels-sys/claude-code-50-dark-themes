@@ -14,42 +14,148 @@ final class ChecksumManifestWriterTests: XCTestCase {
         let scan = ScanResult(selectedFolderName: result.selectedFolderName, preset: result.preset, applicationVersion: result.applicationVersion, engineVersion: result.engineVersion, startedAt: result.startedAt, completedAt: result.completedAt, inventory: entries, findings: [], overallStatus: .ready)
 
         XCTAssertEqual(
-            ChecksumManifestWriter().text(for: scan),
+            try ChecksumManifestWriter().text(for: scan),
             "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad  a.wav\n" +
                 "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad  z.wav\n"
         )
     }
 
-    func testManifestSkipsPathsWithLineBreaks() throws {
+    func testSucceededChecksumEvidenceIsAllOrError() throws {
         let result = try ReportFixture.result()
-        let entry = InventoryEntry(relativePath: try RelativePath("safe.wav"), normalizedFilename: "safe.wav", normalizedExtension: "wav", category: .audio, kind: .regular, sha256: "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad")
-        let unsafe = InventoryEntry(relativePath: try RelativePath("unsafe\nname.wav"), normalizedFilename: "unsafe\nname.wav", normalizedExtension: "wav", category: .audio, kind: .regular, sha256: "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad")
-        let scan = ScanResult(selectedFolderName: result.selectedFolderName, preset: result.preset, applicationVersion: result.applicationVersion, engineVersion: result.engineVersion, startedAt: result.startedAt, inventory: [unsafe, entry], findings: [], overallStatus: .ready)
-        XCTAssertEqual(ChecksumManifestWriter().text(for: scan), "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad  safe.wav\n")
-    }
-
-    func testManifestRejectsDigestUnlessChecksumStatusSucceeded() throws {
-        let result = try ReportFixture.result()
-        let entry = InventoryEntry(
-            relativePath: try RelativePath("stale.wav"),
-            normalizedFilename: "stale.wav",
+        let valid = InventoryEntry(
+            relativePath: try RelativePath("safe.wav"),
+            normalizedFilename: "safe.wav",
             normalizedExtension: "wav",
             category: .audio,
             kind: .regular,
-            sha256: "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-            checksumStatus: .failed
+            sha256: String(repeating: "a", count: 64)
         )
+        let invalidEntries = [
+            InventoryEntry(
+                relativePath: try RelativePath("missing.wav"),
+                normalizedFilename: "missing.wav",
+                normalizedExtension: "wav",
+                category: .audio,
+                kind: .regular,
+                checksumStatus: .succeeded
+            ),
+            InventoryEntry(
+                relativePath: try RelativePath("malformed.wav"),
+                normalizedFilename: "malformed.wav",
+                normalizedExtension: "wav",
+                category: .audio,
+                kind: .regular,
+                sha256: "not-a-sha256",
+                checksumStatus: .succeeded
+            ),
+        ]
+
+        for invalid in invalidEntries {
+            let scan = ScanResult(
+                selectedFolderName: result.selectedFolderName,
+                preset: result.preset,
+                applicationVersion: result.applicationVersion,
+                engineVersion: result.engineVersion,
+                startedAt: result.startedAt,
+                inventory: [valid, invalid],
+                findings: [],
+                overallStatus: .ready
+            )
+
+            XCTAssertThrowsError(try ChecksumManifestWriter().text(for: scan)) { error in
+                guard let error = error as? PreflightError else {
+                    return XCTFail("Expected PreflightError, received \(error)")
+                }
+                guard case .exportFailed = error else {
+                    return XCTFail("Expected exportFailed, received \(error)")
+                }
+            }
+        }
+    }
+
+    func testManifestExcludesFailedAndNotCalculatedChecksumsByContract() throws {
+        let result = try ReportFixture.result()
+        let checksum = String(repeating: "b", count: 64)
+        let entries = [
+            InventoryEntry(
+                relativePath: try RelativePath("included.wav"),
+                normalizedFilename: "included.wav",
+                normalizedExtension: "wav",
+                category: .audio,
+                kind: .regular,
+                sha256: checksum,
+                checksumStatus: .succeeded
+            ),
+            InventoryEntry(
+                relativePath: try RelativePath("failed.wav"),
+                normalizedFilename: "failed.wav",
+                normalizedExtension: "wav",
+                category: .audio,
+                kind: .regular,
+                sha256: checksum,
+                checksumStatus: .failed
+            ),
+            InventoryEntry(
+                relativePath: try RelativePath("not-calculated.wav"),
+                normalizedFilename: "not-calculated.wav",
+                normalizedExtension: "wav",
+                category: .audio,
+                kind: .regular,
+                sha256: checksum,
+                checksumStatus: .notCalculated
+            ),
+        ]
         let scan = ScanResult(
             selectedFolderName: result.selectedFolderName,
             preset: result.preset,
             applicationVersion: result.applicationVersion,
             engineVersion: result.engineVersion,
             startedAt: result.startedAt,
-            inventory: [entry],
+            inventory: entries,
             findings: [],
             overallStatus: .ready
         )
 
-        XCTAssertEqual(ChecksumManifestWriter().text(for: scan), "")
+        XCTAssertEqual(
+            try ChecksumManifestWriter().text(for: scan),
+            "\(checksum)  included.wav\n"
+        )
+    }
+
+    func testManifestExcludesServiceAndNonRegularEntriesEvenWithSucceededChecksums() throws {
+        let result = try ReportFixture.result()
+        let checksum = String(repeating: "c", count: 64)
+        let entries = [
+            InventoryEntry(
+                relativePath: try RelativePath(".DS_Store"),
+                normalizedFilename: ".ds_store",
+                normalizedExtension: "",
+                category: .serviceFile,
+                kind: .regular,
+                sha256: checksum,
+                checksumStatus: .succeeded
+            ),
+            InventoryEntry(
+                relativePath: try RelativePath("Folder"),
+                normalizedFilename: "folder",
+                normalizedExtension: "",
+                category: .other,
+                kind: .directory,
+                sha256: checksum,
+                checksumStatus: .succeeded
+            ),
+        ]
+        let scan = ScanResult(
+            selectedFolderName: result.selectedFolderName,
+            preset: result.preset,
+            applicationVersion: result.applicationVersion,
+            engineVersion: result.engineVersion,
+            startedAt: result.startedAt,
+            inventory: entries,
+            findings: [],
+            overallStatus: .ready
+        )
+
+        XCTAssertEqual(try ChecksumManifestWriter().text(for: scan), "")
     }
 }

@@ -204,6 +204,14 @@ struct CompiledDeliveryRole: @unchecked Sendable {
     let pattern: NSRegularExpression
 }
 
+enum PresetValidationLimits {
+    static let maximumRoles = 32
+    static let maximumRegularExpressionByteCount = 512
+    static let maximumCollectionValueCount = 4_096
+    static let maximumStringByteCount = 4_096
+    static let maximumAggregateStringByteCount = 1_048_576
+}
+
 public struct PresetResolver: PresetResolving {
     public init() {}
 
@@ -214,17 +222,39 @@ public struct PresetResolver: PresetResolving {
                 reason: "Only preset schema version 1.0 is supported."
             )
         }
-        guard !preset.identifier.isEmpty else {
-            throw PreflightError.invalidPreset(field: "identifier", reason: "The identifier cannot be empty.")
+        var stringBudget = PresetStringBudget()
+        try validateIdentifier(preset.identifier, field: "identifier", budget: &stringBudget)
+        try validateName(preset.name, field: "name", budget: &stringBudget)
+        guard preset.roles.count <= PresetValidationLimits.maximumRoles else {
+            throw PreflightError.invalidPreset(
+                field: "roles",
+                reason: "A preset can define at most 32 roles."
+            )
         }
-        guard !preset.name.isEmpty else {
-            throw PreflightError.invalidPreset(field: "name", reason: "The name cannot be empty.")
+        let duplicateIdentifiers = Dictionary(
+            grouping: preset.roles,
+            by: { normalizedIdentifier($0.identifier) }
+        )
+            .first { $0.value.count > 1 }?.key
+        if let duplicateIdentifiers {
+            throw PreflightError.invalidPreset(
+                field: "roles",
+                reason: "Role identifiers must be unique after normalization: \(duplicateIdentifiers)."
+            )
         }
 
         try validate(preset.audio.sampleRate, field: "audio.sampleRate")
         try validate(preset.audio.bitDepth, field: "audio.bitDepth")
-        try validateStrings(preset.audio.allowedExtensions, field: "audio.allowedExtensions")
-        try validateStrings(preset.audio.allowedEncodings, field: "audio.allowedEncodings")
+        try validateStrings(
+            preset.audio.allowedExtensions,
+            field: "audio.allowedExtensions",
+            budget: &stringBudget
+        )
+        try validateStrings(
+            preset.audio.allowedEncodings,
+            field: "audio.allowedEncodings",
+            budget: &stringBudget
+        )
         if preset.audio.allowedExtensions != nil
             || preset.audio.allowedEncodings != nil
             || preset.audio.sampleRate != nil
@@ -255,22 +285,35 @@ public struct PresetResolver: PresetResolving {
         try validateIssueSeverity(preset.symbolicLinkSeverity, field: "symbolicLinkSeverity")
         try validateIssueSeverity(preset.exactDuplicateSeverity, field: "exactDuplicateSeverity")
 
-        let duplicateIdentifiers = Dictionary(grouping: preset.roles, by: \.identifier)
-            .first { $0.value.count > 1 }?.key
-        if let duplicateIdentifiers {
-            throw PreflightError.invalidPreset(field: "roles", reason: "Role identifiers must be unique: \(duplicateIdentifiers).")
+        for role in preset.roles {
+            let prefix = role.identifier.isEmpty ? "roles" : "roles.\(role.identifier)"
+            try validateIdentifier(role.identifier, field: "\(prefix).identifier", budget: &stringBudget)
+            try validateName(role.name, field: "\(prefix).name", budget: &stringBudget)
+            try validateRegularExpression(role.pattern, field: "\(prefix).pattern", budget: &stringBudget)
+            try validateStrings(
+                role.allowedExtensions,
+                field: "\(prefix).allowedExtensions",
+                budget: &stringBudget
+            )
+            try validateStrings(
+                role.allowedEncodings,
+                field: "\(prefix).allowedEncodings",
+                budget: &stringBudget
+            )
+        }
+        if let pattern = preset.filename.ambiguousVersionPattern {
+            try validateRegularExpression(
+                pattern,
+                field: "filename.ambiguousVersionPattern",
+                budget: &stringBudget
+            )
         }
 
         var compiledRoles: [CompiledDeliveryRole] = []
         for role in preset.roles {
-            guard !role.identifier.isEmpty else {
-                throw PreflightError.invalidPreset(field: "roles.identifier", reason: "The identifier cannot be empty.")
-            }
             try validate(role.channelCount, field: "roles.\(role.identifier).channelCount")
             try validate(role.sampleRate, field: "roles.\(role.identifier).sampleRate")
             try validate(role.bitDepth, field: "roles.\(role.identifier).bitDepth")
-            try validateStrings(role.allowedExtensions, field: "roles.\(role.identifier).allowedExtensions")
-            try validateStrings(role.allowedEncodings, field: "roles.\(role.identifier).allowedEncodings")
             try validateCategoryContract(for: role)
             let roleHasBlockingRequirement = role.required
                 || role.allowedEncodings != nil
@@ -329,11 +372,117 @@ public struct PresetResolver: PresetResolving {
         }
     }
 
-    private func validateStrings(_ values: [String]?, field: String) throws {
+    private func validateIdentifier(
+        _ value: String,
+        field: String,
+        budget: inout PresetStringBudget
+    ) throws {
+        try validateBoundedString(value, field: field, budget: &budget)
+        guard !value.isEmpty else {
+            throw PreflightError.invalidPreset(field: field, reason: "The identifier cannot be empty.")
+        }
+        guard value == value.trimmingCharacters(in: .whitespacesAndNewlines),
+              value.first?.isASCIIIdentifierCharacter == true,
+              value.last?.isASCIIIdentifierCharacter == true,
+              value.split(separator: "-", omittingEmptySubsequences: false).allSatisfy({ component in
+                  !component.isEmpty && component.allSatisfy(\.isASCIIIdentifierCharacter)
+              })
+        else {
+            throw PreflightError.invalidPreset(
+                field: field,
+                reason: "Identifiers must use letters, digits, and single hyphens only."
+            )
+        }
+        guard value == normalizedIdentifier(value) else {
+            throw PreflightError.invalidPreset(
+                field: field,
+                reason: "Identifiers must use their normalized lowercase form."
+            )
+        }
+    }
+
+    private func validateName(
+        _ value: String,
+        field: String,
+        budget: inout PresetStringBudget
+    ) throws {
+        try validateBoundedString(value, field: field, budget: &budget)
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            throw PreflightError.invalidPreset(field: field, reason: "The name cannot be empty.")
+        }
+        guard value == trimmed else {
+            throw PreflightError.invalidPreset(
+                field: field,
+                reason: "The name must not contain leading or trailing whitespace."
+            )
+        }
+    }
+
+    private func validateRegularExpression(
+        _ pattern: String,
+        field: String,
+        budget: inout PresetStringBudget
+    ) throws {
+        guard pattern.utf8.count <= PresetValidationLimits.maximumRegularExpressionByteCount else {
+            throw PreflightError.invalidPreset(
+                field: field,
+                reason: "The regular expression cannot exceed 512 UTF-8 bytes."
+            )
+        }
+        try validateBoundedString(pattern, field: field, budget: &budget)
+        guard SafeRegularExpressionPolicy.isSafe(pattern) else {
+            throw PreflightError.invalidPreset(
+                field: field,
+                reason: "The regular expression uses an unsafe construct."
+            )
+        }
+    }
+
+    private func validateStrings(
+        _ values: [String]?,
+        field: String,
+        budget: inout PresetStringBudget
+    ) throws {
         guard let values else { return }
-        guard !values.isEmpty, values.allSatisfy({ !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }) else {
+        guard !values.isEmpty else {
             throw PreflightError.invalidPreset(field: field, reason: "Configured values cannot be empty.")
         }
+        try budget.reserveCollectionValues(values.count, field: field)
+        for value in values {
+            try validateBoundedString(value, field: field, budget: &budget)
+            let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty, trimmed == value else {
+                throw PreflightError.invalidPreset(
+                    field: field,
+                    reason: "Configured values must be nonempty and trimmed."
+                )
+            }
+        }
+    }
+
+    private func validateBoundedString(
+        _ value: String,
+        field: String,
+        budget: inout PresetStringBudget
+    ) throws {
+        guard !value.unicodeScalars.contains(where: CharacterSet.controlCharacters.contains) else {
+            throw PreflightError.invalidPreset(
+                field: field,
+                reason: "Actual control characters are not allowed."
+            )
+        }
+        guard value.utf8.count <= PresetValidationLimits.maximumStringByteCount else {
+            throw PreflightError.invalidPreset(
+                field: field,
+                reason: "A configured string cannot exceed 4096 UTF-8 bytes."
+            )
+        }
+        try budget.reserve(value, field: field)
+    }
+
+    private func normalizedIdentifier(_ identifier: String) -> String {
+        identifier.precomposedStringWithCanonicalMapping.lowercased()
     }
 
     private func validateCategoryContract(for role: DeliveryRole) throws {
@@ -487,5 +636,327 @@ public struct PresetResolver: PresetResolving {
     private func displayNumber(_ value: Double) -> String {
         let text = String(value)
         return text.hasSuffix(".0") ? String(text.dropLast(2)) : text
+    }
+}
+
+private struct PresetStringBudget {
+    private var aggregateStringByteCount = 0
+    private var collectionValueCount = 0
+
+    mutating func reserve(_ value: String, field: String) throws {
+        let (newCount, overflow) = aggregateStringByteCount.addingReportingOverflow(value.utf8.count)
+        guard !overflow, newCount <= PresetValidationLimits.maximumAggregateStringByteCount else {
+            throw PreflightError.invalidPreset(
+                field: field,
+                reason: "Preset strings exceed the 1048576-byte aggregate limit."
+            )
+        }
+        aggregateStringByteCount = newCount
+    }
+
+    mutating func reserveCollectionValues(_ count: Int, field: String) throws {
+        let (newCount, overflow) = collectionValueCount.addingReportingOverflow(count)
+        guard !overflow, newCount <= PresetValidationLimits.maximumCollectionValueCount else {
+            throw PreflightError.invalidPreset(
+                field: field,
+                reason: "Preset collections can contain at most 4096 configured values in aggregate."
+            )
+        }
+        collectionValueCount = newCount
+    }
+}
+
+private enum SafeRegularExpressionPolicy {
+    private static let maximumBoundedRepetition = 256
+    private static let trustedBuiltInPatterns: Set<String> = {
+        Set(BuiltInPresets.all.flatMap { preset in
+            preset.roles.map(\.pattern) + [preset.filename.ambiguousVersionPattern].compactMap { $0 }
+        })
+    }()
+
+    private struct GroupState {
+        var containsRepetition = false
+        var containsAlternation = false
+    }
+
+    private enum Quantifier {
+        case bounded(endIndex: Int, isVariable: Bool, canRepeatMoreThanOnce: Bool)
+        case unbounded(endIndex: Int)
+        case unsafe
+
+        var isUnbounded: Bool {
+            switch self {
+            case .unbounded, .unsafe:
+                true
+            case .bounded:
+                false
+            }
+        }
+
+        var isVariable: Bool {
+            switch self {
+            case .bounded(_, let isVariable, _):
+                isVariable
+            case .unbounded, .unsafe:
+                true
+            }
+        }
+
+        var canRepeatMoreThanOnce: Bool {
+            switch self {
+            case .bounded(_, _, let canRepeatMoreThanOnce):
+                canRepeatMoreThanOnce
+            case .unbounded, .unsafe:
+                true
+            }
+        }
+
+        var isUnsafe: Bool {
+            if case .unsafe = self { return true }
+            return false
+        }
+    }
+
+    static func isSafe(_ pattern: String) -> Bool {
+        if trustedBuiltInPatterns.contains(pattern) {
+            return true
+        }
+
+        let characters = Array(pattern)
+        var groups = [GroupState()]
+        var index = 0
+        var inCharacterClass = false
+        var escaped = false
+        var previousWasQuantifier = false
+        var variableQuantifierCount = 0
+        var unboundedQuantifierCount = 0
+
+        while index < characters.count {
+            let character = characters[index]
+
+            if escaped {
+                if !inCharacterClass,
+                   (character.isASCIIBackreferenceDigit || character == "k" || character == "g")
+                {
+                    return false
+                }
+                escaped = false
+                previousWasQuantifier = false
+                index += 1
+                continue
+            }
+
+            if character == "\\" {
+                escaped = true
+                index += 1
+                continue
+            }
+
+            if inCharacterClass {
+                if character == "]" {
+                    inCharacterClass = false
+                    previousWasQuantifier = false
+                }
+                index += 1
+                continue
+            }
+
+            if character == "[" {
+                inCharacterClass = true
+                previousWasQuantifier = false
+                index += 1
+                continue
+            }
+
+            if character == "(" {
+                if index + 1 < characters.count, characters[index + 1] == "?" {
+                    guard let bodyStart = allowedSpecialGroupBodyStart(
+                        in: characters,
+                        openingIndex: index
+                    ) else {
+                        return false
+                    }
+                    if bodyStart > index, characters[bodyStart - 1] == ")" {
+                        previousWasQuantifier = false
+                        index = bodyStart
+                        continue
+                    }
+                    groups.append(GroupState())
+                    previousWasQuantifier = false
+                    index = bodyStart
+                    continue
+                }
+                groups.append(GroupState())
+                previousWasQuantifier = false
+                index += 1
+                continue
+            }
+
+            if character == ")" {
+                guard groups.count > 1 else {
+                    previousWasQuantifier = false
+                    index += 1
+                    continue
+                }
+                let closed = groups.removeLast()
+                if let quantifier = quantifier(at: index + 1, in: characters) {
+                    if quantifier.isUnsafe {
+                        return false
+                    }
+                    if quantifier.canRepeatMoreThanOnce,
+                       (closed.containsRepetition || closed.containsAlternation)
+                    {
+                        return false
+                    }
+                }
+                groups[groups.count - 1].containsRepetition =
+                    groups[groups.count - 1].containsRepetition || closed.containsRepetition
+                groups[groups.count - 1].containsAlternation =
+                    groups[groups.count - 1].containsAlternation || closed.containsAlternation
+                previousWasQuantifier = false
+                index += 1
+                continue
+            }
+
+            if character == "|" {
+                groups[groups.count - 1].containsAlternation = true
+                previousWasQuantifier = false
+                index += 1
+                continue
+            }
+
+            if let quantifier = quantifier(at: index, in: characters) {
+                guard !previousWasQuantifier else { return false }
+                if quantifier.isVariable {
+                    variableQuantifierCount += 1
+                }
+                if quantifier.isUnbounded {
+                    unboundedQuantifierCount += 1
+                }
+                switch quantifier {
+                case .bounded(let endIndex, _, _):
+                    groups[groups.count - 1].containsRepetition = true
+                    previousWasQuantifier = true
+                    index = endIndex + 1
+                case .unbounded(let endIndex):
+                    groups[groups.count - 1].containsRepetition = true
+                    previousWasQuantifier = true
+                    index = endIndex + 1
+                case .unsafe:
+                    return false
+                }
+                continue
+            }
+
+            previousWasQuantifier = false
+            index += 1
+        }
+
+        if variableQuantifierCount <= 1 {
+            return true
+        }
+
+        return variableQuantifierCount == 2
+            && unboundedQuantifierCount == 2
+            && pattern.contains("\\s*\\d+")
+    }
+
+    private static func allowedSpecialGroupBodyStart(
+        in characters: [Character],
+        openingIndex: Int
+    ) -> Int? {
+        let markerIndex = openingIndex + 2
+        guard markerIndex < characters.count else { return nil }
+        if characters[markerIndex] == ":" {
+            return markerIndex + 1
+        }
+
+        var index = markerIndex
+        var sawFlag = false
+        while index < characters.count,
+              "imsxw-".contains(characters[index])
+        {
+            sawFlag = true
+            index += 1
+        }
+        guard sawFlag, index < characters.count else { return nil }
+        if characters[index] == ":" {
+            return index + 1
+        }
+        if characters[index] == ")" {
+            return index + 1
+        }
+        return nil
+    }
+
+    private static func quantifier(at index: Int, in characters: [Character]) -> Quantifier? {
+        guard index < characters.count else { return nil }
+        switch characters[index] {
+        case "*", "+":
+            return .unbounded(endIndex: index)
+        case "?":
+            return .bounded(
+                endIndex: index,
+                isVariable: true,
+                canRepeatMoreThanOnce: false
+            )
+        case "{":
+            var cursor = index + 1
+            var body = ""
+            while cursor < characters.count, characters[cursor] != "}" {
+                body.append(characters[cursor])
+                cursor += 1
+            }
+            guard cursor < characters.count, !body.isEmpty else { return nil }
+            let parts = body.split(separator: ",", omittingEmptySubsequences: false)
+            guard parts.count <= 2,
+                  !parts[0].isEmpty,
+                  parts[0].allSatisfy(\.isNumber),
+                  (parts.count == 1 || parts[1].isEmpty || parts[1].allSatisfy(\.isNumber))
+            else {
+                return nil
+            }
+            guard let lowerBound = Int(parts[0]), lowerBound <= maximumBoundedRepetition else {
+                return .unsafe
+            }
+            if parts.count == 2, parts[1].isEmpty {
+                return .unbounded(endIndex: cursor)
+            }
+            let upperBound: Int
+            if parts.count == 2 {
+                guard let parsedUpperBound = Int(parts[1]),
+                      parsedUpperBound >= lowerBound,
+                      parsedUpperBound <= maximumBoundedRepetition
+                else {
+                    return .unsafe
+                }
+                upperBound = parsedUpperBound
+            } else {
+                upperBound = lowerBound
+            }
+            return .bounded(
+                endIndex: cursor,
+                isVariable: lowerBound != upperBound,
+                canRepeatMoreThanOnce: upperBound > 1
+            )
+        default:
+            return nil
+        }
+    }
+}
+
+private extension Character {
+    var isASCIIIdentifierCharacter: Bool {
+        guard unicodeScalars.count == 1, let scalar = unicodeScalars.first else { return false }
+        return scalar.isASCII && (
+            (scalar.value >= 48 && scalar.value <= 57)
+                || (scalar.value >= 65 && scalar.value <= 90)
+                || (scalar.value >= 97 && scalar.value <= 122)
+        )
+    }
+
+    var isASCIIBackreferenceDigit: Bool {
+        guard unicodeScalars.count == 1, let scalar = unicodeScalars.first else { return false }
+        return scalar.value >= 49 && scalar.value <= 57
     }
 }

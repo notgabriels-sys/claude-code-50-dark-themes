@@ -18,14 +18,15 @@ Readable compressed formats can vary with the media frameworks installed on the 
 
 ## What it checks
 
-- Recursively inventories normal directories beneath the selected folder.
+- Recursively inventories normal directories beneath the selected folder, up to 50,000 entries, 32 path components, 20,000 names in one directory, 4096 UTF-8 bytes per relative path, and 16 MiB of relative-path text in aggregate.
+- Stops with an explicit `incomplete` result if an inventory budget is exceeded; it never truncates a folder and continues toward `ready`.
 - Records symbolic links without following them.
-- Rejects paths that cannot be opened safely beneath the selected root.
+- Rejects paths that cannot be opened safely beneath the selected root or represented without control characters.
 - Classifies `.DS_Store` and AppleDouble `._*` files as service files.
 - Calculates SHA-256 for regular delivery files and reports exact duplicates.
 - Measures supported audio container, encoding, duration, channel count, sample rate, and PCM bit depth when those values are exposed reliably by AVFoundation.
 - Deliberately does not request embedded metadata from AVFoundation in version 0.1.0 because that API materializes complete metadata collections and strings before this application can enforce a resource limit.
-- Measures supported artwork dimensions, aspect ratio, format, color model, alpha presence, byte size, and readability when available.
+- Measures supported artwork dimensions, aspect ratio, format, color model, alpha presence, byte size, and readability when available from bounded ImageIO properties. It does not decode a full image merely to infer missing alpha state.
 - Reports unreadable media, filename ambiguity, case-insensitive filename collisions, preset role failures, service files, symbolic links, and exact duplicates.
 - Compares source fingerprints before and after a scan and refuses to call a changed or incomplete source `ready`.
 
@@ -52,6 +53,8 @@ Requires one readable lossless main-master candidate with a proven Linear PCM, F
 ### Custom (`custom`)
 
 The native app exposes an in-memory Custom editor for audio filename formats and inspected encodings, numeric bounds and consistency, artwork, filename patterns, arbitrary delivery roles, and finding severities. Any built-in preset can be copied into Custom, so Digital Release artwork expectations remain visible and editable. Custom edits are not persisted automatically; the resolved definition is included in a completed JSON report.
+
+Version `0.1.0` accepts at most 32 roles and 512 UTF-8 bytes per filename regular expression. Custom patterns use a conservative regular-expression subset: exact built-in patterns and ordinary literal, character-class, alternation, anchor, and simple repetition patterns are supported; backreferences, lookarounds, repeated quantifiers, quantified alternations, nested repetition, and multiple ambiguous variable repetitions are rejected before matching. Preset and role identifiers use normalized lowercase letters, digits, and single hyphens. Display names must be nonempty and trimmed. Actual control characters are rejected from displayed preset strings.
 
 ## Native app
 
@@ -83,7 +86,7 @@ audio-preflight version
 
 The default scan preset is `general-audio`.
 
-`--preset` and `--preset-file` are mutually exclusive. A preset file must be a regular JSON file no larger than 1 MiB, must not be reached through a symbolic-link file or ancestor, must use schema version `1.0`, and must resolve successfully before folder access or scanning begins. Invalid imports are rejected without printing the private preset path.
+`--preset` and `--preset-file` are mutually exclusive. A preset file must be a regular JSON file no larger than 1 MiB, must not be reached through a symbolic-link file or ancestor, must use schema version `1.0`, and must resolve successfully before folder access or scanning begins. Imported and app-authored presets share the same role, string, collection, identifier, name, and safe-pattern limits. Invalid imports are rejected without printing the private preset path.
 
 Examples:
 
@@ -162,9 +165,11 @@ Report destinations must be distinct, must not already exist, and must not trave
 
 - **HTML:** A self-contained, accessible report with visible status, resolved requirements, relative inventory paths, measured media properties, checksum state, findings, successful role assignments, evidence, and limitations.
 - **JSON:** Stable schema `1.0`, pretty-printed with sorted keys and ISO-8601 dates. It includes the resolved preset definition, explicit inspection and checksum states, inventory, measured evidence, successful role assignments, findings, versions, and scan status. The versioned media model retains a metadata field for compatibility, but production scans leave it empty in version 0.1.0.
-- **SHA-256 manifest:** Lowercase SHA-256 values and relative paths for regular non-service files whose checksum state is explicitly successful.
+- **SHA-256 manifest:** Lowercase SHA-256 values and relative paths for regular non-service files whose checksum state is explicitly successful. Generation is all-or-error: malformed successful-checksum evidence or a path that cannot be represented safely fails the export instead of silently omitting an eligible file.
 
 Reports use relative source paths and the selected folder's final name, not its absolute source path. Checksums and filenames can still be sensitive, so review a report before sharing it.
+
+Media inspection uses temporary stable snapshots. Audio sources larger than 4 GiB and image sources larger than 256 MiB are refused. Before each copy, the temporary volume must be able to retain at least the greater of 2 GiB or 10 percent of its then-available capacity after the copy. Artwork dimensions must be positive and no greater than 100,000,000 pixels in total. Resource refusals remain non-ready evidence.
 
 ## Build and verify
 

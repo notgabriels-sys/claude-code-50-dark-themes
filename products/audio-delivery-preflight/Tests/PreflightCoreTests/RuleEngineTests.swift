@@ -400,6 +400,34 @@ final class RuleEngineTests: XCTestCase {
         XCTAssertEqual(findings.map(\.ruleID), ["filename.ambiguous-version", "audio.mixed-sample-rate", "filename.case-insensitive-collision"])
     }
 
+    func testCustomPresetSafelyEvaluatesOrdinaryRoleAndFilenamePatterns() throws {
+        let preset = try PresetResolver().resolve(Preset(
+            identifier: "custom-evaluation",
+            name: "Custom evaluation",
+            filename: FilenameRequirement(
+                ambiguousVersionPattern: "(?i)final\\s*\\d+",
+                ambiguousVersionSeverity: .warning
+            ),
+            roles: [DeliveryRole(
+                identifier: "main",
+                name: "Main master",
+                pattern: "(?i)main\\.(m4a|mp3|wav)$",
+                required: true,
+                category: .audio,
+                readability: .warning,
+                severity: .error
+            )]
+        ))
+
+        let findings = evaluate(
+            [audio("Masters/main.wav"), document("Notes/FINAL 12.txt")],
+            preset: preset
+        )
+
+        XCTAssertFalse(findings.contains { $0.ruleID == "role.missing.main" })
+        XCTAssertTrue(findings.contains { $0.ruleID == "filename.ambiguous-version" })
+    }
+
     private func evaluate(_ entries: [InventoryEntry], preset: ResolvedPreset) -> [Finding] {
         RuleEngine().evaluate(snapshot: InventorySnapshot(entries: entries, findings: []), preset: preset, engineVersion: engineVersion)
     }

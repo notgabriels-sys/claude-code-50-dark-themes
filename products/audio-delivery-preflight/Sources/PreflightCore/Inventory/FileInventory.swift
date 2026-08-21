@@ -15,21 +15,47 @@ public struct InventorySnapshot: Sendable, Codable, Equatable {
     }
 }
 
+struct InventoryLimits: Sendable, Equatable {
+    static let standard = InventoryLimits(
+        maximumTotalEntries: 50_000,
+        maximumDepth: 32,
+        maximumNamesPerDirectory: 20_000,
+        maximumRelativePathByteCount: 4_096,
+        maximumAggregateRelativePathByteCount: 16 * 1_024 * 1_024
+    )
+
+    let maximumTotalEntries: Int
+    let maximumDepth: Int
+    let maximumNamesPerDirectory: Int
+    let maximumRelativePathByteCount: Int
+    let maximumAggregateRelativePathByteCount: Int
+}
+
 public struct FileInventory: FileInventorying {
+    private let limits: InventoryLimits
     private let onBeforeEnumeratingEntry: (@Sendable () -> Void)?
     private let onBeforeOpeningRootPathComponent: TrustedFileAccess.OpenRootPathComponentHook?
 
     public init() {
+        self.limits = .standard
+        self.onBeforeEnumeratingEntry = nil
+        self.onBeforeOpeningRootPathComponent = nil
+    }
+
+    init(limits: InventoryLimits) {
+        self.limits = limits
         self.onBeforeEnumeratingEntry = nil
         self.onBeforeOpeningRootPathComponent = nil
     }
 
     init(onBeforeEnumeratingEntry: @escaping @Sendable () -> Void) {
+        self.limits = .standard
         self.onBeforeEnumeratingEntry = onBeforeEnumeratingEntry
         self.onBeforeOpeningRootPathComponent = nil
     }
 
     init(onBeforeOpeningRootPathComponent: @escaping TrustedFileAccess.OpenRootPathComponentHook) {
+        self.limits = .standard
         self.onBeforeEnumeratingEntry = nil
         self.onBeforeOpeningRootPathComponent = onBeforeOpeningRootPathComponent
     }
@@ -58,11 +84,13 @@ public struct FileInventory: FileInventorying {
 
         var entries: [InventoryEntry] = []
         var findings: [Finding] = []
+        var budget = InventoryBudget()
         try walkDirectory(
             descriptor: rootDescriptor,
             relativeComponents: [],
             entries: &entries,
-            findings: &findings
+            findings: &findings,
+            budget: &budget
         )
 
         entries.sort { Self.unicodeScalarLessThan($0.relativePath.value, $1.relativePath.value) }
@@ -74,15 +102,24 @@ public struct FileInventory: FileInventorying {
         descriptor: Int32,
         relativeComponents: [String],
         entries: inout [InventoryEntry],
-        findings: inout [Finding]
+        findings: inout [Finding],
+        budget: inout InventoryBudget
     ) throws {
         try Task.checkCancellation()
 
         let names: [String]
         do {
-            names = try Self.directoryNames(from: descriptor)
+            names = try Self.directoryNames(
+                from: descriptor,
+                maximumCount: limits.maximumNamesPerDirectory
+            )
         } catch is CancellationError {
             throw CancellationError()
+        } catch let error as PreflightError {
+            if case .inventoryLimitExceeded = error {
+                throw error
+            }
+            throw error
         } catch {
             if let relativePath = try? Self.relativePath(relativeComponents) {
                 findings.append(Self.finding(
@@ -105,9 +142,30 @@ public struct FileInventory: FileInventorying {
             try Task.checkCancellation()
 
             let components = relativeComponents + [name]
+            guard components.count <= limits.maximumDepth else {
+                throw PreflightError.inventoryLimitExceeded(
+                    resource: .depth,
+                    limit: limits.maximumDepth
+                )
+            }
             let relativePath: RelativePath
             do {
-                relativePath = try Self.relativePath(components)
+                relativePath = try Self.relativePath(
+                    components,
+                    maximumByteCount: limits.maximumRelativePathByteCount
+                )
+            } catch let error as PreflightError {
+                if case .inventoryLimitExceeded = error {
+                    throw error
+                }
+                findings.append(Self.finding(
+                    ruleID: "filesystem.invalid-relative-path",
+                    severity: .warning,
+                    title: "Directory entry has no safe relative path",
+                    explanation: "The directory entry is outside the selected root or cannot be represented as a RelativePath.",
+                    affectedPaths: []
+                ))
+                continue
             } catch {
                 findings.append(Self.finding(
                     ruleID: "filesystem.invalid-relative-path",
@@ -118,6 +176,10 @@ public struct FileInventory: FileInventorying {
                 ))
                 continue
             }
+            try budget.reserveEntry(
+                relativePathByteCount: relativePath.value.utf8.count,
+                limits: limits
+            )
 
             let fileStatus: stat
             do {
@@ -196,13 +258,14 @@ public struct FileInventory: FileInventorying {
                     descriptor: childDescriptor,
                     relativeComponents: components,
                     entries: &entries,
-                    findings: &findings
+                    findings: &findings,
+                    budget: &budget
                 )
             }
         }
     }
 
-    private static func directoryNames(from descriptor: Int32) throws -> [String] {
+    private static func directoryNames(from descriptor: Int32, maximumCount: Int) throws -> [String] {
         try Task.checkCancellation()
         let duplicate = Darwin.dup(descriptor)
         guard duplicate >= 0 else {
@@ -231,6 +294,12 @@ public struct FileInventory: FileInventorying {
                 }
             }
             guard name != ".", name != ".." else { continue }
+            guard names.count < maximumCount else {
+                throw PreflightError.inventoryLimitExceeded(
+                    resource: .namesPerDirectory,
+                    limit: maximumCount
+                )
+            }
             names.append(name)
         }
 
@@ -278,11 +347,21 @@ public struct FileInventory: FileInventorying {
             && fileStatus.st_mode & S_IFMT == S_IFREG
     }
 
-    private static func relativePath(_ components: [String]) throws -> RelativePath {
+    private static func relativePath(
+        _ components: [String],
+        maximumByteCount: Int = InventoryLimits.standard.maximumRelativePathByteCount
+    ) throws -> RelativePath {
         guard !components.isEmpty else {
             throw TrustedFileAccessError.invalidRelativePath
         }
-        return try RelativePath(components.joined(separator: "/"))
+        let value = components.joined(separator: "/")
+        guard value.utf8.count <= maximumByteCount else {
+            throw PreflightError.inventoryLimitExceeded(
+                resource: .relativePathBytes,
+                limit: maximumByteCount
+            )
+        }
+        return try RelativePath(value)
     }
 
     private static func kind(for status: stat) -> FileKind {
@@ -372,5 +451,30 @@ public struct FileInventory: FileInventorying {
 
     private static func unicodeScalarLessThan(_ left: String, _ right: String) -> Bool {
         left.unicodeScalars.lexicographicallyPrecedes(right.unicodeScalars)
+    }
+}
+
+private struct InventoryBudget {
+    private var totalEntries = 0
+    private var aggregateRelativePathByteCount = 0
+
+    mutating func reserveEntry(relativePathByteCount: Int, limits: InventoryLimits) throws {
+        guard totalEntries < limits.maximumTotalEntries else {
+            throw PreflightError.inventoryLimitExceeded(
+                resource: .totalEntries,
+                limit: limits.maximumTotalEntries
+            )
+        }
+        let (newAggregate, overflow) = aggregateRelativePathByteCount.addingReportingOverflow(
+            relativePathByteCount
+        )
+        guard !overflow, newAggregate <= limits.maximumAggregateRelativePathByteCount else {
+            throw PreflightError.inventoryLimitExceeded(
+                resource: .aggregateRelativePathBytes,
+                limit: limits.maximumAggregateRelativePathByteCount
+            )
+        }
+        totalEntries += 1
+        aggregateRelativePathByteCount = newAggregate
     }
 }

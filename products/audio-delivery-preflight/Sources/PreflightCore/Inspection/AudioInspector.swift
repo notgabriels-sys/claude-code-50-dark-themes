@@ -20,28 +20,35 @@ public protocol AudioInspecting: Sendable {
 }
 
 public struct AudioInspector: AudioInspecting {
+    static let maximumStagingByteCount: Int64 = 4 * 1_024 * 1_024 * 1_024
+
     private let stagingDirectory: URL
+    private let availableByteCountProvider: TrustedFileAccess.AvailableByteCountProvider?
     private let onBeforeOpeningPathComponent: TrustedFileAccess.OpenPathComponentHook?
     private let onAfterCopyingChunk: TrustedFileAccess.CopyProgressHook?
 
     public init() {
         self.stagingDirectory = FileManager.default.temporaryDirectory.resolvingSymlinksInPath()
+        self.availableByteCountProvider = nil
         self.onBeforeOpeningPathComponent = nil
         self.onAfterCopyingChunk = nil
     }
 
     init(onBeforeOpeningPathComponent: @escaping TrustedFileAccess.OpenPathComponentHook) {
         self.stagingDirectory = FileManager.default.temporaryDirectory.resolvingSymlinksInPath()
+        self.availableByteCountProvider = nil
         self.onBeforeOpeningPathComponent = onBeforeOpeningPathComponent
         self.onAfterCopyingChunk = nil
     }
 
     init(
         stagingDirectory: URL,
+        availableByteCountProvider: TrustedFileAccess.AvailableByteCountProvider? = nil,
         onBeforeOpeningPathComponent: TrustedFileAccess.OpenPathComponentHook? = nil,
         onAfterCopyingChunk: TrustedFileAccess.CopyProgressHook? = nil
     ) {
         self.stagingDirectory = stagingDirectory
+        self.availableByteCountProvider = availableByteCountProvider
         self.onBeforeOpeningPathComponent = onBeforeOpeningPathComponent
         self.onAfterCopyingChunk = onAfterCopyingChunk
     }
@@ -52,6 +59,8 @@ public struct AudioInspector: AudioInspecting {
             let snapshot = try TrustedFileAccess.stageRegularFile(
                 source: source,
                 in: stagingDirectory,
+                maximumByteCount: Self.maximumStagingByteCount,
+                availableByteCountProvider: availableByteCountProvider,
                 onBeforeOpeningPathComponent: onBeforeOpeningPathComponent,
                 onAfterCopyingChunk: onAfterCopyingChunk
             )
