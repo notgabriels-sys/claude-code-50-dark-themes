@@ -350,10 +350,10 @@ func isStereoPremasterCandidate(entry Entry) bool {
 
 func losslessRoleFindings(entry Entry, role string, stereo bool) ([]Finding, bool) {
 	if !mediaReadable(entry.Media) || !entry.Media.Encoding.Available {
-		return []Finding{roleFinding("role.unreadable."+role, SeverityError, "Required audio does not provide positive readable evidence", entry.Path, "Readable PCM or FLAC audio.", "Re-export or replace this file with a readable lossless file.")}, false
+		return []Finding{roleFinding("role.unreadable."+role, SeverityError, "Required audio does not provide positive readable evidence", entry.Path, "Readable PCM audio in version 1.", "Re-export or replace this file with readable PCM audio. FLAC STREAMINFO metadata is inventory-only in version 1.")}, false
 	}
 	if !isLossless(entry.Media) {
-		return []Finding{roleFinding("role.disallowed-encoding."+role, SeverityError, "Required audio is not a supported lossless encoding", entry.Path, "PCM or FLAC encoding.", "Supply PCM or FLAC audio.")}, false
+		return []Finding{roleFinding("role.disallowed-encoding."+role, SeverityError, "Required audio is not a supported lossless encoding", entry.Path, "PCM encoding in version 1.", "Supply readable PCM audio. FLAC STREAMINFO metadata is inventory-only in version 1.")}, false
 	}
 	if stereo && (!entry.Media.Channels.Available || entry.Media.Channels.Value != 2) {
 		return []Finding{roleFinding("role.channel-count."+role, SeverityError, "Premaster is not stereo", entry.Path, "Exactly 2 inspected channels.", "Supply a stereo premaster.")}, false

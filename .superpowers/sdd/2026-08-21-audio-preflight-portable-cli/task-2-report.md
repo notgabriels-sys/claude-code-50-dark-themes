@@ -224,3 +224,28 @@ GOOS=linux GOARCH=amd64 go build -trimpath                  PASS
   ./cmd/audio-preflight
 git diff --check                                             PASS
 ```
+
+## Fix round 5 correction — 2026-08-21
+
+- Required-audio findings for unreadable evidence and disallowed encodings now
+  state readable PCM-only version-1 expectations and remediation. They explain
+  that FLAC STREAMINFO metadata remains inventory-only until complete frame,
+  payload, and CRC validation exists.
+- A regression covers both analysis branches and serializes their real findings
+  to JSON and self-contained HTML, rejecting every prior `PCM or FLAC` role-
+  eligibility recommendation.
+
+### Fix round 5 final verification — 2026-08-21
+
+Executed from `products/audio-delivery-preflight-cli/`:
+
+```text
+go test ./... -count=1                                      PASS
+go test -race ./... -count=1                                PASS
+go vet ./...                                                PASS
+gofmt -d (all changed Task 2 Go files)                      PASS (no output)
+GOOS=linux GOARCH=amd64 go build -trimpath                  PASS
+  -o /private/tmp/audio-preflight-cli-fix-round-5-linux-amd64
+  ./cmd/audio-preflight
+git diff --check                                             PASS
+```

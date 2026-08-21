@@ -131,6 +131,68 @@ func TestDigitalReleaseRejectsTruncatedFLACFrameMarkerAsMainMaster(t *testing.T)
 	}
 }
 
+func TestRequiredAudioReportFindingsRecommendPCMOnlyInVersionOne(t *testing.T) {
+	cases := []struct {
+		name          string
+		report        func(t *testing.T) Report
+		findingID     string
+		wantExpected  string
+		wantSuggested string
+	}{
+		{
+			name: "unreadable stereo premaster",
+			report: func(t *testing.T) Report {
+				root := t.TempDir()
+				writeScanFile(t, filepath.Join(root, "premaster.wav"), []byte("not a WAV file"))
+				report, err := AnalyzeDirectory(root, mustPreset(t, "stereo-premaster"))
+				if err != nil {
+					t.Fatal(err)
+				}
+				return report
+			},
+			findingID:     "role.unreadable.stereo-premaster",
+			wantExpected:  "Readable PCM audio in version 1.",
+			wantSuggested: "Re-export or replace this file with readable PCM audio. FLAC STREAMINFO metadata is inventory-only in version 1.",
+		},
+		{
+			name: "disallowed main-master encoding",
+			report: func(t *testing.T) Report {
+				findings, accepted := losslessRoleFindings(Entry{Path: "main master.wav", Media: &MediaEvidence{
+					Supported: true,
+					Readable:  Measurement[bool]{Available: true, Value: true},
+					Encoding:  Measurement[string]{Available: true, Value: "MPEG Layer III"},
+				}}, "main-master", false)
+				if accepted || len(findings) != 1 {
+					t.Fatalf("disallowed-encoding analysis = %#v / accepted=%t", findings, accepted)
+				}
+				return Report{SchemaVersion: SchemaVersion, FolderName: "fixture", Preset: mustPreset(t, "digital-release"), Findings: findings}
+			},
+			findingID:     "role.disallowed-encoding.main-master",
+			wantExpected:  "PCM encoding in version 1.",
+			wantSuggested: "Supply readable PCM audio. FLAC STREAMINFO metadata is inventory-only in version 1.",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			report := tc.report(t)
+			finding := findingByID(t, report.Findings, tc.findingID)
+			if finding.Expected != tc.wantExpected || finding.SuggestedAction != tc.wantSuggested {
+				t.Fatalf("required-audio finding = %#v, want expected %q and action %q", finding, tc.wantExpected, tc.wantSuggested)
+			}
+			jsonReport, err := JSONReport(report)
+			if err != nil {
+				t.Fatal(err)
+			}
+			htmlReport := HTMLReport(report)
+			for _, output := range []string{string(jsonReport), htmlReport} {
+				if strings.Contains(output, "Readable PCM or FLAC audio.") || strings.Contains(output, "PCM or FLAC encoding.") || strings.Contains(output, "Supply PCM or FLAC audio.") {
+					t.Fatalf("serialized report advertises FLAC required-role eligibility: %q", output)
+				}
+			}
+		})
+	}
+}
+
 func TestAmbiguousRequiredCandidatesStillValidateEveryCandidate(t *testing.T) {
 	root := t.TempDir()
 	writeScanFile(t, filepath.Join(root, "main master.wav"), readablePCM(2, 48_000, 24))
@@ -302,6 +364,17 @@ func hasFinding(findings []Finding, id string, severity Severity) bool {
 		}
 	}
 	return false
+}
+
+func findingByID(t *testing.T, findings []Finding, id string) Finding {
+	t.Helper()
+	for _, finding := range findings {
+		if finding.ID == id {
+			return finding
+		}
+	}
+	t.Fatalf("finding %q not found in %#v", id, findings)
+	return Finding{}
 }
 
 func writeScanFile(t *testing.T, path string, contents []byte) {
