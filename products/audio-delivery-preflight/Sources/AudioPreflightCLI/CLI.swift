@@ -1,3 +1,4 @@
+import Darwin
 import Foundation
 import PreflightCore
 
@@ -16,11 +17,19 @@ public struct CLI: Sendable {
         case unexpected
     }
 
+    public enum ReportDestinationState: Sendable, Equatable {
+        case absent
+        case existingItem
+        case symbolicLinkInPath
+        case unsafe
+    }
+
     public struct Environment: Sendable {
         public var presets: [Preset]
         public var resolvePreset: @Sendable (Preset) throws -> ResolvedPreset
         public var scan: @Sendable (ScanRequest) async throws -> ScanResult
         public var folderExists: @Sendable (URL) -> Bool
+        public var inspectReportDestination: @Sendable (URL) -> ReportDestinationState
         public var writeAtomically: @Sendable (Data, URL) throws -> Void
         public var writeStandardOutput: @Sendable (String) -> Void
         public var writeStandardError: @Sendable (String) -> Void
@@ -37,8 +46,11 @@ public struct CLI: Sendable {
                 var isDirectory: ObjCBool = false
                 return FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory) && isDirectory.boolValue
             },
+            inspectReportDestination: @escaping @Sendable (URL) -> ReportDestinationState = { destination in
+                CLI.reportDestinationState(at: destination)
+            },
             writeAtomically: @escaping @Sendable (Data, URL) throws -> Void = { data, url in
-                try data.write(to: url, options: .atomic)
+                try CLI.writeReportAtomically(data, to: url, allowReplacingExisting: false)
             },
             writeStandardOutput: @escaping @Sendable (String) -> Void = { print($0) },
             writeStandardError: @escaping @Sendable (String) -> Void = { message in
@@ -51,6 +63,7 @@ public struct CLI: Sendable {
             self.resolvePreset = resolvePreset
             self.scan = scan
             self.folderExists = folderExists
+            self.inspectReportDestination = inspectReportDestination
             self.writeAtomically = writeAtomically
             self.writeStandardOutput = writeStandardOutput
             self.writeStandardError = writeStandardError
@@ -67,12 +80,16 @@ public struct CLI: Sendable {
     }
 
     private struct Reports {
-        var html: String?
-        var json: String?
-        var checksums: String?
+        var html: URL?
+        var json: URL?
+        var checksums: URL?
 
         var urls: [URL] {
-            [html, json, checksums].compactMap { $0 }.map { URL(fileURLWithPath: $0) }
+            [html, json, checksums].compactMap { $0 }
+        }
+
+        var hasDistinctDestinations: Bool {
+            Set(urls.map { conservativePathKey($0.path) }).count == urls.count
         }
     }
 
@@ -91,7 +108,7 @@ public struct CLI: Sendable {
                 return ExitCode.ready.rawValue
             case .presetShow(let identifier):
                 guard let preset = environment.presets.first(where: { $0.identifier == identifier }) else {
-                    return invalidConfiguration(environment)
+                    return unknownPreset(for: "preset show", environment: environment)
                 }
                 let resolved = try environment.resolvePreset(preset)
                 printRequirements(resolved, environment: environment)
@@ -105,11 +122,17 @@ public struct CLI: Sendable {
     }
 
     private func runScan(folder: String, presetID: String, reports: Reports, environment: Environment) async -> Int32 {
-        guard let preset = environment.presets.first(where: { $0.identifier == presetID }) else {
+        guard reports.hasDistinctDestinations else {
             return invalidConfiguration(environment)
+        }
+        guard let preset = environment.presets.first(where: { $0.identifier == presetID }) else {
+            return unknownPreset(for: "scan --preset", environment: environment)
         }
 
         let folderURL = URL(fileURLWithPath: folder, isDirectory: true).standardizedFileURL
+        guard reportDestinationsAreSafe(reports, root: folderURL, environment: environment) else {
+            return invalidConfiguration(environment)
+        }
         guard environment.folderExists(folderURL) else {
             environment.writeStandardError("Scan could not start: the selected folder is unavailable.")
             return ExitCode.scanCouldNotStart.rawValue
@@ -142,6 +165,13 @@ public struct CLI: Sendable {
             return ExitCode.internalFailure.rawValue
         }
 
+        guard !reportsCollideWithInventory(reports, root: folderURL, inventory: result.inventory) else {
+            return invalidConfiguration(environment)
+        }
+        guard reportDestinationsAreSafe(reports, root: folderURL, environment: environment) else {
+            return invalidConfiguration(environment)
+        }
+
         printSummary(result, environment: environment)
 
         do {
@@ -171,7 +201,9 @@ public struct CLI: Sendable {
     }
 
     private func parseScan(_ arguments: [String]) throws -> Command {
-        guard let folder = arguments.first, !folder.hasPrefix("--") else { throw RuntimeError.unexpected }
+        guard let folder = arguments.first, !folder.isEmpty, !folder.hasPrefix("--") else {
+            throw RuntimeError.unexpected
+        }
         var presetID = "general-audio"
         var reports = Reports()
         var seen: Set<String> = []
@@ -186,9 +218,9 @@ public struct CLI: Sendable {
             seen.insert(option)
             switch option {
             case "--preset": presetID = value
-            case "--report-html": reports.html = value
-            case "--report-json": reports.json = value
-            case "--checksums": reports.checksums = value
+            case "--report-html": reports.html = normalizedFileURL(value)
+            case "--report-json": reports.json = normalizedFileURL(value)
+            case "--checksums": reports.checksums = normalizedFileURL(value)
             default: throw RuntimeError.unexpected
             }
             index += 2
@@ -214,22 +246,184 @@ public struct CLI: Sendable {
         for entry in result.inventory {
             environment.writeStandardOutput("- \(entry.relativePath.value)")
         }
+        if result.overallStatus == .incomplete {
+            environment.writeStandardOutput("Requirements outcome: not determined.")
+        }
         environment.writeStandardOutput("Technical checks only: this is not artistic approval or distributor acceptance.")
     }
 
     private func writeReports(_ reports: Reports, for result: ScanResult, environment: Environment) throws {
-        if let path = reports.html {
-            try environment.writeAtomically(Data(HTMLReportWriter().html(for: result).utf8), URL(fileURLWithPath: path))
+        if let destination = reports.html {
+            try environment.writeAtomically(Data(HTMLReportWriter().html(for: result).utf8), destination)
             environment.writeStandardOutput("HTML report written.")
         }
-        if let path = reports.json {
-            try environment.writeAtomically(try JSONReportWriter().data(for: result), URL(fileURLWithPath: path))
+        if let destination = reports.json {
+            try environment.writeAtomically(try JSONReportWriter().data(for: result), destination)
             environment.writeStandardOutput("JSON report written.")
         }
-        if let path = reports.checksums {
-            try environment.writeAtomically(Data(ChecksumManifestWriter().text(for: result).utf8), URL(fileURLWithPath: path))
+        if let destination = reports.checksums {
+            try environment.writeAtomically(Data(ChecksumManifestWriter().text(for: result).utf8), destination)
             environment.writeStandardOutput("Checksum manifest written.")
         }
+    }
+
+    private func normalizedFileURL(_ path: String) -> URL {
+        URL(fileURLWithPath: path).standardizedFileURL
+    }
+
+    private func reportsCollideWithInventory(_ reports: Reports, root: URL, inventory: [InventoryEntry]) -> Bool {
+        let sourcePaths = Set(inventory.map { conservativePathKey($0.relativePath.value) })
+        return reports.urls.contains { destination in
+            guard let relativePath = lexicalRelativePath(of: destination, within: root) else { return false }
+            return relativePath.isEmpty || sourcePaths.contains(conservativePathKey(relativePath))
+        }
+    }
+
+    private func reportDestinationsAreSafe(_ reports: Reports, root: URL, environment: Environment) -> Bool {
+        reports.urls.allSatisfy { destination in
+            let state = environment.inspectReportDestination(destination)
+            switch state {
+            case .symbolicLinkInPath, .unsafe:
+                return false
+            case .existingItem:
+                return false
+            case .absent:
+                guard let relativePath = lexicalRelativePath(of: destination, within: root) else { return true }
+                return !relativePath.isEmpty
+            }
+        }
+    }
+
+    private func lexicalRelativePath(of destination: URL, within root: URL) -> String? {
+        let rootComponents = root.standardizedFileURL.pathComponents
+        let destinationComponents = destination.standardizedFileURL.pathComponents
+        guard destinationComponents.count >= rootComponents.count,
+              Array(destinationComponents.prefix(rootComponents.count)).map(conservativePathKey)
+                == rootComponents.map(conservativePathKey)
+        else {
+            return nil
+        }
+        return destinationComponents.dropFirst(rootComponents.count).joined(separator: "/")
+    }
+
+    public static func reportDestinationState(at destination: URL) -> ReportDestinationState {
+        guard destination.isFileURL else { return .unsafe }
+        let normalized = destination.standardizedFileURL
+        let components = normalized.pathComponents
+        guard components.first == "/", components.count > 1 else { return .unsafe }
+
+        var currentPath = ""
+        for (index, component) in components.enumerated() {
+            if index == 0 {
+                currentPath = "/"
+                continue
+            }
+            currentPath = URL(fileURLWithPath: currentPath, isDirectory: true)
+                .appendingPathComponent(component)
+                .path
+
+            var metadata = stat()
+            let status = currentPath.withCString { lstat($0, &metadata) }
+            if status == 0 {
+                let fileType = metadata.st_mode & mode_t(S_IFMT)
+                if fileType == mode_t(S_IFLNK) {
+                    return .symbolicLinkInPath
+                }
+                if index < components.count - 1, fileType != mode_t(S_IFDIR) {
+                    return .unsafe
+                }
+                if index == components.count - 1 {
+                    return .existingItem
+                }
+            } else if errno == ENOENT {
+                return .absent
+            } else {
+                return .unsafe
+            }
+        }
+        return .unsafe
+    }
+
+    public static func writeReportAtomically(
+        _ data: Data,
+        to destination: URL,
+        allowReplacingExisting: Bool
+    ) throws {
+        guard destination.isFileURL else { throw unsafeReportDestinationError() }
+        let components = destination.standardizedFileURL.pathComponents
+        guard components.first == "/", components.count > 1, let filename = components.last else {
+            throw unsafeReportDestinationError()
+        }
+
+        var parentDescriptor = open("/", O_RDONLY | O_DIRECTORY | O_CLOEXEC)
+        guard parentDescriptor >= 0 else { throw unsafeReportDestinationError() }
+        defer { close(parentDescriptor) }
+
+        for component in components.dropFirst().dropLast() {
+            let nextDescriptor = component.withCString {
+                openat(parentDescriptor, $0, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC)
+            }
+            guard nextDescriptor >= 0 else { throw unsafeReportDestinationError() }
+            close(parentDescriptor)
+            parentDescriptor = nextDescriptor
+        }
+
+        let temporaryName = ".audio-preflight-\(UUID().uuidString).tmp"
+        var temporaryDescriptor = temporaryName.withCString {
+            openat(
+                parentDescriptor,
+                $0,
+                O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC,
+                S_IRUSR | S_IWUSR
+            )
+        }
+        guard temporaryDescriptor >= 0 else { throw unsafeReportDestinationError() }
+        var temporaryExists = true
+        defer {
+            if temporaryDescriptor >= 0 { close(temporaryDescriptor) }
+            if temporaryExists {
+                temporaryName.withCString { _ = unlinkat(parentDescriptor, $0, 0) }
+            }
+        }
+
+        try data.withUnsafeBytes { bytes in
+            guard let baseAddress = bytes.baseAddress else { return }
+            var written = 0
+            while written < bytes.count {
+                let count = Darwin.write(
+                    temporaryDescriptor,
+                    baseAddress.advanced(by: written),
+                    bytes.count - written
+                )
+                if count < 0, errno == EINTR { continue }
+                guard count > 0 else { throw unsafeReportDestinationError() }
+                written += count
+            }
+        }
+        guard fsync(temporaryDescriptor) == 0 else { throw unsafeReportDestinationError() }
+        guard close(temporaryDescriptor) == 0 else { throw unsafeReportDestinationError() }
+        temporaryDescriptor = -1
+
+        let renameStatus: Int32 = temporaryName.withCString { temporaryPointer in
+            filename.withCString { filenamePointer in
+                if allowReplacingExisting {
+                    return renameat(parentDescriptor, temporaryPointer, parentDescriptor, filenamePointer)
+                }
+                return renameatx_np(
+                    parentDescriptor,
+                    temporaryPointer,
+                    parentDescriptor,
+                    filenamePointer,
+                    UInt32(RENAME_EXCL)
+                )
+            }
+        }
+        guard renameStatus == 0 else { throw unsafeReportDestinationError() }
+        temporaryExists = false
+    }
+
+    private static func unsafeReportDestinationError() -> PreflightError {
+        PreflightError.exportFailed(reason: "The report destination cannot be written safely.")
     }
 
     private func exitCode(for status: OverallStatus) -> ExitCode {
@@ -245,4 +439,13 @@ public struct CLI: Sendable {
         environment.writeStandardError("Invalid command or configuration. Use: audio-preflight scan <folder> [--preset <id>] [--report-html <path>] [--report-json <path>] [--checksums <path>]")
         return ExitCode.invalidCommand.rawValue
     }
+
+    private func unknownPreset(for command: String, environment: Environment) -> Int32 {
+        environment.writeStandardError("Unknown preset for \(command). Use audio-preflight presets to list valid identifiers.")
+        return ExitCode.invalidCommand.rawValue
+    }
+}
+
+private func conservativePathKey(_ value: String) -> String {
+    value.precomposedStringWithCanonicalMapping.lowercased(with: Locale(identifier: "en_US_POSIX"))
 }
