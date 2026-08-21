@@ -65,9 +65,7 @@ struct StartView: View {
             .onDrop(of: [UTType.fileURL.identifier], isTargeted: $isDropTargeted) { providers in
                 guard let provider = providers.first else { return false }
                 provider.loadItem(forTypeIdentifier: UTType.fileURL.identifier, options: nil) { item, _ in
-                    guard let data = item as? Data,
-                          let url = URL(dataRepresentation: data, relativeTo: nil)
-                    else { return }
+                    guard let url = DroppedFolderURLDecoder.decode(item) else { return }
                     Task { @MainActor in _ = model.acceptDroppedFolder(url) }
                 }
                 return true
@@ -85,5 +83,21 @@ struct StartView: View {
         }
         .frame(maxWidth: 760, alignment: .leading)
         .accessibilityIdentifier("start-view")
+    }
+}
+
+enum DroppedFolderURLDecoder {
+    static func decode(_ item: NSSecureCoding?) -> URL? {
+        if let url = item as? NSURL {
+            let decoded = url as URL
+            return decoded.isFileURL ? decoded : nil
+        }
+        if let data = item as? NSData,
+           let decoded = URL(dataRepresentation: data as Data, relativeTo: nil),
+           decoded.isFileURL
+        {
+            return decoded
+        }
+        return nil
     }
 }
