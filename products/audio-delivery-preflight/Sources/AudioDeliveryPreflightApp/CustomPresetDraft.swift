@@ -7,6 +7,42 @@ private func editableNumberText(_ value: Double?) -> String {
     return text.hasSuffix(".0") ? String(text.dropLast(2)) : text
 }
 
+fileprivate struct CustomPresetRawInputBudget {
+    private var aggregateByteCount = 0
+
+    mutating func reserve(
+        _ value: String,
+        field: String,
+        maximumByteCount: Int = PresetInputLimits.maximumStringByteCount
+    ) throws {
+        let boundedByteCount = value.utf8.prefix(maximumByteCount + 1).count
+        guard boundedByteCount <= maximumByteCount else {
+            let reason = maximumByteCount == PresetInputLimits.maximumRegularExpressionByteCount
+                ? "The regular expression cannot exceed 512 UTF-8 bytes."
+                : "A configured string cannot exceed 4096 UTF-8 bytes."
+            throw PreflightError.invalidPreset(field: field, reason: reason)
+        }
+        let (newAggregateByteCount, overflow) = aggregateByteCount.addingReportingOverflow(
+            boundedByteCount
+        )
+        guard !overflow,
+              newAggregateByteCount <= PresetInputLimits.maximumAggregateStringByteCount
+        else {
+            throw PreflightError.invalidPreset(
+                field: field,
+                reason: "Preset strings exceed the 1048576-byte aggregate limit."
+            )
+        }
+        guard !value.unicodeScalars.contains(where: CharacterSet.controlCharacters.contains) else {
+            throw PreflightError.invalidPreset(
+                field: field,
+                reason: "Actual control characters are not allowed."
+            )
+        }
+        aggregateByteCount = newAggregateByteCount
+    }
+}
+
 struct CustomPresetDraft {
     var name: String
     var audioAllowedExtensions: String
@@ -32,44 +68,73 @@ struct CustomPresetDraft {
     var exactDuplicateSeverity: FindingSeverity
 
     init(preset: Preset = BuiltInPresets.custom) {
-        name = preset.identifier == BuiltInPresets.custom.identifier
-            ? preset.name
-            : "\(preset.name) Custom"
-        audioAllowedExtensions = Self.listText(preset.audio.allowedExtensions)
-        audioAllowedEncodings = Self.listText(preset.audio.allowedEncodings)
-        audioSampleRateMinimum = editableNumberText(preset.audio.sampleRate?.minimum)
-        audioSampleRateMaximum = editableNumberText(preset.audio.sampleRate?.maximum)
-        audioBitDepthMinimum = editableNumberText(preset.audio.bitDepth?.minimum)
-        audioBitDepthMaximum = editableNumberText(preset.audio.bitDepth?.maximum)
-        requireConsistentSampleRate = preset.audio.requireConsistentSampleRate
-        requireConsistentBitDepth = preset.audio.requireConsistentBitDepth
-        requireConsistentChannelCount = preset.audio.requireConsistentChannelCount
-        audioSeverity = preset.audio.severity
-        artworkEnabled = preset.artwork != nil
-        artworkMinimumWidth = preset.artwork?.minimumWidth.map(String.init) ?? ""
-        artworkMinimumHeight = preset.artwork?.minimumHeight.map(String.init) ?? ""
-        artworkRequiresSquare = preset.artwork?.requiresSquare ?? false
-        artworkSeverity = preset.artwork?.severity ?? .warning
-        filenamePattern = preset.filename.ambiguousVersionPattern ?? ""
-        filenameSeverity = preset.filename.ambiguousVersionSeverity
-        roles = preset.roles.map(CustomRoleDraft.init)
-        serviceFileSeverity = preset.serviceFileSeverity
-        symbolicLinkSeverity = preset.symbolicLinkSeverity
-        exactDuplicateSeverity = preset.exactDuplicateSeverity
+        let validatedPreset = (try? PresetResolver().resolve(preset).definition)
+            ?? BuiltInPresets.custom
+        name = validatedPreset.identifier == BuiltInPresets.custom.identifier
+            ? validatedPreset.name
+            : "\(validatedPreset.name) Custom"
+        audioAllowedExtensions = Self.listText(validatedPreset.audio.allowedExtensions)
+        audioAllowedEncodings = Self.listText(validatedPreset.audio.allowedEncodings)
+        audioSampleRateMinimum = editableNumberText(validatedPreset.audio.sampleRate?.minimum)
+        audioSampleRateMaximum = editableNumberText(validatedPreset.audio.sampleRate?.maximum)
+        audioBitDepthMinimum = editableNumberText(validatedPreset.audio.bitDepth?.minimum)
+        audioBitDepthMaximum = editableNumberText(validatedPreset.audio.bitDepth?.maximum)
+        requireConsistentSampleRate = validatedPreset.audio.requireConsistentSampleRate
+        requireConsistentBitDepth = validatedPreset.audio.requireConsistentBitDepth
+        requireConsistentChannelCount = validatedPreset.audio.requireConsistentChannelCount
+        audioSeverity = validatedPreset.audio.severity
+        artworkEnabled = validatedPreset.artwork != nil
+        artworkMinimumWidth = validatedPreset.artwork?.minimumWidth.map(String.init) ?? ""
+        artworkMinimumHeight = validatedPreset.artwork?.minimumHeight.map(String.init) ?? ""
+        artworkRequiresSquare = validatedPreset.artwork?.requiresSquare ?? false
+        artworkSeverity = validatedPreset.artwork?.severity ?? .warning
+        filenamePattern = validatedPreset.filename.ambiguousVersionPattern ?? ""
+        filenameSeverity = validatedPreset.filename.ambiguousVersionSeverity
+        var validatedRoles: [CustomRoleDraft] = []
+        validatedRoles.reserveCapacity(validatedPreset.roles.count)
+        for role in validatedPreset.roles {
+            validatedRoles.append(CustomRoleDraft(role))
+        }
+        roles = validatedRoles
+        serviceFileSeverity = validatedPreset.serviceFileSeverity
+        symbolicLinkSeverity = validatedPreset.symbolicLinkSeverity
+        exactDuplicateSeverity = validatedPreset.exactDuplicateSeverity
     }
 
     func makePreset() throws -> Preset {
+        try validateRawInputBounds()
         let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedName.isEmpty else {
             throw PreflightError.invalidPreset(field: "name", reason: "The name cannot be empty.")
+        }
+
+        var collectionValueCount = 0
+        let parsedAudioAllowedExtensions = try PresetInputParser.commaSeparatedValues(
+            audioAllowedExtensions,
+            lowercased: true,
+            field: "audio.allowedExtensions",
+            aggregateValueCount: &collectionValueCount
+        )
+        let parsedAudioAllowedEncodings = try PresetInputParser.commaSeparatedValues(
+            audioAllowedEncodings,
+            field: "audio.allowedEncodings",
+            aggregateValueCount: &collectionValueCount
+        )
+        var parsedRoles: [DeliveryRole] = []
+        parsedRoles.reserveCapacity(roles.count)
+        for role in roles {
+            parsedRoles.append(try role.makeRole(
+                aggregateValueCount: &collectionValueCount,
+                rawInputAlreadyValidated: true
+            ))
         }
 
         return Preset(
             identifier: BuiltInPresets.custom.identifier,
             name: trimmedName,
             audio: AudioRequirement(
-                allowedExtensions: try Self.list(audioAllowedExtensions, lowercased: true, field: "audio.allowedExtensions"),
-                allowedEncodings: try Self.list(audioAllowedEncodings, field: "audio.allowedEncodings"),
+                allowedExtensions: parsedAudioAllowedExtensions,
+                allowedEncodings: parsedAudioAllowedEncodings,
                 sampleRate: try Self.numericConstraint(
                     minimum: audioSampleRateMinimum,
                     maximum: audioSampleRateMaximum,
@@ -95,11 +160,39 @@ struct CustomPresetDraft {
                 ambiguousVersionPattern: Self.optionalText(filenamePattern),
                 ambiguousVersionSeverity: filenameSeverity
             ),
-            roles: try roles.map { try $0.makeRole() },
+            roles: parsedRoles,
             serviceFileSeverity: serviceFileSeverity,
             symbolicLinkSeverity: symbolicLinkSeverity,
             exactDuplicateSeverity: exactDuplicateSeverity
         )
+    }
+
+    func validateRawInputBounds() throws {
+        guard roles.count <= PresetInputLimits.maximumRoles else {
+            throw PreflightError.invalidPreset(
+                field: "roles",
+                reason: "A preset can define at most 32 roles."
+            )
+        }
+
+        var budget = CustomPresetRawInputBudget()
+        try budget.reserve(name, field: "name")
+        try budget.reserve(audioAllowedExtensions, field: "audio.allowedExtensions")
+        try budget.reserve(audioAllowedEncodings, field: "audio.allowedEncodings")
+        try budget.reserve(audioSampleRateMinimum, field: "audio.sampleRate.minimum")
+        try budget.reserve(audioSampleRateMaximum, field: "audio.sampleRate.maximum")
+        try budget.reserve(audioBitDepthMinimum, field: "audio.bitDepth.minimum")
+        try budget.reserve(audioBitDepthMaximum, field: "audio.bitDepth.maximum")
+        try budget.reserve(artworkMinimumWidth, field: "artwork.minimumWidth")
+        try budget.reserve(artworkMinimumHeight, field: "artwork.minimumHeight")
+        try budget.reserve(
+            filenamePattern,
+            field: "filename.ambiguousVersionPattern",
+            maximumByteCount: PresetInputLimits.maximumRegularExpressionByteCount
+        )
+        for role in roles {
+            try role.reserveRawInput(in: &budget)
+        }
     }
 
     static func numericConstraint(minimum: String, maximum: String, field: String) throws -> NumericConstraint? {
@@ -107,17 +200,6 @@ struct CustomPresetDraft {
         let maximumValue = try number(maximum, field: "\(field).maximum")
         guard minimumValue != nil || maximumValue != nil else { return nil }
         return NumericConstraint(minimum: minimumValue, maximum: maximumValue)
-    }
-
-    private static func list(_ text: String, lowercased: Bool = false, field: String) throws -> [String]? {
-        guard optionalText(text) != nil else { return nil }
-        let values = text.split(separator: ",", omittingEmptySubsequences: false).map {
-            String($0).trimmingCharacters(in: .whitespacesAndNewlines)
-        }
-        guard !values.isEmpty, values.allSatisfy({ !$0.isEmpty }) else {
-            throw PreflightError.invalidPreset(field: field, reason: "Comma-separated values cannot be empty.")
-        }
-        return values.map { lowercased ? $0.lowercased() : $0 }
     }
 
     private static func number(_ text: String, field: String) throws -> Double? {
@@ -226,20 +308,39 @@ struct CustomRoleDraft: Identifiable {
     }
 
     func makeRole() throws -> DeliveryRole {
+        var rawInputBudget = CustomPresetRawInputBudget()
+        try reserveRawInput(in: &rawInputBudget)
+        var aggregateValueCount = 0
+        return try makeRole(
+            aggregateValueCount: &aggregateValueCount,
+            rawInputAlreadyValidated: true
+        )
+    }
+
+    fileprivate func makeRole(
+        aggregateValueCount: inout Int,
+        rawInputAlreadyValidated: Bool
+    ) throws -> DeliveryRole {
+        if !rawInputAlreadyValidated {
+            var rawInputBudget = CustomPresetRawInputBudget()
+            try reserveRawInput(in: &rawInputBudget)
+        }
         let trimmedIdentifier = identifier.trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedPattern = pattern.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedIdentifier.isEmpty, !trimmedName.isEmpty, !trimmedPattern.isEmpty else {
             throw PreflightError.invalidPreset(field: "roles", reason: "Role identity, name, and pattern are required.")
         }
-        let parsedAllowedExtensions = try list(
+        let parsedAllowedExtensions = try PresetInputParser.commaSeparatedValues(
             allowedExtensions,
             lowercased: true,
-            field: "roles.\(trimmedIdentifier).allowedExtensions"
+            field: "roles.\(trimmedIdentifier).allowedExtensions",
+            aggregateValueCount: &aggregateValueCount
         )
-        let parsedAllowedEncodings = try list(
+        let parsedAllowedEncodings = try PresetInputParser.commaSeparatedValues(
             allowedEncodings,
-            field: "roles.\(trimmedIdentifier).allowedEncodings"
+            field: "roles.\(trimmedIdentifier).allowedEncodings",
+            aggregateValueCount: &aggregateValueCount
         )
         let parsedChannelCount = try CustomPresetDraft.numericConstraint(
             minimum: channelCountMinimum,
@@ -294,16 +395,22 @@ struct CustomRoleDraft: Identifiable {
         )
     }
 
-    private func list(_ text: String, lowercased: Bool = false, field: String) throws -> [String]? {
-        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return nil }
-        let values = text.split(separator: ",", omittingEmptySubsequences: false).map {
-            String($0).trimmingCharacters(in: .whitespacesAndNewlines)
-        }
-        guard values.allSatisfy({ !$0.isEmpty }) else {
-            throw PreflightError.invalidPreset(field: field, reason: "Comma-separated values cannot be empty.")
-        }
-        return values.map { lowercased ? $0.lowercased() : $0 }
+    fileprivate func reserveRawInput(in budget: inout CustomPresetRawInputBudget) throws {
+        try budget.reserve(identifier, field: "roles.identifier")
+        try budget.reserve(name, field: "roles.name")
+        try budget.reserve(
+            pattern,
+            field: "roles.pattern",
+            maximumByteCount: PresetInputLimits.maximumRegularExpressionByteCount
+        )
+        try budget.reserve(allowedExtensions, field: "roles.allowedExtensions")
+        try budget.reserve(allowedEncodings, field: "roles.allowedEncodings")
+        try budget.reserve(channelCountMinimum, field: "roles.channelCount.minimum")
+        try budget.reserve(channelCountMaximum, field: "roles.channelCount.maximum")
+        try budget.reserve(sampleRateMinimum, field: "roles.sampleRate.minimum")
+        try budget.reserve(sampleRateMaximum, field: "roles.sampleRate.maximum")
+        try budget.reserve(bitDepthMinimum, field: "roles.bitDepth.minimum")
+        try budget.reserve(bitDepthMaximum, field: "roles.bitDepth.maximum")
     }
 
 }

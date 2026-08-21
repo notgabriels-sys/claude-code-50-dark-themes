@@ -204,12 +204,109 @@ struct CompiledDeliveryRole: @unchecked Sendable {
     let pattern: NSRegularExpression
 }
 
-enum PresetValidationLimits {
-    static let maximumRoles = 32
-    static let maximumRegularExpressionByteCount = 512
-    static let maximumCollectionValueCount = 4_096
-    static let maximumStringByteCount = 4_096
-    static let maximumAggregateStringByteCount = 1_048_576
+public enum PresetInputLimits {
+    public static let maximumRoles = 32
+    public static let maximumRegularExpressionByteCount = 512
+    public static let maximumCollectionValueCount = 4_096
+    public static let maximumStringByteCount = 4_096
+    public static let maximumAggregateStringByteCount = 1_048_576
+}
+
+typealias PresetValidationLimits = PresetInputLimits
+
+public enum PresetInputParser {
+    public static func commaSeparatedValues(
+        _ text: String,
+        lowercased: Bool = false,
+        field: String
+    ) throws -> [String]? {
+        var aggregateValueCount = 0
+        return try commaSeparatedValues(
+            text,
+            lowercased: lowercased,
+            field: field,
+            aggregateValueCount: &aggregateValueCount
+        )
+    }
+
+    public static func commaSeparatedValues(
+        _ text: String,
+        lowercased: Bool = false,
+        field: String,
+        aggregateValueCount: inout Int
+    ) throws -> [String]? {
+        let boundedByteCount = text.utf8.prefix(PresetInputLimits.maximumStringByteCount + 1).count
+        guard boundedByteCount <= PresetInputLimits.maximumStringByteCount else {
+            throw PreflightError.invalidPreset(
+                field: field,
+                reason: "A configured string cannot exceed 4096 UTF-8 bytes."
+            )
+        }
+        guard !text.unicodeScalars.contains(where: CharacterSet.controlCharacters.contains) else {
+            throw PreflightError.invalidPreset(
+                field: field,
+                reason: "Actual control characters are not allowed."
+            )
+        }
+        guard aggregateValueCount >= 0,
+              aggregateValueCount <= PresetInputLimits.maximumCollectionValueCount
+        else {
+            throw PreflightError.invalidPreset(
+                field: field,
+                reason: "Preset collections can contain at most 4096 configured values in aggregate."
+            )
+        }
+        guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return nil
+        }
+
+        var values: [String] = []
+        var workingAggregateValueCount = aggregateValueCount
+        var valueStart = text.startIndex
+        var cursor = text.startIndex
+
+        while true {
+            let reachedEnd = cursor == text.endIndex
+            if reachedEnd || text[cursor] == "," {
+                let value = String(text[valueStart..<cursor])
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !value.isEmpty else {
+                    throw PreflightError.invalidPreset(
+                        field: field,
+                        reason: "Comma-separated values cannot be empty."
+                    )
+                }
+
+                let (newCount, overflow) = workingAggregateValueCount.addingReportingOverflow(1)
+                guard !overflow, newCount <= PresetInputLimits.maximumCollectionValueCount else {
+                    throw PreflightError.invalidPreset(
+                        field: field,
+                        reason: "Preset collections can contain at most 4096 configured values in aggregate."
+                    )
+                }
+                workingAggregateValueCount = newCount
+
+                let transformedValue = lowercased ? value.lowercased() : value
+                guard transformedValue.utf8.count <= PresetInputLimits.maximumStringByteCount else {
+                    throw PreflightError.invalidPreset(
+                        field: field,
+                        reason: "A configured string cannot exceed 4096 UTF-8 bytes."
+                    )
+                }
+                values.append(transformedValue)
+
+                if reachedEnd {
+                    break
+                }
+                valueStart = text.index(after: cursor)
+            }
+
+            cursor = text.index(after: cursor)
+        }
+
+        aggregateValueCount = workingAggregateValueCount
+        return values
+    }
 }
 
 public struct PresetResolver: PresetResolving {
@@ -229,6 +326,13 @@ public struct PresetResolver: PresetResolving {
             throw PreflightError.invalidPreset(
                 field: "roles",
                 reason: "A preset can define at most 32 roles."
+            )
+        }
+        for role in preset.roles {
+            try validateIdentifier(
+                role.identifier,
+                field: "roles.identifier",
+                budget: &stringBudget
             )
         }
         let duplicateIdentifiers = Dictionary(
@@ -287,7 +391,6 @@ public struct PresetResolver: PresetResolving {
 
         for role in preset.roles {
             let prefix = role.identifier.isEmpty ? "roles" : "roles.\(role.identifier)"
-            try validateIdentifier(role.identifier, field: "\(prefix).identifier", budget: &stringBudget)
             try validateName(role.name, field: "\(prefix).name", budget: &stringBudget)
             try validateRegularExpression(role.pattern, field: "\(prefix).pattern", budget: &stringBudget)
             try validateStrings(
@@ -424,7 +527,10 @@ public struct PresetResolver: PresetResolving {
         field: String,
         budget: inout PresetStringBudget
     ) throws {
-        guard pattern.utf8.count <= PresetValidationLimits.maximumRegularExpressionByteCount else {
+        let boundedByteCount = pattern.utf8.prefix(
+            PresetValidationLimits.maximumRegularExpressionByteCount + 1
+        ).count
+        guard boundedByteCount <= PresetValidationLimits.maximumRegularExpressionByteCount else {
             throw PreflightError.invalidPreset(
                 field: field,
                 reason: "The regular expression cannot exceed 512 UTF-8 bytes."
@@ -466,16 +572,19 @@ public struct PresetResolver: PresetResolving {
         field: String,
         budget: inout PresetStringBudget
     ) throws {
+        let boundedByteCount = value.utf8.prefix(
+            PresetValidationLimits.maximumStringByteCount + 1
+        ).count
+        guard boundedByteCount <= PresetValidationLimits.maximumStringByteCount else {
+            throw PreflightError.invalidPreset(
+                field: field,
+                reason: "A configured string cannot exceed 4096 UTF-8 bytes."
+            )
+        }
         guard !value.unicodeScalars.contains(where: CharacterSet.controlCharacters.contains) else {
             throw PreflightError.invalidPreset(
                 field: field,
                 reason: "Actual control characters are not allowed."
-            )
-        }
-        guard value.utf8.count <= PresetValidationLimits.maximumStringByteCount else {
-            throw PreflightError.invalidPreset(
-                field: field,
-                reason: "A configured string cannot exceed 4096 UTF-8 bytes."
             )
         }
         try budget.reserve(value, field: field)
@@ -666,17 +775,37 @@ private struct PresetStringBudget {
     }
 }
 
-private enum SafeRegularExpressionPolicy {
+enum SafeRegularExpressionPolicy {
     private static let maximumBoundedRepetition = 256
-    private static let trustedBuiltInPatterns: Set<String> = {
-        Set(BuiltInPresets.all.flatMap { preset in
-            preset.roles.map(\.pattern) + [preset.filename.ambiguousVersionPattern].compactMap { $0 }
-        })
-    }()
+    static let reviewedBuiltInPatterns: Set<String> = [
+        "(?i)(?:^|[ _.-])(final|master|version|v)\\s*\\d+",
+        "(?i)(^|/).+\\.(aif|aiff|flac|m4a|wav)$",
+        "(?i)(^|/)(?:[^/]*[ _.-])?(?:main[ _.-]*master|premaster|master)(?:[ _.-](?:v(?:ersion)?[ _.-]?\\d+|\\d+|final))?\\.(aif|aiff|flac|m4a|wav)$",
+        "(?i)(^|/).+\\.(heic|jpe?g|png|tiff?|webp)$",
+        "(?i)(^|/).*(metadata|credits).*\\.(csv|doc|docx|md|pdf|rtf|txt)$",
+    ]
 
     private struct GroupState {
         var containsRepetition = false
         var containsAlternation = false
+    }
+
+    private enum AtomKind: Equatable {
+        case whitespaceCharacterClass
+        case decimalDigitCharacterClass
+        case other
+    }
+
+    private struct Atom {
+        let kind: AtomKind
+        let startIndex: Int
+    }
+
+    private struct VariableQuantifierObservation {
+        let atom: Atom?
+        let quantifierCharacter: Character?
+        let endIndex: Int
+        let isUnbounded: Bool
     }
 
     private enum Quantifier {
@@ -718,7 +847,7 @@ private enum SafeRegularExpressionPolicy {
     }
 
     static func isSafe(_ pattern: String) -> Bool {
-        if trustedBuiltInPatterns.contains(pattern) {
+        if reviewedBuiltInPatterns.contains(pattern) {
             return true
         }
 
@@ -728,8 +857,8 @@ private enum SafeRegularExpressionPolicy {
         var inCharacterClass = false
         var escaped = false
         var previousWasQuantifier = false
-        var variableQuantifierCount = 0
-        var unboundedQuantifierCount = 0
+        var lastAtom: Atom?
+        var variableQuantifiers: [VariableQuantifierObservation] = []
 
         while index < characters.count {
             let character = characters[index]
@@ -742,12 +871,25 @@ private enum SafeRegularExpressionPolicy {
                 }
                 escaped = false
                 previousWasQuantifier = false
+                if !inCharacterClass {
+                    let kind: AtomKind
+                    switch character {
+                    case "s":
+                        kind = .whitespaceCharacterClass
+                    case "d":
+                        kind = .decimalDigitCharacterClass
+                    default:
+                        kind = .other
+                    }
+                    lastAtom = Atom(kind: kind, startIndex: index - 1)
+                }
                 index += 1
                 continue
             }
 
             if character == "\\" {
                 escaped = true
+                lastAtom = nil
                 index += 1
                 continue
             }
@@ -756,6 +898,7 @@ private enum SafeRegularExpressionPolicy {
                 if character == "]" {
                     inCharacterClass = false
                     previousWasQuantifier = false
+                    lastAtom = Atom(kind: .other, startIndex: index)
                 }
                 index += 1
                 continue
@@ -764,6 +907,7 @@ private enum SafeRegularExpressionPolicy {
             if character == "[" {
                 inCharacterClass = true
                 previousWasQuantifier = false
+                lastAtom = nil
                 index += 1
                 continue
             }
@@ -778,16 +922,19 @@ private enum SafeRegularExpressionPolicy {
                     }
                     if bodyStart > index, characters[bodyStart - 1] == ")" {
                         previousWasQuantifier = false
+                        lastAtom = nil
                         index = bodyStart
                         continue
                     }
                     groups.append(GroupState())
                     previousWasQuantifier = false
+                    lastAtom = nil
                     index = bodyStart
                     continue
                 }
                 groups.append(GroupState())
                 previousWasQuantifier = false
+                lastAtom = nil
                 index += 1
                 continue
             }
@@ -814,6 +961,7 @@ private enum SafeRegularExpressionPolicy {
                 groups[groups.count - 1].containsAlternation =
                     groups[groups.count - 1].containsAlternation || closed.containsAlternation
                 previousWasQuantifier = false
+                lastAtom = Atom(kind: .other, startIndex: index)
                 index += 1
                 continue
             }
@@ -821,6 +969,7 @@ private enum SafeRegularExpressionPolicy {
             if character == "|" {
                 groups[groups.count - 1].containsAlternation = true
                 previousWasQuantifier = false
+                lastAtom = nil
                 index += 1
                 continue
             }
@@ -828,10 +977,27 @@ private enum SafeRegularExpressionPolicy {
             if let quantifier = quantifier(at: index, in: characters) {
                 guard !previousWasQuantifier else { return false }
                 if quantifier.isVariable {
-                    variableQuantifierCount += 1
-                }
-                if quantifier.isUnbounded {
-                    unboundedQuantifierCount += 1
+                    let quantifierCharacter: Character?
+                    if character == "*" || character == "+" {
+                        quantifierCharacter = character
+                    } else {
+                        quantifierCharacter = nil
+                    }
+                    let endIndex: Int
+                    switch quantifier {
+                    case .bounded(let parsedEndIndex, _, _), .unbounded(let parsedEndIndex):
+                        endIndex = parsedEndIndex
+                    case .unsafe:
+                        return false
+                    }
+                    variableQuantifiers.append(
+                        VariableQuantifierObservation(
+                            atom: lastAtom,
+                            quantifierCharacter: quantifierCharacter,
+                            endIndex: endIndex,
+                            isUnbounded: quantifier.isUnbounded
+                        )
+                    )
                 }
                 switch quantifier {
                 case .bounded(let endIndex, _, _):
@@ -845,20 +1011,33 @@ private enum SafeRegularExpressionPolicy {
                 case .unsafe:
                     return false
                 }
+                lastAtom = nil
                 continue
             }
 
             previousWasQuantifier = false
+            lastAtom = Atom(kind: .other, startIndex: index)
             index += 1
         }
 
-        if variableQuantifierCount <= 1 {
+        if variableQuantifiers.count <= 1 {
             return true
         }
 
-        return variableQuantifierCount == 2
-            && unboundedQuantifierCount == 2
-            && pattern.contains("\\s*\\d+")
+        guard variableQuantifiers.count == 2 else { return false }
+        let whitespace = variableQuantifiers[0]
+        let digits = variableQuantifiers[1]
+        guard whitespace.isUnbounded,
+              digits.isUnbounded,
+              whitespace.atom?.kind == .whitespaceCharacterClass,
+              whitespace.quantifierCharacter == "*",
+              digits.atom?.kind == .decimalDigitCharacterClass,
+              digits.quantifierCharacter == "+",
+              let digitAtomStartIndex = digits.atom?.startIndex
+        else {
+            return false
+        }
+        return whitespace.endIndex + 1 == digitAtomStartIndex
     }
 
     private static func allowedSpecialGroupBodyStart(
@@ -874,7 +1053,7 @@ private enum SafeRegularExpressionPolicy {
         var index = markerIndex
         var sawFlag = false
         while index < characters.count,
-              "imsxw-".contains(characters[index])
+              "imsw-".contains(characters[index])
         {
             sawFlag = true
             index += 1

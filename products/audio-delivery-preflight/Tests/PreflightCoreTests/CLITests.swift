@@ -279,6 +279,43 @@ final class CLITests: XCTestCase {
         XCTAssertTrue(output.stderr.contains("Invalid command or configuration"))
     }
 
+    func testUnsafeImportedRegexFailsExactlyAsInvalidConfigurationBeforeOutputOrScan() async throws {
+        let output = OutputCapture()
+        let calls = CallCapture()
+        let unsafePreset = Preset(
+            identifier: "unsafe-imported-regex",
+            name: "Unsafe imported regex",
+            roles: [
+                DeliveryRole(
+                    identifier: "main",
+                    pattern: #"[\s*\d+]a*a*b"#,
+                    required: false
+                ),
+            ]
+        )
+        let fallbackResult = try scanResult(status: .ready)
+        var testEnvironment = environment(output: output)
+        testEnvironment.loadPresetFile = { _ in unsafePreset }
+        testEnvironment.folderExists = { _ in calls.recordFolderInspection(); return true }
+        testEnvironment.scan = { _ in
+            calls.recordScan()
+            return fallbackResult
+        }
+
+        let exitCode = await CLI().run(
+            arguments: ["scan", "Fixture", "--preset-file", "/private/tmp/unsafe-regex.json"],
+            environment: testEnvironment
+        )
+
+        XCTAssertEqual(exitCode, 3)
+        XCTAssertEqual(calls.folderInspectionCalls, 0)
+        XCTAssertEqual(calls.scanCalls, 0)
+        XCTAssertTrue(output.stderr.contains("Invalid command or configuration."))
+        XCTAssertFalse(output.stdout.contains("Resolved requirements"))
+        XCTAssertFalse(output.stdout.contains("Scan summary:"))
+        XCTAssertFalse(output.stdout.contains("Status:"))
+    }
+
     func testUnavailableFolderAndInjectedScanStartFailureExitFourWithoutPathLeakage() async {
         let output = OutputCapture()
         let privatePath = "/Users/example/private-delivery"

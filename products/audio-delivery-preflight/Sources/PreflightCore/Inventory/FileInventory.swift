@@ -148,6 +148,11 @@ public struct FileInventory: FileInventorying {
                     limit: limits.maximumDepth
                 )
             }
+            let rawRelativePathByteCount = components.joined(separator: "/").utf8.count
+            try budget.reserveEntry(
+                rawRelativePathByteCount: rawRelativePathByteCount,
+                limits: limits
+            )
             let relativePath: RelativePath
             do {
                 relativePath = try Self.relativePath(
@@ -176,10 +181,6 @@ public struct FileInventory: FileInventorying {
                 ))
                 continue
             }
-            try budget.reserveEntry(
-                relativePathByteCount: relativePath.value.utf8.count,
-                limits: limits
-            )
 
             let fileStatus: stat
             do {
@@ -458,7 +459,7 @@ private struct InventoryBudget {
     private var totalEntries = 0
     private var aggregateRelativePathByteCount = 0
 
-    mutating func reserveEntry(relativePathByteCount: Int, limits: InventoryLimits) throws {
+    mutating func reserveEntry(rawRelativePathByteCount: Int, limits: InventoryLimits) throws {
         guard totalEntries < limits.maximumTotalEntries else {
             throw PreflightError.inventoryLimitExceeded(
                 resource: .totalEntries,
@@ -466,7 +467,7 @@ private struct InventoryBudget {
             )
         }
         let (newAggregate, overflow) = aggregateRelativePathByteCount.addingReportingOverflow(
-            relativePathByteCount
+            rawRelativePathByteCount
         )
         guard !overflow, newAggregate <= limits.maximumAggregateRelativePathByteCount else {
             throw PreflightError.inventoryLimitExceeded(

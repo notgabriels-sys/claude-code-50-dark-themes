@@ -314,6 +314,78 @@ final class FileInventoryTests: XCTestCase {
         )
     }
 
+    func testControlBearingInvalidPathsCountTowardTheTotalEntryBudget() async throws {
+        let limits = InventoryLimits(
+            maximumTotalEntries: 3,
+            maximumDepth: 2,
+            maximumNamesPerDirectory: 8,
+            maximumRelativePathByteCount: 16,
+            maximumAggregateRelativePathByteCount: 64
+        )
+        let boundary = try TemporaryInventoryFixture.make()
+        defer { boundary.remove() }
+        try boundary.write("newline", to: "\n")
+        try boundary.write("del", to: "\u{7F}")
+        try boundary.write("c1", to: "\u{80}")
+
+        let boundarySnapshot = try await FileInventory(limits: limits).inventory(root: boundary.root)
+        XCTAssertTrue(boundarySnapshot.entries.isEmpty)
+        XCTAssertEqual(
+            boundarySnapshot.findings.map(\.ruleID),
+            Array(repeating: "filesystem.invalid-relative-path", count: 3)
+        )
+
+        let exceeded = try TemporaryInventoryFixture.make()
+        defer { exceeded.remove() }
+        try exceeded.write("newline", to: "\n")
+        try exceeded.write("del", to: "\u{7F}")
+        try exceeded.write("c1", to: "\u{80}")
+        try exceeded.write("next-c1", to: "\u{81}")
+
+        await assertInventoryLimit(
+            .totalEntries,
+            limit: 3,
+            from: FileInventory(limits: limits),
+            root: exceeded.root
+        )
+    }
+
+    func testControlBearingInvalidPathsCountTowardTheAggregatePathBudget() async throws {
+        let limits = InventoryLimits(
+            maximumTotalEntries: 8,
+            maximumDepth: 2,
+            maximumNamesPerDirectory: 8,
+            maximumRelativePathByteCount: 16,
+            maximumAggregateRelativePathByteCount: 4
+        )
+        let boundary = try TemporaryInventoryFixture.make()
+        defer { boundary.remove() }
+        try boundary.write("newline", to: "\n")
+        try boundary.write("del", to: "\u{7F}")
+        try boundary.write("c1", to: "\u{80}")
+
+        let boundarySnapshot = try await FileInventory(limits: limits).inventory(root: boundary.root)
+        XCTAssertTrue(boundarySnapshot.entries.isEmpty)
+        XCTAssertEqual(
+            boundarySnapshot.findings.map(\.ruleID),
+            Array(repeating: "filesystem.invalid-relative-path", count: 3)
+        )
+
+        let exceeded = try TemporaryInventoryFixture.make()
+        defer { exceeded.remove() }
+        try exceeded.write("newline", to: "\n")
+        try exceeded.write("del", to: "\u{7F}")
+        try exceeded.write("c1", to: "\u{80}")
+        try exceeded.write("next-c1", to: "\u{81}")
+
+        await assertInventoryLimit(
+            .aggregateRelativePathBytes,
+            limit: 4,
+            from: FileInventory(limits: limits),
+            root: exceeded.root
+        )
+    }
+
     private func assertInventoryLimit(
         _ resource: InventoryLimitResource,
         limit: Int,

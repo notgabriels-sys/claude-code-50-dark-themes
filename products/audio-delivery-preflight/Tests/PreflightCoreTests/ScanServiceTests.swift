@@ -137,6 +137,35 @@ final class ScanServiceTests: XCTestCase {
         XCTAssertNotEqual(result.overallStatus, .ready)
     }
 
+    func testControlBearingInvalidPathsExhaustInitialInventoryIntoAnEmptyIncompleteResult() async throws {
+        let root = try ControlBearingInventoryFixture.makeRoot()
+        defer { try? FileManager.default.removeItem(at: root) }
+        try ControlBearingInventoryFixture.populateExceededRoot(root)
+        let preset = try PresetResolver().resolve(Preset(identifier: "test", name: "Test"))
+        let service = ScanService(
+            inventory: FileInventory(limits: ControlBearingInventoryFixture.limits),
+            checksums: ScanChecksumSpy(),
+            audioInspector: ScanAudioInspectorSpy(),
+            imageInspector: ScanImageInspectorSpy(),
+            presetResolver: ScanPresetResolverSpy(resolvedPreset: preset),
+            ruleEngine: ScanRuleEngineSpy(),
+            fingerprinting: ScanFingerprintSpy(),
+            now: { Date(timeIntervalSince1970: 1_000) }
+        )
+
+        let result = await service.scan(request(root: root, preset: preset))
+
+        XCTAssertEqual(result.overallStatus, .incomplete)
+        XCTAssertEqual(result.findings.map(\.ruleID), ["filesystem.inventory-limit.total-entries"])
+        XCTAssertEqual(result.findings.first?.evidence, [
+            Evidence(label: "resource", value: .string("totalEntries")),
+            Evidence(label: "limit", value: .integer(3)),
+        ])
+        XCTAssertTrue(result.inventory.isEmpty)
+        XCTAssertNil(result.completedAt)
+        XCTAssertNotEqual(result.overallStatus, .ready)
+    }
+
     func testEveryInventoryBudgetMapsToItsSpecificVisibleFinding() async throws {
         let preset = try PresetResolver().resolve(Preset(identifier: "test", name: "Test"))
         let cases: [(InventoryLimitResource, Int, String)] = [
@@ -200,6 +229,34 @@ final class ScanServiceTests: XCTestCase {
             Evidence(label: "limit", value: .integer(32)),
         ])
         XCTAssertTrue(result.inventory.isEmpty)
+    }
+
+    func testControlBearingInvalidPathsExhaustPostInventoryIntoAnEmptyIncompleteResult() async throws {
+        let root = try ControlBearingInventoryFixture.makeRoot()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let preset = try PresetResolver().resolve(Preset(identifier: "test", name: "Test"))
+        let service = ScanService(
+            inventory: PostInventoryControlBearingLimitSpy(),
+            checksums: ScanChecksumSpy(),
+            audioInspector: ScanAudioInspectorSpy(),
+            imageInspector: ScanImageInspectorSpy(),
+            presetResolver: ScanPresetResolverSpy(resolvedPreset: preset),
+            ruleEngine: ScanRuleEngineSpy(),
+            fingerprinting: ScanFingerprintSpy(),
+            now: { Date(timeIntervalSince1970: 1_000) }
+        )
+
+        let result = await service.scan(request(root: root, preset: preset))
+
+        XCTAssertEqual(result.overallStatus, .incomplete)
+        XCTAssertEqual(result.findings.map(\.ruleID), ["filesystem.inventory-limit.total-entries"])
+        XCTAssertEqual(result.findings.first?.evidence, [
+            Evidence(label: "resource", value: .string("totalEntries")),
+            Evidence(label: "limit", value: .integer(3)),
+        ])
+        XCTAssertTrue(result.inventory.isEmpty)
+        XCTAssertNil(result.completedAt)
+        XCTAssertNotEqual(result.overallStatus, .ready)
     }
 
     func testSameLengthSourceMutationWithRestoredMtimeProducesErrorAndCannotBeReady() async throws {
@@ -598,6 +655,45 @@ private actor PostInventoryLimitThrowingSpy: FileInventorying {
             throw PreflightError.inventoryLimitExceeded(resource: resource, limit: limit)
         }
         return InventorySnapshot(entries: [], findings: [])
+    }
+}
+
+private actor PostInventoryControlBearingLimitSpy: FileInventorying {
+    private var callCount = 0
+
+    func inventory(root: URL) async throws -> InventorySnapshot {
+        callCount += 1
+        guard callCount == 2 else {
+            return InventorySnapshot(entries: [], findings: [])
+        }
+
+        try ControlBearingInventoryFixture.populateExceededRoot(root)
+        return try await FileInventory(limits: ControlBearingInventoryFixture.limits)
+            .inventory(root: root)
+    }
+}
+
+private enum ControlBearingInventoryFixture {
+    static let limits = InventoryLimits(
+        maximumTotalEntries: 3,
+        maximumDepth: 2,
+        maximumNamesPerDirectory: 8,
+        maximumRelativePathByteCount: 16,
+        maximumAggregateRelativePathByteCount: 64
+    )
+
+    static func makeRoot() throws -> URL {
+        let root = URL(fileURLWithPath: "/private/tmp", isDirectory: true)
+            .appendingPathComponent("ScanControlBearingInventory-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        return root
+    }
+
+    static func populateExceededRoot(_ root: URL) throws {
+        let names = ["\n", "\u{7F}", "\u{80}", "\u{81}"]
+        for name in names {
+            try Data(name.utf8).write(to: root.appendingPathComponent(name))
+        }
     }
 }
 

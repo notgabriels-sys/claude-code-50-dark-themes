@@ -199,8 +199,10 @@ final class AppModelTests: XCTestCase {
             "main-master", "artwork", "metadata-or-credits",
         ])
 
-        model.customPresetDraft.artworkMinimumWidth = "4096"
-        model.customPresetDraft.artworkMinimumHeight = "4096"
+        model.updateCustomPresetDraft { draft in
+            draft.artworkMinimumWidth = "4096"
+            draft.artworkMinimumHeight = "4096"
+        }
         XCTAssertTrue(model.applyCustomPreset())
         XCTAssertEqual(model.selectedPresetDefinition?.artwork?.minimumWidth, 4096)
         XCTAssertEqual(model.selectedPresetDefinition?.artwork?.minimumHeight, 4096)
@@ -259,40 +261,42 @@ final class AppModelTests: XCTestCase {
     func testCustomPresetDraftRoundTripsRolesFormatsNumericFilenameAndSeverities() throws {
         let model = AppModel(environment: environment(scan: ScanCapture(result: nil)))
         model.choosePreset(BuiltInPresets.custom.identifier)
-        model.customPresetDraft.name = "Vinyl Delivery"
-        model.customPresetDraft.audioAllowedExtensions = "wav, aiff"
-        model.customPresetDraft.audioAllowedEncodings = "Linear PCM, FLAC"
-        model.customPresetDraft.audioSampleRateMinimum = "44100"
-        model.customPresetDraft.audioSampleRateMaximum = "96000"
-        model.customPresetDraft.audioBitDepthMinimum = "24"
-        model.customPresetDraft.audioBitDepthMaximum = "32"
-        model.customPresetDraft.requireConsistentSampleRate = true
-        model.customPresetDraft.requireConsistentBitDepth = true
-        model.customPresetDraft.requireConsistentChannelCount = true
-        model.customPresetDraft.audioSeverity = .error
-        model.customPresetDraft.filenamePattern = "(?i)final\\d+"
-        model.customPresetDraft.filenameSeverity = .warning
-        model.customPresetDraft.serviceFileSeverity = .information
-        model.customPresetDraft.symbolicLinkSeverity = .error
-        model.customPresetDraft.exactDuplicateSeverity = .warning
-        model.customPresetDraft.roles = [CustomRoleDraft(
-            identifier: "premaster",
-            name: "Stereo Premaster",
-            pattern: "(?i).*\\.(wav|aiff)$",
-            required: true,
-            category: .audio,
-            allowedExtensions: "wav, aiff",
-            allowedEncodings: "Linear PCM",
-            channelCountMinimum: "2",
-            channelCountMaximum: "2",
-            sampleRateMinimum: "48000",
-            sampleRateMaximum: "96000",
-            bitDepthMinimum: "24",
-            bitDepthMaximum: "32",
-            readabilitySeverity: .error,
-            requirementSeverity: .error,
-            ambiguitySeverity: .warning
-        )]
+        model.updateCustomPresetDraft { draft in
+            draft.name = "Vinyl Delivery"
+            draft.audioAllowedExtensions = "wav, aiff"
+            draft.audioAllowedEncodings = "Linear PCM, FLAC"
+            draft.audioSampleRateMinimum = "44100"
+            draft.audioSampleRateMaximum = "96000"
+            draft.audioBitDepthMinimum = "24"
+            draft.audioBitDepthMaximum = "32"
+            draft.requireConsistentSampleRate = true
+            draft.requireConsistentBitDepth = true
+            draft.requireConsistentChannelCount = true
+            draft.audioSeverity = .error
+            draft.filenamePattern = "(?i)final\\d+"
+            draft.filenameSeverity = .warning
+            draft.serviceFileSeverity = .information
+            draft.symbolicLinkSeverity = .error
+            draft.exactDuplicateSeverity = .warning
+            draft.roles = [CustomRoleDraft(
+                identifier: "premaster",
+                name: "Stereo Premaster",
+                pattern: "(?i).*\\.(wav|aiff)$",
+                required: true,
+                category: .audio,
+                allowedExtensions: "wav, aiff",
+                allowedEncodings: "Linear PCM",
+                channelCountMinimum: "2",
+                channelCountMaximum: "2",
+                sampleRateMinimum: "48000",
+                sampleRateMaximum: "96000",
+                bitDepthMinimum: "24",
+                bitDepthMaximum: "32",
+                readabilitySeverity: .error,
+                requirementSeverity: .error,
+                ambiguitySeverity: .warning
+            )]
+        }
 
         XCTAssertTrue(model.applyCustomPreset())
 
@@ -321,7 +325,7 @@ final class AppModelTests: XCTestCase {
         let model = AppModel(environment: environment(scan: ScanCapture(result: nil)))
         model.choosePreset(BuiltInPresets.custom.identifier)
         XCTAssertTrue(model.selectFolder(folderURL()))
-        model.customPresetDraft.filenamePattern = "["
+        model.updateCustomPresetDraft { $0.filenamePattern = "[" }
 
         XCTAssertFalse(model.applyCustomPreset())
         XCTAssertFalse(model.canStartScan)
@@ -330,6 +334,23 @@ final class AppModelTests: XCTestCase {
             "Custom preset error. Filename version pattern: The regular expression is invalid."
         )
         XCTAssertEqual(model.customPresetDraft.filenamePattern, "[")
+    }
+
+    func testCustomEditorRejectsStructuralRegexSpoofBeforeScan() {
+        let model = AppModel(environment: environment(scan: ScanCapture(result: nil)))
+        model.choosePreset(BuiltInPresets.custom.identifier)
+        XCTAssertTrue(model.selectFolder(folderURL()))
+
+        XCTAssertFalse(model.updateCustomPresetDraft {
+            $0.filenamePattern = #"[\s*\d+]a*a*b"#
+        })
+
+        XCTAssertEqual(
+            model.customPresetValidationMessage,
+            "Custom preset error. Filename version pattern: The regular expression uses an unsafe construct."
+        )
+        XCTAssertTrue(model.resolvedRequirements.isEmpty)
+        XCTAssertFalse(model.canStartScan)
     }
 
     func testCustomRoleDraftRejectsAudioOnlyFieldsForAnyCategory() {
@@ -353,6 +374,136 @@ final class AppModelTests: XCTestCase {
         }
     }
 
+    func testCustomPresetDraftRejectsRoleCountBeforeInspectingRoleFields() {
+        var draft = CustomPresetDraft()
+        draft.roles = (0...PresetInputLimits.maximumRoles).map { index in
+            CustomRoleDraft(
+                identifier: "role-\(index)",
+                name: "Role \(index)",
+                pattern: String(
+                    repeating: "a",
+                    count: PresetInputLimits.maximumRegularExpressionByteCount + 1
+                )
+            )
+        }
+
+        XCTAssertThrowsError(try draft.makePreset()) { error in
+            XCTAssertEqual(
+                error as? PreflightError,
+                .invalidPreset(
+                    field: "roles",
+                    reason: "A preset can define at most 32 roles."
+                )
+            )
+        }
+    }
+
+    func testCustomPresetStorageBoundaryRejectsOversizedUTF8WithoutRetainingIt() {
+        let model = AppModel(environment: environment(scan: ScanCapture(result: nil)))
+        model.choosePreset(BuiltInPresets.custom.identifier)
+        let originalName = model.customPresetDraft.name
+        var oversizedDraft = model.customPresetDraft
+        oversizedDraft.name = String(
+            repeating: "é",
+            count: PresetInputLimits.maximumStringByteCount / 2 + 1
+        )
+
+        XCTAssertFalse(model.replaceCustomPresetDraft(oversizedDraft))
+
+        XCTAssertEqual(model.customPresetDraft.name, originalName)
+        XCTAssertEqual(
+            model.customPresetValidationMessage,
+            "Custom preset error. Preset name: A configured string cannot exceed 4096 UTF-8 bytes."
+        )
+        XCTAssertFalse(model.canStartScan)
+    }
+
+    func testModelDoesNotSeedEditorFromAnUnresolvedOversizedCustomDefinition() {
+        let oversizedCustom = Preset(
+            identifier: BuiltInPresets.custom.identifier,
+            name: "Unbounded Custom",
+            roles: (0...PresetInputLimits.maximumRoles).map { index in
+                DeliveryRole(
+                    identifier: "role-\(index)",
+                    pattern: ".*",
+                    required: false
+                )
+            }
+        )
+
+        let model = AppModel(
+            environment: environment(scan: ScanCapture(result: nil)),
+            presets: [oversizedCustom],
+            initialPresetID: BuiltInPresets.custom.identifier
+        )
+
+        XCTAssertEqual(model.customPresetDraft.name, BuiltInPresets.custom.name)
+        XCTAssertTrue(model.customPresetDraft.roles.isEmpty)
+    }
+
+    func testCustomPresetDraftAppliesOneAggregateCommaValueBudget() {
+        let boundaryList = Array(
+            repeating: "a",
+            count: PresetInputLimits.maximumCollectionValueCount / 2
+        ).joined(separator: ",")
+        var draft = CustomPresetDraft()
+        draft.audioAllowedExtensions = boundaryList
+        draft.audioAllowedEncodings = boundaryList
+        draft.roles = [CustomRoleDraft(
+            identifier: "main",
+            name: "Main",
+            pattern: ".*",
+            category: .document,
+            allowedExtensions: "txt"
+        )]
+
+        XCTAssertThrowsError(try draft.makePreset()) { error in
+            XCTAssertEqual(
+                error as? PreflightError,
+                .invalidPreset(
+                    field: "roles.main.allowedExtensions",
+                    reason: "Preset collections can contain at most 4096 configured values in aggregate."
+                )
+            )
+        }
+    }
+
+    func testCustomPresetDraftRejectsAggregateRawStringsBeforeRoleConstruction() {
+        let maximumString = String(
+            repeating: "a",
+            count: PresetInputLimits.maximumStringByteCount
+        )
+        let maximumPattern = String(
+            repeating: "a",
+            count: PresetInputLimits.maximumRegularExpressionByteCount
+        )
+        var draft = CustomPresetDraft()
+        draft.roles = (0..<PresetInputLimits.maximumRoles).map { _ in
+            CustomRoleDraft(
+                identifier: maximumString,
+                name: maximumString,
+                pattern: maximumPattern,
+                allowedExtensions: maximumString,
+                allowedEncodings: maximumString,
+                channelCountMinimum: maximumString,
+                channelCountMaximum: maximumString,
+                sampleRateMinimum: maximumString,
+                sampleRateMaximum: maximumString,
+                bitDepthMinimum: maximumString,
+                bitDepthMaximum: maximumString
+            )
+        }
+
+        XCTAssertThrowsError(try draft.makePreset()) { error in
+            guard let preflightError = error as? PreflightError,
+                  case .invalidPreset(_, let reason) = preflightError
+            else {
+                return XCTFail("Expected a typed invalid-preset error, received \(error)")
+            }
+            XCTAssertEqual(reason, "Preset strings exceed the 1048576-byte aggregate limit.")
+        }
+    }
+
     func testCustomPresetValidationIdentifiesTypedFieldAndPreservesDraft() {
         struct Case {
             let configure: (AppModel) -> Void
@@ -364,8 +515,10 @@ final class AppModelTests: XCTestCase {
         let cases = [
             Case(
                 configure: { model in
-                    model.customPresetDraft.audioSampleRateMinimum = "96000"
-                    model.customPresetDraft.audioSampleRateMaximum = "44100"
+                    model.updateCustomPresetDraft { draft in
+                        draft.audioSampleRateMinimum = "96000"
+                        draft.audioSampleRateMaximum = "44100"
+                    }
                 },
                 expectedMessage: "Custom preset error. Audio sample rate: The minimum cannot exceed the maximum.",
                 preservedValue: { $0.customPresetDraft.audioSampleRateMinimum },
@@ -373,13 +526,15 @@ final class AppModelTests: XCTestCase {
             ),
             Case(
                 configure: { model in
-                    model.customPresetDraft.roles = [CustomRoleDraft(
-                        identifier: "main",
-                        name: "Main",
-                        pattern: ".*",
-                        category: .audio,
-                        allowedExtensions: "wav,"
-                    )]
+                    model.updateCustomPresetDraft { draft in
+                        draft.roles = [CustomRoleDraft(
+                            identifier: "main",
+                            name: "Main",
+                            pattern: ".*",
+                            category: .audio,
+                            allowedExtensions: "wav,"
+                        )]
+                    }
                 },
                 expectedMessage: "Custom preset error. Role allowed extensions: Comma-separated values cannot be empty.",
                 preservedValue: { $0.customPresetDraft.roles.first?.allowedExtensions ?? "" },
@@ -387,10 +542,12 @@ final class AppModelTests: XCTestCase {
             ),
             Case(
                 configure: { model in
-                    model.customPresetDraft.roles = [
-                        CustomRoleDraft(identifier: "duplicate", name: "First", pattern: ".*", category: .document),
-                        CustomRoleDraft(identifier: "duplicate", name: "Second", pattern: ".*", category: .document),
-                    ]
+                    model.updateCustomPresetDraft { draft in
+                        draft.roles = [
+                            CustomRoleDraft(identifier: "duplicate", name: "First", pattern: ".*", category: .document),
+                            CustomRoleDraft(identifier: "duplicate", name: "Second", pattern: ".*", category: .document),
+                        ]
+                    }
                 },
                 expectedMessage: "Custom preset error. Delivery roles: Role identifiers must be unique after normalization: duplicate.",
                 preservedValue: { $0.customPresetDraft.roles.map(\.identifier).joined(separator: ",") },
@@ -413,7 +570,7 @@ final class AppModelTests: XCTestCase {
     func testChoosingAnotherPresetClearsCustomValidationSummary() {
         let model = AppModel(environment: environment(scan: ScanCapture(result: nil)))
         model.choosePreset(BuiltInPresets.custom.identifier)
-        model.customPresetDraft.filenamePattern = "["
+        model.updateCustomPresetDraft { $0.filenamePattern = "[" }
         XCTAssertFalse(model.applyCustomPreset())
         XCTAssertNotNil(model.customPresetValidationMessage)
 

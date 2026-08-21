@@ -110,6 +110,34 @@ final class PresetFileLoaderTests: XCTestCase {
         }
     }
 
+    func testImportedPresetRejectsCharacterClassRegexAuthorizationSpoof() throws {
+        let fixture = try makeFixture()
+        defer { try? FileManager.default.removeItem(at: fixture.root) }
+        let preset = Preset(
+            identifier: "unsafe-imported-regex",
+            name: "Unsafe imported regex",
+            roles: [
+                DeliveryRole(
+                    identifier: "main",
+                    pattern: #"[\s*\d+]a*a*b"#,
+                    required: false
+                ),
+            ]
+        )
+        try JSONEncoder().encode(preset).write(to: fixture.file)
+
+        XCTAssertThrowsError(try PresetResolver().resolve(preset))
+        XCTAssertThrowsError(try PresetFileLoader().load(from: fixture.file)) { error in
+            XCTAssertEqual(
+                error as? PreflightError,
+                .invalidPreset(
+                    field: "presetFile",
+                    reason: "The imported preset is unreadable, unsafe, unsupported, or invalid."
+                )
+            )
+        }
+    }
+
     private func makeFixture() throws -> (root: URL, file: URL) {
         let root = URL(fileURLWithPath: "/private/tmp", isDirectory: true)
             .appendingPathComponent("PresetFileLoaderTests-\(UUID().uuidString)", isDirectory: true)

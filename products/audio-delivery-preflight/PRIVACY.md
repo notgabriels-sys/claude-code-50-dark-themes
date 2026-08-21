@@ -16,6 +16,8 @@ Version 0.1.0 deliberately does not request embedded metadata collections or str
 
 The inventory is bounded to 50,000 entries, depth 32, 20,000 names per directory, 4096 UTF-8 bytes per relative path, and 16 MiB of aggregate relative-path text. Exceeding any boundary produces a specific `incomplete` result with no truncated inventory. Relative paths and displayed preset strings containing actual control characters are rejected at their trust boundaries. Human-readable CLI output also escapes C0, DEL, and C1 control scalars defensively before writing to a terminal.
 
+Preset processing is bounded to 32 roles, 512 UTF-8 bytes per regular expression, 4096 UTF-8 bytes per other configured string, 4096 configured collection values in aggregate, and 1,048,576 configured-string bytes in aggregate. Bounded regular-expression repetition cannot exceed 256. The only accepted two-variable Custom sequence is a parser-observed adjacent `\s*\d+` outside character classes, escaped literals, comments, and extended-mode constructs. The native editor checks raw role and string limits before retaining or preprocessing an edit, then parses comma-separated values incrementally against the shared aggregate value ceiling.
+
 Symbolic links are recorded and are not followed. The selected root is opened component by component with no-follow semantics, and inventory traversal remains anchored to directory descriptors. A regular file is then opened through a descriptor-relative path beneath that root. Entries that cannot be proven safe are not treated as normal source files.
 
 ## Temporary media copies
