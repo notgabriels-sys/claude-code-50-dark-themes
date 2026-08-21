@@ -93,7 +93,7 @@ Until those gates are complete, this repository contains a local candidate, not 
 
 The release-packaging branch adds a deterministic assembly and independent-verification path for an explicitly unsigned version 0.1.0 candidate. The packaging test uses real executable fixtures and requires the `.app` structure, CLI, documentation, unsigned disclosure, bundle identifier, version, macOS 14 floor, ZIP archive, safe archive paths, and matching SHA-256 sidecar. The complete product verifier runs this packaging test.
 
-This closes only the repeatable bundle/archive-assembly portion of the release gate. A real archive built from release binaries must still be copied to an independent location, reverified, launched, exercised manually, and tested under Gatekeeper. Developer ID signing, notarization, final icon work, independent macOS 14 testing, accessibility testing, and commerce-provider verification remain open.
+This closes only the repeatable bundle/archive-assembly portion of the release gate. A real archive built from release binaries must still be copied to an independent location, reverified, launched, exercised manually, and tested under Gatekeeper. Developer ID signing, notarization, final packaged-icon inspection, independent macOS 14 testing, accessibility testing, and commerce-provider verification remain open.
 
 ### Packaged-app smoke evidence
 
