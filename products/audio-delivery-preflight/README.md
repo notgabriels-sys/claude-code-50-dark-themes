@@ -6,7 +6,7 @@ It performs technical checks only. A `ready` result is not an artistic judgment,
 
 ## Current status
 
-Version `0.1.0` is a local development candidate. It is not signed, notarized, packaged for customer installation, or published for sale.
+Version `0.1.0` is a merged development candidate. The repository can build and independently verify an explicitly unsigned customer-archive candidate. No valid Apple code-signing identity was available during the packaging audit, so the app is not Developer ID signed or notarized and is not published for sale.
 
 ## Requirements
 
@@ -184,3 +184,24 @@ products/audio-delivery-preflight/scripts/verify.sh
 The verifier cleans SwiftPM state, runs the full test suite, builds both release products, and runs the version command. It also regenerates the original Digital Release fixture, compares its bytes with the committed fixture, scans it through the release CLI, validates all three report formats, compares source evidence before and after, and checks measured media properties with `afinfo` and `sips`.
 
 See [PRIVACY.md](PRIVACY.md) for local-processing and report details. See [LIMITATIONS.md](LIMITATIONS.md) for the exact boundaries of version 0.1.0. See [VERIFICATION.md](VERIFICATION.md) for the evidence map and remaining release gates.
+
+## Build an unsigned release candidate
+
+From the repository root:
+
+```bash
+products/audio-delivery-preflight/scripts/package-release.sh \
+  --output /absolute/path/to/new-output-directory \
+  --unsigned
+```
+
+The output contains `Audio Delivery Preflight.app`, the `audio-preflight` CLI, the product documentation, an unavoidable `UNSIGNED.txt` disclosure, a ZIP archive, and a SHA-256 sidecar. The command refuses to overwrite an existing output path.
+
+Verify an archive after moving or downloading both files:
+
+```bash
+products/audio-delivery-preflight/scripts/verify-release-archive.sh \
+  "/absolute/path/to/Audio-Delivery-Preflight-0.1.0-macOS-unsigned.zip"
+```
+
+The verifier checks the sidecar, archive path safety, required files, executable permissions, bundle identifier, version, and deployment floor after a fresh extraction. This does not replace Developer ID signing, Apple notarization, Gatekeeper testing, accessibility validation, or independent-host testing. See [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) before any public listing.
