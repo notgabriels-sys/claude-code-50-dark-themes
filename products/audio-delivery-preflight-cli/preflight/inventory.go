@@ -3,6 +3,7 @@ package preflight
 
 import (
 	"crypto/sha256"
+	"encoding/binary"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -23,6 +24,7 @@ const (
 	EntryFile      EntryKind = "file"
 	EntryDirectory EntryKind = "directory"
 	EntrySymlink   EntryKind = "symlink"
+	EntrySpecial   EntryKind = "special"
 )
 
 // ServiceClass is a conservative classification based on a file extension.
@@ -94,52 +96,102 @@ func InventoryDirectory(root string) (Inventory, error) {
 		return Inventory{}, err
 	}
 
+	rootFile, _, err := openRoot(cleanRoot)
+	if err != nil {
+		return Inventory{}, fmt.Errorf("open inventory root: %w", err)
+	}
+	defer rootFile.Close()
 	entries := make([]Entry, 0)
 	hashes := make(map[string][]string)
-	err = filepath.WalkDir(cleanRoot, func(path string, d fs.DirEntry, walkErr error) error {
-		if walkErr != nil {
-			return fmt.Errorf("walk %q: %w", path, walkErr)
-		}
-		if path == cleanRoot {
-			return nil
-		}
-		rel, err := PortablePath(cleanRoot, path)
-		if err != nil {
-			return err
-		}
-		info, err := d.Info()
-		if err != nil {
-			return fmt.Errorf("stat %q: %w", rel, err)
-		}
-		entry := Entry{Path: rel, Size: info.Size(), Mode: info.Mode(), ServiceClass: classifyServiceFile(rel)}
-		switch {
-		case d.Type()&fs.ModeSymlink != 0:
-			target, err := os.Readlink(path)
-			if err != nil {
-				return fmt.Errorf("read symlink %q: %w", rel, err)
-			}
-			entry.Kind = EntrySymlink
-			entry.LinkTarget = target
-		case d.IsDir():
-			entry.Kind = EntryDirectory
-		default:
-			entry.Kind = EntryFile
-			entry.SHA256, err = sha256File(path)
-			if err != nil {
-				return fmt.Errorf("hash %q: %w", rel, err)
-			}
-			entry.Media = inspectMedia(path, rel)
-			hashes[entry.SHA256] = append(hashes[entry.SHA256], rel)
-		}
-		entries = append(entries, entry)
-		return nil
-	})
+	err = inventoryDirectory(rootFile, "", &entries, hashes)
 	if err != nil {
 		return Inventory{}, err
 	}
 	sort.Slice(entries, func(i, j int) bool { return entries[i].Path < entries[j].Path })
 	duplicates := duplicateGroups(hashes)
 	return Inventory{Entries: entries, DuplicateGroups: duplicates, Fingerprint: fingerprint(entries)}, nil
+}
+
+func inventoryDirectory(dir *os.File, prefix string, entries *[]Entry, hashes map[string][]string) error {
+	children, err := dir.Readdir(-1)
+	if err != nil {
+		return err
+	}
+	sort.Slice(children, func(i, j int) bool { return children[i].Name() < children[j].Name() })
+	for _, info := range children {
+		name := info.Name()
+		if name == "." || name == ".." || strings.ContainsRune(name, filepath.Separator) {
+			return errors.New("unsafe directory entry name")
+		}
+		rel := name
+		if prefix != "" {
+			rel = prefix + "/" + name
+		}
+		expected, ok := identityFromInfo(info)
+		if !ok {
+			return fmt.Errorf("cannot identify %q", rel)
+		}
+		entry := Entry{Path: rel, Size: info.Size(), Mode: info.Mode(), ServiceClass: classifyServiceFile(rel)}
+		if info.Mode()&fs.ModeSymlink != 0 {
+			target, err := readLink(dir, name)
+			if err != nil {
+				return fmt.Errorf("source changed while reading symlink %q: %w", rel, err)
+			}
+			entry.Kind = EntrySymlink
+			entry.LinkTarget = target
+			*entries = append(*entries, entry)
+			continue
+		}
+		if info.IsDir() {
+			child, err := openChild(dir, name, true)
+			if err != nil {
+				return fmt.Errorf("open directory %q: %w", rel, err)
+			}
+			actual, ok := identityFromInfo(mustStat(child))
+			if !ok || !sameIdentity(expected, actual) {
+				child.Close()
+				return fmt.Errorf("source changed while opening directory %q", rel)
+			}
+			entry.Kind = EntryDirectory
+			*entries = append(*entries, entry)
+			err = inventoryDirectory(child, rel, entries, hashes)
+			child.Close()
+			if err != nil {
+				return err
+			}
+			continue
+		}
+		if !info.Mode().IsRegular() {
+			entry.Kind = EntrySpecial
+			*entries = append(*entries, entry)
+			continue
+		}
+		file, err := openChild(dir, name, false)
+		if err != nil {
+			return fmt.Errorf("open file %q: %w", rel, err)
+		}
+		actual, ok := identityFromInfo(mustStat(file))
+		if !ok || !sameIdentity(expected, actual) {
+			file.Close()
+			return fmt.Errorf("source changed while opening file %q", rel)
+		}
+		entry.Kind = EntryFile
+		entry.SHA256, err = sha256File(file)
+		if err == nil {
+			entry.Media = inspectMedia(file, rel)
+		}
+		final, finalOK := identityFromInfo(mustStat(file))
+		file.Close()
+		if err != nil {
+			return fmt.Errorf("hash %q: %w", rel, err)
+		}
+		if !finalOK || !sameIdentity(actual, final) {
+			return fmt.Errorf("source changed while reading file %q", rel)
+		}
+		hashes[entry.SHA256] = append(hashes[entry.SHA256], rel)
+		*entries = append(*entries, entry)
+	}
+	return nil
 }
 
 // FingerprintSource returns a deterministic SHA-256 fingerprint of the tree's contents,
@@ -193,12 +245,10 @@ func checkedRoot(root string) (string, error) {
 	return filepath.Clean(abs), nil
 }
 
-func sha256File(path string) (string, error) {
-	f, err := os.Open(path)
-	if err != nil {
+func sha256File(f *os.File) (string, error) {
+	if _, err := f.Seek(0, io.SeekStart); err != nil {
 		return "", err
 	}
-	defer f.Close()
 	h := sha256.New()
 	if _, err := io.CopyBuffer(h, f, make([]byte, hashBufferSize)); err != nil {
 		return "", err
@@ -226,8 +276,12 @@ func duplicateGroups(hashes map[string][]string) []DuplicateGroup {
 func fingerprint(entries []Entry) string {
 	h := sha256.New()
 	for _, entry := range entries {
-		// Length prefixes prevent ambiguous concatenation while keeping the result portable.
-		fmt.Fprintf(h, "%d:%s\x00%d:%s\x00%d:%s\x00%d:%s\n", len(entry.Path), entry.Path, len(entry.Kind), entry.Kind, len(entry.SHA256), entry.SHA256, len(entry.LinkTarget), entry.LinkTarget)
+		for _, value := range []string{entry.Path, string(entry.Kind), entry.SHA256, entry.LinkTarget, string(entry.ServiceClass)} {
+			binary.Write(h, binary.BigEndian, uint32(len(value)))
+			h.Write([]byte(value))
+		}
+		binary.Write(h, binary.BigEndian, entry.Size)
+		binary.Write(h, binary.BigEndian, uint32(entry.Mode))
 	}
 	return hex.EncodeToString(h.Sum(nil))
 }

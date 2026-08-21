@@ -6,6 +6,7 @@ import (
 	"image"
 	"image/color"
 	"image/jpeg"
+	"image/png"
 	"math"
 	"path/filepath"
 	"testing"
@@ -81,7 +82,7 @@ func TestMediaEvidenceUsesOnlyProvableMeasurements(t *testing.T) {
 			},
 		},
 		{
-			name: "MP3 no inferred duration", file: "main.mp3", body: mp3Frame(),
+			name: "MP3 needs consistent frame sequence", file: "main.mp3", body: mp3Frames(),
 			check: func(t *testing.T, got *preflight.MediaEvidence) {
 				if got.Container != "MP3" || got.Encoding.Value != "MPEG Layer III" || got.Duration.Available {
 					t.Fatalf("MP3 evidence = %#v", got)
@@ -89,9 +90,9 @@ func TestMediaEvidenceUsesOnlyProvableMeasurements(t *testing.T) {
 			},
 		},
 		{
-			name: "M4A AAC sample entry", file: "main.m4a", body: m4aAAC(),
+			name: "M4A sample entry does not prove AAC", file: "main.m4a", body: m4aAAC(),
 			check: func(t *testing.T, got *preflight.MediaEvidence) {
-				if got.Container != "M4A" || got.Encoding.Value != "AAC" || got.SampleRate.Available || got.Duration.Available {
+				if got.Container != "M4A" || got.Encoding.Available || got.SampleRate.Available || got.Duration.Available {
 					t.Fatalf("M4A evidence = %#v", got)
 				}
 			},
@@ -183,6 +184,77 @@ func TestMalformedAndOversizedMediaAreUnavailableWithoutPanicking(t *testing.T) 
 	}
 }
 
+func TestConservativeEvidenceRejectsPlausibleButInsufficientMedia(t *testing.T) {
+	cases := []struct {
+		name  string
+		file  string
+		body  []byte
+		check func(*testing.T, *preflight.MediaEvidence)
+	}{
+		{name: "single MP3 sync is not a container", file: "false.mp3", body: append([]byte("ordinary text"), mp3Frame()...), check: func(t *testing.T, got *preflight.MediaEvidence) {
+			if got.Supported {
+				t.Fatalf("false MP3 sync was accepted: %#v", got)
+			}
+		}},
+		{name: "unknown FLAC total has unavailable duration", file: "unknown.flac", body: flacWithTotalSamples(0), check: func(t *testing.T, got *preflight.MediaEvidence) {
+			if got.Duration.Available {
+				t.Fatalf("unknown FLAC total became duration: %#v", got)
+			}
+		}},
+		{name: "invalid FLAC fields are unavailable", file: "invalid.flac", body: flacInvalidFields(), check: func(t *testing.T, got *preflight.MediaEvidence) {
+			if got.Supported {
+				t.Fatalf("invalid FLAC fields were accepted: %#v", got)
+			}
+		}},
+		{name: "compressed WAV has no PCM bit depth", file: "compressed.wav", body: wavFormat(6), check: func(t *testing.T, got *preflight.MediaEvidence) {
+			if got.BitDepth.Available || got.Encoding.Available {
+				t.Fatalf("compressed WAV claimed PCM evidence: %#v", got)
+			}
+		}},
+		{name: "AIFC non PCM has no PCM bit depth", file: "compressed.aifc", body: aifcCompression("ulaw"), check: func(t *testing.T, got *preflight.MediaEvidence) {
+			if got.BitDepth.Available {
+				t.Fatalf("compressed AIFC claimed PCM evidence: %#v", got)
+			}
+		}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			mustWrite(t, filepath.Join(root, tc.file), tc.body)
+			inventory, err := preflight.InventoryDirectory(root)
+			if err != nil {
+				t.Fatal(err)
+			}
+			tc.check(t, entryByPath(t, inventory.Entries, tc.file).Media)
+		})
+	}
+}
+
+func TestImageTransparencyEvidenceAvoidsFalseClaims(t *testing.T) {
+	cases := []struct {
+		name, file           string
+		body                 []byte
+		wantKnown, wantAlpha bool
+	}{
+		{name: "palette tRNS proves alpha", file: "transparent.png", body: transparentPalettePNG(t), wantKnown: true, wantAlpha: true},
+		{name: "TIFF unspecified extra sample is not alpha", file: "extra.tiff", body: tiffExtraSample(0), wantKnown: false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			mustWrite(t, filepath.Join(root, tc.file), tc.body)
+			inv, err := preflight.InventoryDirectory(root)
+			if err != nil {
+				t.Fatal(err)
+			}
+			got := entryByPath(t, inv.Entries, tc.file).Media
+			if got.HasAlpha.Available != tc.wantKnown || got.HasAlpha.Value != tc.wantAlpha {
+				t.Fatalf("transparency evidence = %#v", got)
+			}
+		})
+	}
+}
+
 func wavPCM() []byte {
 	result := make([]byte, 44+8)
 	copy(result[0:], "RIFF")
@@ -221,16 +293,26 @@ func aiffPCM() []byte {
 }
 
 func flacStreamInfo() []byte {
+	return flacWithTotalSamples(96000)
+}
+
+func flacWithTotalSamples(total uint64) []byte {
 	result := make([]byte, 4+4+34)
 	copy(result, "fLaC")
 	result[4] = 0x80
 	result[7] = 34
-	packed := uint64(48000)<<44 | uint64(1)<<41 | uint64(23)<<36 | uint64(96000)
+	packed := uint64(48000)<<44 | uint64(1)<<41 | uint64(23)<<36 | total
 	binary.BigEndian.PutUint64(result[18:26], packed)
 	return result
 }
 
 func mp3Frame() []byte { return []byte{0xff, 0xfb, 0x90, 0x00, 0x00, 0x00, 0x00, 0x00} }
+
+func mp3Frames() []byte {
+	frame := make([]byte, 417)
+	copy(frame, mp3Frame())
+	return append(append(frame, frame...), frame...)
+}
 
 func m4aAAC() []byte {
 	ftyp := atom("ftyp", append([]byte("M4A "), []byte("\x00\x00\x00\x00isommp42")...))
@@ -280,5 +362,58 @@ func oversizedWAVChunk() []byte {
 	result := make([]byte, 20)
 	copy(result, "RIFF\x00\x00\x00\x00WAVEfmt ")
 	binary.LittleEndian.PutUint32(result[16:], 2<<20)
+	return result
+}
+
+func flacInvalidFields() []byte {
+	result := flacWithTotalSamples(10)
+	binary.BigEndian.PutUint64(result[18:26], uint64(0)<<44|uint64(1)<<41|uint64(23)<<36|10)
+	return result
+}
+
+func wavFormat(format uint16) []byte {
+	result := wavPCM()
+	binary.LittleEndian.PutUint16(result[20:], format)
+	return result
+}
+
+func aifcCompression(compression string) []byte {
+	result := aiffPCM()
+	copy(result[8:], "AIFC")
+	result = append(result, make([]byte, 4)...)
+	binary.BigEndian.PutUint32(result[16:], 22)
+	copy(result[38:], compression)
+	return result
+}
+
+func transparentPalettePNG(t *testing.T) []byte {
+	t.Helper()
+	image := image.NewPaletted(image.Rect(0, 0, 1, 1), color.Palette{color.NRGBA{R: 1, G: 2, B: 3, A: 0}})
+	var encoded bytes.Buffer
+	if err := png.Encode(&encoded, image); err != nil {
+		t.Fatal(err)
+	}
+	return encoded.Bytes()
+}
+
+func tiffExtraSample(value uint16) []byte {
+	result := make([]byte, 50)
+	copy(result, "II")
+	binary.LittleEndian.PutUint16(result[2:], 42)
+	binary.LittleEndian.PutUint32(result[4:], 8)
+	binary.LittleEndian.PutUint16(result[8:], 3)
+	for i, tag := range []uint16{256, 257, 338} {
+		offset := 10 + i*12
+		binary.LittleEndian.PutUint16(result[offset:], tag)
+		binary.LittleEndian.PutUint16(result[offset+2:], 3)
+		binary.LittleEndian.PutUint32(result[offset+4:], 1)
+		if tag == 256 {
+			binary.LittleEndian.PutUint16(result[offset+8:], 3)
+		} else if tag == 257 {
+			binary.LittleEndian.PutUint16(result[offset+8:], 2)
+		} else {
+			binary.LittleEndian.PutUint16(result[offset+8:], value)
+		}
+	}
 	return result
 }

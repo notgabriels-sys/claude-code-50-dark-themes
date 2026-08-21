@@ -19,23 +19,23 @@ const (
 	maxMetadataBytes   = 1 << 20
 )
 
-func inspectMedia(path, portablePath string) *MediaEvidence {
+func inspectMedia(f *os.File, portablePath string) *MediaEvidence {
 	ext := strings.ToLower(filepath.Ext(portablePath))
 	switch ext {
 	case ".wav", ".rf64":
-		return inspectWAV(path)
+		return inspectWAV(f)
 	case ".aif", ".aiff", ".aifc":
-		return inspectAIFF(path)
+		return inspectAIFF(f)
 	case ".flac":
-		return inspectFLAC(path)
+		return inspectFLAC(f)
 	case ".mp3":
-		return inspectMP3(path)
+		return inspectMP3(f)
 	case ".m4a", ".mp4":
-		return inspectMP4(path)
+		return inspectMP4(f)
 	case ".png", ".jpg", ".jpeg", ".gif":
-		return inspectStandardImage(path, ext)
+		return inspectStandardImage(f, ext)
 	case ".tif", ".tiff":
-		return inspectTIFF(path)
+		return inspectTIFF(f)
 	case ".heic", ".heif", ".webp":
 		return &MediaEvidence{Format: strings.TrimPrefix(ext, "."), Unavailable: "inspection is unsupported in version 1.0"}
 	default:
@@ -43,12 +43,10 @@ func inspectMedia(path, portablePath string) *MediaEvidence {
 	}
 }
 
-func inspectStandardImage(path, ext string) *MediaEvidence {
-	f, err := os.Open(path)
-	if err != nil {
-		return unavailableMedia(ext, "cannot open media")
+func inspectStandardImage(f *os.File, ext string) *MediaEvidence {
+	if _, err := f.Seek(0, io.SeekStart); err != nil {
+		return unavailableMedia(ext, "cannot seek media")
 	}
-	defer f.Close()
 	config, format, err := image.DecodeConfig(io.LimitReader(f, maxInspectionBytes))
 	if err != nil || config.Width <= 0 || config.Height <= 0 {
 		return unavailableMedia(ext, "image dimensions are unavailable")
@@ -62,7 +60,7 @@ func inspectStandardImage(path, ext string) *MediaEvidence {
 		ColorModel:  Measurement[string]{Available: true, Value: colorModelName(config.ColorModel)},
 	}
 	if strings.EqualFold(format, "png") {
-		if hasAlpha, known := pngAlpha(path); known {
+		if hasAlpha, known := pngAlpha(f); known {
 			evidence.HasAlpha = Measurement[bool]{Available: true, Value: hasAlpha}
 		}
 	}
@@ -77,6 +75,9 @@ func unavailableMedia(format, reason string) *MediaEvidence {
 }
 
 func colorModelName(model color.Model) string {
+	if _, ok := model.(color.Palette); ok {
+		return "Palette"
+	}
 	switch model {
 	case color.RGBAModel:
 		return "RGBA"
@@ -103,25 +104,57 @@ func colorModelName(model color.Model) string {
 	}
 }
 
-func pngAlpha(path string) (bool, bool) {
-	f, err := os.Open(path)
-	if err != nil {
+func pngAlpha(f *os.File) (bool, bool) {
+	if _, err := f.Seek(0, io.SeekStart); err != nil {
 		return false, false
 	}
-	defer f.Close()
-	var header [26]byte
-	if _, err := io.ReadFull(f, header[:]); err != nil || string(header[:8]) != "\x89PNG\r\n\x1a\n" || string(header[12:16]) != "IHDR" {
+	var signature [8]byte
+	if _, err := io.ReadFull(f, signature[:]); err != nil || string(signature[:]) != "\x89PNG\r\n\x1a\n" {
 		return false, false
 	}
-	return header[25] == 4 || header[25] == 6, true
+	colorType := byte(255)
+	for read := int64(8); read < int64(maxMetadataBytes); {
+		var header [8]byte
+		if _, err := io.ReadFull(f, header[:]); err != nil {
+			return false, false
+		}
+		read += 8
+		length := int64(binary.BigEndian.Uint32(header[:4]))
+		kind := string(header[4:])
+		if length > maxMetadataBytes-read-4 {
+			return false, false
+		}
+		if kind == "IHDR" {
+			if length != 13 {
+				return false, false
+			}
+			var data [13]byte
+			if _, err := io.ReadFull(f, data[:]); err != nil {
+				return false, false
+			}
+			colorType = data[9]
+		} else if kind == "tRNS" {
+			return true, true
+		} else if kind == "IDAT" || kind == "IEND" {
+			return colorType == 4 || colorType == 6, colorType != 255
+		}
+		if kind != "IHDR" {
+			if _, err := f.Seek(length, io.SeekCurrent); err != nil {
+				return false, false
+			}
+		}
+		if _, err := f.Seek(4, io.SeekCurrent); err != nil {
+			return false, false
+		}
+		read += length + 4
+	}
+	return false, false
 }
 
-func inspectWAV(path string) *MediaEvidence {
-	f, err := os.Open(path)
-	if err != nil {
-		return unavailableMedia("wav", "cannot open media")
+func inspectWAV(f *os.File) *MediaEvidence {
+	if _, err := f.Seek(0, io.SeekStart); err != nil {
+		return unavailableMedia("wav", "cannot seek media")
 	}
-	defer f.Close()
 	header := make([]byte, 12)
 	if _, err := io.ReadFull(f, header); err != nil || string(header[8:]) != "WAVE" || (string(header[:4]) != "RIFF" && string(header[:4]) != "RF64") {
 		return unavailableMedia("wav", "invalid or truncated RIFF/WAVE header")
@@ -187,12 +220,12 @@ func inspectWAV(path string) *MediaEvidence {
 			if sampleRate > 0 {
 				evidence.SampleRate = Measurement[int]{Available: true, Value: int(sampleRate)}
 			}
-			if bits > 0 {
-				evidence.BitDepth = Measurement[int]{Available: true, Value: int(bits)}
-			}
 			switch formatCode {
 			case 1:
 				evidence.Encoding = Measurement[string]{Available: true, Value: "PCM"}
+				if bits > 0 {
+					evidence.BitDepth = Measurement[int]{Available: true, Value: int(bits)}
+				}
 			case 3:
 				evidence.Encoding = Measurement[string]{Available: true, Value: "IEEE float"}
 			}
@@ -207,12 +240,10 @@ func inspectWAV(path string) *MediaEvidence {
 	return evidence
 }
 
-func inspectAIFF(path string) *MediaEvidence {
-	f, err := os.Open(path)
-	if err != nil {
-		return unavailableMedia("aiff", "cannot open media")
+func inspectAIFF(f *os.File) *MediaEvidence {
+	if _, err := f.Seek(0, io.SeekStart); err != nil {
+		return unavailableMedia("aiff", "cannot seek media")
 	}
-	defer f.Close()
 	header := make([]byte, 12)
 	if _, err := io.ReadFull(f, header); err != nil || string(header[:4]) != "FORM" || (string(header[8:]) != "AIFF" && string(header[8:]) != "AIFC") {
 		return unavailableMedia("aiff", "invalid or truncated FORM header")
@@ -255,19 +286,22 @@ func inspectAIFF(path string) *MediaEvidence {
 		if channels > 0 {
 			evidence.Channels = Measurement[int]{Available: true, Value: int(channels)}
 		}
-		if bits > 0 {
-			evidence.BitDepth = Measurement[int]{Available: true, Value: int(bits)}
-		}
 		if rate, ok := extended80(chunk[8:18]); ok && rate > 0 && rate <= float64(math.MaxInt) {
 			evidence.SampleRate = Measurement[int]{Available: true, Value: int(math.Round(rate))}
 			evidence.Duration = Measurement[float64]{Available: true, Value: float64(frames) / rate}
 		}
 		if container == "AIFF" {
 			evidence.Encoding = Measurement[string]{Available: true, Value: "PCM"}
+			if bits > 0 {
+				evidence.BitDepth = Measurement[int]{Available: true, Value: int(bits)}
+			}
 		} else if len(chunk) >= 22 {
 			switch string(chunk[18:22]) {
 			case "NONE", "sowt":
 				evidence.Encoding = Measurement[string]{Available: true, Value: "PCM"}
+				if bits > 0 {
+					evidence.BitDepth = Measurement[int]{Available: true, Value: int(bits)}
+				}
 			default:
 				evidence.Encoding = Measurement[string]{Available: true, Value: string(chunk[18:22])}
 			}
@@ -299,12 +333,10 @@ func extended80(value []byte) (float64, bool) {
 	return result, !math.IsNaN(result) && !math.IsInf(result, 0)
 }
 
-func inspectFLAC(path string) *MediaEvidence {
-	f, err := os.Open(path)
-	if err != nil {
-		return unavailableMedia("flac", "cannot open media")
+func inspectFLAC(f *os.File) *MediaEvidence {
+	if _, err := f.Seek(0, io.SeekStart); err != nil {
+		return unavailableMedia("flac", "cannot seek media")
 	}
-	defer f.Close()
 	header := make([]byte, 8)
 	if _, err := io.ReadFull(f, header); err != nil || string(header[:4]) != "fLaC" {
 		return unavailableMedia("flac", "invalid or truncated FLAC header")
@@ -322,6 +354,9 @@ func inspectFLAC(path string) *MediaEvidence {
 	channels := int((packed>>41)&0x7) + 1
 	bits := int((packed>>36)&0x1f) + 1
 	totalSamples := packed & ((uint64(1) << 36) - 1)
+	if sampleRate == 0 || bits < 4 || bits > 32 {
+		return unavailableMedia("flac", "STREAMINFO fields are invalid")
+	}
 	evidence := &MediaEvidence{Supported: true, Format: "FLAC", Container: "FLAC", Encoding: Measurement[string]{Available: true, Value: "FLAC"}}
 	if sampleRate > 0 {
 		evidence.SampleRate = Measurement[int]{Available: true, Value: sampleRate}
@@ -332,18 +367,16 @@ func inspectFLAC(path string) *MediaEvidence {
 	if bits > 0 {
 		evidence.BitDepth = Measurement[int]{Available: true, Value: bits}
 	}
-	if sampleRate > 0 {
+	if sampleRate > 0 && totalSamples > 0 {
 		evidence.Duration = Measurement[float64]{Available: true, Value: float64(totalSamples) / float64(sampleRate)}
 	}
 	return evidence
 }
 
-func inspectMP3(path string) *MediaEvidence {
-	f, err := os.Open(path)
-	if err != nil {
-		return unavailableMedia("mp3", "cannot open media")
+func inspectMP3(f *os.File) *MediaEvidence {
+	if _, err := f.Seek(0, io.SeekStart); err != nil {
+		return unavailableMedia("mp3", "cannot seek media")
 	}
-	defer f.Close()
 	data, err := io.ReadAll(io.LimitReader(f, 64<<10))
 	if err != nil {
 		return unavailableMedia("mp3", "cannot read media header")
@@ -357,33 +390,42 @@ func inspectMP3(path string) *MediaEvidence {
 		}
 	}
 	for index := start; index+4 <= len(data); index++ {
-		if encoding, ok := mpegLayerThree(data[index : index+4]); ok {
+		if encoding, frameLength, ok := mpegLayerThree(data[index : index+4]); ok && index+frameLength*3 <= len(data) && consistentMP3Frames(data[index:], frameLength) {
 			return &MediaEvidence{Supported: true, Format: "MP3", Container: "MP3", Encoding: Measurement[string]{Available: true, Value: encoding}, Unavailable: "duration is unavailable without a bounded, trustworthy frame index"}
 		}
 	}
 	return unavailableMedia("mp3", "MPEG audio frame is unavailable")
 }
 
-func mpegLayerThree(header []byte) (string, bool) {
+func consistentMP3Frames(data []byte, frameLength int) bool {
+	for i := 0; i < 3; i++ {
+		if _, n, ok := mpegLayerThree(data[i*frameLength:]); !ok || n != frameLength {
+			return false
+		}
+	}
+	return true
+}
+
+func mpegLayerThree(header []byte) (string, int, bool) {
 	if len(header) < 4 || header[0] != 0xff || header[1]&0xe0 != 0xe0 {
-		return "", false
+		return "", 0, false
 	}
 	version := (header[1] >> 3) & 0x3
 	layer := (header[1] >> 1) & 0x3
 	bitrate := (header[2] >> 4) & 0xf
 	sampleRate := (header[2] >> 2) & 0x3
-	if version == 1 || layer != 1 || bitrate == 0 || bitrate == 15 || sampleRate == 3 {
-		return "", false
+	if version != 3 || layer != 1 || bitrate == 0 || bitrate == 15 || sampleRate == 3 {
+		return "", 0, false
 	}
-	return "MPEG Layer III", true
+	bitrates := [...]int{0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320}
+	rates := [...]int{44100, 48000, 32000}
+	return "MPEG Layer III", 144000*bitrates[bitrate]/rates[sampleRate] + int((header[2]>>1)&1), true
 }
 
-func inspectMP4(path string) *MediaEvidence {
-	f, err := os.Open(path)
-	if err != nil {
-		return unavailableMedia("mp4", "cannot open media")
+func inspectMP4(f *os.File) *MediaEvidence {
+	if _, err := f.Seek(0, io.SeekStart); err != nil {
+		return unavailableMedia("mp4", "cannot seek media")
 	}
-	defer f.Close()
 	data, err := io.ReadAll(io.LimitReader(f, maxMetadataBytes+1))
 	if err != nil {
 		return unavailableMedia("mp4", "cannot read atom headers")
@@ -391,7 +433,7 @@ func inspectMP4(path string) *MediaEvidence {
 	if len(data) > maxMetadataBytes {
 		data = data[:maxMetadataBytes]
 	}
-	major, codec, ok := mp4Evidence(data)
+	major, _, ok := mp4Evidence(data)
 	if !ok {
 		return unavailableMedia("mp4", "valid bounded MP4 atoms are unavailable")
 	}
@@ -400,9 +442,6 @@ func inspectMP4(path string) *MediaEvidence {
 		container = "M4A"
 	}
 	evidence := &MediaEvidence{Supported: true, Format: container, Container: container}
-	if codec != "" {
-		evidence.Encoding = Measurement[string]{Available: true, Value: codec}
-	}
 	return evidence
 }
 
@@ -469,12 +508,10 @@ func isMP4Container(name string) bool {
 	}
 }
 
-func inspectTIFF(path string) *MediaEvidence {
-	f, err := os.Open(path)
-	if err != nil {
-		return unavailableMedia("tiff", "cannot open media")
+func inspectTIFF(f *os.File) *MediaEvidence {
+	if _, err := f.Seek(0, io.SeekStart); err != nil {
+		return unavailableMedia("tiff", "cannot seek media")
 	}
-	defer f.Close()
 	header := make([]byte, 8)
 	if _, err := io.ReadFull(f, header); err != nil {
 		return unavailableMedia("tiff", "truncated TIFF header")
@@ -529,7 +566,7 @@ func inspectTIFF(path string) *MediaEvidence {
 			evidence.ColorModel = Measurement[string]{Available: true, Value: "CMYK"}
 		}
 	}
-	if _, ok := values[338]; ok {
+	if extra, ok := values[338]; ok && (extra == 1 || extra == 2) {
 		evidence.HasAlpha = Measurement[bool]{Available: true, Value: true}
 	}
 	return evidence

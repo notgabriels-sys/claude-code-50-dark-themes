@@ -3,10 +3,13 @@ package preflight_test
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"runtime"
+	"syscall"
 	"testing"
+	"time"
 
 	"github.com/gabrielgarciaalonso/audio-delivery-preflight-cli/preflight"
 )
@@ -96,11 +99,66 @@ func TestInventoryOutputIsDeterministicAndRejectsNonDirectory(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !sameEntries(first.Entries, second.Entries) || !sameDuplicateGroups(first.DuplicateGroups, second.DuplicateGroups) || first.Fingerprint != second.Fingerprint {
+	firstJSON, _ := json.Marshal(first)
+	secondJSON, _ := json.Marshal(second)
+	if string(firstJSON) != string(secondJSON) {
 		t.Fatalf("inventory is nondeterministic: %#v / %#v", first, second)
 	}
 	if _, err := preflight.InventoryDirectory(filepath.Join(root, "z.txt")); err == nil {
 		t.Fatal("InventoryDirectory accepted a file root")
+	}
+}
+
+func TestInventoryRecordsFIFOWithoutOpeningIt(t *testing.T) {
+	if runtime.GOOS != "darwin" && runtime.GOOS != "linux" {
+		t.Skip("FIFO test requires Unix")
+	}
+	root := t.TempDir()
+	fifo := filepath.Join(root, "blocked.wav")
+	if err := syscall.Mkfifo(fifo, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	result := make(chan struct {
+		inventory preflight.Inventory
+		err       error
+	}, 1)
+	go func() {
+		inventory, err := preflight.InventoryDirectory(root)
+		result <- struct {
+			inventory preflight.Inventory
+			err       error
+		}{inventory, err}
+	}()
+	select {
+	case got := <-result:
+		if got.err != nil {
+			t.Fatal(got.err)
+		}
+		if entryByPath(t, got.inventory.Entries, "blocked.wav").Kind != preflight.EntrySpecial {
+			t.Fatalf("FIFO was not recorded as special: %#v", got.inventory)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("inventory blocked while handling FIFO")
+	}
+}
+
+func TestFingerprintDetectsRepresentedSourceMutations(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, "main.txt")
+	mustWrite(t, path, []byte("one"))
+	baseline, err := preflight.FingerprintSource(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(path, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	changed, err := preflight.FingerprintSource(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if baseline == changed {
+		t.Fatal("permission mutation did not change fingerprint")
 	}
 }
 
