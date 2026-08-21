@@ -195,13 +195,17 @@ products/audio-delivery-preflight/scripts/package-release.sh \
   --unsigned
 ```
 
-The output contains `Audio Delivery Preflight.app`, the `audio-preflight` CLI, the product documentation, an unavoidable `UNSIGNED.txt` disclosure, a ZIP archive, and a SHA-256 sidecar. The executables are ad-hoc signed for local integrity and Apple Silicon launch compatibility, but ad-hoc signing is not Developer ID signing and does not establish publisher identity. The command refuses to overwrite an existing output path.
+The command first runs the product verifier, then builds separate arm64 and x86_64 release executables and combines each pair into an exact Universal binary. The output contains `Audio Delivery Preflight.app`, the `audio-preflight` CLI, product documentation, an unavoidable `UNSIGNED.txt` disclosure, machine-readable `PACKAGE-INFO.json`, human-readable `BUILD-EVIDENCE.txt`, an internal `SHA256SUMS.txt`, a ZIP archive, and an external SHA-256 sidecar. The evidence binds the source commit, source-tree state, processor set, signature state, Gatekeeper result, icon digest, and packaging/verifier script digests.
+
+The executables are ad-hoc signed for local integrity and launch compatibility, but ad-hoc signing is not Developer ID signing and does not establish publisher identity. The command refuses uncommitted `Package.swift` or `Sources` changes, refuses to overwrite an existing output path, and does not fall back to a single-processor build.
 
 Verify an archive after moving or downloading both files:
 
 ```bash
 products/audio-delivery-preflight/scripts/verify-release-archive.sh \
-  "/absolute/path/to/Audio-Delivery-Preflight-0.1.0-macOS-unsigned.zip"
+  "/absolute/path/to/Audio-Delivery-Preflight-0.1.0-macOS-universal-unsigned.zip"
 ```
 
-The verifier checks the sidecar, archive path safety, required files, executable permissions, bundle identifier, version, and deployment floor after a fresh extraction. This does not replace Developer ID signing, Apple notarization, Gatekeeper testing, accessibility validation, or independent-host testing. See [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) before any public listing.
+After a fresh extraction, the verifier checks the external sidecar, ZIP integrity, duplicate and unsafe paths, the exact top-level directory, required files, complete internal manifest coverage, every internal digest, executable permissions, exact Universal architecture, bundle identity and version, macOS floor, icon format, ad-hoc signatures, Gatekeeper result, CLI version output, unsigned disclosures, and private-path or artist-identity leakage. The packaging contract also proves that a changed file is rejected even when an attacker recomputes the external archive sidecar.
+
+This creates a local unsigned candidate only. It does not replace Developer ID signing, Apple notarization, manual workflow and accessibility validation, independent macOS 14 testing, legal review, provider readback, or a verified customer download. See [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) before any public listing.
