@@ -117,6 +117,20 @@ func TestDigitalReleaseRejectsHeaderOnlyRequiredWAVAndPNG(t *testing.T) {
 	}
 }
 
+func TestDigitalReleaseRejectsTruncatedFLACFrameMarkerAsMainMaster(t *testing.T) {
+	root := t.TempDir()
+	writeScanFile(t, filepath.Join(root, "main master.flac"), flacFrameMarkerOnly())
+	writeScanFile(t, filepath.Join(root, "cover.png"), squarePNG(t, 3000))
+	writeScanFile(t, filepath.Join(root, "credits.txt"), []byte("credits"))
+	report, err := AnalyzeDirectory(root, mustPreset(t, "digital-release"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.Status != StatusRequirementsNotMet || !hasFinding(report.Findings, "role.unreadable.main-master", SeverityError) {
+		t.Fatalf("truncated FLAC frame marker became a required main master: %#v", report)
+	}
+}
+
 func TestAmbiguousRequiredCandidatesStillValidateEveryCandidate(t *testing.T) {
 	root := t.TempDir()
 	writeScanFile(t, filepath.Join(root, "main master.wav"), readablePCM(2, 48_000, 24))
@@ -358,4 +372,16 @@ func aifcPCM() []byte {
 	copy(ssnd, "SSND")
 	binary.BigEndian.PutUint32(ssnd[4:8], 6)
 	return append(append([]byte("FORM\x00\x00\x00\x00AIFCCOMM\x00\x00\x00\x16"), comm...), ssnd...)
+}
+
+func flacFrameMarkerOnly() []byte {
+	result := make([]byte, 4+4+34+2)
+	copy(result, "fLaC")
+	result[4] = 0x80
+	result[7] = 34
+	packed := uint64(48_000)<<44 | uint64(1)<<41 | uint64(23)<<36 | uint64(96_000)
+	binary.BigEndian.PutUint64(result[18:26], packed)
+	result[len(result)-2] = 0xff
+	result[len(result)-1] = 0xf8
+	return result
 }

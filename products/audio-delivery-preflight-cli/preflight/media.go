@@ -179,31 +179,11 @@ func aiffPayloadReadable(f mediaSource, sourceSize int64) (bool, string) {
 	return false, "AIFF sound chunk is unavailable"
 }
 
-func flacPayloadReadable(f mediaSource, sourceSize int64) (bool, string) {
-	data, err := readBoundedMedia(f)
-	if err != nil || len(data) < 8 || string(data[:4]) != "fLaC" {
-		return false, "FLAC payload is unavailable"
-	}
-	offset := 4
-	for {
-		if offset+4 > len(data) {
-			return false, "FLAC metadata is truncated"
-		}
-		last := data[offset]&0x80 != 0
-		size := int(data[offset+1])<<16 | int(data[offset+2])<<8 | int(data[offset+3])
-		offset += 4
-		if size < 0 || offset+size > len(data) {
-			return false, "FLAC metadata is truncated"
-		}
-		offset += size
-		if last {
-			break
-		}
-	}
-	if int64(offset+2) > sourceSize || offset+2 > len(data) || data[offset] != 0xff || data[offset+1]&0xfe != 0xf8 {
-		return false, "FLAC audio frame is unavailable"
-	}
-	return true, ""
+func flacPayloadReadable(_ mediaSource, _ int64) (bool, string) {
+	// STREAMINFO is useful bounded metadata, but neither it nor a frame-sync
+	// marker proves a complete FLAC frame. Required roles remain fail-closed
+	// until version 1 can validate frame structure, subframes/payload, and CRC.
+	return false, "complete FLAC frame, payload, and CRC validation is unavailable in version 1.0"
 }
 
 func mp4PayloadReadable(f mediaSource, sourceSize int64) (bool, string) {

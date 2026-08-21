@@ -2,7 +2,7 @@
 
 ## Outcome
 
-Implemented the portable Go CLI Task 2 scope in `products/audio-delivery-preflight-cli/` without changing the approved Task 1 inventory and media-inspection interface.
+Implemented the portable Go CLI Task 2 scope in `products/audio-delivery-preflight-cli/` while preserving Task 1's fail-closed inventory behavior. Task 2 deliberately extends the approved media interface with `MediaEvidence.Readable` and adds the source-size argument to internal media inspection so bounded header metadata cannot be mistaken for positive payload readability. This extension adds `inventory.entries[].media.readable` to the Task 2 JSON report schema.
 
 ## Delivered
 
@@ -160,3 +160,40 @@ git diff --check                                             PASS
 - macOS symlinked destination parents (including the `/var` alias) are
   rejected; callers must use the physical no-symlink path such as
   `/private/...`.
+
+## Fix round 3 corrections — 2026-08-21
+
+- FLAC retains only proven STREAMINFO metadata in version 1. It now always
+  records `readable=false` and an unavailable reason for required-role
+  purposes, including complete reference files, until complete frame,
+  subframe/payload, and CRC validation is implemented. Regressions cover a
+  two-byte marker, truncated frame header, truncated payload, and a complete
+  libFLAC reference file.
+- The source-tree report boundary retains its lexical pre-root rejection for
+  missing/inaccessible roots, then compares opened descriptor identities and
+  physical ancestry before inventory. Equivalent aliases such as `/tmp` and
+  `/private/tmp` cannot place reports into the selected physical source tree.
+- Export verifies that every requested parent path still binds to the held
+  no-follow descriptor before publication, then reopens it after publication
+  to verify both the binding and final report identity. Ancestor replacement
+  triggers identity-safe rollback through the held descriptor and a non-success
+  configuration result.
+- This report now explicitly discloses the deliberate `MediaEvidence.Readable`
+  and internal inspection-call extension; it no longer claims Task 1's media
+  interface was unchanged.
+
+### Fix round 3 final verification — 2026-08-21
+
+Executed from `products/audio-delivery-preflight-cli/` after the round-3
+corrections:
+
+```text
+go test ./... -count=1                                      PASS
+go test -race ./... -count=1                                PASS
+go vet ./...                                                PASS
+gofmt -d (all changed Task 2 Go files)                      PASS (no output)
+GOOS=linux GOARCH=amd64 go build -trimpath                  PASS
+  -o /private/tmp/audio-preflight-cli-fix-round-3-linux-amd64
+  ./cmd/audio-preflight
+git diff --check                                             PASS
+```

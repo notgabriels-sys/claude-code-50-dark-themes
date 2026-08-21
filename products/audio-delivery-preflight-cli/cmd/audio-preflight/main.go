@@ -103,6 +103,14 @@ func runScan(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "scan could not start: %v\n", err)
 		return exitScanStartFailure
 	}
+	if err := prepared.ValidateSourceBoundary(options.root); err != nil {
+		if preflight.IsReportDestinationConfigurationError(err) {
+			fmt.Fprintf(stderr, "invalid report destination: %v\n", err)
+			return exitInvalidConfiguration
+		}
+		fmt.Fprintf(stderr, "scan could not start: %v\n", err)
+		return exitScanStartFailure
+	}
 	report, err := preflight.AnalyzeDirectory(options.root, preset)
 	if err != nil {
 		fmt.Fprintf(stderr, "scan could not complete reliably: %v\n", err)

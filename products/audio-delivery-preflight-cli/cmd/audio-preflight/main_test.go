@@ -113,6 +113,35 @@ func TestRunValidatesConfigurationBeforeRootAccess(t *testing.T) {
 	}
 }
 
+func TestRunRejectsPhysicalAliasDestinationInsideSelectedSource(t *testing.T) {
+	physicalRoot, err := os.MkdirTemp("/private/tmp", "audio-preflight-source-alias-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(physicalRoot) })
+	aliasRoot := filepath.Join("/tmp", filepath.Base(physicalRoot))
+	if physicalRoot == aliasRoot {
+		t.Skip("platform has no distinct /tmp alias")
+	}
+	physicalInfo, err := os.Stat(physicalRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	aliasInfo, err := os.Stat(aliasRoot)
+	if err != nil || !os.SameFile(physicalInfo, aliasInfo) {
+		t.Skip("/tmp is not a physical alias for /private/tmp on this platform")
+	}
+	writeCLIFile(t, filepath.Join(physicalRoot, "main.wav"), cliWAV())
+	destination := filepath.Join(physicalRoot, "inside.json")
+	var stdout, stderr bytes.Buffer
+	if got := run([]string{"scan", aliasRoot, "--report-json", destination}, &stdout, &stderr); got != exitInvalidConfiguration {
+		t.Fatalf("alias-bypass scan exit = %d, want invalid configuration; stdout=%q stderr=%q", got, stdout.String(), stderr.String())
+	}
+	if _, err := os.Lstat(destination); !os.IsNotExist(err) {
+		t.Fatalf("source-tree report was created through alias: %v", err)
+	}
+}
+
 func TestRunMapsUnreadableExistingRootToScanStartFailure(t *testing.T) {
 	root, err := os.MkdirTemp("/private/tmp", "audio-preflight-unreadable-")
 	if err != nil {

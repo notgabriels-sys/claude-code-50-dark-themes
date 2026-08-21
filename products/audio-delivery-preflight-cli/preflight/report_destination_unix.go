@@ -48,10 +48,11 @@ const (
 )
 
 type preparedReportDestination struct {
-	format reportFormat
-	path   string
-	name   string
-	parent *os.File
+	format         reportFormat
+	path           string
+	name           string
+	parent         *os.File
+	parentIdentity fileIdentity
 }
 
 // PreparedReportDestinations owns directory descriptors opened without link
@@ -60,9 +61,9 @@ type PreparedReportDestinations struct {
 	destinations []preparedReportDestination
 }
 
-// PrepareReportDestinations validates report configuration without touching the
-// selected root. Any report path lexically inside sourceRoot is rejected so an
-// export cannot invalidate the just-created source snapshot.
+// PrepareReportDestinations validates report configuration before source-root
+// access. The lexical gate preserves that precedence; ValidateSourceBoundary
+// subsequently enforces physical containment through opened identities.
 func PrepareReportDestinations(sourceRoot string, destinations ReportDestinations) (*PreparedReportDestinations, error) {
 	root, err := canonicalSourceRoot(sourceRoot)
 	if err != nil {
@@ -106,9 +107,39 @@ func PrepareReportDestinations(sourceRoot string, destinations ReportDestination
 			prepared.Close()
 			return nil, destinationConfigurationError("report destination must be absent", err)
 		}
-		prepared.destinations = append(prepared.destinations, preparedReportDestination{format: request.format, path: path, name: name, parent: parent})
+		_, parentIdentity, err := statOpenedFile(parent)
+		if err != nil {
+			parent.Close()
+			prepared.Close()
+			return nil, destinationConfigurationError("report destination parent identity is unavailable", err)
+		}
+		prepared.destinations = append(prepared.destinations, preparedReportDestination{format: request.format, path: path, name: name, parent: parent, parentIdentity: parentIdentity})
 	}
 	return prepared, nil
+}
+
+// ValidateSourceBoundary rejects a destination whose held parent is physically
+// within the safely opened source tree. It must run after the caller confirms
+// the root can start, and before inventory creation.
+func (prepared *PreparedReportDestinations) ValidateSourceBoundary(sourceRoot string) error {
+	if len(prepared.destinations) == 0 {
+		return nil
+	}
+	root, rootIdentity, err := openRoot(sourceRoot)
+	if err != nil {
+		return fmt.Errorf("open selected source root for report-boundary validation: %w", err)
+	}
+	defer root.Close()
+	for index := range prepared.destinations {
+		within, err := directoryIsWithin(prepared.destinations[index].parent, rootIdentity)
+		if err != nil {
+			return destinationConfigurationError("could not verify report destination boundary", err)
+		}
+		if within {
+			return destinationConfigurationError("report destination must be outside the selected source tree", nil)
+		}
+	}
+	return nil
 }
 
 func (prepared *PreparedReportDestinations) Close() error {
@@ -166,6 +197,11 @@ func writePreparedReportsWithHooks(prepared *PreparedReportDestinations, report 
 		}
 	}()
 	for index := range prepared.destinations {
+		if err := prepared.destinations[index].verifyRequestedBinding(false, fileIdentity{}); err != nil {
+			return err
+		}
+	}
+	for index := range prepared.destinations {
 		destination := &prepared.destinations[index]
 		if destination.parent == nil {
 			return fmt.Errorf("prepared report destination is closed")
@@ -214,6 +250,42 @@ func writePreparedReportsWithHooks(prepared *PreparedReportDestinations, report 
 		if err := unix.Unlinkat(int(item.destination.parent.Fd()), item.name, 0); err != nil {
 			return fmt.Errorf("finalize report publication: %w", err)
 		}
+	}
+	for index := range temporaries {
+		item := temporaries[index]
+		if err := item.destination.verifyRequestedBinding(true, item.identity); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// verifyRequestedBinding confirms that the current user-requested parent path
+// still resolves, without links, to the held directory and (after publication)
+// to this transaction's exact artifact. A moved/replaced ancestor is an error,
+// not a successful export to an unreachable old directory.
+func (destination *preparedReportDestination) verifyRequestedBinding(published bool, expected fileIdentity) error {
+	parent, name, err := openReportParent(destination.path)
+	if err != nil {
+		return destinationConfigurationError("requested report destination parent changed", err)
+	}
+	defer parent.Close()
+	_, actual, err := statOpenedFile(parent)
+	if err != nil || !sameObject(destination.parentIdentity, actual) {
+		return destinationConfigurationError("requested report destination parent changed", err)
+	}
+	if !published {
+		if err := reportDestinationAbsentAt(parent, name); err != nil {
+			return destinationConfigurationError("report destination must remain absent", err)
+		}
+		return nil
+	}
+	var stat unix.Stat_t
+	if err := unix.Fstatat(int(parent.Fd()), name, &stat, unix.AT_SYMLINK_NOFOLLOW); err != nil {
+		return destinationConfigurationError("published report cannot be verified at requested destination", err)
+	}
+	if !sameObject(expected, identityFromUnixStat(&stat)) {
+		return destinationConfigurationError("published report identity changed at requested destination", nil)
 	}
 	return nil
 }
@@ -276,6 +348,49 @@ func removeIfIdentity(parent *os.File, name string, expected fileIdentity) {
 // mtime legitimately change while writing, so object identity is device/inode.
 func sameObject(left, right fileIdentity) bool {
 	return left.dev == right.dev && left.ino == right.ino
+}
+
+// directoryIsWithin walks from a held parent descriptor to filesystem root.
+// It compares device/inode identity at every step, so alternate spellings such
+// as /tmp and /private/tmp cannot evade the selected-tree boundary.
+func directoryIsWithin(parent *os.File, root fileIdentity) (bool, error) {
+	fd, err := unix.Dup(int(parent.Fd()))
+	if err != nil {
+		return false, err
+	}
+	current := os.NewFile(uintptr(fd), "report-parent-ancestry")
+	for {
+		_, currentIdentity, err := statOpenedFile(current)
+		if err != nil {
+			current.Close()
+			return false, err
+		}
+		if sameObject(currentIdentity, root) {
+			current.Close()
+			return true, nil
+		}
+		parentFD, err := unix.Openat(int(current.Fd()), "..", unix.O_RDONLY|unix.O_DIRECTORY|unix.O_NOFOLLOW|unix.O_CLOEXEC, 0)
+		if err != nil {
+			current.Close()
+			return false, err
+		}
+		next := os.NewFile(uintptr(parentFD), "report-parent-ancestry-parent")
+		_, nextIdentity, statErr := statOpenedFile(next)
+		closeErr := current.Close()
+		if statErr != nil {
+			next.Close()
+			return false, statErr
+		}
+		if closeErr != nil {
+			next.Close()
+			return false, closeErr
+		}
+		if sameObject(currentIdentity, nextIdentity) {
+			next.Close()
+			return false, nil
+		}
+		current = next
+	}
 }
 
 func canonicalReportDestination(path string) (string, error) {

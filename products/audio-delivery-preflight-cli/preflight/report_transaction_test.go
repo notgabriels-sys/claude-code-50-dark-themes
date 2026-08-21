@@ -57,7 +57,7 @@ func TestPreparedReportsRollBackEveryArtifactAfterLateCollision(t *testing.T) {
 	}
 }
 
-func TestPreparedReportsKeepHeldParentDescriptorDuringAncestorReplacement(t *testing.T) {
+func TestPreparedReportsRollBackWhenAncestorReplacementBreaksRequestedBinding(t *testing.T) {
 	report := transactionReport(t)
 	base := physicalTempDir(t)
 	originalParent := filepath.Join(base, "original")
@@ -76,22 +76,25 @@ func TestPreparedReportsKeepHeldParentDescriptorDuringAncestorReplacement(t *tes
 	}
 	defer prepared.Close()
 	err = writePreparedReportsWithHooks(prepared, report, reportWriteHooks{
-		afterPrepared: func() error {
-			if err := os.Rename(originalParent, movedParent); err != nil {
-				return err
+		beforePublish: func(index int) error {
+			if index == 0 {
+				if err := os.Rename(originalParent, movedParent); err != nil {
+					return err
+				}
+				return os.Rename(attackerParent, originalParent)
 			}
-			return os.Rename(attackerParent, originalParent)
+			return nil
 		},
 		tempName: func(int) string { return ".adp-test-tmp-race" },
 	})
-	if err != nil {
-		t.Fatal(err)
+	if err == nil || !IsReportDestinationConfigurationError(err) {
+		t.Fatalf("ancestor replacement error = %v, want configuration error", err)
 	}
 	if _, err := os.Lstat(filepath.Join(originalParent, "report.json")); !os.IsNotExist(err) {
 		t.Fatalf("report was redirected into replacement parent: %v", err)
 	}
-	if _, err := os.Stat(filepath.Join(movedParent, "report.json")); err != nil {
-		t.Fatalf("report was not written through held parent descriptor: %v", err)
+	if _, err := os.Lstat(filepath.Join(movedParent, "report.json")); !os.IsNotExist(err) {
+		t.Fatalf("report was not rolled back through held parent descriptor: %v", err)
 	}
 }
 
