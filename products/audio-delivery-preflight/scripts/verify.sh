@@ -36,7 +36,12 @@ swift test
 swift build -c release --product audio-preflight
 swift build -c release --product AudioDeliveryPreflightApp
 swift run audio-preflight version
-"$SCRIPT_DIR/test-package-release.sh"
+PACKAGE_TEST_SKIPPED=false
+if [[ "${AUDIO_PREFLIGHT_SKIP_PACKAGE_TEST:-0}" == "1" ]]; then
+    PACKAGE_TEST_SKIPPED=true
+else
+    "$SCRIPT_DIR/test-package-release.sh"
+fi
 
 GENERATED_FIXTURE="$VERIFY_TMP/generated-valid-digital-release"
 swift "$SCRIPT_DIR/generate-valid-digital-release-fixture.swift" "$GENERATED_FIXTURE"
@@ -199,4 +204,8 @@ print -- "Digital Release CLI: ready; HTML, JSON, and SHA-256 reports verified."
 print -- "Source immutability: SHA-256, size, subsecond mtime, and mode unchanged."
 print -- "Trusted tools: afinfo and sips agree with reported fixture properties."
 print -- "Adversarial release probes: renamed AAC exits 2; invalid Custom role exits $CUSTOM_AAC_EXIT; sources unchanged."
-print -- "Unsigned release packaging: bundle metadata, contents, archive paths, and SHA-256 verified."
+if [[ "$PACKAGE_TEST_SKIPPED" == true ]]; then
+    print -- "Unsigned release packaging: deferred to the calling packager to prevent recursive verification."
+else
+    print -- "Unsigned release packaging: Universal binaries, metadata, contents, archive paths, and SHA-256 verified."
+fi

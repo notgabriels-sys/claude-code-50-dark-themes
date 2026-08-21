@@ -22,13 +22,16 @@ This checklist separates repository evidence, a local archive, a customer-tested
 
 - [x] Packaging command refuses an existing output path.
 - [x] Package contains the `.app`, CLI, README, privacy, limitations, and explicit unsigned disclosure.
-- [x] Archive verifier checks SHA-256, extraction safety, required files, permissions, identifier, version, macOS floor, and coherent ad-hoc signatures.
+- [x] Packaging command requires clean product source, runs the product verifier, and builds exact arm64 plus x86_64 Universal executables without a host-only fallback.
+- [x] Package records the source commit, source-tree state, script digests, architecture, signature state, Gatekeeper result, and commercial-publication state in machine-readable and human-readable evidence.
+- [x] Archive verifier checks external and internal SHA-256 evidence, exact manifest coverage, duplicate and unsafe paths, required files, permissions, identifier, version, macOS floor, Universal architecture, disclosures, and coherent ad-hoc signatures.
+- [x] Packaging contract rejects overwrite attempts, a false external sidecar, and changed package content hidden behind a recomputed external sidecar.
 - [ ] Build the real release archive from the exact intended source commit.
 - [ ] Record the exact source commit and archive SHA-256.
 - [ ] Copy the ZIP and checksum to a separate location and verify them there.
 - [ ] Extract and launch the copied archive rather than the build-tree executable.
 
-Observed on the local packaged candidate: archive verification and packaged `.app` launch succeeded. Independent-location copying and independent-host launch remain open.
+Observed on local package-contract candidates: all 189 tests passed, both Universal slices built, strict archive verification succeeded, Gatekeeper rejected the ad-hoc candidate as recorded, and tampering was rejected. A prior packaged `.app` launch also succeeded. A durable final archive from the intended clean commit, independent-location copying, and independent-host launch remain open.
 
 ## Apple distribution
 

@@ -91,9 +91,13 @@ Until those gates are complete, this repository contains a local candidate, not 
 
 ## Unsigned packaging gate
 
-The release-packaging branch adds a deterministic assembly and independent-verification path for an explicitly unsigned version 0.1.0 candidate. The packaging test uses real executable fixtures and requires the `.app` structure, CLI, documentation, unsigned disclosure, bundle identifier, version, macOS 14 floor, ZIP archive, safe archive paths, and matching SHA-256 sidecar. The complete product verifier runs this packaging test.
+The release workflow has a deterministic assembly and independent-verification path for an explicitly unsigned version 0.1.0 candidate. The packager refuses dirty `Package.swift` or `Sources` state, runs the product verifier without recursively invoking the package contract, builds release products separately for arm64 and x86_64, combines exact Universal binaries, applies coherent ad-hoc signatures, and records the source commit, source-tree state, architecture, signatures, Gatekeeper result, icon digest, and script digests. There is no host-only fallback.
 
-This closes only the repeatable bundle/archive-assembly portion of the release gate. A real archive built from release binaries must still be copied to an independent location, reverified, launched, exercised manually, and tested under Gatekeeper. Developer ID signing, notarization, final packaged-icon inspection, independent macOS 14 testing, accessibility testing, and commerce-provider verification remain open.
+The archive contains machine-readable `PACKAGE-INFO.json`, human-readable `BUILD-EVIDENCE.txt`, and an internal manifest covering every other regular package file. The external verifier checks the archive sidecar, ZIP integrity, entry count, duplicate and unsafe paths, the exact release root, required files, exact internal-manifest coverage and hashes, bundle metadata, icon, processor slices, signatures, Gatekeeper result, CLI version, unsigned disclosures, private-path leakage, and artist/label identity leakage. The package contract uses real product binaries and proves overwrite refusal, false-sidecar rejection, and rejection of changed content even after the external archive sidecar is recomputed.
+
+The real package contract completed with 189 tests and 0 failures, successful arm64 and x86_64 builds, a verified Universal archive, coherent ad-hoc signatures, and a recorded rejected Gatekeeper assessment. Its temporary test archive was deleted by the test harness and is not a durable customer artifact.
+
+This closes only the repeatable Universal bundle/archive-assembly portion of the release gate. A durable archive built from the exact intended clean commit must still be copied to an independent location, reverified, launched, exercised manually, and tested on an independent macOS 14 installation. Developer ID signing, notarization, final packaged-icon inspection, accessibility testing, legal acceptance, and commerce-provider verification remain open.
 
 ### Packaged-app smoke evidence
 
