@@ -6,7 +6,7 @@ It performs technical checks only. A `ready` result is not an artistic judgment,
 
 ## Current status
 
-Version `0.1.0` is a merged development candidate. The repository can build and independently verify an explicitly unsigned customer-archive candidate. No valid Apple code-signing identity was available during the packaging audit, so the app is not Developer ID signed or notarized and is not published for sale.
+Version `0.1.0` is a merged development candidate. The repository can build and independently verify a Developer-ID-unsigned customer-archive candidate. The candidate uses only an ad-hoc execution signature, is not notarized, is not Apple-trusted distribution software, and is not published for sale.
 
 ## Requirements
 
@@ -191,7 +191,7 @@ The verifier cleans SwiftPM state, runs the full test suite, builds both release
 
 See [PRIVACY.md](PRIVACY.md) for local-processing and report details. See [LIMITATIONS.md](LIMITATIONS.md) for the exact boundaries of version 0.1.0. See [VERIFICATION.md](VERIFICATION.md) for the evidence map and remaining release gates.
 
-## Build an unsigned release candidate
+## Build a Developer-ID-unsigned release candidate
 
 From the repository root:
 
@@ -201,13 +201,13 @@ products/audio-delivery-preflight/scripts/package-release.sh \
   --unsigned
 ```
 
-The output contains `Audio Delivery Preflight.app`, the `audio-preflight` CLI, the product documentation, an unavoidable `UNSIGNED.txt` disclosure, a ZIP archive, and a SHA-256 sidecar. The command refuses to overwrite an existing output path.
+The output contains `Audio Delivery Preflight.app`, the `audio-preflight` CLI, a deterministic sample delivery, product documentation, package/build provenance, an internal SHA-256 manifest, an unavoidable `UNSIGNED.txt` disclosure, an architecture-labelled ZIP archive, and a SHA-256 sidecar. The app and CLI receive only ad-hoc signatures so Apple Silicon can execute them; they are not Developer ID signed or notarized. The command refuses to overwrite an existing output path.
 
 Verify an archive after moving or downloading both files:
 
 ```bash
 products/audio-delivery-preflight/scripts/verify-release-archive.sh \
-  "/absolute/path/to/Audio-Delivery-Preflight-0.1.0-macOS-unsigned.zip"
+  "/absolute/path/to/Audio-Delivery-Preflight-0.1.0-macOS-apple-silicon-unsigned.zip"
 ```
 
-The verifier checks the sidecar, archive path safety, required files, executable permissions, bundle identifier, version, and deployment floor after a fresh extraction. This does not replace Developer ID signing, Apple notarization, Gatekeeper testing, accessibility validation, or independent-host testing. See [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) before any public listing.
+The verifier checks the sidecar, archive path safety, single release root, internal manifest, required files, executable permissions, matching binary architectures, architecture disclosure, ad-hoc signatures, bundle identifier, source-commit format, version, deployment floor, and packaged CLI version after a fresh extraction. The package contract additionally scans the included sample with the packaged CLI, confirms the sample is unchanged, rejects overwrite attempts, and proves a false sidecar is refused. This does not replace Developer ID signing, Apple notarization, Gatekeeper testing, final-icon review, accessibility validation, or independent-host testing. See [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) before any public listing.

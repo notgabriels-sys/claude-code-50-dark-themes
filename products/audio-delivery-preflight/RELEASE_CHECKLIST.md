@@ -1,14 +1,14 @@
 # Release checklist: Audio Delivery Preflight 0.1.0
 
-Date opened: 2026-08-21  
+Date opened: 2026-08-21
 Owner: Gabriel Garcia Alonso
 
 This checklist separates repository evidence, a local archive, a customer-tested delivery, and a public paid product. A checked repository or packaging item does not satisfy a later commercial gate.
 
 ## Pre-package
 
-- [x] Source merged through pull request review boundary.
-- [x] Exact merged commit passes 189 tests and both release builds.
+- [x] Repository history includes PR #1; the later hardening wave was independently reviewed and merged locally.
+- [x] Exact merged implementation passes 238 tests and both release builds.
 - [x] Repository shop verifier passes without payment-surface changes.
 - [x] Bundle identifier fixed as `com.gabrielgarciaalonso.AudioDeliveryPreflight`.
 - [x] Marketing version fixed as `0.1.0`; build version fixed as `1`.
@@ -21,8 +21,9 @@ This checklist separates repository evidence, a local archive, a customer-tested
 ## Package
 
 - [x] Packaging command refuses an existing output path.
-- [x] Package contains the `.app`, CLI, README, privacy, limitations, and explicit unsigned disclosure.
-- [x] Archive verifier checks SHA-256, extraction safety, required files, permissions, identifier, version, and macOS floor.
+- [x] Package contains the `.app`, CLI, sample delivery, README, privacy, limitations, build provenance, internal manifest, and explicit Developer-ID-unsigned disclosure.
+- [x] Archive verifier checks the external and internal SHA-256 evidence, extraction safety, required files, permissions, architecture, ad-hoc signatures, identifier, source-commit format, version, and macOS floor.
+- [x] Package contract runs the packaged CLI against the sample, confirms source immutability, refuses overwrite, and rejects a false sidecar.
 - [ ] Build the real release archive from the exact intended source commit.
 - [ ] Record the exact source commit and archive SHA-256.
 - [ ] Copy the ZIP and checksum to a separate location and verify them there.

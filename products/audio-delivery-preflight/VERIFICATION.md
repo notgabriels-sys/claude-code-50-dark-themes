@@ -104,8 +104,8 @@ Therefore the copied-real-delivery immutability check, offline-network scan, mul
 
 Until those gates are complete, this repository contains a local candidate, not a publicly available product and not a verified customer delivery.
 
-## Unsigned packaging gate
+## Developer-ID-unsigned packaging gate
 
-The release-packaging branch adds a deterministic assembly and independent-verification path for an explicitly unsigned version 0.1.0 candidate. The packaging test uses real executable fixtures and requires the `.app` structure, CLI, documentation, unsigned disclosure, bundle identifier, version, macOS 14 floor, ZIP archive, safe archive paths, and matching SHA-256 sidecar. The complete product verifier runs this packaging test.
+The release-packaging branch adds a repeatable assembly and independent-verification path for a Developer-ID-unsigned version 0.1.0 candidate. The package uses ad-hoc app and CLI signatures only, which permit execution but establish no publisher identity or Apple trust. The real-binary packaging contract requires an architecture-labelled ZIP and release root, `.app` structure, CLI, deterministic sample delivery, documentation, unsigned disclosure, source/build provenance, internal manifest, bundle identifier, version, macOS 14 floor, safe archive paths, and matching SHA-256 sidecar. It verifies the ad-hoc signatures, runs the packaged CLI against the included sample, confirms source immutability, refuses overwrite, and rejects a false sidecar. The complete product verifier runs this packaging contract.
 
 This closes only the repeatable bundle/archive-assembly portion of the release gate. A real archive built from release binaries must still be copied to an independent location, reverified, launched, exercised manually, and tested under Gatekeeper. Developer ID signing, notarization, final icon work, independent macOS 14 testing, accessibility testing, and commerce-provider verification remain open.
