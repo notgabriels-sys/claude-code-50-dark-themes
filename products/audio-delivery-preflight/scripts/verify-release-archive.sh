@@ -45,6 +45,12 @@ plutil -lint "$plist" >/dev/null
 [[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$plist")" == "com.gabrielgarciaalonso.AudioDeliveryPreflight" ]] || { print -u2 "bundle identifier mismatch"; exit 65; }
 [[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$plist")" == "$version" ]] || { print -u2 "bundle version mismatch"; exit 65; }
 [[ "$(/usr/libexec/PlistBuddy -c 'Print :LSMinimumSystemVersion' "$plist")" == "14.0" ]] || { print -u2 "minimum macOS version mismatch"; exit 65; }
+codesign --verify --deep --strict "$app"
+codesign --verify --strict "$release_root/audio-preflight"
+app_signature=$(codesign -d --verbose=4 "$app" 2>&1)
+cli_signature=$(codesign -d --verbose=4 "$release_root/audio-preflight" 2>&1)
+[[ "$app_signature" == *"Signature=adhoc"* ]] || { print -u2 "app is not ad-hoc signed"; exit 65; }
+[[ "$cli_signature" == *"Signature=adhoc"* ]] || { print -u2 "CLI is not ad-hoc signed"; exit 65; }
 
 print -r -- "Verified unsigned release archive: $archive"
 print -r -- "SHA-256: $actual_hash"

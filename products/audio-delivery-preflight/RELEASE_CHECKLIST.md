@@ -22,7 +22,7 @@ This checklist separates repository evidence, a local archive, a customer-tested
 
 - [x] Packaging command refuses an existing output path.
 - [x] Package contains the `.app`, CLI, README, privacy, limitations, and explicit unsigned disclosure.
-- [x] Archive verifier checks SHA-256, extraction safety, required files, permissions, identifier, version, and macOS floor.
+- [x] Archive verifier checks SHA-256, extraction safety, required files, permissions, identifier, version, macOS floor, and coherent ad-hoc signatures.
 - [ ] Build the real release archive from the exact intended source commit.
 - [ ] Record the exact source commit and archive SHA-256.
 - [ ] Copy the ZIP and checksum to a separate location and verify them there.

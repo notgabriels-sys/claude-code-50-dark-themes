@@ -195,7 +195,7 @@ products/audio-delivery-preflight/scripts/package-release.sh \
   --unsigned
 ```
 
-The output contains `Audio Delivery Preflight.app`, the `audio-preflight` CLI, the product documentation, an unavoidable `UNSIGNED.txt` disclosure, a ZIP archive, and a SHA-256 sidecar. The command refuses to overwrite an existing output path.
+The output contains `Audio Delivery Preflight.app`, the `audio-preflight` CLI, the product documentation, an unavoidable `UNSIGNED.txt` disclosure, a ZIP archive, and a SHA-256 sidecar. The executables are ad-hoc signed for local integrity and Apple Silicon launch compatibility, but ad-hoc signing is not Developer ID signing and does not establish publisher identity. The command refuses to overwrite an existing output path.
 
 Verify an archive after moving or downloading both files:
 

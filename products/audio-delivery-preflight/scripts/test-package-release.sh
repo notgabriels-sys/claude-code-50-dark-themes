@@ -40,14 +40,12 @@ test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$app/Contents/In
 test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app/Contents/Info.plist")" = "0.1.0"
 test "$(/usr/libexec/PlistBuddy -c 'Print :LSMinimumSystemVersion' "$app/Contents/Info.plist")" = "14.0"
 
-if codesign -d "$app/Contents/MacOS/AudioDeliveryPreflightApp" >/dev/null 2>&1; then
-  print -u2 "unsigned package retained an executable signature"
-  exit 1
-fi
-if codesign -d "$output_dir/Audio Delivery Preflight 0.1.0/audio-preflight" >/dev/null 2>&1; then
-  print -u2 "unsigned package retained a CLI signature"
-  exit 1
-fi
+codesign --verify --deep --strict "$app"
+codesign --verify --strict "$output_dir/Audio Delivery Preflight 0.1.0/audio-preflight"
+app_signature=$(codesign -d --verbose=4 "$app" 2>&1)
+cli_signature=$(codesign -d --verbose=4 "$output_dir/Audio Delivery Preflight 0.1.0/audio-preflight" 2>&1)
+[[ "$app_signature" == *"Signature=adhoc"* ]]
+[[ "$cli_signature" == *"Signature=adhoc"* ]]
 
 "$script_dir/verify-release-archive.sh" "$archive"
 

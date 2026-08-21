@@ -1,5 +1,7 @@
 UNSIGNED DEVELOPMENT CANDIDATE
 
+The executables carry ad-hoc signatures for local code integrity and Apple
+Silicon launch compatibility. Ad-hoc signing does not identify the developer.
 This archive has not been signed with an Apple Developer ID certificate and
 has not been notarized by Apple. macOS Gatekeeper may block or warn about the
 application. Do not describe this archive as a normal one-click installation.
