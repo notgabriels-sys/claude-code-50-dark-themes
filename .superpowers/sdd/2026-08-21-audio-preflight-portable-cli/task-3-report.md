@@ -126,6 +126,43 @@ This report is committed only with the Task 3 packaging, CI, documentation,
 and checklist changes after the final local gates pass. It does not make the
 candidate public or customer-ready.
 
+## Final clean-commit evidence: 2026-08-22
+
+The final private candidates were rebuilt from clean commit `dc49778`. Go
+1.26.3 does not expose linker `-X` values through `debug/buildinfo`, so the
+equivalent provenance mechanism is a unique marker linked into, retained by,
+and byte-verified in each executable. The marker binds product version `1.0.0`
+and exact clean source revision. The packager also rejects dirty or untracked
+source state and verifies the committed version source before building.
+
+Fresh normal tests, race tests, vet, formatting, and diff checks passed. The
+race run included `internal/release` in 112.471 seconds. Three independently
+verified private candidates were generated:
+
+| Platform | Archive SHA-256 | Sidecar-file SHA-256 |
+| --- | --- | --- |
+| `darwin-arm64` | `8a66ff2f132d5a7958665e18442349fa4794cae4ba602fd103cd054982fc9bea` | `70808cba06838ad142cec25c33e948a67edc0d41b286a6c42cec3280721bf9f8` |
+| `darwin-amd64` | `97d2a6d0534931b8535851e30e6e72c4042f721fb7a356bfdd8db52b49affdd4` | `b30a2c1e51cc790e95108cc9f843f6978e8ffdd7149c93e560c7865f12e4d261` |
+| `linux-amd64` | `b3f5c9049978e33ea585bab4bc1cbeca17dce6797a48a995e7b1d218607c6d89` | `4f581b49a5dd0961e862b2d57acafb2f3ca964fab53ea40c917a9d284f682510` |
+
+Two further clean `darwin-arm64` builds compared byte-for-byte identical for
+both archive and sidecar. A separately extracted Apple Silicon candidate
+passed every internal checksum, reported version `1.0.0`, listed all three
+presets, and scanned the fresh extraction folder with General Audio as
+`Status: ready`, 11 inventory entries, and zero findings.
+
+These remain private candidates. GitHub Actions has not run, Intel macOS and
+Linux binaries have not been executed on matching hosts, the license is still
+a draft, and no upload, payment object, checkout, shop link, tag, release, or
+publication was created.
+
+Final independent review verdict: **Spec compliance APPROVED; Code quality
+APPROVED; no remaining blocker.** The reviewer independently rechecked the
+complete Task 3 range, exact executable provenance marker, mode-specific
+documents, regression tests, archive hashes, sidecars, reproducibility copies,
+full tests/race/vet/format/diff checks, unchanged shop/Swift surfaces, and the
+private publication boundary.
+
 ## Fix round 1 checkpoint: 2026-08-21
 
 The independent review was read in full. This uncommitted checkpoint adds a
