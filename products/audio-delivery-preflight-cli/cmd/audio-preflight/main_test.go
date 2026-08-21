@@ -25,6 +25,21 @@ func TestRunListsAndShowsOnlyBuiltInPresets(t *testing.T) {
 	}
 }
 
+func TestRunPresetShowDoesNotAdvertiseFLACAsRequiredRoleEligible(t *testing.T) {
+	for _, presetID := range []string{"stereo-premaster", "digital-release"} {
+		t.Run(presetID, func(t *testing.T) {
+			var stdout, stderr bytes.Buffer
+			if code := run([]string{"preset", "show", presetID}, &stdout, &stderr); code != exitReady {
+				t.Fatalf("preset show exit = %d, stderr = %q", code, stderr.String())
+			}
+			output := stdout.String()
+			if !strings.Contains(output, "readable PCM") || strings.Contains(output, "PCM or FLAC") {
+				t.Fatalf("preset show advertises FLAC required-role eligibility: %q", output)
+			}
+		})
+	}
+}
+
 func TestRunMapsCompletedScanStatusesToDocumentedExitCodes(t *testing.T) {
 	ready := t.TempDir()
 	writeCLIFile(t, filepath.Join(ready, "main.wav"), cliWAV())

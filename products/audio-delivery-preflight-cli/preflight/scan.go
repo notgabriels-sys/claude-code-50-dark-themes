@@ -48,14 +48,14 @@ var builtInPresets = []Preset{
 	{
 		ID:           "stereo-premaster",
 		Name:         "Stereo Premaster",
-		Description:  "Requires one readable lossless stereo audio file and reports package consistency.",
-		Requirements: []string{"One readable PCM or FLAC stereo audio file.", "No loudness, true-peak, headroom, or artistic target is required."},
+		Description:  "Requires one readable PCM stereo audio file and reports package consistency; FLAC metadata is inventory-only in version 1.",
+		Requirements: []string{"One readable PCM stereo audio file.", "FLAC STREAMINFO metadata is inventoried but cannot satisfy a required role until complete frame, payload, and CRC validation exists.", "No loudness, true-peak, headroom, or artistic target is required."},
 	},
 	{
 		ID:           "digital-release",
 		Name:         "Digital Release",
-		Description:  "Requires a visible lossless main-master role, square 3000 px artwork, and metadata or credits.",
-		Requirements: []string{"One readable PCM or FLAC file named as a main master, premaster, or master.", "One readable square artwork file at least 3000 by 3000 pixels.", "One metadata or credits document matched by its visible filename."},
+		Description:  "Requires a visible readable PCM main-master role, square 3000 px artwork, and metadata or credits; FLAC metadata is inventory-only in version 1.",
+		Requirements: []string{"One readable PCM file named as a main master, premaster, or master.", "FLAC STREAMINFO metadata is inventoried but cannot satisfy a required role until complete frame, payload, and CRC validation exists.", "One readable square artwork file at least 3000 by 3000 pixels.", "One metadata or credits document matched by its visible filename."},
 	},
 }
 

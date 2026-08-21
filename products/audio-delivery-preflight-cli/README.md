@@ -17,7 +17,7 @@ Built-in presets are:
 
 - `general-audio`: inventories available technical evidence and warns about inconsistent inspected audio properties, duplicates, links, and ambiguous version names. It does not require a sample rate or bit depth.
 - `stereo-premaster`: requires one readable PCM stereo audio file. It does not impose loudness, peak, headroom, or artistic targets. FLAC STREAMINFO measurements are inventoried, but FLAC cannot satisfy a required audio role in version 1 because complete frame, payload, and CRC validation is not implemented.
-- `digital-release`: requires one visibly named lossless main master, one readable square artwork file at least 3000 × 3000 pixels, and one visibly named metadata or credits document. It checks package consistency, not a distributor's current acceptance rules.
+- `digital-release`: requires one visibly named readable PCM main master, one readable square artwork file at least 3000 × 3000 pixels, and one visibly named metadata or credits document. FLAC STREAMINFO measurements are inventoried, but FLAC cannot satisfy any required role in version 1 because complete frame, payload, and CRC validation is not implemented. It checks package consistency, not a distributor's current acceptance rules.
 
 ## Reports
 

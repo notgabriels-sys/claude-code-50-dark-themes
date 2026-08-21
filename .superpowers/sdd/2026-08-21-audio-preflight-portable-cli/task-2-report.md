@@ -152,6 +152,33 @@ GOOS=linux GOARCH=amd64 go build -trimpath                  PASS
 git diff --check                                             PASS
 ```
 
+## Fix round 4 correction — 2026-08-21
+
+- Stereo Premaster and Digital Release now describe and require readable PCM
+  audio only in version 1. Their descriptions and resolved requirements state
+  that FLAC STREAMINFO metadata is inventoried but cannot satisfy a required
+  role until complete frame, payload, and CRC validation exists.
+- The Digital Release README wording now says `readable PCM main master`, not
+  a generic lossless master, and repeats the same FLAC inventory-only limit.
+- A command-boundary regression invokes `audio-preflight preset show` for both
+  affected presets and rejects output that advertises `PCM or FLAC` required-
+  role eligibility.
+
+### Fix round 4 final verification — 2026-08-21
+
+Executed from `products/audio-delivery-preflight-cli/`:
+
+```text
+go test ./... -count=1                                      PASS
+go test -race ./... -count=1                                PASS
+go vet ./...                                                PASS
+gofmt -d (all changed Task 2 Go files)                      PASS (no output)
+GOOS=linux GOARCH=amd64 go build -trimpath                  PASS
+  -o /private/tmp/audio-preflight-cli-fix-round-4-linux-amd64
+  ./cmd/audio-preflight
+git diff --check                                             PASS
+```
+
 ### Remaining limits
 
 - The Linux artifact was cross-compiled, not executed on a Linux host.
