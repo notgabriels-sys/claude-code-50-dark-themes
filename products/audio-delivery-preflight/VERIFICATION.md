@@ -25,7 +25,7 @@ The script resolves its own product root and, with strict shell error handling:
 
 The generated fixture contains only repository-generated test data: a one-second stereo 48 kHz 24-bit PCM WAV, a 3000 x 3000 RGB PNG, and synthetic credits text.
 
-The isolated committed-candidate run on 2026-08-21 at implementation commit `67e43f1ddbda5f5c03d9380a3d265e4e26f239cc` observed:
+The isolated committed-candidate run on 2026-08-21 at implementation commit `b2937a4fc0cc6e683a15c249de2092d6369fab93` observed:
 
 - 189 tests executed with 0 failures;
 - successful release builds of both products;
