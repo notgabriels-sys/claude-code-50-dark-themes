@@ -7,10 +7,9 @@ import (
 	"os"
 	"strings"
 
+	"github.com/gabrielgarciaalonso/audio-delivery-preflight-cli/internal/version"
 	"github.com/gabrielgarciaalonso/audio-delivery-preflight-cli/preflight"
 )
-
-const version = "1.0.0"
 
 const (
 	exitReady                = 0
@@ -36,7 +35,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 			printUsage(stderr)
 			return exitInvalidConfiguration
 		}
-		fmt.Fprintln(stdout, version)
+		fmt.Fprintln(stdout, version.Value)
 		return exitReady
 	case "presets":
 		if len(args) != 1 {
@@ -166,7 +165,7 @@ func parseScanOptions(args []string) (scanOptions, error) {
 		case "--checksums":
 			options.destinations.Checksums = value
 		case "--preset-file":
-			return scanOptions{}, fmt.Errorf("custom preset-file import is not available in version %s", version)
+			return scanOptions{}, fmt.Errorf("custom preset-file import is not available in version %s", version.Value)
 		default:
 			return scanOptions{}, fmt.Errorf("unknown option %q", flag)
 		}

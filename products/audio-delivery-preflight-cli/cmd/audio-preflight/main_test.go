@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/gabrielgarciaalonso/audio-delivery-preflight-cli/internal/version"
 )
 
 // These command-boundary tests fail if a documented command is removed, a scan
@@ -96,7 +98,7 @@ func TestRunExportsOnlyNewDistinctDestinations(t *testing.T) {
 
 func TestRunVersionAndCustomImportAreExplicit(t *testing.T) {
 	var stdout, stderr bytes.Buffer
-	if code := run([]string{"version"}, &stdout, &stderr); code != exitReady || strings.TrimSpace(stdout.String()) != version {
+	if code := run([]string{"version"}, &stdout, &stderr); code != exitReady || strings.TrimSpace(stdout.String()) != version.Value {
 		t.Fatalf("version exit/output = %d / %q", code, stdout.String())
 	}
 	if code := run([]string{"scan", t.TempDir(), "--preset-file", "custom.json"}, &stdout, &stderr); code != exitInvalidConfiguration {

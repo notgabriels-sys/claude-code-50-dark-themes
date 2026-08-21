@@ -125,3 +125,144 @@ in the Task 3 diff.
 This report is committed only with the Task 3 packaging, CI, documentation,
 and checklist changes after the final local gates pass. It does not make the
 candidate public or customer-ready.
+
+## Fix round 1 checkpoint: 2026-08-21
+
+The independent review was read in full. This uncommitted checkpoint adds a
+single `internal/version` source (`1.0.0`, reviewed toolchain `go1.26.3`),
+complete Mach-O/ELF parsing, Go build-info checks for command package, target,
+build mode, CGO, trimpath, exact toolchain, source revision and runtime-version
+provenance in the manifest, default private-candidate plus explicit
+customer-release modes, canonical tar-header checks, bounded member sizes, and
+staged hard-link publication of archive/checksum pairs. CI is pinned to Go
+1.26.3 and compares two fresh arm64 archives.
+
+Fresh local evidence for this checkpoint: `go test ./...`, `go test -race
+./...`, `go vet ./...`, formatting, and diff checks passed. Fresh
+`darwin-arm64`, `darwin-amd64`, and `linux-amd64` private candidates built and
+passed verifier checks. Two fresh arm64 archives compared byte-identically.
+
+This checkpoint is intentionally **not committed** as a completed review fix.
+The remaining required work is explicit: add adversarial regression coverage
+for every new mode/metadata/limit/transaction rule; bind version evidence to
+the linked runtime value more strongly than a raw executable-byte occurrence;
+reject trailing gzip/tar payload explicitly; run the owner-supplied final-mode
+path only with a real accepted-license file when Gabriel provides one; and
+update the public-facing verification instructions for the new provenance and
+mode arguments. CI and target-host execution remain unverified external gates.
+
+## Fix round 2 checkpoint: 2026-08-21
+
+Round 2 replaces otherwise-valid archive fixtures with real Go executables
+built using the exact release settings. The verifier requires a version-specific
+`audio_preflight_v1_0_0` Go build tag in parsed build metadata, alongside the
+expected command package, Go version, target, executable build mode, CGO and
+trimpath settings. Host packaging continues to capture runtime `version` output
+as an additional check. Synthetic tests cover draft/final mode separation and
+trailing-payload rejection; no real owner-accepted license was used or treated
+as accepted.
+
+Fresh round-2 checks passed: full Go tests, race detector, vet, format/diff
+checks, provenance-aware build and verification of all three private targets,
+and a byte comparison of two fresh arm64 archives. README and checksum
+instructions now document required source revision and explicit mode.
+
+This remains an uncommitted checkpoint because the requested dedicated
+adversarial tests for every canonical-metadata, count/size, and transactional
+publication branch have not all been added yet. Customer-release remains a
+tested synthetic path only and has not been exercised with real legal terms.
+
+## Fix round 4 completion: 2026-08-21
+
+Round 4 closes the remaining independent-review regressions without changing
+the Task 3 commercial or publication boundary. The verifier now has dedicated
+tests for setgid mode, sticky mode, extended attributes, member-count bounds,
+cumulative expanded size, an unexpected oversized member rejected before its
+body is consumed, and a highly compressible oversized document. The version
+regression builds a real otherwise-valid Go `0.9.0` executable with the exact
+reviewed toolchain, command package, target, build mode, CGO, and trimpath
+settings; verification rejects it from a `1.0.0` archive through parsed Go
+build-tag evidence.
+
+Transactional publication has a narrow sidecar-file opener seam. Tests cover a
+pre-existing archive, a pre-existing sidecar with archive rollback, injected
+sidecar write failure, injected sidecar close failure, and successful complete
+pair publication. Write and close fault tests were first observed failing
+because a partial sidecar remained, then passed after failure cleanup was
+implemented. Mutation checks also demonstrated that the dedicated setgid,
+sticky-bit, and xattr tests fail when exact metadata enforcement is weakened,
+and that the old-version test fails when executable version-tag validation is
+removed. Each temporary mutation was restored before the final focused run.
+
+### Fresh round-4 checks
+
+The following checks passed on the restored final tree using the exact local
+`go1.26.3 darwin/arm64` toolchain:
+
+```text
+go test -count=1 -v ./internal/release ./cmd/release-package
+go test -count=1 ./...
+go test -count=1 -race ./...
+go vet ./...
+gofmt file-list check
+git diff --check
+```
+
+The focused restored-tree run reported `internal/release` passing in 23.359
+seconds and `cmd/release-package` passing in 0.385 seconds. The uncached full
+suite passed every package. The full race run passed, including
+`internal/release` in 92.017 seconds. Vet produced no findings, formatting
+listed no files, and the diff check produced no errors.
+
+Three fresh private candidates were generated outside the repository and each
+passed the stream verifier plus its separately stored sidecar check:
+
+| Platform | Archive SHA-256 | Sidecar-file SHA-256 |
+| --- | --- | --- |
+| `darwin-arm64` | `9f195ebd8ba303068bdc4ce227efcf9b33a29810616c73fd1ac63c481adabcc0` | `1034bb9174601ec3f85b55ffdc3a5a172c1739f7256179fc680f23f5ed1a35c5` |
+| `darwin-amd64` | `b44462d45dd8248eb4c5a6cba2b7d32b0b903ce862de3077e766bc44a2dddce3` | `a8440a484735c052a416b8928a3030f46fbe5a0d17cb3a1a0b8e886434dfa624` |
+| `linux-amd64` | `2b95ca80b853b4ec6f4c060f83fcaf03e13eec9426f5c08599eb3f3adbe802c8` | `5edd4921ed8e409d338dd7653fee43f5b947923be6f403d61e05ed2039bdc5a6` |
+
+Each sidecar's recorded archive digest matched the corresponding archive hash.
+Two additional fresh `darwin-arm64` package runs produced archive SHA-256
+`9f195ebd8ba303068bdc4ce227efcf9b33a29810616c73fd1ac63c481adabcc0`
+and sidecar-file SHA-256
+`1034bb9174601ec3f85b55ffdc3a5a172c1739f7256179fc680f23f5ed1a35c5`
+in both directories. Direct `cmp` checks confirmed byte-identical archives and
+byte-identical sidecars.
+
+### Final whole-diff self-review
+
+The completed review covered archive path and member-type handling; exact tar
+mode, owner, timestamp, USTAR, PAX, and xattr metadata; member-count, per-file,
+cumulative-size, and trailing-payload bounds; internal and sidecar checksums;
+complete Mach-O/ELF parsing; Go command, platform, toolchain, build settings,
+and version evidence; candidate/final license-mode separation; failure cleanup
+and no-overwrite pair publication; deterministic construction; exact CI
+toolchain and reproducibility checks; documentation claims; and owner-only
+legal, payment, delivery, and publication gates.
+
+The final scope audit found only Task 3 packaging, verifier, CLI version,
+workflow, documentation, report, and regression-test files. `index.html`, the
+root `README.md`, and the existing Swift product under
+`products/audio-delivery-preflight/` remained unchanged. No unresolved
+in-scope correctness, security, transactional-publication, reproducibility, or
+publication-boundary issue was found in the reviewed Task 3 diff.
+
+### External limits retained after round 4
+
+- These locally generated archives are disposable pre-commit verification
+  evidence. Their manifests record then-current `HEAD` `a2663cc`; any future
+  release candidate must be rebuilt from the clean committed source so its
+  provenance identifies the exact source tree.
+- GitHub Actions has not run for this unpushed commit, so remote CI is not
+  verified.
+- `darwin-amd64` and `linux-amd64` were cross-built and structurally verified,
+  but were not executed on native matching hosts in round 4.
+- Customer-release mode was exercised only with synthetic test terms. No real
+  owner-accepted license was supplied, accepted, or packaged.
+- Seller identity, governing law, consumer information, Gumroad object and
+  attachment, EUR 19 checkout read-back, tax treatment, and independent
+  customer download remain owner-controlled and unverified.
+- No signing, notarization, push, upload, tag, release, shop change, payment,
+  customer delivery, public publication, or customer-ready claim occurred.

@@ -1,103 +1,183 @@
-// release-package builds one reproducible private candidate archive. It never
-// creates a provider object, uploads an artifact, tags a release, or publishes.
+// release-package creates a verified archive pair. It never uploads, tags,
+// releases, or publishes; customer mode only packages owner-supplied terms.
 package main
 
 import (
 	"crypto/sha256"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/gabrielgarciaalonso/audio-delivery-preflight-cli/internal/release"
+	"github.com/gabrielgarciaalonso/audio-delivery-preflight-cli/internal/version"
 )
 
-const version = "1.0.0"
-
 func main() {
-	platform := flag.String("platform", "", "target platform: darwin-arm64, darwin-amd64, or linux-amd64")
-	outputDirectory := flag.String("output-dir", "", "existing directory for the private candidate archive")
+	platform := flag.String("platform", "", "target platform")
+	outputDirectory := flag.String("output-dir", "", "existing output directory")
+	mode := flag.String("mode", string(release.PrivateCandidate), "private-candidate or customer-release")
+	acceptedLicense := flag.String("accepted-license", "", "explicit owner-accepted license path for customer-release")
 	flag.Parse()
 	if *platform == "" || *outputDirectory == "" || flag.NArg() != 0 {
-		fmt.Fprintln(os.Stderr, "usage: release-package -platform <darwin-arm64|darwin-amd64|linux-amd64> -output-dir <existing-directory>")
+		fmt.Fprintln(os.Stderr, "usage: release-package -platform <darwin-arm64|darwin-amd64|linux-amd64> -output-dir <directory> [-mode private-candidate|customer-release] [-accepted-license <path>]")
 		os.Exit(2)
 	}
-	if err := run(*platform, *outputDirectory); err != nil {
-		fmt.Fprintln(os.Stderr, "private candidate packaging failed:", err)
+	if err := run(*platform, *outputDirectory, release.Mode(*mode), *acceptedLicense); err != nil {
+		fmt.Fprintln(os.Stderr, "release packaging failed:", err)
 		os.Exit(1)
 	}
 }
 
-func run(platform, outputDirectory string) error {
+func run(platform, outputDirectory string, mode release.Mode, acceptedLicense string) error {
 	if platform != "darwin-arm64" && platform != "darwin-amd64" && platform != "linux-amd64" {
 		return fmt.Errorf("unsupported platform %q", platform)
 	}
+	if err := requireToolchain(); err != nil {
+		return err
+	}
+	if info, err := os.Stat(outputDirectory); err != nil || !info.IsDir() {
+		return fmt.Errorf("output directory is unavailable")
+	}
+	filename := release.ArchiveFilename(version.Current, platform, mode)
+	archive := filepath.Join(outputDirectory, filename)
+	sidecar := archive + ".sha256"
+	if _, err := os.Lstat(archive); err == nil {
+		return fmt.Errorf("archive already exists")
+	} else if !os.IsNotExist(err) {
+		return err
+	}
+	if _, err := os.Lstat(sidecar); err == nil {
+		return fmt.Errorf("archive checksum already exists")
+	} else if !os.IsNotExist(err) {
+		return err
+	}
+	sourceRevision, err := commandOutput("git", "rev-parse", "HEAD")
+	if err != nil {
+		return fmt.Errorf("read source revision: %w", err)
+	}
+	stage, err := os.MkdirTemp(outputDirectory, ".audio-preflight-stage-")
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(stage)
 	parts := strings.Split(platform, "-")
-	info, err := os.Stat(outputDirectory)
-	if err != nil {
-		return fmt.Errorf("stat output directory: %w", err)
-	}
-	if !info.IsDir() {
-		return fmt.Errorf("output path is not a directory")
-	}
-	working, err := os.MkdirTemp("", "audio-preflight-cli-package-")
-	if err != nil {
-		return fmt.Errorf("create build workspace: %w", err)
-	}
-	defer os.RemoveAll(working)
-	binary := filepath.Join(working, "audio-preflight")
-	build := exec.Command("go", "build", "-trimpath", "-buildvcs=false", "-ldflags=-buildid=", "-o", binary, "./cmd/audio-preflight")
+	binary := filepath.Join(stage, "audio-preflight")
+	link := "-buildid= -X github.com/gabrielgarciaalonso/audio-delivery-preflight-cli/internal/version.Value=" + version.Current
+	build := exec.Command("go", "build", "-trimpath", "-buildvcs=false", "-buildmode=exe", "-tags="+versionTag(version.Current), "-ldflags="+link, "-o", binary, "./cmd/audio-preflight")
 	build.Env = append(os.Environ(), "CGO_ENABLED=0", "GOOS="+parts[0], "GOARCH="+parts[1])
-	build.Stdout = os.Stdout
-	build.Stderr = os.Stderr
+	build.Stdout, build.Stderr = os.Stdout, os.Stderr
 	if err := build.Run(); err != nil {
 		return fmt.Errorf("build %s: %w", platform, err)
 	}
 	executable, err := os.ReadFile(binary)
 	if err != nil {
-		return fmt.Errorf("read built executable: %w", err)
+		return err
 	}
-	documents, err := release.LoadDocuments(".")
+	runtimeVersion := "unverified-cross-target"
+	if runtime.GOOS+"-"+runtime.GOARCH == platform {
+		runtimeVersion, err = commandOutput(binary, "version")
+		if err != nil || runtimeVersion != version.Current {
+			return fmt.Errorf("runtime version evidence failed: %w", err)
+		}
+	}
+	documents, err := release.LoadDocuments(".", mode, acceptedLicense)
 	if err != nil {
 		return err
 	}
-	archive := filepath.Join(outputDirectory, release.CandidateFilename(version, platform))
-	if err := release.BuildArchive(archive, release.ArchiveInput{
-		Version: version, Platform: platform, Executable: executable, Documents: documents,
-	}); err != nil {
+	provenance := release.Provenance{SourceRevision: sourceRevision, Toolchain: version.Toolchain, RuntimeVersion: runtimeVersion}
+	stagedArchive := filepath.Join(stage, filename)
+	if err := release.BuildArchive(stagedArchive, release.ArchiveInput{Version: version.Current, Platform: platform, Mode: mode, Executable: executable, Documents: documents, Provenance: provenance}); err != nil {
 		return err
 	}
-	if err := release.VerifyArchive(archive, release.Verification{Version: version, Platform: platform}); err != nil {
-		return fmt.Errorf("verify generated archive: %w", err)
-	}
-	if err := writeSidecarChecksum(archive); err != nil {
+	if err := release.VerifyArchive(stagedArchive, release.Verification{Version: version.Current, Platform: platform, Mode: mode, Provenance: provenance}); err != nil {
 		return err
 	}
-	fmt.Println("Created and verified private candidate:", archive)
+	stagedSidecar := stagedArchive + ".sha256"
+	if err := writeSidecar(stagedArchive, stagedSidecar); err != nil {
+		return err
+	}
+	if err := publishPair(stagedArchive, stagedSidecar, archive, sidecar); err != nil {
+		return err
+	}
+	fmt.Println("Created and verified", mode, "archive:", archive)
 	return nil
 }
 
-func writeSidecarChecksum(archive string) error {
-	contents, err := os.ReadFile(archive)
-	if err != nil {
-		return fmt.Errorf("read archive for checksum: %w", err)
+func requireToolchain() error {
+	got, err := commandOutput("go", "version")
+	if err != nil || got != "go version "+version.Toolchain+" "+runtime.GOOS+"/"+runtime.GOARCH {
+		return fmt.Errorf("requires exact toolchain %s", version.Toolchain)
 	}
-	digest := sha256.Sum256(contents)
-	sidecar := archive + ".sha256"
-	file, err := os.OpenFile(sidecar, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
+	return nil
+}
+func versionTag(value string) string {
+	return "audio_preflight_v" + strings.ReplaceAll(value, ".", "_")
+}
+func commandOutput(name string, args ...string) (string, error) {
+	out, err := exec.Command(name, args...).Output()
+	return strings.TrimSpace(string(out)), err
+}
+
+type sidecarFile interface {
+	io.Writer
+	Close() error
+}
+
+type openSidecarFunc func(string, int, os.FileMode) (sidecarFile, error)
+
+func writeSidecar(archive, sidecar string) error {
+	return writeSidecarWithOpener(archive, sidecar, func(path string, flag int, mode os.FileMode) (sidecarFile, error) {
+		return os.OpenFile(path, flag, mode)
+	})
+}
+
+func writeSidecarWithOpener(archive, sidecar string, openSidecar openSidecarFunc) error {
+	input, err := os.Open(archive)
 	if err != nil {
-		return fmt.Errorf("create archive checksum: %w", err)
+		return err
 	}
-	if _, err := fmt.Fprintf(file, "%x  %s\n", digest, filepath.Base(archive)); err != nil {
-		_ = file.Close()
-		_ = os.Remove(sidecar)
+	defer input.Close()
+	hash := sha256.New()
+	if _, err := io.Copy(hash, input); err != nil {
+		return err
+	}
+	output, err := openSidecar(sidecar, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o644)
+	if err != nil {
+		return err
+	}
+	completed := false
+	defer func() {
+		if !completed {
+			_ = output.Close()
+			_ = os.Remove(sidecar)
+		}
+	}()
+	if _, err := fmt.Fprintf(output, "%x  %s\n", hash.Sum(nil), filepath.Base(archive)); err != nil {
 		return fmt.Errorf("write archive checksum: %w", err)
 	}
-	if err := file.Close(); err != nil {
-		_ = os.Remove(sidecar)
+	if err := output.Close(); err != nil {
 		return fmt.Errorf("close archive checksum: %w", err)
+	}
+	completed = true
+	return nil
+}
+
+func publishPair(stagedArchive, stagedSidecar, archive, sidecar string) error {
+	publishedArchive := false
+	if err := os.Link(stagedArchive, archive); err != nil {
+		return fmt.Errorf("publish archive without overwrite: %w", err)
+	}
+	publishedArchive = true
+	if err := os.Link(stagedSidecar, sidecar); err != nil {
+		if publishedArchive {
+			_ = os.Remove(archive)
+		}
+		return fmt.Errorf("publish checksum without overwrite: %w", err)
 	}
 	return nil
 }

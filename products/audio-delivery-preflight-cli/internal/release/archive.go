@@ -3,8 +3,13 @@ package release
 
 import (
 	"archive/tar"
+	"bufio"
+	"bytes"
 	"compress/gzip"
 	"crypto/sha256"
+	"debug/buildinfo"
+	"debug/elf"
+	"debug/macho"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -15,15 +20,23 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/gabrielgarciaalonso/audio-delivery-preflight-cli/internal/version"
 )
 
 const executableName = "audio-preflight"
 
-var requiredDocuments = []string{
+type Mode string
+
+const (
+	PrivateCandidate Mode = "private-candidate"
+	CustomerRelease  Mode = "customer-release"
+)
+
+var baseDocuments = []string{
 	"README.md",
 	"PRIVACY.md",
 	"LIMITATIONS.md",
-	"CUSTOMER_LICENSE_DRAFT.md",
 	"VERIFY_SHA256.md",
 	"examples/README.md",
 }
@@ -32,23 +45,37 @@ var requiredDocuments = []string{
 type ArchiveInput struct {
 	Version    string
 	Platform   string
+	Mode       Mode
 	Executable []byte
 	Documents  map[string][]byte
+	Provenance Provenance
 }
 
 // Verification identifies the archive version and platform the verifier must
 // establish without extracting any archive member to disk.
 type Verification struct {
-	Version  string
-	Platform string
+	Version    string
+	Platform   string
+	Mode       Mode
+	Provenance Provenance
+}
+
+type Provenance struct {
+	SourceRevision string
+	Toolchain      string
+	RuntimeVersion string
 }
 
 // LoadDocuments reads the exact private-candidate documentation set from a
 // CLI source directory. A final customer license is intentionally not an
 // accepted input until the seller completes the owner-controlled legal gate.
-func LoadDocuments(source string) (map[string][]byte, error) {
-	documents := make(map[string][]byte, len(requiredDocuments))
-	for _, name := range requiredDocuments {
+func LoadDocuments(source string, mode Mode, acceptedLicensePath string) (map[string][]byte, error) {
+	mode, err := normalizeMode(mode)
+	if err != nil {
+		return nil, err
+	}
+	documents := make(map[string][]byte, len(requiredDocuments(mode)))
+	for _, name := range baseDocuments {
 		contents, err := os.ReadFile(filepath.Join(source, filepath.FromSlash(name)))
 		if err != nil {
 			return nil, fmt.Errorf("read private candidate document %q: %w", name, err)
@@ -58,15 +85,41 @@ func LoadDocuments(source string) (map[string][]byte, error) {
 		}
 		documents[name] = contents
 	}
+	if mode == PrivateCandidate {
+		if acceptedLicensePath != "" {
+			return nil, fmt.Errorf("private candidate must not accept a final license path")
+		}
+		contents, err := os.ReadFile(filepath.Join(source, "CUSTOMER_LICENSE_DRAFT.md"))
+		if err != nil || len(contents) == 0 {
+			return nil, fmt.Errorf("read private candidate draft license: %w", err)
+		}
+		documents["CUSTOMER_LICENSE_DRAFT.md"] = contents
+		return documents, nil
+	}
+	if acceptedLicensePath == "" || filepath.Base(acceptedLicensePath) == "CUSTOMER_LICENSE_DRAFT.md" {
+		return nil, fmt.Errorf("customer release requires an explicit accepted license path")
+	}
+	contents, err := os.ReadFile(acceptedLicensePath)
+	if err != nil || len(contents) == 0 || strings.Contains(strings.ToUpper(string(contents)), "DRAFT") {
+		return nil, fmt.Errorf("accepted license is missing, empty, or marked as a draft")
+	}
+	documents["LICENSE.txt"] = contents
 	return documents, nil
 }
 
 type manifest struct {
-	FormatVersion string `json:"format_version"`
-	ReleaseStatus string `json:"release_status"`
-	Version       string `json:"version"`
-	Platform      string `json:"platform"`
-	Executable    string `json:"executable"`
+	FormatVersion  string `json:"format_version"`
+	ReleaseStatus  string `json:"release_status"`
+	Version        string `json:"version"`
+	Platform       string `json:"platform"`
+	Executable     string `json:"executable"`
+	SourceRevision string `json:"source_revision"`
+	GoToolchain    string `json:"go_toolchain"`
+	BuildMode      string `json:"build_mode"`
+	CGOEnabled     string `json:"cgo_enabled"`
+	Trimpath       bool   `json:"trimpath"`
+	CommandPackage string `json:"command_package"`
+	RuntimeVersion string `json:"runtime_version"`
 }
 
 func archiveRoot(version, platform string) string {
@@ -77,15 +130,49 @@ func candidateFilename(version, platform string) string {
 	return fmt.Sprintf("audio-preflight-cli-private-candidate_%s_%s.tar.gz", version, platform)
 }
 
+func releaseFilename(version, platform string, mode Mode) string {
+	if mode == CustomerRelease {
+		return fmt.Sprintf("audio-preflight-cli-customer-release_%s_%s.tar.gz", version, platform)
+	}
+	return candidateFilename(version, platform)
+}
+
 // CandidateFilename returns the required, deliberately non-public archive name.
 func CandidateFilename(version, platform string) string {
 	return candidateFilename(version, platform)
+}
+
+func ArchiveFilename(version, platform string, mode Mode) string {
+	return releaseFilename(version, platform, mode)
+}
+
+func requiredDocuments(mode Mode) []string {
+	docs := append([]string{}, baseDocuments...)
+	if mode == CustomerRelease {
+		return append(docs, "LICENSE.txt")
+	}
+	return append(docs, "CUSTOMER_LICENSE_DRAFT.md")
+}
+
+func normalizeMode(mode Mode) (Mode, error) {
+	if mode == "" {
+		return PrivateCandidate, nil
+	}
+	if mode != PrivateCandidate && mode != CustomerRelease {
+		return "", fmt.Errorf("invalid archive mode %q", mode)
+	}
+	return mode, nil
 }
 
 // BuildArchive writes a deterministic private candidate and refuses to replace
 // an existing output. Its gzip and tar timestamps, ownership, ordering, and
 // permissions are fixed so repeated builds from identical bytes are identical.
 func BuildArchive(output string, input ArchiveInput) error {
+	mode, err := normalizeMode(input.Mode)
+	if err != nil {
+		return err
+	}
+	input.Mode = mode
 	if err := validateInput(output, input); err != nil {
 		return err
 	}
@@ -94,11 +181,16 @@ func BuildArchive(output string, input ArchiveInput) error {
 		files[name] = contents
 	}
 	manifestBytes, err := json.MarshalIndent(manifest{
-		FormatVersion: "1",
-		ReleaseStatus: "private-candidate-only",
-		Version:       input.Version,
-		Platform:      input.Platform,
-		Executable:    executableName,
+		FormatVersion:  "1",
+		ReleaseStatus:  string(input.Mode),
+		Version:        input.Version,
+		Platform:       input.Platform,
+		Executable:     executableName,
+		SourceRevision: input.Provenance.SourceRevision,
+		GoToolchain:    input.Provenance.Toolchain,
+		BuildMode:      "exe", CGOEnabled: "0", Trimpath: true,
+		CommandPackage: "github.com/gabrielgarciaalonso/audio-delivery-preflight-cli/cmd/audio-preflight",
+		RuntimeVersion: input.Provenance.RuntimeVersion,
 	}, "", "  ")
 	if err != nil {
 		return fmt.Errorf("encode release manifest: %w", err)
@@ -153,19 +245,27 @@ func BuildArchive(output string, input ArchiveInput) error {
 }
 
 func validateInput(output string, input ArchiveInput) error {
+	mode, err := normalizeMode(input.Mode)
+	if err != nil {
+		return err
+	}
+	input.Mode = mode
 	if !validVersion(input.Version) || !validPlatform(input.Platform) {
 		return fmt.Errorf("invalid candidate version or platform")
 	}
-	if filepath.Base(output) != candidateFilename(input.Version, input.Platform) {
-		return fmt.Errorf("private candidate archive must be named %q", candidateFilename(input.Version, input.Platform))
+	if filepath.Base(output) != releaseFilename(input.Version, input.Platform, mode) {
+		return fmt.Errorf("archive must be named %q", releaseFilename(input.Version, input.Platform, mode))
 	}
 	if len(input.Executable) == 0 {
 		return fmt.Errorf("candidate executable is empty")
 	}
-	if len(input.Documents) != len(requiredDocuments) {
+	if input.Provenance.SourceRevision == "" || input.Provenance.Toolchain != version.Toolchain || input.Provenance.RuntimeVersion == "" {
+		return fmt.Errorf("release provenance is incomplete")
+	}
+	if len(input.Documents) != len(requiredDocuments(mode)) {
 		return fmt.Errorf("candidate document set is incomplete or contains an unexpected file")
 	}
-	for _, name := range requiredDocuments {
+	for _, name := range requiredDocuments(mode) {
 		contents, ok := input.Documents[name]
 		if !ok || len(contents) == 0 {
 			return fmt.Errorf("candidate document %q is missing or empty", name)
@@ -228,26 +328,35 @@ func checksumFile(files map[string][]byte) []byte {
 // creates paths from the archive, and rejects unsafe member types before any
 // caller could extract them.
 func VerifyArchive(archive string, expected Verification) error {
-	if !validVersion(expected.Version) || !validPlatform(expected.Platform) {
+	mode, err := normalizeMode(expected.Mode)
+	if err != nil || !validVersion(expected.Version) || !validPlatform(expected.Platform) {
 		return fmt.Errorf("invalid expected version or platform")
 	}
-	if filepath.Base(archive) != candidateFilename(expected.Version, expected.Platform) {
-		return fmt.Errorf("archive filename does not identify the expected private candidate")
+	expected.Mode = mode
+	if expected.Provenance.SourceRevision == "" || expected.Provenance.Toolchain != version.Toolchain || expected.Provenance.RuntimeVersion == "" {
+		return fmt.Errorf("invalid expected provenance")
+	}
+	if filepath.Base(archive) != releaseFilename(expected.Version, expected.Platform, mode) {
+		return fmt.Errorf("archive filename does not identify the expected release mode")
 	}
 	file, err := os.Open(archive)
 	if err != nil {
 		return fmt.Errorf("open archive: %w", err)
 	}
 	defer file.Close()
-	gzipReader, err := gzip.NewReader(file)
+	buffered := bufio.NewReader(file)
+	gzipReader, err := gzip.NewReader(buffered)
 	if err != nil {
 		return fmt.Errorf("open gzip archive: %w", err)
 	}
-	defer gzipReader.Close()
+	gzipReader.Multistream(false)
 
 	root := archiveRoot(expected.Version, expected.Platform)
 	seen := make(map[string]fileRecord)
 	seenRoot := false
+	expectedNames := expectedMemberNames(mode)
+	memberCount := 0
+	var expandedSize int64
 	tarReader := tar.NewReader(gzipReader)
 	for {
 		header, err := tarReader.Next()
@@ -257,12 +366,16 @@ func VerifyArchive(archive string, expected Verification) error {
 		if err != nil {
 			return fmt.Errorf("read archive: %w", err)
 		}
+		memberCount++
+		if memberCount > len(expectedNames)+1 {
+			return fmt.Errorf("archive has too many members")
+		}
 		name, err := safeMemberName(header.Name, root)
 		if err != nil {
 			return err
 		}
 		if header.Typeflag == tar.TypeDir {
-			if name != "" || header.Mode&0o777 != 0o755 || seenRoot {
+			if name != "" || seenRoot || !canonicalHeader(header, 0o755) {
 				return fmt.Errorf("invalid archive root directory")
 			}
 			seenRoot = true
@@ -277,6 +390,16 @@ func VerifyArchive(archive string, expected Verification) error {
 		if _, duplicate := seen[name]; duplicate {
 			return fmt.Errorf("archive has duplicate member %q", name)
 		}
+		if _, allowed := expectedNames[name]; !allowed {
+			return fmt.Errorf("archive has unexpected member %q", name)
+		}
+		if !canonicalHeader(header, expectedMode(name)) {
+			return fmt.Errorf("archive member %q has non-canonical metadata", name)
+		}
+		if header.Size < 0 || header.Size > memberLimit(name) || expandedSize > maxExpandedSize-header.Size {
+			return fmt.Errorf("archive member %q exceeds expanded-size limit", name)
+		}
+		expandedSize += header.Size
 		if err := allowedMode(name, header.Mode); err != nil {
 			return err
 		}
@@ -289,13 +412,19 @@ func VerifyArchive(archive string, expected Verification) error {
 	if !seenRoot {
 		return fmt.Errorf("archive root directory is missing")
 	}
-	if err := validateRequiredFiles(seen); err != nil {
+	if err := gzipReader.Close(); err != nil {
+		return fmt.Errorf("close gzip archive: %w", err)
+	}
+	if _, err := buffered.ReadByte(); err != io.EOF {
+		return fmt.Errorf("archive has trailing gzip or tar payload")
+	}
+	if err := validateRequiredFiles(seen, mode); err != nil {
 		return err
 	}
 	if err := validateManifest(seen["RELEASE_MANIFEST.json"].contents, expected); err != nil {
 		return err
 	}
-	if err := validateExecutablePlatform(seen[executableName].prefix, expected.Platform); err != nil {
+	if err := validateExecutable(seen[executableName].contents, expected.Platform, expected.Version); err != nil {
 		return err
 	}
 	if err := validateChecksums(seen, seen["SHA256SUMS.txt"].contents); err != nil {
@@ -330,29 +459,64 @@ func safeMemberName(member, root string) (string, error) {
 
 func allowedMode(name string, mode int64) error {
 	if name == executableName {
-		if mode&0o777 != 0o755 {
+		if mode != 0o755 {
 			return fmt.Errorf("executable %q must have mode 0755", name)
 		}
 		return nil
 	}
-	if mode&0o777 != 0o644 {
+	if mode != 0o644 {
 		return fmt.Errorf("archive file %q must have mode 0644", name)
 	}
 	return nil
 }
 
+const (
+	maxExecutableSize = 64 << 20
+	maxDocumentSize   = 2 << 20
+	maxControlSize    = 1 << 20
+	maxExpandedSize   = 72 << 20
+)
+
+func expectedMemberNames(mode Mode) map[string]struct{} {
+	names := map[string]struct{}{executableName: {}, "RELEASE_MANIFEST.json": {}, "SHA256SUMS.txt": {}}
+	for _, name := range requiredDocuments(mode) {
+		names[name] = struct{}{}
+	}
+	return names
+}
+
+func expectedMode(name string) int64 {
+	if name == executableName {
+		return 0o755
+	}
+	return 0o644
+}
+
+func memberLimit(name string) int64 {
+	if name == executableName {
+		return maxExecutableSize
+	}
+	if name == "RELEASE_MANIFEST.json" || name == "SHA256SUMS.txt" {
+		return maxControlSize
+	}
+	return maxDocumentSize
+}
+
+func canonicalHeader(header *tar.Header, wantMode int64) bool {
+	epoch := time.Unix(0, 0).UTC()
+	return header.Mode == wantMode && header.Uid == 0 && header.Gid == 0 && header.Uname == "" && header.Gname == "" && header.ModTime.Equal(epoch) && header.AccessTime.IsZero() && header.ChangeTime.IsZero() && header.Format == tar.FormatUSTAR && len(header.PAXRecords) == 0 && len(header.Xattrs) == 0
+}
+
 func readAndHash(reader io.Reader, size int64, name string) (string, []byte, []byte, error) {
-	const maxMemberSize = 512 << 20
-	const maxControlSize = 1 << 20
-	if size < 0 || size > maxMemberSize {
+	if size < 0 || size > memberLimit(name) {
 		return "", nil, nil, fmt.Errorf("archive member %q has an unsafe size", name)
 	}
 	hash := sha256.New()
 	prefix := &prefixCapture{limit: 32}
 	stream := io.TeeReader(reader, io.MultiWriter(hash, prefix))
 	var contents []byte
-	if name == "RELEASE_MANIFEST.json" || name == "SHA256SUMS.txt" {
-		if size > maxControlSize {
+	if name == executableName || name == "RELEASE_MANIFEST.json" || name == "SHA256SUMS.txt" {
+		if name != executableName && size > maxControlSize {
 			return "", nil, nil, fmt.Errorf("archive control file %q is too large", name)
 		}
 		contents = make([]byte, size)
@@ -381,8 +545,8 @@ func (capture *prefixCapture) Write(value []byte) (int, error) {
 	return len(value), nil
 }
 
-func validateRequiredFiles(seen map[string]fileRecord) error {
-	required := append([]string{executableName, "RELEASE_MANIFEST.json", "SHA256SUMS.txt"}, requiredDocuments...)
+func validateRequiredFiles(seen map[string]fileRecord, mode Mode) error {
+	required := append([]string{executableName, "RELEASE_MANIFEST.json", "SHA256SUMS.txt"}, requiredDocuments(mode)...)
 	if len(seen) != len(required) {
 		return fmt.Errorf("archive has missing or unexpected files")
 	}
@@ -399,28 +563,67 @@ func validateManifest(contents []byte, expected Verification) error {
 	if err := json.Unmarshal(contents, &got); err != nil {
 		return fmt.Errorf("read release manifest: %w", err)
 	}
-	if got.FormatVersion != "1" || got.ReleaseStatus != "private-candidate-only" || got.Version != expected.Version || got.Platform != expected.Platform || got.Executable != executableName {
+	if got.FormatVersion != "1" || got.ReleaseStatus != string(expected.Mode) || got.Version != expected.Version || got.Platform != expected.Platform || got.Executable != executableName || got.SourceRevision != expected.Provenance.SourceRevision || got.GoToolchain != expected.Provenance.Toolchain || got.BuildMode != "exe" || got.CGOEnabled != "0" || !got.Trimpath || got.CommandPackage != "github.com/gabrielgarciaalonso/audio-delivery-preflight-cli/cmd/audio-preflight" || got.RuntimeVersion != expected.Provenance.RuntimeVersion {
 		return fmt.Errorf("release manifest does not match the expected private candidate")
 	}
 	return nil
 }
 
-func validateExecutablePlatform(prefix []byte, platform string) error {
+func validateExecutable(executable []byte, platform, wantVersion string) error {
+	if len(executable) == 0 {
+		return fmt.Errorf("archive executable is empty")
+	}
+	reader := bytes.NewReader(executable)
 	switch platform {
 	case "darwin-arm64":
-		if len(prefix) >= 8 && string(prefix[:8]) == string([]byte{0xcf, 0xfa, 0xed, 0xfe, 0x0c, 0x00, 0x00, 0x01}) {
-			return nil
+		file, err := macho.NewFile(reader)
+		if err != nil {
+			return fmt.Errorf("parse macOS executable: %w", err)
+		}
+		defer file.Close()
+		if file.Type != macho.TypeExec || file.Cpu != macho.CpuArm64 {
+			return fmt.Errorf("macOS executable has unexpected type or architecture")
 		}
 	case "darwin-amd64":
-		if len(prefix) >= 8 && string(prefix[:8]) == string([]byte{0xcf, 0xfa, 0xed, 0xfe, 0x07, 0x00, 0x00, 0x01}) {
-			return nil
+		file, err := macho.NewFile(reader)
+		if err != nil {
+			return fmt.Errorf("parse macOS executable: %w", err)
+		}
+		defer file.Close()
+		if file.Type != macho.TypeExec || file.Cpu != macho.CpuAmd64 {
+			return fmt.Errorf("macOS executable has unexpected type or architecture")
 		}
 	case "linux-amd64":
-		if len(prefix) >= 20 && string(prefix[:4]) == "\x7fELF" && prefix[4] == 2 && prefix[5] == 1 && prefix[18] == 0x3e && prefix[19] == 0 {
-			return nil
+		file, err := elf.NewFile(reader)
+		if err != nil {
+			return fmt.Errorf("parse Linux executable: %w", err)
 		}
+		defer file.Close()
+		if (file.Type != elf.ET_EXEC && file.Type != elf.ET_DYN) || file.Machine != elf.EM_X86_64 {
+			return fmt.Errorf("Linux executable has unexpected type or architecture")
+		}
+	default:
+		return fmt.Errorf("unsupported executable platform %q", platform)
 	}
-	return fmt.Errorf("executable does not match declared platform %q", platform)
+	info, err := buildinfo.Read(bytes.NewReader(executable))
+	if err != nil {
+		return fmt.Errorf("read Go build metadata: %w", err)
+	}
+	if info.GoVersion != version.Toolchain || info.Path != "github.com/gabrielgarciaalonso/audio-delivery-preflight-cli/cmd/audio-preflight" {
+		return fmt.Errorf("Go build metadata does not identify the expected CLI")
+	}
+	settings := make(map[string]string, len(info.Settings))
+	for _, setting := range info.Settings {
+		settings[setting.Key] = setting.Value
+	}
+	goos, goarch, _ := strings.Cut(platform, "-")
+	if settings["GOOS"] != goos || settings["GOARCH"] != goarch || settings["CGO_ENABLED"] != "0" || settings["-buildmode"] != "exe" || settings["-trimpath"] != "true" {
+		return fmt.Errorf("Go build settings do not match the release contract")
+	}
+	if settings["-tags"] != "audio_preflight_v"+strings.ReplaceAll(wantVersion, ".", "_") {
+		return fmt.Errorf("Go build metadata does not bind executable version %q", wantVersion)
+	}
+	return nil
 }
 
 func validateChecksums(seen map[string]fileRecord, contents []byte) error {

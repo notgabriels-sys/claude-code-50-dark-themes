@@ -5,6 +5,19 @@ customer-ready release. The archive's own filename must contain
 `private-candidate` and the included license must remain
 `CUSTOMER_LICENSE_DRAFT.md`.
 
+Use the verifier with the recorded source revision and explicit mode:
+
+```sh
+./scripts/verify-archive.sh \
+  -archive audio-preflight-cli-private-candidate_1.0.0_darwin-arm64.tar.gz \
+  -platform darwin-arm64 \
+  -mode private-candidate \
+  -source-revision '<recorded-git-revision>'
+```
+
+`customer-release` mode is only for an archive created after the owner supplies
+an accepted license. This private candidate does not qualify.
+
 Before extracting, calculate the archive digest and compare it with the
 separately supplied `.sha256` file from the same controlled handoff:
 

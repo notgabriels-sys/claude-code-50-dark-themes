@@ -59,13 +59,20 @@ mkdir private-candidates
 ./scripts/package.sh -platform darwin-arm64 -output-dir private-candidates
 ./scripts/verify-archive.sh \
   -archive private-candidates/audio-preflight-cli-private-candidate_1.0.0_darwin-arm64.tar.gz \
-  -platform darwin-arm64
+  -platform darwin-arm64 \
+  -source-revision "$(git rev-parse HEAD)"
 ```
 
 The command refuses to overwrite either the archive or its sidecar SHA-256
 file. It compiles with `-trimpath`, disabled VCS stamping, a fixed linker build
 ID, fixed archive ownership/timestamps/modes/order, verifies the result without
 extracting it, and writes a sidecar archive digest.
+
+Verification requires the exact source revision recorded during packaging and
+defaults to `private-candidate` mode. A `customer-release` archive can be
+constructed only with `-mode customer-release -accepted-license
+<explicit-owner-accepted-path>`; the supplied file is copied as `LICENSE.txt`.
+The packager never supplies, accepts, or infers legal terms.
 
 Every generated archive is deliberately named **private candidate**. It
 contains this README, `PRIVACY.md`, `LIMITATIONS.md`, examples, checksum
