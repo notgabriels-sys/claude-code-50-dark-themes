@@ -6,6 +6,7 @@ public struct HTMLReportWriter: Sendable {
 
     public func html(for result: ScanResult) -> String {
         let escape = Self.escape
+        let selectedFolderName = ReportDisplayName.safeComponent(result.selectedFolderName) ?? "Selected folder"
         let requirements = result.preset.requirements.map { requirement in
             "<li><strong>\(escape(requirement.severity.rawValue.capitalized)):</strong> \(escape(requirement.description))</li>"
         }.joined()
@@ -28,7 +29,7 @@ public struct HTMLReportWriter: Sendable {
         <style>body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;line-height:1.5;margin:2rem;max-width:72rem;color:#1b1b1b}table{border-collapse:collapse;width:100%}th,td{border:1px solid #767676;padding:.5rem;text-align:left;vertical-align:top}.severity{font-weight:700}.error{border-left:4px solid #a12622;padding-left:1rem}.warning{border-left:4px solid #8a5a00;padding-left:1rem}.information,.pass{border-left:4px solid #245a8d;padding-left:1rem}footer{margin-top:2rem;border-top:1px solid #767676;padding-top:1rem}</style>
         </head>
         <body>
-        <header><h1>Audio Delivery Preflight Report</h1><p>Folder: \(escape(result.selectedFolderName))</p></header>
+        <header><h1>Audio Delivery Preflight Report</h1><p>Folder: \(escape(selectedFolderName))</p></header>
         <main>
         <section aria-labelledby="summary"><h2 id="summary">Summary</h2><table><tbody><tr><th scope="row">Overall status</th><td><strong>\(escape(statusText(result.overallStatus)))</strong></td></tr><tr><th scope="row">Preset</th><td>\(escape(result.preset.name))</td></tr><tr><th scope="row">Engine version</th><td>\(escape(result.engineVersion))</td></tr><tr><th scope="row">Scan started</th><td>\(escape(dateText(result.startedAt)))</td></tr><tr><th scope="row">Scan completed</th><td>\(escape(result.completedAt.map { dateText($0) } ?? "Not completed"))</td></tr></tbody></table></section>
         <section aria-labelledby="requirements"><h2 id="requirements">Resolved requirements</h2><ul>\(requirements)</ul></section>

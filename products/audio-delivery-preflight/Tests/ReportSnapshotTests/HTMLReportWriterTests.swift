@@ -23,4 +23,23 @@ final class HTMLReportWriterTests: XCTestCase {
     func testHTMLEscapesAllFiveSpecialCharacters() {
         XCTAssertEqual(HTMLReportWriter.escape("<&>\"'"), "&lt;&amp;&gt;&quot;&#39;")
     }
+
+    func testHTMLSubstitutesUnsafeSelectedFolderDisplayComponentsWithoutLeakingThem() throws {
+        let unsafeNames = [
+            "/Users/example/html-secret",
+            "D:\\Studio\\html-secret",
+            "D:html-secret-drive",
+            "nested/html-secret",
+            "nested\\html-secret",
+            "../html-secret-traversal",
+            "..\\html-secret-traversal",
+        ]
+
+        for unsafeName in unsafeNames {
+            let html = HTMLReportWriter().html(for: try ReportFixture.result(selectedFolderName: unsafeName))
+            XCTAssertTrue(html.contains("Folder: Selected folder"), unsafeName)
+            XCTAssertFalse(html.contains(unsafeName), "The HTML must not leak \(unsafeName)")
+            XCTAssertFalse(html.contains(HTMLReportWriter.escape(unsafeName)), "The HTML must not leak an escaped form")
+        }
+    }
 }
