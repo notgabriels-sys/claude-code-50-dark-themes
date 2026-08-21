@@ -88,21 +88,31 @@ func runScan(args []string, stdout, stderr io.Writer) int {
 		printUsage(stderr)
 		return exitInvalidConfiguration
 	}
-	if err := scanRootCanStart(options.root); err != nil {
-		fmt.Fprintf(stderr, "scan could not start: %v\n", err)
-		return exitScanStartFailure
-	}
 	preset, err := preflight.PresetByID(options.presetID)
 	if err != nil {
 		fmt.Fprintln(stderr, err)
 		return exitInvalidConfiguration
 	}
+	prepared, err := preflight.PrepareReportDestinations(options.root, options.destinations)
+	if err != nil {
+		fmt.Fprintf(stderr, "invalid report destination: %v\n", err)
+		return exitInvalidConfiguration
+	}
+	defer prepared.Close()
+	if err := scanRootCanStart(options.root); err != nil {
+		fmt.Fprintf(stderr, "scan could not start: %v\n", err)
+		return exitScanStartFailure
+	}
 	report, err := preflight.AnalyzeDirectory(options.root, preset)
 	if err != nil {
-		fmt.Fprintf(stderr, "scan failed: %v\n", err)
-		return exitInternalFailure
+		fmt.Fprintf(stderr, "scan could not complete reliably: %v\n", err)
+		return exitScanStartFailure
 	}
-	if err := preflight.WriteReports(report, options.destinations); err != nil {
+	if err := prepared.Write(report); err != nil {
+		if preflight.IsReportDestinationConfigurationError(err) {
+			fmt.Fprintf(stderr, "invalid report destination: %v\n", err)
+			return exitInvalidConfiguration
+		}
 		fmt.Fprintf(stderr, "report export failed: %v\n", err)
 		return exitInternalFailure
 	}

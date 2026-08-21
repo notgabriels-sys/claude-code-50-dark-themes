@@ -25,28 +25,30 @@ const (
 	maxMetadataBytes   = 1 << 20
 )
 
-func inspectMedia(f mediaSource, portablePath string) *MediaEvidence {
+func inspectMedia(f mediaSource, portablePath string, sourceSize int64) *MediaEvidence {
 	ext := strings.ToLower(filepath.Ext(portablePath))
+	var evidence *MediaEvidence
 	switch ext {
 	case ".wav", ".rf64":
-		return inspectWAV(f)
+		evidence = inspectWAV(f)
 	case ".aif", ".aiff", ".aifc":
-		return inspectAIFF(f)
+		evidence = inspectAIFF(f)
 	case ".flac":
-		return inspectFLAC(f)
+		evidence = inspectFLAC(f)
 	case ".mp3":
-		return inspectMP3(f)
+		evidence = inspectMP3(f)
 	case ".m4a", ".mp4":
-		return inspectMP4(f)
+		evidence = inspectMP4(f)
 	case ".png", ".jpg", ".jpeg", ".gif":
-		return inspectStandardImage(f, ext)
+		evidence = inspectStandardImage(f, ext)
 	case ".tif", ".tiff":
-		return inspectTIFF(f)
+		evidence = inspectTIFF(f)
 	case ".heic", ".heif", ".webp":
-		return &MediaEvidence{Format: strings.TrimPrefix(ext, "."), Unavailable: "inspection is unsupported in version 1.0"}
+		evidence = &MediaEvidence{Format: strings.TrimPrefix(ext, "."), Unavailable: "inspection is unsupported in version 1.0"}
 	default:
 		return nil
 	}
+	return applyReadabilityEvidence(evidence, f, ext, sourceSize)
 }
 
 func inspectStandardImage(f mediaSource, ext string) *MediaEvidence {
@@ -77,7 +79,156 @@ func inspectStandardImage(f mediaSource, ext string) *MediaEvidence {
 }
 
 func unavailableMedia(format, reason string) *MediaEvidence {
-	return &MediaEvidence{Format: strings.ToUpper(strings.TrimPrefix(format, ".")), Unavailable: reason}
+	return &MediaEvidence{Format: strings.ToUpper(strings.TrimPrefix(format, ".")), Readable: Measurement[bool]{Available: true}, Unavailable: reason}
+}
+
+// applyReadabilityEvidence separates bounded header/property extraction from a
+// positive payload or decode check. A required role must consume Readable, not
+// merely Supported, because a parseable header can be truncated.
+func applyReadabilityEvidence(evidence *MediaEvidence, f mediaSource, ext string, sourceSize int64) *MediaEvidence {
+	if evidence == nil {
+		return nil
+	}
+	readable, reason := false, evidence.Unavailable
+	if evidence.Supported {
+		switch ext {
+		case ".wav", ".rf64":
+			readable, reason = wavPayloadReadable(f, sourceSize)
+		case ".aif", ".aiff", ".aifc":
+			readable, reason = aiffPayloadReadable(f, sourceSize)
+		case ".flac":
+			readable, reason = flacPayloadReadable(f, sourceSize)
+		case ".mp3":
+			readable, reason = true, ""
+		case ".m4a", ".mp4":
+			readable, reason = mp4PayloadReadable(f, sourceSize)
+		case ".png", ".jpg", ".jpeg", ".gif":
+			readable, reason = imagePayloadReadable(f, sourceSize)
+		case ".tif", ".tiff":
+			reason = "full TIFF payload decoding is unavailable in version 1.0"
+		default:
+			reason = "inspection is unsupported in version 1.0"
+		}
+	}
+	evidence.Readable = Measurement[bool]{Available: true, Value: readable}
+	if !readable && evidence.Unavailable == "" {
+		evidence.Unavailable = reason
+	}
+	return evidence
+}
+
+func imagePayloadReadable(f mediaSource, sourceSize int64) (bool, string) {
+	if sourceSize > maxInspectionBytes {
+		return false, "full image payload exceeds the bounded readability inspection limit"
+	}
+	if _, err := f.Seek(0, io.SeekStart); err != nil {
+		return false, "cannot seek media"
+	}
+	if _, _, err := image.Decode(io.LimitReader(f, maxInspectionBytes)); err != nil {
+		return false, "image payload cannot be decoded"
+	}
+	return true, ""
+}
+
+func wavPayloadReadable(f mediaSource, sourceSize int64) (bool, string) {
+	data, err := readBoundedMedia(f)
+	if err != nil || len(data) < 12 || string(data[8:12]) != "WAVE" {
+		return false, "WAV payload is unavailable"
+	}
+	for offset := 12; offset+8 <= len(data); {
+		size := uint64(binary.LittleEndian.Uint32(data[offset+4 : offset+8]))
+		payloadOffset := uint64(offset + 8)
+		if string(data[offset:offset+4]) == "data" {
+			if size == 0 || size == math.MaxUint32 {
+				return false, "WAV data payload is empty or unavailable"
+			}
+			if payloadOffset+size > uint64(sourceSize) {
+				return false, "WAV data payload is truncated"
+			}
+			return true, ""
+		}
+		next := payloadOffset + size + size%2
+		if next > uint64(len(data)) {
+			return false, "WAV metadata is truncated"
+		}
+		offset = int(next)
+	}
+	return false, "WAV data chunk is unavailable"
+}
+
+func aiffPayloadReadable(f mediaSource, sourceSize int64) (bool, string) {
+	data, err := readBoundedMedia(f)
+	if err != nil || len(data) < 12 || string(data[:4]) != "FORM" {
+		return false, "AIFF payload is unavailable"
+	}
+	for offset := 12; offset+8 <= len(data); {
+		size := uint64(binary.BigEndian.Uint32(data[offset+4 : offset+8]))
+		payloadOffset := uint64(offset + 8)
+		if string(data[offset:offset+4]) == "SSND" {
+			if size <= 8 || payloadOffset+size > uint64(sourceSize) {
+				return false, "AIFF sound payload is missing or truncated"
+			}
+			return true, ""
+		}
+		next := payloadOffset + size + size%2
+		if next > uint64(len(data)) {
+			return false, "AIFF metadata is truncated"
+		}
+		offset = int(next)
+	}
+	return false, "AIFF sound chunk is unavailable"
+}
+
+func flacPayloadReadable(f mediaSource, sourceSize int64) (bool, string) {
+	data, err := readBoundedMedia(f)
+	if err != nil || len(data) < 8 || string(data[:4]) != "fLaC" {
+		return false, "FLAC payload is unavailable"
+	}
+	offset := 4
+	for {
+		if offset+4 > len(data) {
+			return false, "FLAC metadata is truncated"
+		}
+		last := data[offset]&0x80 != 0
+		size := int(data[offset+1])<<16 | int(data[offset+2])<<8 | int(data[offset+3])
+		offset += 4
+		if size < 0 || offset+size > len(data) {
+			return false, "FLAC metadata is truncated"
+		}
+		offset += size
+		if last {
+			break
+		}
+	}
+	if int64(offset+2) > sourceSize || offset+2 > len(data) || data[offset] != 0xff || data[offset+1]&0xfe != 0xf8 {
+		return false, "FLAC audio frame is unavailable"
+	}
+	return true, ""
+}
+
+func mp4PayloadReadable(f mediaSource, sourceSize int64) (bool, string) {
+	data, err := readBoundedMedia(f)
+	if err != nil || sourceSize > maxInspectionBytes {
+		return false, "MP4 payload cannot be fully established within the bounded inspection limit"
+	}
+	for offset := 0; offset+8 <= len(data); {
+		size := int(binary.BigEndian.Uint32(data[offset : offset+4]))
+		if size < 8 || offset+size > len(data) {
+			return false, "MP4 atoms are truncated"
+		}
+		if string(data[offset+4:offset+8]) == "mdat" && size > 8 {
+			return true, ""
+		}
+		offset += size
+	}
+	return false, "MP4 media payload is unavailable"
+}
+
+func readBoundedMedia(f mediaSource) ([]byte, error) {
+	if _, err := f.Seek(0, io.SeekStart); err != nil {
+		return nil, err
+	}
+	return io.ReadAll(io.LimitReader(f, maxInspectionBytes))
 }
 
 func colorModelName(model color.Model) string {

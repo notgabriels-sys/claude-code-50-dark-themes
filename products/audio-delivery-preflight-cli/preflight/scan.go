@@ -167,7 +167,7 @@ func generalFindings(inventory Inventory) []Finding {
 			findings = append(findings, finding("source.special-file", SeverityWarning, "Special filesystem entry was not read", []string{entry.Path}, "Regular files and directories only.", "Remove or replace this special entry before delivery."))
 		}
 		if entry.Kind == EntryFile && entry.ServiceClass == ServiceAudio {
-			if entry.Media == nil || !entry.Media.Supported {
+			if !mediaReadable(entry.Media) {
 				findings = append(findings, finding("audio.unreadable", SeverityWarning, "Audio could not be inspected", []string{entry.Path}, "A readable audio container with evidence appropriate to its format.", "Re-export or verify this audio file with a trusted tool."))
 				continue
 			}
@@ -190,26 +190,18 @@ func generalFindings(inventory Inventory) []Finding {
 }
 
 func stereoPremasterFindings(inventory Inventory) ([]RoleAssignment, []Finding) {
-	candidates := regularByClass(inventory.Entries, ServiceAudio)
+	candidates := filterEntries(inventory.Entries, isStereoPremasterCandidate)
 	if len(candidates) == 0 {
 		return nil, []Finding{missingRole("stereo-premaster", "readable lossless stereo premaster")}
 	}
 	accepted := make([]Entry, 0, len(candidates))
 	findings := make([]Finding, 0)
 	for _, entry := range candidates {
-		if entry.Media == nil || !entry.Media.Supported || !entry.Media.Encoding.Available || !entry.Media.Channels.Available {
-			findings = append(findings, roleFinding("role.unreadable.stereo-premaster", SeverityError, "Premaster does not provide required readable evidence", entry.Path, "Readable PCM or FLAC audio with an inspected channel count.", "Re-export or replace this file with a readable lossless stereo premaster."))
-			continue
+		candidateFindings, valid := losslessRoleFindings(entry, "stereo-premaster", true)
+		findings = append(findings, candidateFindings...)
+		if valid {
+			accepted = append(accepted, entry)
 		}
-		if !isLossless(entry.Media) {
-			findings = append(findings, roleFinding("role.disallowed-encoding.stereo-premaster", SeverityError, "Premaster is not a supported lossless encoding", entry.Path, "PCM or FLAC encoding.", "Supply a PCM or FLAC premaster."))
-			continue
-		}
-		if entry.Media.Channels.Value != 2 {
-			findings = append(findings, roleFinding("role.channel-count.stereo-premaster", SeverityError, "Premaster is not stereo", entry.Path, "Exactly 2 inspected channels.", "Supply a stereo premaster."))
-			continue
-		}
-		accepted = append(accepted, entry)
 	}
 	if len(accepted) == 0 {
 		return nil, findings
@@ -229,31 +221,38 @@ func digitalReleaseFindings(inventory Inventory) ([]RoleAssignment, []Finding) {
 	})
 	if len(mainCandidates) == 0 {
 		findings = append(findings, missingRole("main-master", "lossless main master"))
-	} else if len(mainCandidates) > 1 {
-		findings = append(findings, finding("role.ambiguous.main-master", SeverityWarning, "Main-master role matches multiple files", entryPaths(mainCandidates), "Exactly one identifiable main master.", "Keep one main-master candidate or make the visible filenames unambiguous."))
-	} else if entry := mainCandidates[0]; entry.Media == nil || !entry.Media.Supported || !entry.Media.Encoding.Available {
-		findings = append(findings, roleFinding("role.unreadable.main-master", SeverityError, "Main master does not provide required readable evidence", entry.Path, "Readable PCM or FLAC audio.", "Re-export or replace the main master with a readable lossless file."))
-	} else if !isLossless(entry.Media) {
-		findings = append(findings, roleFinding("role.disallowed-encoding.main-master", SeverityError, "Main master is not a supported lossless encoding", entry.Path, "PCM or FLAC encoding.", "Supply a PCM or FLAC main master."))
 	} else {
-		assignments = append(assignments, RoleAssignment{ID: "main-master", Name: "lossless main master", Path: entry.Path, Evidence: losslessEvidence(entry)})
+		accepted := make([]Entry, 0, len(mainCandidates))
+		for _, entry := range mainCandidates {
+			candidateFindings, valid := losslessRoleFindings(entry, "main-master", false)
+			findings = append(findings, candidateFindings...)
+			if valid {
+				accepted = append(accepted, entry)
+			}
+		}
+		if len(mainCandidates) > 1 {
+			findings = append(findings, finding("role.ambiguous.main-master", SeverityWarning, "Main-master role matches multiple files", entryPaths(mainCandidates), "Exactly one identifiable main master.", "Keep one main-master candidate or make the visible filenames unambiguous."))
+		} else if len(accepted) == 1 {
+			assignments = append(assignments, RoleAssignment{ID: "main-master", Name: "lossless main master", Path: accepted[0].Path, Evidence: losslessEvidence(accepted[0])})
+		}
 	}
 
 	artwork := regularByClass(inventory.Entries, ServiceArtwork)
 	if len(artwork) == 0 {
 		findings = append(findings, missingRole("artwork", "artwork"))
-	} else if len(artwork) > 1 {
-		findings = append(findings, finding("role.ambiguous.artwork", SeverityWarning, "Artwork role matches multiple files", entryPaths(artwork), "Exactly one identifiable artwork file.", "Keep one artwork file or make the visible filenames unambiguous."))
-	} else if entry := artwork[0]; entry.Media == nil || !entry.Media.Supported || !entry.Media.Width.Available || !entry.Media.Height.Available {
-		findings = append(findings, roleFinding("role.unreadable.artwork", SeverityError, "Artwork does not provide required readable dimensions", entry.Path, "Readable artwork with inspected dimensions.", "Re-export or replace the artwork with a supported readable image."))
 	} else {
-		if entry.Media.Width.Value < 3000 || entry.Media.Height.Value < 3000 {
-			findings = append(findings, roleFinding("artwork.minimum-dimensions", SeverityError, "Artwork is below the minimum dimensions", entry.Path, "At least 3000 by 3000 pixels.", "Supply artwork at least 3000 by 3000 pixels."))
+		accepted := make([]Entry, 0, len(artwork))
+		for _, entry := range artwork {
+			candidateFindings, valid := artworkRoleFindings(entry)
+			findings = append(findings, candidateFindings...)
+			if valid {
+				accepted = append(accepted, entry)
+			}
 		}
-		if entry.Media.Width.Value != entry.Media.Height.Value {
-			findings = append(findings, roleFinding("artwork.square", SeverityError, "Artwork is not square", entry.Path, "Equal width and height.", "Supply square artwork."))
-		}
-		if entry.Media.Width.Value >= 3000 && entry.Media.Height.Value >= 3000 && entry.Media.Width.Value == entry.Media.Height.Value {
+		if len(artwork) > 1 {
+			findings = append(findings, finding("role.ambiguous.artwork", SeverityWarning, "Artwork role matches multiple files", entryPaths(artwork), "Exactly one identifiable artwork file.", "Keep one artwork file or make the visible filenames unambiguous."))
+		} else if len(accepted) == 1 {
+			entry := accepted[0]
 			assignments = append(assignments, RoleAssignment{ID: "artwork", Name: "artwork", Path: entry.Path, Evidence: fmt.Sprintf("%d by %d pixels", entry.Media.Width.Value, entry.Media.Height.Value)})
 		}
 	}
@@ -333,6 +332,49 @@ func isLossless(media *MediaEvidence) bool {
 	return media != nil && media.Encoding.Available && (media.Encoding.Value == "PCM" || media.Encoding.Value == "FLAC")
 }
 
+func mediaReadable(media *MediaEvidence) bool {
+	return media != nil && media.Supported && media.Readable.Available && media.Readable.Value
+}
+
+func isStereoPremasterCandidate(entry Entry) bool {
+	if entry.Kind != EntryFile || entry.ServiceClass != ServiceAudio {
+		return false
+	}
+	switch strings.ToLower(filepath.Ext(entry.Path)) {
+	case ".aif", ".aiff", ".flac", ".m4a", ".wav":
+		return true
+	default:
+		return false
+	}
+}
+
+func losslessRoleFindings(entry Entry, role string, stereo bool) ([]Finding, bool) {
+	if !mediaReadable(entry.Media) || !entry.Media.Encoding.Available {
+		return []Finding{roleFinding("role.unreadable."+role, SeverityError, "Required audio does not provide positive readable evidence", entry.Path, "Readable PCM or FLAC audio.", "Re-export or replace this file with a readable lossless file.")}, false
+	}
+	if !isLossless(entry.Media) {
+		return []Finding{roleFinding("role.disallowed-encoding."+role, SeverityError, "Required audio is not a supported lossless encoding", entry.Path, "PCM or FLAC encoding.", "Supply PCM or FLAC audio.")}, false
+	}
+	if stereo && (!entry.Media.Channels.Available || entry.Media.Channels.Value != 2) {
+		return []Finding{roleFinding("role.channel-count."+role, SeverityError, "Premaster is not stereo", entry.Path, "Exactly 2 inspected channels.", "Supply a stereo premaster.")}, false
+	}
+	return nil, true
+}
+
+func artworkRoleFindings(entry Entry) ([]Finding, bool) {
+	if !mediaReadable(entry.Media) || !entry.Media.Width.Available || !entry.Media.Height.Available {
+		return []Finding{roleFinding("role.unreadable.artwork", SeverityError, "Artwork does not provide positive readable dimension evidence", entry.Path, "Readable artwork with inspected dimensions.", "Re-export or replace the artwork with a supported readable image.")}, false
+	}
+	findings := make([]Finding, 0, 2)
+	if entry.Media.Width.Value < 3000 || entry.Media.Height.Value < 3000 {
+		findings = append(findings, roleFinding("artwork.minimum-dimensions", SeverityError, "Artwork is below the minimum dimensions", entry.Path, "At least 3000 by 3000 pixels.", "Supply artwork at least 3000 by 3000 pixels."))
+	}
+	if entry.Media.Width.Value != entry.Media.Height.Value {
+		findings = append(findings, roleFinding("artwork.square", SeverityError, "Artwork is not square", entry.Path, "Equal width and height.", "Supply square artwork."))
+	}
+	return findings, len(findings) == 0
+}
+
 func losslessEvidence(entry Entry) string {
 	if entry.Media == nil {
 		return ""
@@ -354,6 +396,9 @@ func expectedContainer(path string) (string, bool) {
 	case ".rf64":
 		return "RF64", true
 	case ".aif", ".aiff", ".aifc":
+		if strings.EqualFold(filepath.Ext(path), ".aifc") {
+			return "AIFC", true
+		}
 		return "AIFF", true
 	case ".flac":
 		return "FLAC", true
@@ -402,11 +447,24 @@ func audioConsistencyFindings(entries []Entry) []Finding {
 	if len(audio) < 2 {
 		return nil
 	}
-	return append(consistentMeasurementFinding(audio, "sample_rate", "Audio sample rates are inconsistent", func(entry Entry) (int, bool) {
-		return entry.Media.SampleRate.Value, entry.Media != nil && entry.Media.Supported && entry.Media.SampleRate.Available
-	}), consistentMeasurementFinding(audio, "channel_count", "Audio channel counts are inconsistent", func(entry Entry) (int, bool) {
-		return entry.Media.Channels.Value, entry.Media != nil && entry.Media.Supported && entry.Media.Channels.Available
+	findings := consistentMeasurementFinding(audio, "sample_rate", "Audio sample rates are inconsistent", func(entry Entry) (int, bool) {
+		return mediaMeasurement(entry, func(media *MediaEvidence) Measurement[int] { return media.SampleRate })
+	})
+	findings = append(findings, consistentMeasurementFinding(audio, "channel_count", "Audio channel counts are inconsistent", func(entry Entry) (int, bool) {
+		return mediaMeasurement(entry, func(media *MediaEvidence) Measurement[int] { return media.Channels })
 	})...)
+	findings = append(findings, consistentMeasurementFinding(audio, "bit_depth", "Audio bit depths are inconsistent", func(entry Entry) (int, bool) {
+		return mediaMeasurement(entry, func(media *MediaEvidence) Measurement[int] { return media.BitDepth })
+	})...)
+	return findings
+}
+
+func mediaMeasurement(entry Entry, measure func(*MediaEvidence) Measurement[int]) (int, bool) {
+	if !mediaReadable(entry.Media) {
+		return 0, false
+	}
+	value := measure(entry.Media)
+	return value.Value, value.Available
 }
 
 func consistentMeasurementFinding(entries []Entry, id, title string, value func(Entry) (int, bool)) []Finding {

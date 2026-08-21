@@ -61,6 +61,7 @@ type MediaEvidence struct {
 	AspectRatio Measurement[float64] `json:"aspect_ratio"`
 	HasAlpha    Measurement[bool]    `json:"has_alpha"`
 	ColorModel  Measurement[string]  `json:"color_model"`
+	Readable    Measurement[bool]    `json:"readable"`
 	Unavailable string               `json:"unavailable_reason,omitempty"`
 }
 
@@ -275,7 +276,7 @@ func inventoryDirectory(dir *os.File, expectedDirectory fileIdentity, prefix str
 			return fmt.Errorf("source changed while reading file %q", rel)
 		}
 		entry.SHA256 = snapshot.sha256
-		entry.Media = inspectMedia(bytes.NewReader(snapshot.media), rel)
+		entry.Media = inspectMedia(bytes.NewReader(snapshot.media), rel, entry.Size)
 		hashes[entry.SHA256] = append(hashes[entry.SHA256], rel)
 		*entries = append(*entries, entry)
 	}

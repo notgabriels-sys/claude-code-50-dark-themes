@@ -23,7 +23,7 @@ Built-in presets are:
 
 Every report contains root-relative inventory paths only. The JSON report declares `schema_version: "1.0"`; its field names and finding identifiers are stable within this major schema version. The HTML report is self-contained, uses semantic headings and tables, and prints text severity labels. The checksum manifest is a deterministic, newline-terminated list of SHA-256 digests and regular-file paths in portable path order.
 
-Report destinations must be explicit, distinct, and previously absent. Existing files are rejected without replacement. On macOS and Linux, every existing destination-parent component is opened without following symbolic links. The CLI does not create destination directories.
+Report destinations must be explicit, distinct, previously absent, and **outside the selected source folder**. Invalid preset and report-destination configuration is rejected before the CLI attempts to open the selected folder. Existing files are rejected without replacement. On macOS and Linux, every existing destination-parent component is opened once without following symbolic links; those held directory handles are used for the final write. Multi-report export is transactional: it either publishes every requested report or removes every artifact it created. The CLI does not create destination directories.
 
 ## Exit codes
 
@@ -33,12 +33,12 @@ Report destinations must be explicit, distinct, and previously absent. Existing 
 | `1` | Complete scan with warnings and no errors. |
 | `2` | Complete scan with one or more requirements not met. |
 | `3` | Invalid command or configuration. |
-| `4` | Scan could not start. |
-| `5` | Internal failure, including a requested report-export failure. |
+| `4` | The selected-tree scan could not start or could not complete reliably, including root access and source-stability failures. |
+| `5` | Unexpected internal failure, including a non-configuration report write, sync, or finalization failure. |
 
 ## Evidence limits
 
-The CLI uses bounded, built-in parsers for WAV/RF64, AIFF/AIFC, FLAC, MP3, M4A/MP4, PNG, JPEG, GIF, and TIFF. It only reports a property when the parser provides evidence for that property. HEIC, HEIF, and WebP are inventoried but inspection remains unsupported in this edition. Loudness, true peak, phase, tonal balance, conversion, metadata editing, automatic renaming, cloud history, accounts, and AI sonic advice are deliberately out of scope.
+The CLI uses bounded, built-in parsers for WAV/RF64, AIFF/AIFC, FLAC, MP3, M4A/MP4, PNG, JPEG, GIF, and TIFF. It only reports a property when the parser provides evidence for that property. Required audio and artwork roles also require positive readable-payload or full-decode evidence; a parseable header alone never satisfies a required role. TIFF full-payload decoding remains unavailable in this edition and therefore cannot satisfy required artwork. HEIC, HEIF, and WebP are inventoried but inspection remains unsupported. Loudness, true peak, phase, tonal balance, conversion, metadata editing, automatic renaming, cloud history, accounts, and AI sonic advice are deliberately out of scope.
 
 ## Build and test
 

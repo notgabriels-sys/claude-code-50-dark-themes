@@ -74,8 +74,8 @@ func TestRunExportsOnlyNewDistinctDestinations(t *testing.T) {
 			t.Fatalf("export %q = %q, %v", path, contents, err)
 		}
 	}
-	if code := run([]string{"scan", root, "--report-json", jsonPath}, &stdout, &stderr); code != exitInternalFailure {
-		t.Fatalf("overwrite attempt exit = %d, want %d", code, exitInternalFailure)
+	if code := run([]string{"scan", root, "--report-json", jsonPath}, &stdout, &stderr); code != exitInvalidConfiguration {
+		t.Fatalf("overwrite attempt exit = %d, want %d", code, exitInvalidConfiguration)
 	}
 }
 
@@ -86,6 +86,48 @@ func TestRunVersionAndCustomImportAreExplicit(t *testing.T) {
 	}
 	if code := run([]string{"scan", t.TempDir(), "--preset-file", "custom.json"}, &stdout, &stderr); code != exitInvalidConfiguration {
 		t.Fatalf("custom import exit = %d, want %d", code, exitInvalidConfiguration)
+	}
+}
+
+func TestRunValidatesConfigurationBeforeRootAccess(t *testing.T) {
+	missing := filepath.Join(t.TempDir(), "missing")
+	existing := filepath.Join(t.TempDir(), "existing.json")
+	if err := os.WriteFile(existing, []byte("keep"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cases := []struct {
+		name string
+		args []string
+	}{
+		{"unknown preset wins over missing root", []string{"scan", missing, "--preset", "does-not-exist"}},
+		{"existing destination is configuration", []string{"scan", missing, "--report-json", existing}},
+		{"source-tree destination is configuration", []string{"scan", missing, "--report-json", filepath.Join(missing, "report.json")}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var stdout, stderr bytes.Buffer
+			if got := run(tc.args, &stdout, &stderr); got != exitInvalidConfiguration {
+				t.Fatalf("run(%q) = %d, want invalid configuration; stderr=%q", tc.args, got, stderr.String())
+			}
+		})
+	}
+}
+
+func TestRunMapsUnreadableExistingRootToScanStartFailure(t *testing.T) {
+	root, err := os.MkdirTemp("/private/tmp", "audio-preflight-unreadable-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		_ = os.Chmod(root, 0o700)
+		_ = os.RemoveAll(root)
+	})
+	if err := os.Chmod(root, 0o000); err != nil {
+		t.Fatal(err)
+	}
+	var stdout, stderr bytes.Buffer
+	if got := run([]string{"scan", root}, &stdout, &stderr); got != exitScanStartFailure {
+		t.Fatalf("unreadable root exit = %d, want %d; stderr=%q", got, exitScanStartFailure, stderr.String())
 	}
 }
 
@@ -100,9 +142,9 @@ func writeCLIFile(t *testing.T, path string, body []byte) {
 }
 
 func cliWAV() []byte {
-	buf := make([]byte, 44)
+	buf := make([]byte, 50)
 	copy(buf[0:4], "RIFF")
-	binary.LittleEndian.PutUint32(buf[4:8], 36)
+	binary.LittleEndian.PutUint32(buf[4:8], uint32(len(buf)-8))
 	copy(buf[8:12], "WAVE")
 	copy(buf[12:16], "fmt ")
 	binary.LittleEndian.PutUint32(buf[16:20], 16)
@@ -113,5 +155,6 @@ func cliWAV() []byte {
 	binary.LittleEndian.PutUint16(buf[32:34], 6)
 	binary.LittleEndian.PutUint16(buf[34:36], 24)
 	copy(buf[36:40], "data")
+	binary.LittleEndian.PutUint32(buf[40:44], 6)
 	return buf
 }
