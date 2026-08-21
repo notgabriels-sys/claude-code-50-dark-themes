@@ -88,3 +88,15 @@ Therefore the copied-real-delivery immutability check, offline-network scan, mul
 - Conduct a zero-charge test purchase only after the account owner explicitly authorizes that live action at that time, then independently open the customer download.
 
 Until those gates are complete, this repository contains a local candidate, not a publicly available product and not a verified customer delivery.
+
+## Unsigned packaging gate
+
+The release-packaging branch adds a deterministic assembly and independent-verification path for an explicitly unsigned version 0.1.0 candidate. The packaging test uses real executable fixtures and requires the `.app` structure, CLI, documentation, unsigned disclosure, bundle identifier, version, macOS 14 floor, ZIP archive, safe archive paths, and matching SHA-256 sidecar. The complete product verifier runs this packaging test.
+
+This closes only the repeatable bundle/archive-assembly portion of the release gate. A real archive built from release binaries must still be copied to an independent location, reverified, launched, exercised manually, and tested under Gatekeeper. Developer ID signing, notarization, final icon work, independent macOS 14 testing, accessibility testing, and commerce-provider verification remain open.
+
+### Packaged-app smoke evidence
+
+An archive built from release-packaging commit `e6b5767` verified with SHA-256 `f0c77e521eb4220da9fa17f71359816d329dc9d611afa7b11a5dd9c694e37476`. The first fully signature-stripped package failed to spawn on Apple Silicon, exposing that “unsigned” cannot mean removing every code signature. The packaging contract was corrected to apply coherent ad-hoc signatures to the app and CLI while explicitly stating that they provide no Developer ID identity or notarization.
+
+The corrected packaged `.app` launched without bypassing a security warning. Its accessibility tree exposed the named window, local-processing statement, labeled preset selector, labeled Choose Folder button, and labeled drop zone. The preset menu exposed General Audio, Stereo Premaster, Digital Release, and Custom; selecting Digital Release updated the selector value. The native folder chooser opened and navigated to the repository-generated non-sensitive fixture. The computer-control service disconnected when confirming that folder, while macOS logs showed the application process continuing and no application crash report was created. Therefore folder-selection completion, scan, cancellation, result review, export, keyboard-only operation, and assistive-technology validation remain open.
