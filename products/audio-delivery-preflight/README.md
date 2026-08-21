@@ -23,7 +23,8 @@ Readable compressed formats can vary with the media frameworks installed on the 
 - Rejects paths that cannot be opened safely beneath the selected root.
 - Classifies `.DS_Store` and AppleDouble `._*` files as service files.
 - Calculates SHA-256 for regular delivery files and reports exact duplicates.
-- Measures supported audio container, encoding, duration, channel count, sample rate, PCM bit depth, and bounded common text metadata when those values are exposed reliably by AVFoundation.
+- Measures supported audio container, encoding, duration, channel count, sample rate, and PCM bit depth when those values are exposed reliably by AVFoundation.
+- Deliberately does not request embedded metadata from AVFoundation in version 0.1.0 because that API materializes complete metadata collections and strings before this application can enforce a resource limit.
 - Measures supported artwork dimensions, aspect ratio, format, color model, alpha presence, byte size, and readability when available.
 - Reports unreadable media, filename ambiguity, case-insensitive filename collisions, preset role failures, service files, symbolic links, and exact duplicates.
 - Compares source fingerprints before and after a scan and refuses to call a changed or incomplete source `ready`.
@@ -46,7 +47,7 @@ Requires one readable lossless stereo premaster candidate using `aif`, `aiff`, `
 
 ### Digital Release (`digital-release`)
 
-Requires one readable lossless main-master candidate with a proven Linear PCM, FLAC, or ALAC encoding, one readable artwork candidate, and one metadata-or-credits document matched through the displayed filename patterns. The visible artwork rule requires square artwork of at least 3000 by 3000 pixels. This is a package-consistency preset, not a distributor certification.
+Requires one readable lossless main-master candidate with a proven Linear PCM, FLAC, or ALAC encoding, one readable artwork candidate, and one metadata-or-credits document matched through the displayed filename patterns. The document is checked as a package file; its contents are not parsed. The visible artwork rule requires square artwork of at least 3000 by 3000 pixels. This is a package-consistency preset, not a distributor certification.
 
 ### Custom (`custom`)
 
@@ -159,8 +160,8 @@ Report destinations must be distinct, must not already exist, and must not trave
 
 ## Reports
 
-- **HTML:** A self-contained, accessible report with visible status, resolved requirements, relative inventory paths, measured media properties and optional metadata, checksum state, findings, evidence, and limitations.
-- **JSON:** Stable schema `1.0`, pretty-printed with sorted keys and ISO-8601 dates. It includes the resolved preset definition, explicit inspection and checksum states, inventory, measured evidence, findings, versions, and scan status.
+- **HTML:** A self-contained, accessible report with visible status, resolved requirements, relative inventory paths, measured media properties, checksum state, findings, successful role assignments, evidence, and limitations.
+- **JSON:** Stable schema `1.0`, pretty-printed with sorted keys and ISO-8601 dates. It includes the resolved preset definition, explicit inspection and checksum states, inventory, measured evidence, successful role assignments, findings, versions, and scan status. The versioned media model retains a metadata field for compatibility, but production scans leave it empty in version 0.1.0.
 - **SHA-256 manifest:** Lowercase SHA-256 values and relative paths for regular non-service files whose checksum state is explicitly successful.
 
 Reports use relative source paths and the selected folder's final name, not its absolute source path. Checksums and filenames can still be sensitive, so review a report before sharing it.

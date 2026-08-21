@@ -74,6 +74,8 @@ final class AudioInspectorTests: XCTestCase {
         XCTAssertEqual(properties.sampleRate, 44_100)
         XCTAssertNil(properties.pcmBitDepth)
         XCTAssertEqual(properties.encoding, "AAC")
+        XCTAssertEqual(properties.isReadable, true)
+        XCTAssertGreaterThan(try XCTUnwrap(properties.durationSeconds), 0)
     }
 
     func testFrameworkProvenCompressedIdentifiersMapToStableNamesAndUnknownRemainsNil() {

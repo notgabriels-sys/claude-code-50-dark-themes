@@ -24,7 +24,7 @@ The product does not measure or judge:
 - A filename extension is not trusted as proof of content. Unreadable or mismatched media can fail inspection.
 - PCM bit depth is reported only when the inspected stream proves linear PCM and exposes a meaningful value.
 - Missing framework measurements remain unknown.
-- Document contents are not parsed. Bounded common text metadata exposed by AVFoundation is reported opportunistically, but unsupported, non-text, duplicate, or unavailable metadata remains absent and no metadata value is validated for correctness.
+- Document contents are not parsed. Version 0.1.0 also does not request embedded metadata from AVFoundation because that API materializes complete metadata collections and strings before the application can enforce a resource limit. The versioned media model retains an empty metadata field for report compatibility.
 - Duration, channel count, sample rate, encoding, and PCM bit depth are container/framework observations, not listening judgments.
 - Exact duplicates use SHA-256. Near-duplicates, alternate encodes, perceptually similar audio, and visually similar artwork are not detected.
 
@@ -43,7 +43,7 @@ The product does not measure or judge:
 - Permission failures, disappearing files, changing files, unsupported special entries, or incomplete post-scan evidence can prevent a reliable result.
 - Source-change detection proves only that the compared evidence matched at the implemented checkpoints.
 - Report destinations must be new files. Existing files are not overwritten.
-- Reports use relative source paths by default, but filenames, SHA-256 values, and optional embedded metadata text may still be sensitive.
+- Reports use relative source paths by default, but filenames and SHA-256 values may still be sensitive.
 - Checksumming large deliveries requires reading every eligible regular file and can take time.
 
 ## Platform and distribution
