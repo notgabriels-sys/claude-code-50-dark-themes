@@ -240,6 +240,52 @@ final class AppModelTests: XCTestCase {
         XCTAssertEqual(model.exportConfirmationMessage, "Exported SHA-256 checksums.")
     }
 
+    func testReopeningExportClearsPriorSuccessConfirmation() async throws {
+        let scan = ScanCapture(result: try result(status: .ready))
+        let model = AppModel(environment: environment(scan: scan, export: ExportCapture()))
+        XCTAssertTrue(model.selectFolder(folderURL()))
+        model.startScan()
+        await waitUntil { model.phase == .results }
+        model.showExport()
+
+        await model.export(.html, to: URL(fileURLWithPath: "/private/tmp/report.html"))
+
+        XCTAssertEqual(model.exportConfirmationMessage, "Exported Accessible HTML.")
+        model.showExport()
+
+        XCTAssertEqual(model.phase, .export)
+        XCTAssertNil(model.lastExportedFormat)
+        XCTAssertNil(model.exportConfirmationMessage)
+    }
+
+    func testFailedExportAfterSuccessPreservesResultErrorAndClearsConfirmation() async throws {
+        let expected = try result(status: .ready)
+        let scan = ScanCapture(result: expected)
+        let export = SequencedExportCapture(outcomes: [nil, TestError.exportFailed])
+        let model = AppModel(environment: AppModel.Environment(
+            scan: { request in await scan.scan(request) },
+            resolvePreset: { try PresetResolver().resolve($0) },
+            isFolder: { $0.lastPathComponent != "not-a-folder" },
+            writeReport: export.write
+        ))
+        XCTAssertTrue(model.selectFolder(folderURL()))
+        model.startScan()
+        await waitUntil { model.phase == .results }
+        model.showExport()
+
+        await model.export(.json, to: URL(fileURLWithPath: "/private/tmp/report.json"))
+
+        XCTAssertEqual(model.exportConfirmationMessage, "Exported Versioned JSON.")
+        model.showExport()
+        await model.export(.checksums, to: URL(fileURLWithPath: "/private/tmp/SHA256SUMS.txt"))
+
+        XCTAssertEqual(model.phase, .results)
+        XCTAssertEqual(model.result, expected)
+        XCTAssertEqual(model.errorMessage, "Report export failed. The scan result is unchanged.")
+        XCTAssertNil(model.lastExportedFormat)
+        XCTAssertNil(model.exportConfirmationMessage)
+    }
+
     func testDefaultExportWriterNeverOverwritesExistingSourceAsset() async throws {
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent("AppModelSourceSafety-\(UUID().uuidString)", isDirectory: true)
@@ -471,5 +517,20 @@ private actor ExportCapture {
         callCount += 1
         lastData = data
         if let error { throw error }
+    }
+}
+
+private actor SequencedExportCapture {
+    private var outcomes: [Error?]
+
+    init(outcomes: [Error?]) {
+        self.outcomes = outcomes
+    }
+
+    func write(_ data: Data, _ destination: URL) async throws {
+        guard !outcomes.isEmpty else { return }
+        if let error = outcomes.removeFirst() {
+            throw error
+        }
     }
 }

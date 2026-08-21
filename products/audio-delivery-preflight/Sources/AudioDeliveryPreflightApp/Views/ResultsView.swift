@@ -2,8 +2,13 @@ import SwiftUI
 import PreflightCore
 
 struct ResultsView: View {
+    private enum AccessibilityTarget: Hashable {
+        case resultSummary
+        case exportConfirmation
+    }
+
     @Bindable var model: AppModel
-    @AccessibilityFocusState private var resultSummaryFocused: Bool
+    @AccessibilityFocusState private var focusedAccessibilityTarget: AccessibilityTarget?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -13,7 +18,7 @@ struct ResultsView: View {
                         .font(.largeTitle.bold())
                         .accessibilityLabel("Scan status: \(statusText(result.overallStatus))")
                         .accessibilityIdentifier("result-summary")
-                        .accessibilityFocused($resultSummaryFocused)
+                        .accessibilityFocused($focusedAccessibilityTarget, equals: .resultSummary)
                     Spacer()
                     Button("Rescan") { model.rescan() }
                         .accessibilityIdentifier("rescan-button")
@@ -41,6 +46,7 @@ struct ResultsView: View {
                         .foregroundStyle(.green)
                         .accessibilityLabel(confirmation)
                         .accessibilityIdentifier("results-export-success-message")
+                        .accessibilityFocused($focusedAccessibilityTarget, equals: .exportConfirmation)
                 }
 
                 HStack(spacing: 8) {
@@ -69,7 +75,11 @@ struct ResultsView: View {
                 ContentUnavailableView("No scan result", systemImage: "waveform.path.ecg", description: Text("Choose a folder and start a scan to view findings."))
             }
         }
-        .task { resultSummaryFocused = true }
+        .task(id: model.exportConfirmationMessage) {
+            focusedAccessibilityTarget = model.exportConfirmationMessage == nil
+                ? .resultSummary
+                : .exportConfirmation
+        }
         .accessibilityIdentifier("results-view")
     }
 
