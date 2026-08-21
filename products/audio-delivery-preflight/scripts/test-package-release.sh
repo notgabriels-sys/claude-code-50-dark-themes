@@ -2,6 +2,7 @@
 set -euo pipefail
 
 script_dir=${0:A:h}
+product_dir=${script_dir:h}
 test_root=$(mktemp -d /private/tmp/audio-preflight-package-contract.XXXXXX)
 
 cleanup() {
@@ -58,6 +59,7 @@ release_root=${top_level_entries[1]}
 
 app="$release_root/Audio Delivery Preflight.app"
 app_executable="$app/Contents/MacOS/AudioDeliveryPreflightApp"
+app_icon="$app/Contents/Resources/AppIcon.icns"
 cli="$release_root/audio-preflight"
 plist="$app/Contents/Info.plist"
 package_info="$release_root/PACKAGE-INFO.json"
@@ -67,6 +69,7 @@ require_executable "$app_executable"
 require_executable "$cli"
 for required in \
     "$plist" \
+    "$app_icon" \
     "$release_root/README.md" \
     "$release_root/PRIVACY.md" \
     "$release_root/LIMITATIONS.md" \
@@ -88,6 +91,10 @@ done
     || fail "unexpected app build number"
 [[ "$(/usr/libexec/PlistBuddy -c 'Print :LSMinimumSystemVersion' "$plist")" == "14.0" ]] \
     || fail "unexpected minimum macOS version"
+[[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIconFile' "$plist")" == "AppIcon" ]] \
+    || fail "unexpected application icon metadata"
+/usr/bin/cmp "$app_icon" "$product_dir/Resources/AppIcon.icns" \
+    || fail "packaged application icon differs from the selected source icon"
 
 app_archs=$(/usr/bin/lipo -archs "$app_executable")
 cli_archs=$(/usr/bin/lipo -archs "$cli")

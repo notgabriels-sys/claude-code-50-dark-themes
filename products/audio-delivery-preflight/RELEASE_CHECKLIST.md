@@ -14,14 +14,15 @@ This checklist separates repository evidence, a local archive, a customer-tested
 - [x] Marketing version fixed as `0.1.0`; build version fixed as `1`.
 - [x] Minimum deployment target fixed as macOS 14.0.
 - [x] Privacy and limitations documents included.
-- [ ] Final application icon reviewed and included.
-- [ ] Customer license selected and included. “All rights reserved” metadata is not a substitute for customer license terms.
+- [x] Selected icon master, provenance, `.icns`, bundle metadata, and package-contract checks are present.
+- [ ] Inspect the packaged icon in Finder, Dock, light appearance, dark appearance, and small sizes.
+- [ ] Customer license terms are drafted in `CUSTOMER_LICENSE_DRAFT.md`; seller legal review, verified identity, acceptance, rename to `LICENSE.txt`, and customer-archive inclusion remain open. “All rights reserved” metadata is not a substitute.
 - [ ] Known critical bugs reviewed immediately before release.
 
 ## Package
 
 - [x] Packaging command refuses an existing output path.
-- [x] Package contains the `.app`, CLI, sample delivery, README, privacy, limitations, build provenance, internal manifest, and explicit Developer-ID-unsigned disclosure.
+- [x] Package contains the `.app`, selected icon, CLI, sample delivery, README, privacy, limitations, build provenance, internal manifest, and explicit Developer-ID-unsigned disclosure.
 - [x] Archive verifier checks the external and internal SHA-256 evidence, extraction safety, required files, permissions, architecture, ad-hoc signatures, identifier, source-commit format, version, and macOS floor.
 - [x] Package contract runs the packaged CLI against the sample, confirms source immutability, refuses overwrite, and rejects a false sidecar.
 - [ ] Build the real release archive from the exact intended source commit.
@@ -53,13 +54,15 @@ If signing and notarization are deliberately deferred, the product page, checkou
 - [ ] Verify keyboard-only operation.
 - [ ] Verify VoiceOver labels, order, status announcements, and controls.
 - [ ] Verify increased text size and both light and dark appearances.
+- [ ] Inspect the selected packaged icon in Finder and Dock at normal and small sizes in both appearances.
 - [ ] Observe or deny network access while scanning the final packaged build.
 - [ ] Test on an independent installation at the macOS 14 floor.
 - [ ] Compare multiple audio and artwork formats with trusted tools.
 
 ## Commercial release
 
-- [ ] Decide the customer license, support channel, refund terms, and update policy.
+- [x] Intended defaults recorded: €24 one-time purchase, one user on up to three personally controlled Macs, version-1 updates, receipt-reply support, and a 14-day refund policy.
+- [ ] Seller reviews and accepts the customer license and all legally required seller and consumer information.
 - [ ] Create the provider product only in the intended seller account.
 - [ ] Read back the real product name, amount, currency, tax treatment, attached archive, and customer-delivery settings.
 - [ ] Confirm the product page accurately states signing/notarization and supported-macOS status.

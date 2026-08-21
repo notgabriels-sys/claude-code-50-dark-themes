@@ -35,11 +35,13 @@ release_root=${top_level_entries[1]}
 [[ -d "$release_root" ]] || { print -u2 "archive top-level entry must be a directory"; exit 65; }
 app="$release_root/Audio Delivery Preflight.app"
 plist="$app/Contents/Info.plist"
+app_icon="$app/Contents/Resources/AppIcon.icns"
 
 [[ -x "$app/Contents/MacOS/AudioDeliveryPreflightApp" ]] || { print -u2 "missing app executable"; exit 65; }
 [[ -x "$release_root/audio-preflight" ]] || { print -u2 "missing CLI executable"; exit 65; }
 for required in \
   "$plist" \
+  "$app_icon" \
   "$release_root/README.md" \
   "$release_root/PRIVACY.md" \
   "$release_root/LIMITATIONS.md" \
@@ -58,6 +60,7 @@ plutil -lint "$plist" >/dev/null
 [[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$plist")" == "com.gabrielgarciaalonso.AudioDeliveryPreflight" ]] || { print -u2 "bundle identifier mismatch"; exit 65; }
 [[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$plist")" == "$version" ]] || { print -u2 "bundle version mismatch"; exit 65; }
 [[ "$(/usr/libexec/PlistBuddy -c 'Print :LSMinimumSystemVersion' "$plist")" == "14.0" ]] || { print -u2 "minimum macOS version mismatch"; exit 65; }
+[[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIconFile' "$plist")" == "AppIcon" ]] || { print -u2 "application icon metadata mismatch"; exit 65; }
 
 app_archs=$(/usr/bin/lipo -archs "$app/Contents/MacOS/AudioDeliveryPreflightApp")
 cli_archs=$(/usr/bin/lipo -archs "$release_root/audio-preflight")

@@ -59,6 +59,7 @@ fi
 
 [[ -f "$app_binary" && -x "$app_binary" ]] || { print -u2 "app binary is not executable: $app_binary"; exit 66; }
 [[ -f "$cli_binary" && -x "$cli_binary" ]] || { print -u2 "CLI binary is not executable: $cli_binary"; exit 66; }
+[[ -f "$product_dir/Resources/AppIcon.icns" ]] || { print -u2 "application icon is missing"; exit 66; }
 plutil -lint "$product_dir/Resources/Info.plist" >/dev/null
 [[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$product_dir/Resources/Info.plist")" == "$bundle_id" ]] || { print -u2 "unexpected bundle identifier"; exit 65; }
 [[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$product_dir/Resources/Info.plist")" == "$version" ]] || { print -u2 "unexpected bundle version"; exit 65; }
@@ -90,9 +91,10 @@ release_root="$output_dir/$release_name"
 app="$release_root/Audio Delivery Preflight.app"
 archive="$output_dir/Audio-Delivery-Preflight-$version-macOS-$architecture_slug-unsigned.zip"
 
-mkdir -p "$app/Contents/MacOS"
+mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
 install -m 755 "$app_binary" "$app/Contents/MacOS/AudioDeliveryPreflightApp"
 install -m 644 "$product_dir/Resources/Info.plist" "$app/Contents/Info.plist"
+install -m 644 "$product_dir/Resources/AppIcon.icns" "$app/Contents/Resources/AppIcon.icns"
 install -m 755 "$cli_binary" "$release_root/audio-preflight"
 /usr/bin/codesign --force --sign - --timestamp=none "$app"
 /usr/bin/codesign --force --sign - --timestamp=none "$release_root/audio-preflight"
