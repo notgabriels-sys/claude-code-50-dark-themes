@@ -14,3 +14,7 @@ var Value = Current
 // Revision is linked into release executables after the packager verifies
 // that the tracked source tree is clean.
 var Revision = "development"
+
+// BinaryProvenance is a uniquely formatted marker linked into release
+// executables so archives for any target can be verified without executing it.
+var BinaryProvenance = "audio-preflight:v=development;rev=development"

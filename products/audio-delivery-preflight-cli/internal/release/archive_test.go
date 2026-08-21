@@ -92,8 +92,10 @@ func TestVerifyArchiveRejectsCorrectTagWithWrongLinkedRuntimeVersion(t *testing.
 		t.Fatal(err)
 	}
 
-	err := VerifyArchive(archive, Verification{Version: "1.0.0", Platform: "darwin-arm64", Mode: PrivateCandidate, Provenance: testProvenance()})
-	if err == nil || !strings.Contains(err.Error(), "linked runtime version") {
+	provenance := testProvenance()
+	provenance.syntheticForTests = false
+	err := VerifyArchive(archive, Verification{Version: "1.0.0", Platform: "darwin-arm64", Mode: PrivateCandidate, Provenance: provenance})
+	if err == nil || !strings.Contains(err.Error(), "linked version") {
 		t.Fatalf("VerifyArchive() error = %v, want linked runtime version rejection", err)
 	}
 }
@@ -633,7 +635,9 @@ func realExecutableTaggedAndLinkedVersion(t *testing.T, platform, taggedVersion,
 		t.Fatal(err)
 	}
 	path := filepath.Join(t.TempDir(), "audio-preflight")
-	link := "-buildid= -X github.com/gabrielgarciaalonso/audio-delivery-preflight-cli/internal/version.Value=" + linkedVersion + " -X github.com/gabrielgarciaalonso/audio-delivery-preflight-cli/internal/version.Revision=" + strings.Repeat("a", 40)
+	revision := strings.Repeat("a", 40)
+	marker := "audio-preflight:v=" + linkedVersion + ";rev=" + revision
+	link := "-buildid= -X github.com/gabrielgarciaalonso/audio-delivery-preflight-cli/internal/version.Value=" + linkedVersion + " -X github.com/gabrielgarciaalonso/audio-delivery-preflight-cli/internal/version.Revision=" + revision + " -X github.com/gabrielgarciaalonso/audio-delivery-preflight-cli/internal/version.BinaryProvenance=" + marker
 	tag := "audio_preflight_v" + strings.ReplaceAll(taggedVersion, ".", "_")
 	cmd := exec.Command("go", "build", "-trimpath", "-buildvcs=false", "-buildmode=exe", "-tags="+tag, "-ldflags="+link, "-o", path, "./cmd/audio-preflight")
 	cmd.Dir = root
