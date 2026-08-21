@@ -1,6 +1,6 @@
 # Release checklist: Audio Delivery Preflight 0.1.0
 
-Date opened: 2026-08-21  
+Date opened: 2026-08-21
 Owner: Gabriel Garcia Alonso
 
 This checklist separates repository evidence, a local archive, a customer-tested delivery, and a public paid product. A checked repository or packaging item does not satisfy a later commercial gate.
