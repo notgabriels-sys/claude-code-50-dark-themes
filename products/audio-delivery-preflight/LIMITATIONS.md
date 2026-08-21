@@ -24,7 +24,7 @@ The product does not measure or judge:
 - A filename extension is not trusted as proof of content. Unreadable or mismatched media can fail inspection.
 - PCM bit depth is reported only when the inspected stream proves linear PCM and exposes a meaningful value.
 - Missing framework measurements remain unknown.
-- Document contents are not parsed. Version 0.1.0 also does not request embedded metadata from AVFoundation because that API materializes complete metadata collections and strings before the application can enforce a resource limit. The versioned media model retains an empty metadata field for report compatibility.
+- Document contents are not parsed. Version 0.1.0 optionally reads AVFoundation common text metadata when the framework exposes it reliably. The application retains at most 64 selected metadata-key groups and performs at most 64 string-value loads; keys are limited to 128 UTF-8 bytes, values to 4096 UTF-8 bytes, and the deterministic sorted-key JSON aggregate to 32768 UTF-8 bytes. AVFoundation may still provide no common metadata, may fail to load it, or may materialize its collection before the application's selection limits apply; those cases produce no metadata rather than a guessed value. The optional bounded metadata can appear in the app and HTML/JSON reports, but it is not parsed for correctness and is not a replacement for delivery metadata documents.
 - Duration, channel count, sample rate, encoding, and PCM bit depth are container/framework observations, not listening judgments.
 - Exact duplicates use SHA-256. Near-duplicates, alternate encodes, perceptually similar audio, and visually similar artwork are not detected.
 
