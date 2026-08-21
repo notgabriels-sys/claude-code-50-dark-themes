@@ -6,6 +6,15 @@ import PreflightCore
 @MainActor
 @Observable
 final class AppModel {
+    /// A UI-only wrapper which preserves a finding's position in the original scan
+    /// result. Rule identifiers describe requirements, not individual findings.
+    struct FindingPresentationRow: Identifiable {
+        let originalIndex: Int
+        let finding: Finding
+
+        var id: Int { originalIndex }
+    }
+
     enum Phase: Equatable {
         case start
         case requirements
@@ -80,7 +89,7 @@ final class AppModel {
     private(set) var result: ScanResult?
     private(set) var availablePresets: [Preset]
     private(set) var selectedPresetID: String
-    var selectedFindingID: String?
+    var selectedFindingID: FindingPresentationRow.ID?
     var activeSeverities = Set(FindingSeverity.allCases)
     var lastExportedFormat: ExportFormat?
     var errorMessage: String?
@@ -109,8 +118,23 @@ final class AppModel {
             && resolvedPreset != nil
     }
 
-    var filteredFindings: [Finding] {
-        (result?.findings ?? []).filter { activeSeverities.contains($0.severity) }
+    var findingRows: [FindingPresentationRow] {
+        (result?.findings ?? []).enumerated().map { index, finding in
+            FindingPresentationRow(originalIndex: index, finding: finding)
+        }
+    }
+
+    var filteredFindingRows: [FindingPresentationRow] {
+        findingRows.filter { activeSeverities.contains($0.finding.severity) }
+    }
+
+    var selectedFindingRow: FindingPresentationRow? {
+        guard let selectedFindingID else { return nil }
+        return filteredFindingRows.first(where: { $0.id == selectedFindingID })
+    }
+
+    var findingForDetail: Finding? {
+        selectedFindingRow?.finding ?? filteredFindingRows.first?.finding
     }
 
     var severityCounts: [FindingSeverity: Int] {
@@ -133,6 +157,10 @@ final class AppModel {
 
     var isScanning: Bool {
         phase == .scanning
+    }
+
+    var exportConfirmationMessage: String? {
+        lastExportedFormat.map { "Exported \($0.title)." }
     }
 
     func toggleSeverity(_ severity: FindingSeverity) {
@@ -207,6 +235,7 @@ final class AppModel {
                 ? Self.cancelledResult(for: request)
                 : scannedResult
             self.result = settledResult
+            self.selectedFindingID = nil
             self.phase = .results
             self.activeScan = nil
         }
@@ -254,6 +283,7 @@ final class AppModel {
 
     func showExport() {
         guard result != nil, phase == .results else { return }
+        lastExportedFormat = nil
         errorMessage = nil
         phase = .export
     }

@@ -36,6 +36,13 @@ struct ResultsView: View {
                         .accessibilityIdentifier("results-error-message")
                 }
 
+                if let confirmation = model.exportConfirmationMessage {
+                    Label(confirmation, systemImage: "checkmark.circle")
+                        .foregroundStyle(.green)
+                        .accessibilityLabel(confirmation)
+                        .accessibilityIdentifier("results-export-success-message")
+                }
+
                 HStack(spacing: 8) {
                     ForEach(FindingSeverity.allCases, id: \.self) { severity in
                         Toggle(isOn: Binding(
@@ -69,7 +76,8 @@ struct ResultsView: View {
     private var findingsTab: some View {
         HSplitView {
             List(selection: $model.selectedFindingID) {
-                ForEach(model.filteredFindings, id: \.ruleID) { finding in
+                ForEach(model.filteredFindingRows) { row in
+                    let finding = row.finding
                     VStack(alignment: .leading, spacing: 4) {
                         Label(finding.title, systemImage: severitySymbol(finding.severity))
                         if let firstPath = finding.affectedPaths.first {
@@ -78,14 +86,14 @@ struct ResultsView: View {
                                 .foregroundStyle(.secondary)
                         }
                     }
-                    .tag(finding.ruleID)
+                    .tag(row.id)
                     .accessibilityLabel("\(severityText(finding.severity)): \(finding.title)")
                 }
             }
             .frame(minWidth: 230)
 
             ScrollView {
-                if let finding = model.filteredFindings.first(where: { $0.ruleID == model.selectedFindingID }) ?? model.filteredFindings.first {
+                if let finding = model.findingForDetail {
                     FindingDetailView(finding: finding)
                         .padding(.leading, 12)
                 } else {

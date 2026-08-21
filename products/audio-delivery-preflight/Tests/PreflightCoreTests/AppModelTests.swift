@@ -73,7 +73,7 @@ final class AppModelTests: XCTestCase {
         XCTAssertTrue(model.selectFolder(folderURL(name: "First")))
         model.startScan()
         await waitUntil { model.phase == .results }
-        model.selectedFindingID = "test.warning"
+        model.selectedFindingID = 0
         model.activeSeverities = [.warning]
         model.showExport()
         model.lastExportedFormat = .json
@@ -164,23 +164,43 @@ final class AppModelTests: XCTestCase {
         XCTAssertEqual(scanCount, 0)
     }
 
-    func testResultFiltersPreserveSeverityAndRelativePathEvidence() async throws {
+    func testResultFiltersPreserveOriginalFindingIdentityAndDetailSelection() async throws {
         let warningPath = try RelativePath("Masters/Main Master.wav")
+        let secondWarningPath = try RelativePath("Masters/Alternate Master.wav")
         let errorPath = try RelativePath("Artwork/Cover.png")
-        let warning = finding(id: "warning", severity: .warning, path: warningPath)
-        let error = finding(id: "error", severity: .error, path: errorPath)
-        let scan = ScanCapture(result: try result(status: .requirementsNotMet, findings: [warning, error]))
+        let firstWarning = finding(
+            id: "audio.sample-rate",
+            severity: .warning,
+            path: warningPath,
+            evidenceValue: "44100 Hz"
+        )
+        let secondWarning = finding(
+            id: "audio.sample-rate",
+            severity: .warning,
+            path: secondWarningPath,
+            evidenceValue: "48000 Hz"
+        )
+        let error = finding(id: "artwork.dimensions", severity: .error, path: errorPath)
+        let scan = ScanCapture(result: try result(status: .requirementsNotMet, findings: [firstWarning, secondWarning, error]))
         let model = AppModel(environment: environment(scan: scan))
         XCTAssertTrue(model.selectFolder(folderURL()))
         model.startScan()
         await waitUntil { model.phase == .results }
 
+        XCTAssertEqual(model.findingRows.map(\.id), [0, 1, 2])
+        XCTAssertNotEqual(model.findingRows[0].id, model.findingRows[1].id)
+
         model.activeSeverities = [.warning]
 
-        XCTAssertEqual(model.filteredFindings.map(\.ruleID), ["warning"])
-        XCTAssertEqual(model.filteredFindings.first?.severity, .warning)
-        XCTAssertEqual(model.filteredFindings.first?.affectedPaths.map(\.value), ["Masters/Main Master.wav"])
-        XCTAssertFalse(model.filteredFindings.first!.affectedPaths[0].value.hasPrefix("/"))
+        XCTAssertEqual(model.filteredFindingRows.map(\.id), [0, 1])
+        XCTAssertEqual(model.filteredFindingRows.map(\.finding.ruleID), ["audio.sample-rate", "audio.sample-rate"])
+        XCTAssertEqual(model.filteredFindingRows.first?.finding.affectedPaths.map(\.value), ["Masters/Main Master.wav"])
+        XCTAssertFalse(model.filteredFindingRows.first!.finding.affectedPaths[0].value.hasPrefix("/"))
+
+        model.selectedFindingID = model.filteredFindingRows[1].id
+
+        XCTAssertEqual(model.selectedFindingRow?.finding.affectedPaths.map(\.value), ["Masters/Alternate Master.wav"])
+        XCTAssertEqual(model.findingForDetail?.evidence.first?.value, .string("48000 Hz"))
     }
 
     func testExportUsesReviewedWritersAndRequiresExplicitDestination() async throws {
@@ -203,6 +223,21 @@ final class AppModelTests: XCTestCase {
         XCTAssertEqual(model.phase, .results)
         let data = await export.lastData
         XCTAssertTrue(String(decoding: data ?? Data(), as: UTF8.self).contains("\"schemaVersion\""))
+    }
+
+    func testSuccessfulExportExposesImmediateFormatSpecificResultsConfirmation() async throws {
+        let scan = ScanCapture(result: try result(status: .ready))
+        let model = AppModel(environment: environment(scan: scan, export: ExportCapture()))
+        XCTAssertTrue(model.selectFolder(folderURL()))
+        model.startScan()
+        await waitUntil { model.phase == .results }
+        model.showExport()
+
+        await model.export(.checksums, to: URL(fileURLWithPath: "/private/tmp/SHA256SUMS.txt"))
+
+        XCTAssertEqual(model.phase, .results)
+        XCTAssertEqual(model.lastExportedFormat, .checksums)
+        XCTAssertEqual(model.exportConfirmationMessage, "Exported SHA-256 checksums.")
     }
 
     func testDefaultExportWriterNeverOverwritesExistingSourceAsset() async throws {
@@ -280,7 +315,8 @@ final class AppModelTests: XCTestCase {
     private func finding(
         id: String,
         severity: FindingSeverity,
-        path: RelativePath? = nil
+        path: RelativePath? = nil,
+        evidenceValue: String = "Value"
     ) -> Finding {
         Finding(
             ruleID: id,
@@ -288,7 +324,7 @@ final class AppModelTests: XCTestCase {
             title: id.capitalized,
             explanation: "Measured technical evidence.",
             affectedPaths: path.map { [$0] } ?? [],
-            evidence: [Evidence(label: "Measured", value: .string("Value"))],
+            evidence: [Evidence(label: "Measured", value: .string(evidenceValue))],
             expected: "Expected condition",
             suggestedAction: "Suggested action",
             origin: .engine,

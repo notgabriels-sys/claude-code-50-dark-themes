@@ -32,9 +32,10 @@ struct ExportView: View {
                 .background(Color.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
             }
 
-            if let exported = model.lastExportedFormat {
-                Label("Exported \(exported.title).", systemImage: "checkmark.circle")
+            if let confirmation = model.exportConfirmationMessage {
+                Label(confirmation, systemImage: "checkmark.circle")
                     .foregroundStyle(.green)
+                    .accessibilityLabel(confirmation)
                     .accessibilityIdentifier("export-success-message")
             }
 
