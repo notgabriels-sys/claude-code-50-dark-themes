@@ -49,24 +49,29 @@ go vet ./...
 GOOS=linux GOARCH=amd64 go build -trimpath -o audio-preflight-linux-amd64 ./cmd/audio-preflight
 ```
 
-## Private candidate packaging
+## Release archive packaging
 
 Version 1.0.0 has reproducible package commands for `darwin-arm64`,
 `darwin-amd64`, and `linux-amd64`:
 
 ```bash
-mkdir private-candidates
-./scripts/package.sh -platform darwin-arm64 -output-dir private-candidates
-./scripts/verify-archive.sh \
-  -archive private-candidates/audio-preflight-cli-private-candidate_1.0.0_darwin-arm64.tar.gz \
+mkdir /tmp/audio-preflight-private-candidates
+./scripts/package.sh \
   -platform darwin-arm64 \
+  -output-dir /tmp/audio-preflight-private-candidates
+./scripts/verify-archive.sh \
+  -archive /tmp/audio-preflight-private-candidates/audio-preflight-cli-private-candidate_1.0.0_darwin-arm64.tar.gz \
+  -platform darwin-arm64 \
+  -mode private-candidate \
   -source-revision "$(git rev-parse HEAD)"
 ```
 
-The command refuses to overwrite either the archive or its sidecar SHA-256
-file. It compiles with `-trimpath`, disabled VCS stamping, a fixed linker build
-ID, fixed archive ownership/timestamps/modes/order, verifies the result without
-extracting it, and writes a sidecar archive digest.
+The output directory must be outside the source repository. The command refuses
+to package a dirty tracked index or worktree, untracked source files, or an
+existing archive or sidecar. It compiles with `-trimpath`, embedded Go VCS
+metadata, a fixed linker build ID, and fixed archive
+ownership/timestamps/modes/order; it verifies the result without extracting it
+and writes a sidecar archive digest.
 
 Verification requires the exact source revision recorded during packaging and
 defaults to `private-candidate` mode. A `customer-release` archive can be
@@ -74,11 +79,12 @@ constructed only with `-mode customer-release -accepted-license
 <explicit-owner-accepted-path>`; the supplied file is copied as `LICENSE.txt`.
 The packager never supplies, accepts, or infers legal terms.
 
-Every generated archive is deliberately named **private candidate**. It
-contains this README, `PRIVACY.md`, `LIMITATIONS.md`, examples, checksum
-instructions, `SHA256SUMS.txt`, and `CUSTOMER_LICENSE_DRAFT.md`. The draft is
-not accepted customer terms. No package command uploads an artifact, creates a
-Gumroad object, releases software, or publishes anything. See
+Each generated archive contains mode-specific README and checksum instructions,
+`PRIVACY.md`, `LIMITATIONS.md`, examples, and `SHA256SUMS.txt`. A private
+candidate contains `CUSTOMER_LICENSE_DRAFT.md`; a customer release contains only
+the explicit owner-supplied `LICENSE.txt`. The draft is not accepted customer
+terms. No package command uploads an artifact, creates a Gumroad object,
+releases software, or publishes anything. See
 [`PRODUCT_DECISIONS.md`](PRODUCT_DECISIONS.md) and
 [`RELEASE_CHECKLIST.md`](RELEASE_CHECKLIST.md) for the EUR 19 CLI-only proposal
 and owner-controlled legal/commercial gates.

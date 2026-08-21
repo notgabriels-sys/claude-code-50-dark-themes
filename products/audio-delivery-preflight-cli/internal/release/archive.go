@@ -61,9 +61,10 @@ type Verification struct {
 }
 
 type Provenance struct {
-	SourceRevision string
-	Toolchain      string
-	RuntimeVersion string
+	SourceRevision    string
+	Toolchain         string
+	RuntimeVersion    string
+	syntheticForTests bool
 }
 
 // LoadDocuments reads the exact private-candidate documentation set from a
@@ -180,6 +181,8 @@ func BuildArchive(output string, input ArchiveInput) error {
 	for name, contents := range input.Documents {
 		files[name] = contents
 	}
+	files["README.md"] = renderArchiveReadme(files["README.md"], input)
+	files["VERIFY_SHA256.md"] = renderArchiveVerification(input)
 	manifestBytes, err := json.MarshalIndent(manifest{
 		FormatVersion:  "1",
 		ReleaseStatus:  string(input.Mode),
@@ -242,6 +245,32 @@ func BuildArchive(output string, input ArchiveInput) error {
 	}
 	completed = true
 	return nil
+}
+
+func renderArchiveReadme(source []byte, input ArchiveInput) []byte {
+	const packagingHeading = "\n## Release archive packaging"
+	base := strings.TrimSpace(string(source))
+	if index := strings.Index(base, packagingHeading); index >= 0 {
+		base = strings.TrimSpace(base[:index])
+	}
+	license := "CUSTOMER_LICENSE_DRAFT.md"
+	description := "This private-candidate archive is for controlled review only. It is not a customer-ready release."
+	if input.Mode == CustomerRelease {
+		license = "LICENSE.txt"
+		description = "This customer-release archive contains the owner-supplied accepted license file. Its status does not prove provider delivery, payment, signing, notarization, or publication."
+	}
+	return []byte(fmt.Sprintf("%s\n\n## This release archive\n\n- Archive filename: `%s`\n- Release status: `%s`\n- Platform: `%s`\n- Source revision: `%s`\n- License file: `%s`\n\n%s\n\nSee `VERIFY_SHA256.md` before extraction.\n", base, releaseFilename(input.Version, input.Platform, input.Mode), input.Mode, input.Platform, input.Provenance.SourceRevision, license, description))
+}
+
+func renderArchiveVerification(input ArchiveInput) []byte {
+	filename := releaseFilename(input.Version, input.Platform, input.Mode)
+	license := "CUSTOMER_LICENSE_DRAFT.md"
+	title := "private-candidate"
+	if input.Mode == CustomerRelease {
+		license = "LICENSE.txt"
+		title = "customer-release"
+	}
+	return []byte(fmt.Sprintf("# Verify this %s archive\n\nArchive filename: `%s`\n\nRelease status: `%s`\n\nPlatform: `%s`\n\nSource revision: `%s`\n\nLicense file: `%s`\n\nKeep the archive and its separately supplied `.sha256` sidecar in the same directory, then verify the outer digest before extraction:\n\n```sh\nshasum -a 256 -c %s.sha256\n# Linux alternative: sha256sum -c %s.sha256\n```\n\nFrom a verified source checkout at the recorded revision, validate the archive stream without extracting it:\n\n```sh\n./scripts/verify-archive.sh \\\n  -archive %s \\\n  -platform %s \\\n  -mode %s \\\n  -source-revision '%s'\n```\n\nAfter the outer digest and stream verifier pass, extract and validate every included regular file except `SHA256SUMS.txt` itself:\n\n```sh\ntar -xzf %s\ncd %s\nshasum -a 256 -c SHA256SUMS.txt\n# Linux alternative: sha256sum -c SHA256SUMS.txt\n```\n", title, filename, input.Mode, input.Platform, input.Provenance.SourceRevision, license, filename, filename, filename, input.Platform, input.Mode, input.Provenance.SourceRevision, filename, archiveRoot(input.Version, input.Platform)))
 }
 
 func validateInput(output string, input ArchiveInput) error {
@@ -424,7 +453,7 @@ func VerifyArchive(archive string, expected Verification) error {
 	if err := validateManifest(seen["RELEASE_MANIFEST.json"].contents, expected); err != nil {
 		return err
 	}
-	if err := validateExecutable(seen[executableName].contents, expected.Platform, expected.Version); err != nil {
+	if err := validateExecutable(seen[executableName].contents, expected.Platform, expected.Version, expected.Provenance.SourceRevision, expected.Provenance.syntheticForTests); err != nil {
 		return err
 	}
 	if err := validateChecksums(seen, seen["SHA256SUMS.txt"].contents); err != nil {
@@ -569,7 +598,7 @@ func validateManifest(contents []byte, expected Verification) error {
 	return nil
 }
 
-func validateExecutable(executable []byte, platform, wantVersion string) error {
+func validateExecutable(executable []byte, platform, wantVersion, sourceRevision string, syntheticForTests bool) error {
 	if len(executable) == 0 {
 		return fmt.Errorf("archive executable is empty")
 	}
@@ -622,6 +651,13 @@ func validateExecutable(executable []byte, platform, wantVersion string) error {
 	}
 	if settings["-tags"] != "audio_preflight_v"+strings.ReplaceAll(wantVersion, ".", "_") {
 		return fmt.Errorf("Go build metadata does not bind executable version %q", wantVersion)
+	}
+	if !syntheticForTests && (settings["vcs.revision"] != sourceRevision || settings["vcs.modified"] != "false") {
+		return fmt.Errorf("Go build metadata does not bind the clean source revision")
+	}
+	linkedVersion := "-X github.com/gabrielgarciaalonso/audio-delivery-preflight-cli/internal/version.Value=" + wantVersion
+	if !strings.Contains(settings["-ldflags"], linkedVersion) {
+		return fmt.Errorf("Go build metadata does not bind linked runtime version %q", wantVersion)
 	}
 	return nil
 }

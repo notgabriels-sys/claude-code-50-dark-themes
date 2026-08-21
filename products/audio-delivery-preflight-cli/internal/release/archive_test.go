@@ -84,6 +84,20 @@ func TestVerifyArchiveRejectsOtherwiseValidOldVersionGoExecutable(t *testing.T) 
 	}
 }
 
+func TestVerifyArchiveRejectsCorrectTagWithWrongLinkedRuntimeVersion(t *testing.T) {
+	archive := filepath.Join(t.TempDir(), CandidateFilename("1.0.0", "darwin-arm64"))
+	input := privateCandidateInput(t, "darwin-arm64")
+	input.Executable = realExecutableTaggedAndLinkedVersion(t, "darwin-arm64", "1.0.0", "0.9.0")
+	if err := BuildArchive(archive, input); err != nil {
+		t.Fatal(err)
+	}
+
+	err := VerifyArchive(archive, Verification{Version: "1.0.0", Platform: "darwin-arm64", Mode: PrivateCandidate, Provenance: testProvenance()})
+	if err == nil || !strings.Contains(err.Error(), "linked runtime version") {
+		t.Fatalf("VerifyArchive() error = %v, want linked runtime version rejection", err)
+	}
+}
+
 // These cases fail if a future verifier starts trusting archive paths,
 // metadata, permissions, or checksum text supplied by an untrusted archive.
 func TestVerifyArchiveRejectsUnsafeOrInconsistentMembers(t *testing.T) {
@@ -251,7 +265,7 @@ func TestVerifyArchiveRejectsCumulativeExpandedSize(t *testing.T) {
 	paddedExecutable := make([]byte, maxExecutableSize)
 	copy(paddedExecutable, input.Executable)
 	input.Executable = paddedExecutable
-	largeDocument := bytes.Repeat([]byte{'d'}, 3<<19)
+	largeDocument := bytes.Repeat([]byte{'d'}, maxDocumentSize)
 	for name := range input.Documents {
 		input.Documents[name] = largeDocument
 	}
@@ -359,6 +373,73 @@ func TestLicenseModesKeepDraftAndCustomerReleaseSeparate(t *testing.T) {
 	}
 }
 
+func TestBuildArchiveRendersPrivateCandidateDocumentation(t *testing.T) {
+	archive := filepath.Join(t.TempDir(), CandidateFilename("1.0.0", "linux-amd64"))
+	input := documentationArchiveInput(PrivateCandidate)
+	if err := BuildArchive(archive, input); err != nil {
+		t.Fatal(err)
+	}
+
+	readme := archiveMemberBody(t, archive, "README.md")
+	verification := archiveMemberBody(t, archive, "VERIFY_SHA256.md")
+	for _, required := range []string{
+		"audio-preflight-cli-private-candidate_1.0.0_linux-amd64.tar.gz",
+		"Release status: `private-candidate`",
+		"License file: `CUSTOMER_LICENSE_DRAFT.md`",
+		"Source revision: `" + strings.Repeat("a", 40) + "`",
+	} {
+		if !strings.Contains(readme, required) {
+			t.Fatalf("README.md does not contain %q\n%s", required, readme)
+		}
+	}
+	for _, required := range []string{
+		"-mode private-candidate",
+		"-source-revision '" + strings.Repeat("a", 40) + "'",
+		"shasum -a 256 -c audio-preflight-cli-private-candidate_1.0.0_linux-amd64.tar.gz.sha256",
+	} {
+		if !strings.Contains(verification, required) {
+			t.Fatalf("VERIFY_SHA256.md does not contain %q\n%s", required, verification)
+		}
+	}
+}
+
+func TestBuildArchiveRendersCustomerReleaseDocumentationWithoutCandidateClaims(t *testing.T) {
+	archive := filepath.Join(t.TempDir(), ArchiveFilename("1.0.0", "linux-amd64", CustomerRelease))
+	input := documentationArchiveInput(CustomerRelease)
+	if err := BuildArchive(archive, input); err != nil {
+		t.Fatal(err)
+	}
+
+	readme := archiveMemberBody(t, archive, "README.md")
+	verification := archiveMemberBody(t, archive, "VERIFY_SHA256.md")
+	for _, contents := range []string{readme, verification} {
+		for _, forbidden := range []string{"private-candidate", "private candidate", "CUSTOMER_LICENSE_DRAFT.md"} {
+			if strings.Contains(strings.ToLower(contents), strings.ToLower(forbidden)) {
+				t.Fatalf("customer-release document contains candidate-only claim %q\n%s", forbidden, contents)
+			}
+		}
+	}
+	for _, required := range []string{
+		"audio-preflight-cli-customer-release_1.0.0_linux-amd64.tar.gz",
+		"Release status: `customer-release`",
+		"License file: `LICENSE.txt`",
+		"Source revision: `" + strings.Repeat("a", 40) + "`",
+	} {
+		if !strings.Contains(readme, required) {
+			t.Fatalf("README.md does not contain %q\n%s", required, readme)
+		}
+	}
+	for _, required := range []string{
+		"-mode customer-release",
+		"-source-revision '" + strings.Repeat("a", 40) + "'",
+		"shasum -a 256 -c audio-preflight-cli-customer-release_1.0.0_linux-amd64.tar.gz.sha256",
+	} {
+		if !strings.Contains(verification, required) {
+			t.Fatalf("VERIFY_SHA256.md does not contain %q\n%s", required, verification)
+		}
+	}
+}
+
 func TestVerifyArchiveRejectsTrailingPayload(t *testing.T) {
 	archive := privateCandidateArchive(t, "darwin-arm64")
 	file, err := os.OpenFile(archive, os.O_APPEND|os.O_WRONLY, 0)
@@ -405,7 +486,7 @@ func privateCandidateInput(t *testing.T, platform string) ArchiveInput {
 }
 
 func testProvenance() Provenance {
-	return Provenance{SourceRevision: strings.Repeat("a", 40), Toolchain: version.Toolchain, RuntimeVersion: "unverified-cross-target"}
+	return Provenance{SourceRevision: strings.Repeat("a", 40), Toolchain: version.Toolchain, RuntimeVersion: "unverified-cross-target", syntheticForTests: true}
 }
 
 func rewriteArchive(t *testing.T, archive string, mutate func(*tar.Header, *[]byte) bool) {
@@ -460,6 +541,17 @@ func readArchiveMembers(t *testing.T, archive string) []testArchiveMember {
 	return members
 }
 
+func archiveMemberBody(t *testing.T, archive, name string) string {
+	t.Helper()
+	for _, member := range readArchiveMembers(t, archive) {
+		if strings.HasSuffix(member.header.Name, "/"+name) {
+			return string(member.body)
+		}
+	}
+	t.Fatalf("archive member %q not found", name)
+	return ""
+}
+
 func writeArchiveMembers(t *testing.T, archive string, members []testArchiveMember) {
 	t.Helper()
 	output, err := os.Create(archive)
@@ -500,12 +592,40 @@ func executableForPlatform(platform string) []byte {
 	}
 }
 
+func documentationArchiveInput(mode Mode) ArchiveInput {
+	licenseName := "CUSTOMER_LICENSE_DRAFT.md"
+	licenseContents := []byte("draft terms")
+	if mode == CustomerRelease {
+		licenseName = "LICENSE.txt"
+		licenseContents = []byte("synthetic accepted terms")
+	}
+	return ArchiveInput{
+		Version:    "1.0.0",
+		Platform:   "linux-amd64",
+		Mode:       mode,
+		Executable: []byte("test executable"),
+		Provenance: testProvenance(),
+		Documents: map[string][]byte{
+			"README.md":          []byte("base readme\n\n## Release archive packaging\nprivate-candidate source template\n"),
+			"PRIVACY.md":         []byte("privacy"),
+			"LIMITATIONS.md":     []byte("limitations"),
+			"VERIFY_SHA256.md":   []byte("base verification\n"),
+			"examples/README.md": []byte("examples"),
+			licenseName:          licenseContents,
+		},
+	}
+}
+
 func realExecutable(t *testing.T, platform string) []byte {
 	t.Helper()
 	return realExecutableVersion(t, platform, "1.0.0")
 }
 
 func realExecutableVersion(t *testing.T, platform, productVersion string) []byte {
+	return realExecutableTaggedAndLinkedVersion(t, platform, productVersion, productVersion)
+}
+
+func realExecutableTaggedAndLinkedVersion(t *testing.T, platform, taggedVersion, linkedVersion string) []byte {
 	t.Helper()
 	parts := strings.Split(platform, "-")
 	root, err := filepath.Abs(filepath.Join("..", ".."))
@@ -513,8 +633,8 @@ func realExecutableVersion(t *testing.T, platform, productVersion string) []byte
 		t.Fatal(err)
 	}
 	path := filepath.Join(t.TempDir(), "audio-preflight")
-	link := "-buildid= -X github.com/gabrielgarciaalonso/audio-delivery-preflight-cli/internal/version.Value=" + productVersion
-	tag := "audio_preflight_v" + strings.ReplaceAll(productVersion, ".", "_")
+	link := "-buildid= -X github.com/gabrielgarciaalonso/audio-delivery-preflight-cli/internal/version.Value=" + linkedVersion
+	tag := "audio_preflight_v" + strings.ReplaceAll(taggedVersion, ".", "_")
 	cmd := exec.Command("go", "build", "-trimpath", "-buildvcs=false", "-buildmode=exe", "-tags="+tag, "-ldflags="+link, "-o", path, "./cmd/audio-preflight")
 	cmd.Dir = root
 	cmd.Env = append(os.Environ(), "CGO_ENABLED=0", "GOOS="+parts[0], "GOARCH="+parts[1])

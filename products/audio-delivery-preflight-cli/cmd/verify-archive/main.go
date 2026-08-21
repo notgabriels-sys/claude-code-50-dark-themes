@@ -30,5 +30,13 @@ func main() {
 		fmt.Fprintln(os.Stderr, "private candidate verification failed:", err)
 		os.Exit(1)
 	}
-	fmt.Println("Private candidate archive verified:", *archive)
+	fmt.Println(verificationSuccessMessage(release.Mode(*mode), *archive))
+}
+
+func verificationSuccessMessage(mode release.Mode, archive string) string {
+	label := "Private candidate"
+	if mode == release.CustomerRelease {
+		label = "Customer release"
+	}
+	return label + " archive verified: " + archive
 }

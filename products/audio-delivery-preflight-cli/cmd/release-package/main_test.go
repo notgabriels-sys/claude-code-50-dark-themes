@@ -3,10 +3,49 @@ package main
 import (
 	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
 )
+
+func TestRequireCleanSourceTreeRejectsDirtyAndUntrackedSource(t *testing.T) {
+	root := t.TempDir()
+	git := func(args ...string) {
+		t.Helper()
+		command := exec.Command("git", args...)
+		command.Dir = root
+		if output, err := command.CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v\n%s", args, err, output)
+		}
+	}
+	git("init", "-q")
+	git("config", "user.email", "test@example.invalid")
+	git("config", "user.name", "Test")
+	if err := os.WriteFile(filepath.Join(root, "tracked.txt"), []byte("clean"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	git("add", "tracked.txt")
+	git("commit", "-qm", "initial")
+
+	previous, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(root); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(previous) })
+	if err := requireCleanSourceTree(); err != nil {
+		t.Fatalf("clean tree rejected: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "untracked.go"), []byte("package dirty"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := requireCleanSourceTree(); err == nil || !strings.Contains(err.Error(), "clean source tree") {
+		t.Fatalf("dirty tree error = %v", err)
+	}
+}
 
 func TestWriteSidecarWritesArchiveDigest(t *testing.T) {
 	directory := t.TempDir()

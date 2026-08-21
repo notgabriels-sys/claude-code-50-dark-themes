@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 
@@ -43,6 +44,9 @@ func run(platform, outputDirectory string, mode release.Mode, acceptedLicense st
 	if info, err := os.Stat(outputDirectory); err != nil || !info.IsDir() {
 		return fmt.Errorf("output directory is unavailable")
 	}
+	if err := requireCleanSourceTree(); err != nil {
+		return err
+	}
 	filename := release.ArchiveFilename(version.Current, platform, mode)
 	archive := filepath.Join(outputDirectory, filename)
 	sidecar := archive + ".sha256"
@@ -60,6 +64,9 @@ func run(platform, outputDirectory string, mode release.Mode, acceptedLicense st
 	if err != nil {
 		return fmt.Errorf("read source revision: %w", err)
 	}
+	if err := verifyCommittedVersionSource(sourceRevision); err != nil {
+		return err
+	}
 	stage, err := os.MkdirTemp(outputDirectory, ".audio-preflight-stage-")
 	if err != nil {
 		return err
@@ -68,7 +75,7 @@ func run(platform, outputDirectory string, mode release.Mode, acceptedLicense st
 	parts := strings.Split(platform, "-")
 	binary := filepath.Join(stage, "audio-preflight")
 	link := "-buildid= -X github.com/gabrielgarciaalonso/audio-delivery-preflight-cli/internal/version.Value=" + version.Current
-	build := exec.Command("go", "build", "-trimpath", "-buildvcs=false", "-buildmode=exe", "-tags="+versionTag(version.Current), "-ldflags="+link, "-o", binary, "./cmd/audio-preflight")
+	build := exec.Command("go", "build", "-trimpath", "-buildvcs=true", "-buildmode=exe", "-tags="+versionTag(version.Current), "-ldflags="+link, "-o", binary, "./cmd/audio-preflight")
 	build.Env = append(os.Environ(), "CGO_ENABLED=0", "GOOS="+parts[0], "GOARCH="+parts[1])
 	build.Stdout, build.Stderr = os.Stdout, os.Stderr
 	if err := build.Run(); err != nil {
@@ -105,6 +112,29 @@ func run(platform, outputDirectory string, mode release.Mode, acceptedLicense st
 		return err
 	}
 	fmt.Println("Created and verified", mode, "archive:", archive)
+	return nil
+}
+
+func requireCleanSourceTree() error {
+	status, err := commandOutput("git", "status", "--porcelain=v1", "--untracked-files=all")
+	if err != nil {
+		return fmt.Errorf("inspect source tree: %w", err)
+	}
+	if status != "" {
+		return fmt.Errorf("release packaging requires a clean source tree")
+	}
+	return nil
+}
+
+func verifyCommittedVersionSource(revision string) error {
+	contents, err := commandOutput("git", "show", revision+":products/audio-delivery-preflight-cli/internal/version/version.go")
+	if err != nil {
+		return fmt.Errorf("read committed version source: %w", err)
+	}
+	pattern := regexp.MustCompile(`(?m)Current\s*=\s*"` + regexp.QuoteMeta(version.Current) + `"`)
+	if !pattern.MatchString(contents) {
+		return fmt.Errorf("committed version source does not declare %s", version.Current)
+	}
 	return nil
 }
 
