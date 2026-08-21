@@ -4,30 +4,33 @@ package preflight
 
 import (
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
-	"syscall"
 
 	"golang.org/x/sys/unix"
 )
 
 type fileIdentity struct {
 	dev, ino            uint64
-	mode                fs.FileMode
+	rawMode             uint32
 	size                int64
 	mtimeSec, mtimeNsec int64
 }
 
-func identityFromInfo(info fs.FileInfo) (fileIdentity, bool) {
-	stat, ok := info.Sys().(*syscall.Stat_t)
-	if !ok {
-		return fileIdentity{}, false
+func identityFromUnixStat(stat *unix.Stat_t) fileIdentity {
+	return fileIdentity{
+		dev:       uint64(stat.Dev),
+		ino:       uint64(stat.Ino),
+		rawMode:   uint32(stat.Mode),
+		size:      stat.Size,
+		mtimeSec:  stat.Mtim.Sec,
+		mtimeNsec: stat.Mtim.Nsec,
 	}
-	modified := info.ModTime()
-	return fileIdentity{dev: uint64(stat.Dev), ino: uint64(stat.Ino), mode: info.Mode(), size: info.Size(), mtimeSec: modified.Unix(), mtimeNsec: int64(modified.Nanosecond())}, true
 }
+
 func sameIdentity(a, b fileIdentity) bool {
-	return a.dev == b.dev && a.ino == b.ino && a.mode == b.mode && a.size == b.size && a.mtimeSec == b.mtimeSec && a.mtimeNsec == b.mtimeNsec
+	return a.dev == b.dev && a.ino == b.ino && a.rawMode == b.rawMode && a.size == b.size && a.mtimeSec == b.mtimeSec && a.mtimeNsec == b.mtimeNsec
 }
 
 func openRoot(root string) (*os.File, fileIdentity, error) {
@@ -43,21 +46,64 @@ func openRoot(root string) (*os.File, fileIdentity, error) {
 	if err != nil {
 		return nil, fileIdentity{}, err
 	}
-	f := os.NewFile(uintptr(fd), root)
-	actual, ok := identityFromInfo(mustStat(f))
-	if !ok || !sameIdentity(expected, actual) {
-		f.Close()
-		return nil, fileIdentity{}, fmt.Errorf("inventory root changed during open")
+	file := os.NewFile(uintptr(fd), root)
+	_, actual, err := statOpenedFile(file)
+	if err != nil || !sameIdentity(expected, actual) {
+		file.Close()
+		return nil, fileIdentity{}, fmt.Errorf("inventory root changed during open: %w", err)
 	}
-	return f, actual, nil
+	return file, actual, nil
 }
-func mustStat(f *os.File) fs.FileInfo {
-	info, err := f.Stat()
+
+func verifyRootPath(root string, expected fileIdentity) error {
+	file, actual, err := openRoot(root)
 	if err != nil {
-		panic(err)
+		return err
 	}
-	return info
+	if err := file.Close(); err != nil {
+		return err
+	}
+	if !sameIdentity(expected, actual) {
+		return fmt.Errorf("root identity changed")
+	}
+	return nil
 }
+
+func statOpenedFile(file *os.File) (fs.FileInfo, fileIdentity, error) {
+	info, err := file.Stat()
+	if err != nil {
+		return nil, fileIdentity{}, err
+	}
+	identity, ok := identityFromInfo(info)
+	if !ok {
+		return nil, fileIdentity{}, fmt.Errorf("file identity is unavailable")
+	}
+	return info, identity, nil
+}
+
+func statChild(dir *os.File, name string, listed fs.FileInfo) (childSnapshot, error) {
+	listedIdentity, ok := identityFromInfo(listed)
+	if !ok {
+		return childSnapshot{}, fmt.Errorf("cannot identify %q", name)
+	}
+	var stat unix.Stat_t
+	if err := unix.Fstatat(int(dir.Fd()), name, &stat, unix.AT_SYMLINK_NOFOLLOW); err != nil {
+		return childSnapshot{}, err
+	}
+	actual := identityFromUnixStat(&stat)
+	if !sameIdentity(listedIdentity, actual) {
+		return childSnapshot{}, fmt.Errorf("source changed while identifying %q", name)
+	}
+	return childSnapshot{info: listed, identity: actual}, nil
+}
+
+func readDirectory(dir *os.File) ([]fs.FileInfo, error) {
+	if _, err := dir.Seek(0, io.SeekStart); err != nil {
+		return nil, err
+	}
+	return dir.Readdir(-1)
+}
+
 func openChild(dir *os.File, name string, directory bool) (*os.File, error) {
 	flags := unix.O_RDONLY | unix.O_NOFOLLOW | unix.O_CLOEXEC | unix.O_NONBLOCK
 	if directory {
@@ -69,6 +115,7 @@ func openChild(dir *os.File, name string, directory bool) (*os.File, error) {
 	}
 	return os.NewFile(uintptr(fd), name), nil
 }
+
 func readLink(dir *os.File, name string) (string, error) {
 	buffer := make([]byte, 4096)
 	n, err := unix.Readlinkat(int(dir.Fd()), name, buffer)
@@ -80,3 +127,5 @@ func readLink(dir *os.File, name string) (string, error) {
 	}
 	return string(buffer[:n]), nil
 }
+
+func isSymlink(info fs.FileInfo, _ fileIdentity) bool { return info.Mode()&fs.ModeSymlink != 0 }

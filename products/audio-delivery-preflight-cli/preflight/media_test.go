@@ -230,6 +230,65 @@ func TestConservativeEvidenceRejectsPlausibleButInsufficientMedia(t *testing.T) 
 	}
 }
 
+func TestWAVEFormatExtensibleEvidence(t *testing.T) {
+	cases := []struct {
+		name         string
+		subtype      uint32
+		validBits    uint16
+		wantEncoding string
+		wantBitDepth int
+	}{
+		{name: "PCM subtype uses valid bits", subtype: 1, validBits: 24, wantEncoding: "PCM", wantBitDepth: 24},
+		{name: "IEEE float subtype", subtype: 3, validBits: 32, wantEncoding: "IEEE float"},
+		{name: "unknown subtype stays unavailable", subtype: 0x42, validBits: 24},
+		{name: "unknown subtype does not reinterpret subtype-specific union", subtype: 0x42, validBits: 0},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			mustWrite(t, filepath.Join(root, "extensible.wav"), wavExtensible(tc.subtype, tc.validBits))
+			inventory, err := preflight.InventoryDirectory(root)
+			if err != nil {
+				t.Fatal(err)
+			}
+			got := entryByPath(t, inventory.Entries, "extensible.wav").Media
+			if got == nil || !got.Supported || got.Encoding.Available != (tc.wantEncoding != "") || got.Encoding.Value != tc.wantEncoding {
+				t.Fatalf("extensible encoding evidence = %#v", got)
+			}
+			if got.BitDepth.Available != (tc.wantBitDepth != 0) || got.BitDepth.Value != tc.wantBitDepth {
+				t.Fatalf("extensible bit-depth evidence = %#v", got)
+			}
+		})
+	}
+}
+
+func TestMalformedWAVEFormatExtensibleIsUnavailableWithoutPanicking(t *testing.T) {
+	cases := []struct {
+		name string
+		body []byte
+	}{
+		{name: "cbSize too small", body: wavExtensibleWithCBSize(1, 24, 21)},
+		{name: "cbSize exceeds chunk", body: wavExtensibleWithCBSize(1, 24, 23)},
+		{name: "truncated GUID", body: wavExtensibleTruncated()},
+		{name: "zero valid bits", body: wavExtensible(1, 0)},
+		{name: "valid bits exceed container", body: wavExtensible(1, 33)},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			mustWrite(t, filepath.Join(root, "bad.wav"), tc.body)
+			inventory, err := preflight.InventoryDirectory(root)
+			if err != nil {
+				t.Fatal(err)
+			}
+			got := entryByPath(t, inventory.Entries, "bad.wav").Media
+			if got == nil || got.Supported || got.Unavailable == "" {
+				t.Fatalf("malformed extensible WAV claimed evidence: %#v", got)
+			}
+		})
+	}
+}
+
 func TestImageTransparencyEvidenceAvoidsFalseClaims(t *testing.T) {
 	cases := []struct {
 		name, file           string
@@ -375,6 +434,41 @@ func wavFormat(format uint16) []byte {
 	result := wavPCM()
 	binary.LittleEndian.PutUint16(result[20:], format)
 	return result
+}
+
+func wavExtensible(subtype uint32, validBits uint16) []byte {
+	return wavExtensibleWithCBSize(subtype, validBits, 22)
+}
+
+func wavExtensibleWithCBSize(subtype uint32, validBits, cbSize uint16) []byte {
+	fmtChunk := make([]byte, 40)
+	binary.LittleEndian.PutUint16(fmtChunk[0:], 0xfffe)
+	binary.LittleEndian.PutUint16(fmtChunk[2:], 2)
+	binary.LittleEndian.PutUint32(fmtChunk[4:], 48000)
+	binary.LittleEndian.PutUint32(fmtChunk[8:], 384000)
+	binary.LittleEndian.PutUint16(fmtChunk[12:], 8)
+	binary.LittleEndian.PutUint16(fmtChunk[14:], 32)
+	binary.LittleEndian.PutUint16(fmtChunk[16:], cbSize)
+	binary.LittleEndian.PutUint16(fmtChunk[18:], validBits)
+	binary.LittleEndian.PutUint32(fmtChunk[20:], 3)
+	binary.LittleEndian.PutUint32(fmtChunk[24:], subtype)
+	copy(fmtChunk[28:], []byte{0x00, 0x00, 0x10, 0x00, 0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71})
+
+	result := make([]byte, 12+8+len(fmtChunk)+8)
+	copy(result, "RIFF")
+	binary.LittleEndian.PutUint32(result[4:], uint32(len(result)-8))
+	copy(result[8:], "WAVE")
+	copy(result[12:], "fmt ")
+	binary.LittleEndian.PutUint32(result[16:], uint32(len(fmtChunk)))
+	copy(result[20:], fmtChunk)
+	copy(result[20+len(fmtChunk):], "data")
+	return result
+}
+
+func wavExtensibleTruncated() []byte {
+	result := wavExtensible(1, 24)
+	binary.LittleEndian.PutUint32(result[16:], 30)
+	return result[:50]
 }
 
 func aifcCompression(compression string) []byte {

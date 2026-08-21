@@ -1,6 +1,7 @@
 package preflight
 
 import (
+	"bytes"
 	"encoding/binary"
 	"image"
 	"image/color"
@@ -9,17 +10,22 @@ import (
 	_ "image/png"
 	"io"
 	"math"
-	"os"
 	"path/filepath"
 	"strings"
 )
+
+type mediaSource interface {
+	io.Reader
+	io.ReaderAt
+	io.Seeker
+}
 
 const (
 	maxInspectionBytes = 16 << 20
 	maxMetadataBytes   = 1 << 20
 )
 
-func inspectMedia(f *os.File, portablePath string) *MediaEvidence {
+func inspectMedia(f mediaSource, portablePath string) *MediaEvidence {
 	ext := strings.ToLower(filepath.Ext(portablePath))
 	switch ext {
 	case ".wav", ".rf64":
@@ -43,7 +49,7 @@ func inspectMedia(f *os.File, portablePath string) *MediaEvidence {
 	}
 }
 
-func inspectStandardImage(f *os.File, ext string) *MediaEvidence {
+func inspectStandardImage(f mediaSource, ext string) *MediaEvidence {
 	if _, err := f.Seek(0, io.SeekStart); err != nil {
 		return unavailableMedia(ext, "cannot seek media")
 	}
@@ -104,7 +110,7 @@ func colorModelName(model color.Model) string {
 	}
 }
 
-func pngAlpha(f *os.File) (bool, bool) {
+func pngAlpha(f mediaSource) (bool, bool) {
 	if _, err := f.Seek(0, io.SeekStart); err != nil {
 		return false, false
 	}
@@ -151,7 +157,7 @@ func pngAlpha(f *os.File) (bool, bool) {
 	return false, false
 }
 
-func inspectWAV(f *os.File) *MediaEvidence {
+func inspectWAV(f mediaSource) *MediaEvidence {
 	if _, err := f.Seek(0, io.SeekStart); err != nil {
 		return unavailableMedia("wav", "cannot seek media")
 	}
@@ -228,6 +234,29 @@ func inspectWAV(f *os.File) *MediaEvidence {
 				}
 			case 3:
 				evidence.Encoding = Measurement[string]{Available: true, Value: "IEEE float"}
+			case 0xfffe:
+				if len(chunk) < 40 {
+					return unavailableMedia(container, "truncated WAVE_FORMAT_EXTENSIBLE chunk")
+				}
+				cbSize := int(binary.LittleEndian.Uint16(chunk[16:18]))
+				if cbSize < 22 || 18+cbSize > len(chunk) {
+					return unavailableMedia(container, "invalid WAVE_FORMAT_EXTENSIBLE fields")
+				}
+				standardTail := []byte{0x00, 0x00, 0x10, 0x00, 0x80, 0x00, 0x00, 0xaa, 0x00, 0x38, 0x9b, 0x71}
+				if bytes.Equal(chunk[28:40], standardTail) {
+					subtype := binary.LittleEndian.Uint32(chunk[24:28])
+					validBits := binary.LittleEndian.Uint16(chunk[18:20])
+					switch subtype {
+					case 1:
+						if validBits == 0 || validBits > bits {
+							return unavailableMedia(container, "invalid WAVE_FORMAT_EXTENSIBLE PCM valid bits")
+						}
+						evidence.Encoding = Measurement[string]{Available: true, Value: "PCM"}
+						evidence.BitDepth = Measurement[int]{Available: true, Value: int(validBits)}
+					case 3:
+						evidence.Encoding = Measurement[string]{Available: true, Value: "IEEE float"}
+					}
+				}
 			}
 		}
 	}
@@ -240,7 +269,7 @@ func inspectWAV(f *os.File) *MediaEvidence {
 	return evidence
 }
 
-func inspectAIFF(f *os.File) *MediaEvidence {
+func inspectAIFF(f mediaSource) *MediaEvidence {
 	if _, err := f.Seek(0, io.SeekStart); err != nil {
 		return unavailableMedia("aiff", "cannot seek media")
 	}
@@ -333,7 +362,7 @@ func extended80(value []byte) (float64, bool) {
 	return result, !math.IsNaN(result) && !math.IsInf(result, 0)
 }
 
-func inspectFLAC(f *os.File) *MediaEvidence {
+func inspectFLAC(f mediaSource) *MediaEvidence {
 	if _, err := f.Seek(0, io.SeekStart); err != nil {
 		return unavailableMedia("flac", "cannot seek media")
 	}
@@ -373,7 +402,7 @@ func inspectFLAC(f *os.File) *MediaEvidence {
 	return evidence
 }
 
-func inspectMP3(f *os.File) *MediaEvidence {
+func inspectMP3(f mediaSource) *MediaEvidence {
 	if _, err := f.Seek(0, io.SeekStart); err != nil {
 		return unavailableMedia("mp3", "cannot seek media")
 	}
@@ -422,7 +451,7 @@ func mpegLayerThree(header []byte) (string, int, bool) {
 	return "MPEG Layer III", 144000*bitrates[bitrate]/rates[sampleRate] + int((header[2]>>1)&1), true
 }
 
-func inspectMP4(f *os.File) *MediaEvidence {
+func inspectMP4(f mediaSource) *MediaEvidence {
 	if _, err := f.Seek(0, io.SeekStart); err != nil {
 		return unavailableMedia("mp4", "cannot seek media")
 	}
@@ -508,7 +537,7 @@ func isMP4Container(name string) bool {
 	}
 }
 
-func inspectTIFF(f *os.File) *MediaEvidence {
+func inspectTIFF(f mediaSource) *MediaEvidence {
 	if _, err := f.Seek(0, io.SeekStart); err != nil {
 		return unavailableMedia("tiff", "cannot seek media")
 	}
