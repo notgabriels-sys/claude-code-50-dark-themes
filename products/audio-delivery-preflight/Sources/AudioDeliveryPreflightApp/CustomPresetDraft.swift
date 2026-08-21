@@ -1,6 +1,12 @@
 import Foundation
 import PreflightCore
 
+private func editableNumberText(_ value: Double?) -> String {
+    guard let value else { return "" }
+    let text = String(value)
+    return text.hasSuffix(".0") ? String(text.dropLast(2)) : text
+}
+
 struct CustomPresetDraft {
     var name: String
     var audioAllowedExtensions: String
@@ -31,10 +37,10 @@ struct CustomPresetDraft {
             : "\(preset.name) Custom"
         audioAllowedExtensions = Self.listText(preset.audio.allowedExtensions)
         audioAllowedEncodings = Self.listText(preset.audio.allowedEncodings)
-        audioSampleRateMinimum = Self.numberText(preset.audio.sampleRate?.minimum)
-        audioSampleRateMaximum = Self.numberText(preset.audio.sampleRate?.maximum)
-        audioBitDepthMinimum = Self.numberText(preset.audio.bitDepth?.minimum)
-        audioBitDepthMaximum = Self.numberText(preset.audio.bitDepth?.maximum)
+        audioSampleRateMinimum = editableNumberText(preset.audio.sampleRate?.minimum)
+        audioSampleRateMaximum = editableNumberText(preset.audio.sampleRate?.maximum)
+        audioBitDepthMinimum = editableNumberText(preset.audio.bitDepth?.minimum)
+        audioBitDepthMaximum = editableNumberText(preset.audio.bitDepth?.maximum)
         requireConsistentSampleRate = preset.audio.requireConsistentSampleRate
         requireConsistentBitDepth = preset.audio.requireConsistentBitDepth
         requireConsistentChannelCount = preset.audio.requireConsistentChannelCount
@@ -139,10 +145,6 @@ struct CustomPresetDraft {
         values?.joined(separator: ", ") ?? ""
     }
 
-    private static func numberText(_ value: Double?) -> String {
-        guard let value else { return "" }
-        return value.rounded() == value ? String(Int(value)) : String(value)
-    }
 }
 
 struct CustomRoleDraft: Identifiable {
@@ -211,12 +213,12 @@ struct CustomRoleDraft: Identifiable {
             category: role.category,
             allowedExtensions: role.allowedExtensions?.joined(separator: ", ") ?? "",
             allowedEncodings: role.allowedEncodings?.joined(separator: ", ") ?? "",
-            channelCountMinimum: Self.numberText(role.channelCount?.minimum),
-            channelCountMaximum: Self.numberText(role.channelCount?.maximum),
-            sampleRateMinimum: Self.numberText(role.sampleRate?.minimum),
-            sampleRateMaximum: Self.numberText(role.sampleRate?.maximum),
-            bitDepthMinimum: Self.numberText(role.bitDepth?.minimum),
-            bitDepthMaximum: Self.numberText(role.bitDepth?.maximum),
+            channelCountMinimum: editableNumberText(role.channelCount?.minimum),
+            channelCountMaximum: editableNumberText(role.channelCount?.maximum),
+            sampleRateMinimum: editableNumberText(role.sampleRate?.minimum),
+            sampleRateMaximum: editableNumberText(role.sampleRate?.maximum),
+            bitDepthMinimum: editableNumberText(role.bitDepth?.minimum),
+            bitDepthMaximum: editableNumberText(role.bitDepth?.maximum),
             readabilitySeverity: role.readability,
             requirementSeverity: role.severity,
             ambiguitySeverity: role.ambiguitySeverity
@@ -304,8 +306,4 @@ struct CustomRoleDraft: Identifiable {
         return values.map { lowercased ? $0.lowercased() : $0 }
     }
 
-    private static func numberText(_ value: Double?) -> String {
-        guard let value else { return "" }
-        return value.rounded() == value ? String(Int(value)) : String(value)
-    }
 }

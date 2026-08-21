@@ -207,6 +207,55 @@ final class AppModelTests: XCTestCase {
         XCTAssertTrue(model.resolvedRequirements.contains { $0.description.contains("4096 px") })
     }
 
+    func testCustomPresetDraftFormatsLargeFiniteIntegralAudioBoundsWithoutIntConversion() throws {
+        let largeBound = 1e100
+        let preset = Preset(
+            identifier: "large-audio-bound",
+            name: "Large Audio Bound",
+            audio: AudioRequirement(
+                sampleRate: NumericConstraint(minimum: 48_000, maximum: largeBound),
+                bitDepth: NumericConstraint(exactly: largeBound)
+            )
+        )
+        _ = try PresetResolver().resolve(preset)
+
+        let draft = CustomPresetDraft(preset: preset)
+
+        XCTAssertEqual(draft.audioSampleRateMinimum, "48000")
+        XCTAssertEqual(Double(draft.audioSampleRateMaximum), largeBound)
+        XCTAssertEqual(Double(draft.audioBitDepthMinimum), largeBound)
+        XCTAssertEqual(Double(draft.audioBitDepthMaximum), largeBound)
+    }
+
+    func testCustomRoleDraftFormatsLargeFiniteIntegralBoundsWithoutIntConversion() throws {
+        let largeBound = 1e100
+        let role = DeliveryRole(
+            identifier: "large-role-bound",
+            name: "Large Role Bound",
+            pattern: ".*\\.wav$",
+            required: true,
+            category: .audio,
+            channelCount: NumericConstraint(exactly: 2),
+            sampleRate: NumericConstraint(exactly: largeBound),
+            bitDepth: NumericConstraint(exactly: 24)
+        )
+        let preset = Preset(
+            identifier: "large-role-bound",
+            name: "Large Role Bound",
+            roles: [role]
+        )
+        _ = try PresetResolver().resolve(preset)
+
+        let draft = CustomRoleDraft(role)
+
+        XCTAssertEqual(draft.channelCountMinimum, "2")
+        XCTAssertEqual(draft.channelCountMaximum, "2")
+        XCTAssertEqual(Double(draft.sampleRateMinimum), largeBound)
+        XCTAssertEqual(Double(draft.sampleRateMaximum), largeBound)
+        XCTAssertEqual(draft.bitDepthMinimum, "24")
+        XCTAssertEqual(draft.bitDepthMaximum, "24")
+    }
+
     func testCustomPresetDraftRoundTripsRolesFormatsNumericFilenameAndSeverities() throws {
         let model = AppModel(environment: environment(scan: ScanCapture(result: nil)))
         model.choosePreset(BuiltInPresets.custom.identifier)
