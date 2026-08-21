@@ -28,6 +28,8 @@ This checklist separates repository evidence, a local archive, a customer-tested
 - [ ] Copy the ZIP and checksum to a separate location and verify them there.
 - [ ] Extract and launch the copied archive rather than the build-tree executable.
 
+Observed on the local packaged candidate: archive verification and packaged `.app` launch succeeded. Independent-location copying and independent-host launch remain open.
+
 ## Apple distribution
 
 - [ ] Install or select the correct Apple Developer ID Application certificate.
@@ -55,6 +57,8 @@ If signing and notarization are deliberately deferred, the product page, checkou
 - [ ] Observe or deny network access while scanning the final packaged build.
 - [ ] Test on an independent installation at the macOS 14 floor.
 - [ ] Compare multiple audio and artwork formats with trusted tools.
+
+Partial local smoke evidence: the packaged start screen, accessibility labels, preset menu, Digital Release selection, and native chooser navigation to the generated fixture were observed. The automation connection ended on chooser confirmation, so the unchecked workflow items above remain deliberately open.
 
 ## Commercial release
 
