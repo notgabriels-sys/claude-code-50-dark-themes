@@ -25,6 +25,10 @@ func main() {
 }
 
 func run(args []string, stdout, stderr io.Writer) int {
+	if version.BinaryProvenance == "" {
+		fmt.Fprintln(stderr, "internal error: binary provenance is missing")
+		return exitInternalFailure
+	}
 	if len(args) == 0 {
 		printUsage(stderr)
 		return exitInvalidConfiguration
