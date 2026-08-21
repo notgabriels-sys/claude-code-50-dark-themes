@@ -20,6 +20,23 @@ final class AppModelTests: XCTestCase {
         XCTAssertEqual(scanCount, 0)
     }
 
+    func testSelectedCanonicalRootIdentityIsPreservedInScanRequest() async throws {
+        let scan = ScanCapture(result: nil)
+        let model = AppModel(environment: environment(scan: scan))
+        let root = URL(fileURLWithPath: "/private/tmp", isDirectory: true)
+            .appendingPathComponent("AppModelRootIdentity-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        XCTAssertTrue(model.selectFolder(root))
+        model.startScan()
+        await waitUntil { model.phase == .results }
+
+        let selectedRoot = await scan.selectedFolderURL
+        XCTAssertEqual(selectedRoot?.path, root.path)
+        XCTAssertTrue(selectedRoot?.path.hasPrefix("/private/tmp/") == true)
+    }
+
     func testStartScanMovesThroughScanningToResults() async throws {
         let scan = ControlledScan(result: try result(status: .ready))
         let model = AppModel(environment: environment(scan: scan))
@@ -164,6 +181,104 @@ final class AppModelTests: XCTestCase {
         XCTAssertEqual(scanCount, 0)
     }
 
+    func testDigitalReleaseCanSeedEditableCustomPresetIncludingArtworkExpectations() throws {
+        let model = AppModel(
+            environment: environment(scan: ScanCapture(result: nil)),
+            initialPresetID: BuiltInPresets.digitalRelease.identifier
+        )
+
+        model.editSelectedPresetAsCustom()
+
+        XCTAssertEqual(model.selectedPresetID, BuiltInPresets.custom.identifier)
+        XCTAssertEqual(model.customPresetDraft.artworkEnabled, true)
+        XCTAssertEqual(model.customPresetDraft.artworkMinimumWidth, "3000")
+        XCTAssertEqual(model.customPresetDraft.artworkMinimumHeight, "3000")
+        XCTAssertEqual(model.customPresetDraft.artworkRequiresSquare, true)
+        XCTAssertEqual(model.customPresetDraft.artworkSeverity, .error)
+        XCTAssertEqual(model.customPresetDraft.roles.map(\.identifier), [
+            "main-master", "artwork", "metadata-or-credits",
+        ])
+
+        model.customPresetDraft.artworkMinimumWidth = "4096"
+        model.customPresetDraft.artworkMinimumHeight = "4096"
+        XCTAssertTrue(model.applyCustomPreset())
+        XCTAssertEqual(model.selectedPresetDefinition?.artwork?.minimumWidth, 4096)
+        XCTAssertEqual(model.selectedPresetDefinition?.artwork?.minimumHeight, 4096)
+        XCTAssertTrue(model.resolvedRequirements.contains { $0.description.contains("4096 px") })
+    }
+
+    func testCustomPresetDraftRoundTripsRolesFormatsNumericFilenameAndSeverities() throws {
+        let model = AppModel(environment: environment(scan: ScanCapture(result: nil)))
+        model.choosePreset(BuiltInPresets.custom.identifier)
+        model.customPresetDraft.name = "Vinyl Delivery"
+        model.customPresetDraft.audioAllowedExtensions = "wav, aiff"
+        model.customPresetDraft.audioAllowedEncodings = "Linear PCM, FLAC"
+        model.customPresetDraft.audioSampleRateMinimum = "44100"
+        model.customPresetDraft.audioSampleRateMaximum = "96000"
+        model.customPresetDraft.audioBitDepthMinimum = "24"
+        model.customPresetDraft.audioBitDepthMaximum = "32"
+        model.customPresetDraft.requireConsistentSampleRate = true
+        model.customPresetDraft.requireConsistentBitDepth = true
+        model.customPresetDraft.requireConsistentChannelCount = true
+        model.customPresetDraft.audioSeverity = .error
+        model.customPresetDraft.filenamePattern = "(?i)final\\d+"
+        model.customPresetDraft.filenameSeverity = .warning
+        model.customPresetDraft.serviceFileSeverity = .information
+        model.customPresetDraft.symbolicLinkSeverity = .error
+        model.customPresetDraft.exactDuplicateSeverity = .warning
+        model.customPresetDraft.roles = [CustomRoleDraft(
+            identifier: "premaster",
+            name: "Stereo Premaster",
+            pattern: "(?i).*\\.(wav|aiff)$",
+            required: true,
+            category: .audio,
+            allowedExtensions: "wav, aiff",
+            allowedEncodings: "Linear PCM",
+            channelCountMinimum: "2",
+            channelCountMaximum: "2",
+            sampleRateMinimum: "48000",
+            sampleRateMaximum: "96000",
+            bitDepthMinimum: "24",
+            bitDepthMaximum: "32",
+            readabilitySeverity: .error,
+            requirementSeverity: .error,
+            ambiguitySeverity: .warning
+        )]
+
+        XCTAssertTrue(model.applyCustomPreset())
+
+        let definition = try XCTUnwrap(model.selectedPresetDefinition)
+        XCTAssertEqual(definition.identifier, "custom")
+        XCTAssertEqual(definition.name, "Vinyl Delivery")
+        XCTAssertEqual(definition.audio.allowedExtensions, ["wav", "aiff"])
+        XCTAssertEqual(definition.audio.allowedEncodings, ["Linear PCM", "FLAC"])
+        XCTAssertEqual(definition.audio.sampleRate, NumericConstraint(minimum: 44_100, maximum: 96_000))
+        XCTAssertEqual(definition.audio.bitDepth, NumericConstraint(minimum: 24, maximum: 32))
+        XCTAssertTrue(definition.audio.requireConsistentChannelCount)
+        XCTAssertEqual(definition.filename.ambiguousVersionPattern, "(?i)final\\d+")
+        XCTAssertEqual(definition.symbolicLinkSeverity, .error)
+        let role = try XCTUnwrap(definition.roles.first)
+        XCTAssertEqual(role.allowedExtensions, ["wav", "aiff"])
+        XCTAssertEqual(role.allowedEncodings, ["Linear PCM"])
+        XCTAssertEqual(role.channelCount, NumericConstraint(exactly: 2))
+        XCTAssertEqual(role.sampleRate, NumericConstraint(minimum: 48_000, maximum: 96_000))
+        XCTAssertEqual(role.bitDepth, NumericConstraint(minimum: 24, maximum: 32))
+        XCTAssertEqual(role.readability, .error)
+        XCTAssertEqual(role.severity, .error)
+        XCTAssertEqual(role.ambiguitySeverity, .warning)
+    }
+
+    func testInvalidCustomPresetCannotBecomeScannable() {
+        let model = AppModel(environment: environment(scan: ScanCapture(result: nil)))
+        model.choosePreset(BuiltInPresets.custom.identifier)
+        XCTAssertTrue(model.selectFolder(folderURL()))
+        model.customPresetDraft.filenamePattern = "["
+
+        XCTAssertFalse(model.applyCustomPreset())
+        XCTAssertFalse(model.canStartScan)
+        XCTAssertEqual(model.errorMessage, "The Custom preset could not be applied. Review its fields and try again.")
+    }
+
     func testResultFiltersPreserveOriginalFindingIdentityAndDetailSelection() async throws {
         let warningPath = try RelativePath("Masters/Main Master.wav")
         let secondWarningPath = try RelativePath("Masters/Alternate Master.wav")
@@ -287,7 +402,7 @@ final class AppModelTests: XCTestCase {
     }
 
     func testDefaultExportWriterNeverOverwritesExistingSourceAsset() async throws {
-        let root = FileManager.default.temporaryDirectory
+        let root = URL(fileURLWithPath: "/private/tmp", isDirectory: true)
             .appendingPathComponent("AppModelSourceSafety-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: root) }
@@ -312,6 +427,31 @@ final class AppModelTests: XCTestCase {
         XCTAssertEqual(model.phase, .results)
         XCTAssertNotNil(model.errorMessage)
         XCTAssertNil(model.lastExportedFormat)
+    }
+
+    func testDefaultExportWriterCreatesNewReportThroughCanonicalPrivateTmpAncestors() async throws {
+        let root = URL(fileURLWithPath: "/private/tmp", isDirectory: true)
+            .appendingPathComponent("AppModelExportSuccess-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let destination = root.appendingPathComponent("report.json")
+        let scan = ScanCapture(result: try result(status: .ready))
+        let model = AppModel(environment: AppModel.Environment(
+            scan: { request in await scan.scan(request) },
+            resolvePreset: { try PresetResolver().resolve($0) },
+            isFolder: { $0 == root }
+        ))
+        XCTAssertTrue(model.selectFolder(root))
+        model.startScan()
+        await waitUntil { model.phase == .results }
+        model.showExport()
+
+        await model.export(.json, to: destination)
+
+        XCTAssertEqual(model.lastExportedFormat, .json)
+        XCTAssertNil(model.errorMessage)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: destination.path))
+        XCTAssertTrue(String(decoding: try Data(contentsOf: destination), as: UTF8.self).contains("\"schemaVersion\""))
     }
 
     private func environment(
@@ -398,6 +538,7 @@ private enum TestError: Error {
 private actor ScanCapture: ScanServicing {
     private let result: ScanResult?
     private(set) var callCount = 0
+    private(set) var selectedFolderURL: URL?
 
     init(result: ScanResult?) {
         self.result = result
@@ -405,6 +546,7 @@ private actor ScanCapture: ScanServicing {
 
     func scan(_ request: ScanRequest) async -> ScanResult {
         callCount += 1
+        selectedFolderURL = request.selectedFolderURL
         return result ?? ScanResult(
             selectedFolderName: "Delivery",
             preset: request.preset,

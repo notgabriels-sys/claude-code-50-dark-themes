@@ -94,6 +94,105 @@ final class CLITests: XCTestCase {
         XCTAssertFalse(output.stderr.contains(privatePresetValue))
     }
 
+    func testScanLoadsValidatedCustomPresetFileWithoutEchoingItsPrivatePath() async throws {
+        let output = OutputCapture()
+        let calls = CallCapture()
+        let selectedPreset = PresetCapture()
+        let privatePresetPath = "/Users/example/Private/custom-preset.json"
+        let customPreset = Preset(
+            identifier: "custom-delivery",
+            name: "Custom Delivery",
+            audio: AudioRequirement(
+                allowedExtensions: ["wav"],
+                allowedEncodings: ["Linear PCM"],
+                sampleRate: NumericConstraint(exactly: 48_000),
+                severity: .error
+            )
+        )
+        let result = try scanResult(status: .ready)
+        var testEnvironment = environment(output: output)
+        testEnvironment.loadPresetFile = { url in
+            calls.recordPresetLoad()
+            XCTAssertEqual(url.path, privatePresetPath)
+            return customPreset
+        }
+        testEnvironment.scan = { request in
+            selectedPreset.record(request.preset)
+            return ScanResult(
+                selectedFolderName: result.selectedFolderName,
+                preset: request.preset,
+                applicationVersion: result.applicationVersion,
+                engineVersion: result.engineVersion,
+                startedAt: result.startedAt,
+                completedAt: result.completedAt,
+                inventory: result.inventory,
+                findings: result.findings,
+                overallStatus: result.overallStatus
+            )
+        }
+
+        let exitCode = await CLI().run(
+            arguments: ["scan", "Fixture", "--preset-file", privatePresetPath],
+            environment: testEnvironment
+        )
+
+        XCTAssertEqual(exitCode, 0)
+        XCTAssertEqual(calls.presetLoadCalls, 1)
+        XCTAssertEqual(selectedPreset.value?.identifier, "custom-delivery")
+        XCTAssertEqual(selectedPreset.value?.definition.audio.allowedEncodings, ["Linear PCM"])
+        XCTAssertTrue(output.stdout.contains("Custom Delivery"))
+        XCTAssertFalse(output.stdout.contains(privatePresetPath))
+        XCTAssertFalse(output.stderr.contains(privatePresetPath))
+    }
+
+    func testPresetAndPresetFileAreMutuallyExclusiveBeforeLoadingOrScanning() async throws {
+        let output = OutputCapture()
+        let calls = CallCapture()
+        let fallbackResult = try scanResult(status: .ready)
+        var testEnvironment = environment(output: output)
+        testEnvironment.loadPresetFile = { _ in calls.recordPresetLoad(); return BuiltInPresets.custom }
+        testEnvironment.scan = { _ in calls.recordScan(); return fallbackResult }
+
+        let exitCode = await CLI().run(
+            arguments: [
+                "scan", "Fixture",
+                "--preset", "general-audio",
+                "--preset-file", "/private/tmp/custom.json",
+            ],
+            environment: testEnvironment
+        )
+
+        XCTAssertEqual(exitCode, 3)
+        XCTAssertEqual(calls.presetLoadCalls, 0)
+        XCTAssertEqual(calls.scanCalls, 0)
+        XCTAssertTrue(output.stderr.contains("--preset-file"))
+    }
+
+    func testInvalidCustomPresetFileFailsBeforeFolderInspectionOrScanWithoutPathLeakage() async throws {
+        let output = OutputCapture()
+        let calls = CallCapture()
+        let privatePresetPath = "/Users/example/Private/invalid.json"
+        let fallbackResult = try scanResult(status: .ready)
+        var testEnvironment = environment(output: output)
+        testEnvironment.loadPresetFile = { _ in
+            calls.recordPresetLoad()
+            throw PreflightError.invalidPreset(field: "presetFile", reason: "The imported preset is invalid.")
+        }
+        testEnvironment.folderExists = { _ in calls.recordFolderInspection(); return true }
+        testEnvironment.scan = { _ in calls.recordScan(); return fallbackResult }
+
+        let exitCode = await CLI().run(
+            arguments: ["scan", "Fixture", "--preset-file", privatePresetPath],
+            environment: testEnvironment
+        )
+
+        XCTAssertEqual(exitCode, 3)
+        XCTAssertEqual(calls.presetLoadCalls, 1)
+        XCTAssertEqual(calls.folderInspectionCalls, 0)
+        XCTAssertEqual(calls.scanCalls, 0)
+        XCTAssertFalse(output.stderr.contains(privatePresetPath))
+    }
+
     func testUnavailableFolderAndInjectedScanStartFailureExitFourWithoutPathLeakage() async {
         let output = OutputCapture()
         let privatePath = "/Users/example/private-delivery"
@@ -477,12 +576,22 @@ private final class CallCapture: @unchecked Sendable {
     private var capturedFolderInspectionCalls = 0
     private var capturedScanCalls = 0
     private var capturedWriteCalls = 0
+    private var capturedPresetLoadCalls = 0
     var folderInspectionCalls: Int { lock.lock(); defer { lock.unlock() }; return capturedFolderInspectionCalls }
     var scanCalls: Int { lock.lock(); defer { lock.unlock() }; return capturedScanCalls }
     var writeCalls: Int { lock.lock(); defer { lock.unlock() }; return capturedWriteCalls }
+    var presetLoadCalls: Int { lock.lock(); defer { lock.unlock() }; return capturedPresetLoadCalls }
     func recordFolderInspection() { lock.lock(); capturedFolderInspectionCalls += 1; lock.unlock() }
     func recordScan() { lock.lock(); capturedScanCalls += 1; lock.unlock() }
     func recordWrite() { lock.lock(); capturedWriteCalls += 1; lock.unlock() }
+    func recordPresetLoad() { lock.lock(); capturedPresetLoadCalls += 1; lock.unlock() }
+}
+
+private final class PresetCapture: @unchecked Sendable {
+    private let lock = NSLock()
+    private var capturedValue: ResolvedPreset?
+    var value: ResolvedPreset? { lock.lock(); defer { lock.unlock() }; return capturedValue }
+    func record(_ value: ResolvedPreset) { lock.lock(); capturedValue = value; lock.unlock() }
 }
 
 private final class DestinationStateSequence: @unchecked Sendable {

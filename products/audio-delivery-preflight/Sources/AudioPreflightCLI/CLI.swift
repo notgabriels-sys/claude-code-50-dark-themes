@@ -27,6 +27,7 @@ public struct CLI: Sendable {
     public struct Environment: Sendable {
         public var presets: [Preset]
         public var resolvePreset: @Sendable (Preset) throws -> ResolvedPreset
+        public var loadPresetFile: @Sendable (URL) throws -> Preset
         public var scan: @Sendable (ScanRequest) async throws -> ScanResult
         public var folderExists: @Sendable (URL) -> Bool
         public var inspectReportDestination: @Sendable (URL) -> ReportDestinationState
@@ -39,6 +40,7 @@ public struct CLI: Sendable {
         public init(
             presets: [Preset] = BuiltInPresets.all,
             resolvePreset: @escaping @Sendable (Preset) throws -> ResolvedPreset = { try PresetResolver().resolve($0) },
+            loadPresetFile: @escaping @Sendable (URL) throws -> Preset = { try PresetFileLoader().load(from: $0) },
             scan: @escaping @Sendable (ScanRequest) async throws -> ScanResult = { request in
                 await ScanService().scan(request)
             },
@@ -61,6 +63,7 @@ public struct CLI: Sendable {
         ) {
             self.presets = presets
             self.resolvePreset = resolvePreset
+            self.loadPresetFile = loadPresetFile
             self.scan = scan
             self.folderExists = folderExists
             self.inspectReportDestination = inspectReportDestination
@@ -73,10 +76,15 @@ public struct CLI: Sendable {
     }
 
     private enum Command {
-        case scan(folder: String, presetID: String, reports: Reports)
+        case scan(folder: String, presetSource: PresetSource, reports: Reports)
         case presets
         case presetShow(identifier: String)
         case version
+    }
+
+    private enum PresetSource {
+        case builtIn(identifier: String)
+        case file(URL)
     }
 
     private struct Reports {
@@ -89,7 +97,7 @@ public struct CLI: Sendable {
         }
 
         var hasDistinctDestinations: Bool {
-            Set(urls.map { conservativePathKey($0.path) }).count == urls.count
+            Set(urls.map { PortablePathIdentity.key($0.path) }).count == urls.count
         }
     }
 
@@ -113,29 +121,32 @@ public struct CLI: Sendable {
                 let resolved = try environment.resolvePreset(preset)
                 printRequirements(resolved, environment: environment)
                 return ExitCode.ready.rawValue
-            case .scan(let folder, let presetID, let reports):
-                return await runScan(folder: folder, presetID: presetID, reports: reports, environment: environment)
+            case .scan(let folder, let presetSource, let reports):
+                return await runScan(folder: folder, presetSource: presetSource, reports: reports, environment: environment)
             }
         } catch {
             return invalidConfiguration(environment)
         }
     }
 
-    private func runScan(folder: String, presetID: String, reports: Reports, environment: Environment) async -> Int32 {
+    private func runScan(folder: String, presetSource: PresetSource, reports: Reports, environment: Environment) async -> Int32 {
         guard reports.hasDistinctDestinations else {
             return invalidConfiguration(environment)
         }
-        guard let preset = environment.presets.first(where: { $0.identifier == presetID }) else {
-            return unknownPreset(for: "scan --preset", environment: environment)
-        }
 
-        let folderURL = URL(fileURLWithPath: folder, isDirectory: true).standardizedFileURL
-        guard reportDestinationsAreSafe(reports, root: folderURL, environment: environment) else {
-            return invalidConfiguration(environment)
-        }
-        guard environment.folderExists(folderURL) else {
-            environment.writeStandardError("Scan could not start: the selected folder is unavailable.")
-            return ExitCode.scanCouldNotStart.rawValue
+        let preset: Preset
+        switch presetSource {
+        case .builtIn(let identifier):
+            guard let builtIn = environment.presets.first(where: { $0.identifier == identifier }) else {
+                return unknownPreset(for: "scan --preset", environment: environment)
+            }
+            preset = builtIn
+        case .file(let fileURL):
+            do {
+                preset = try environment.loadPresetFile(fileURL)
+            } catch {
+                return invalidConfiguration(environment)
+            }
         }
 
         let resolved: ResolvedPreset
@@ -144,6 +155,16 @@ public struct CLI: Sendable {
         } catch {
             return invalidConfiguration(environment)
         }
+
+        let folderURL = lexicallyNormalizedFileURL(folder, isDirectory: true)
+        guard reportDestinationsAreSafe(reports, root: folderURL, environment: environment) else {
+            return invalidConfiguration(environment)
+        }
+        guard environment.folderExists(folderURL) else {
+            environment.writeStandardError("Scan could not start: the selected folder is unavailable.")
+            return ExitCode.scanCouldNotStart.rawValue
+        }
+
         printRequirements(resolved, environment: environment)
 
         let request = ScanRequest(
@@ -204,20 +225,26 @@ public struct CLI: Sendable {
         guard let folder = arguments.first, !folder.isEmpty, !folder.hasPrefix("--") else {
             throw RuntimeError.unexpected
         }
-        var presetID = "general-audio"
+        var presetSource = PresetSource.builtIn(identifier: "general-audio")
         var reports = Reports()
         var seen: Set<String> = []
         var index = 1
         while index < arguments.count {
             let option = arguments[index]
-            guard ["--preset", "--report-html", "--report-json", "--checksums"].contains(option), !seen.contains(option), index + 1 < arguments.count else {
+            guard ["--preset", "--preset-file", "--report-html", "--report-json", "--checksums"].contains(option), !seen.contains(option), index + 1 < arguments.count else {
                 throw RuntimeError.unexpected
             }
             let value = arguments[index + 1]
             guard !value.isEmpty, !value.hasPrefix("--") else { throw RuntimeError.unexpected }
+            if (option == "--preset" && seen.contains("--preset-file"))
+                || (option == "--preset-file" && seen.contains("--preset"))
+            {
+                throw RuntimeError.unexpected
+            }
             seen.insert(option)
             switch option {
-            case "--preset": presetID = value
+            case "--preset": presetSource = .builtIn(identifier: value)
+            case "--preset-file": presetSource = .file(lexicallyNormalizedFileURL(value))
             case "--report-html": reports.html = normalizedFileURL(value)
             case "--report-json": reports.json = normalizedFileURL(value)
             case "--checksums": reports.checksums = normalizedFileURL(value)
@@ -225,7 +252,7 @@ public struct CLI: Sendable {
             }
             index += 2
         }
-        return .scan(folder: folder, presetID: presetID, reports: reports)
+        return .scan(folder: folder, presetSource: presetSource, reports: reports)
     }
 
     private func printRequirements(_ preset: ResolvedPreset, environment: Environment) {
@@ -268,14 +295,24 @@ public struct CLI: Sendable {
     }
 
     private func normalizedFileURL(_ path: String) -> URL {
-        URL(fileURLWithPath: path).standardizedFileURL
+        lexicallyNormalizedFileURL(path)
+    }
+
+    private func lexicallyNormalizedFileURL(_ path: String, isDirectory: Bool = false) -> URL {
+        let absolutePath = path.hasPrefix("/")
+            ? path
+            : FileManager.default.currentDirectoryPath + "/" + path
+        return Self.lexicalURL(
+            URL(fileURLWithPath: absolutePath, isDirectory: isDirectory),
+            isDirectory: isDirectory
+        )
     }
 
     private func reportsCollideWithInventory(_ reports: Reports, root: URL, inventory: [InventoryEntry]) -> Bool {
-        let sourcePaths = Set(inventory.map { conservativePathKey($0.relativePath.value) })
+        let sourcePaths = Set(inventory.map { PortablePathIdentity.key($0.relativePath.value) })
         return reports.urls.contains { destination in
             guard let relativePath = lexicalRelativePath(of: destination, within: root) else { return false }
-            return relativePath.isEmpty || sourcePaths.contains(conservativePathKey(relativePath))
+            return relativePath.isEmpty || sourcePaths.contains(PortablePathIdentity.key(relativePath))
         }
     }
 
@@ -295,11 +332,11 @@ public struct CLI: Sendable {
     }
 
     private func lexicalRelativePath(of destination: URL, within root: URL) -> String? {
-        let rootComponents = root.standardizedFileURL.pathComponents
-        let destinationComponents = destination.standardizedFileURL.pathComponents
+        let rootComponents = Self.lexicalURL(root, isDirectory: true).pathComponents
+        let destinationComponents = Self.lexicalURL(destination).pathComponents
         guard destinationComponents.count >= rootComponents.count,
-              Array(destinationComponents.prefix(rootComponents.count)).map(conservativePathKey)
-                == rootComponents.map(conservativePathKey)
+              Array(destinationComponents.prefix(rootComponents.count)).map(PortablePathIdentity.key)
+                == rootComponents.map(PortablePathIdentity.key)
         else {
             return nil
         }
@@ -308,7 +345,7 @@ public struct CLI: Sendable {
 
     public static func reportDestinationState(at destination: URL) -> ReportDestinationState {
         guard destination.isFileURL else { return .unsafe }
-        let normalized = destination.standardizedFileURL
+        let normalized = lexicalURL(destination)
         let components = normalized.pathComponents
         guard components.first == "/", components.count > 1 else { return .unsafe }
 
@@ -350,7 +387,7 @@ public struct CLI: Sendable {
         allowReplacingExisting: Bool
     ) throws {
         guard destination.isFileURL else { throw unsafeReportDestinationError() }
-        let components = destination.standardizedFileURL.pathComponents
+        let components = lexicalURL(destination).pathComponents
         guard components.first == "/", components.count > 1, let filename = components.last else {
             throw unsafeReportDestinationError()
         }
@@ -427,6 +464,24 @@ public struct CLI: Sendable {
         PreflightError.exportFailed(reason: "The report destination cannot be written safely.")
     }
 
+    private static func lexicalURL(_ url: URL, isDirectory: Bool = false) -> URL {
+        var components: [Substring] = []
+        for component in url.path.split(separator: "/", omittingEmptySubsequences: true) {
+            switch component {
+            case ".":
+                continue
+            case "..":
+                if !components.isEmpty { components.removeLast() }
+            default:
+                components.append(component)
+            }
+        }
+        return URL(
+            fileURLWithPath: "/" + components.joined(separator: "/"),
+            isDirectory: isDirectory
+        )
+    }
+
     private func exitCode(for status: OverallStatus) -> ExitCode {
         switch status {
         case .ready: .ready
@@ -437,7 +492,7 @@ public struct CLI: Sendable {
     }
 
     private func invalidConfiguration(_ environment: Environment) -> Int32 {
-        environment.writeStandardError("Invalid command or configuration. Use: audio-preflight scan <folder> [--preset <id>] [--report-html <path>] [--report-json <path>] [--checksums <path>]")
+        environment.writeStandardError("Invalid command or configuration. Use: audio-preflight scan <folder> [--preset <id> | --preset-file <path>] [--report-html <path>] [--report-json <path>] [--checksums <path>]")
         return ExitCode.invalidCommand.rawValue
     }
 
@@ -445,14 +500,4 @@ public struct CLI: Sendable {
         environment.writeStandardError("Unknown preset for \(command). Use audio-preflight presets to list valid identifiers.")
         return ExitCode.invalidCommand.rawValue
     }
-}
-
-private func conservativePathKey(_ value: String) -> String {
-    value
-        .precomposedStringWithCanonicalMapping
-        .folding(
-            options: [.caseInsensitive, .widthInsensitive, .diacriticInsensitive],
-            locale: Locale(identifier: "en_US_POSIX")
-        )
-        .precomposedStringWithCanonicalMapping
 }

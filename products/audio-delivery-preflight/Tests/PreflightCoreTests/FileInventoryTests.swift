@@ -65,6 +65,48 @@ final class FileInventoryTests: XCTestCase {
         }
     }
 
+    func testRootSwapBeforeDescriptorOpenIsRejectedWithoutEnumeratingExternalContent() async throws {
+        let fixture = try TemporaryInventoryFixture.make()
+        defer { fixture.remove() }
+        let externalSentinel = try fixture.createExternalSentinel(contents: "PRIVATE ROOT")
+        let swap = InventoryPathSwap()
+        let inventory = FileInventory(onBeforeOpeningRootPathComponent: { component, _ in
+            guard component == fixture.root.lastPathComponent else { return }
+            swap.perform { try fixture.replaceRootWithEscapingSymlink() }
+        })
+
+        do {
+            _ = try await inventory.inventory(root: fixture.root)
+            XCTFail("A root swapped to a symbolic link must be rejected.")
+        } catch let error as PreflightError {
+            XCTAssertTrue(swap.didPerform)
+            XCTAssertNil(swap.error)
+            XCTAssertFalse(String(describing: error).contains(externalSentinel.path))
+        }
+    }
+
+    func testAncestorSwapBeforeDescriptorOpenIsRejectedWithoutEnumeratingExternalContent() async throws {
+        let fixture = try TemporaryInventoryFixture.make()
+        defer { fixture.remove() }
+        let externalSentinel = try fixture.createExternalSentinel(contents: "PRIVATE ANCESTOR")
+        try fixture.prepareExternalSelectedDirectory()
+        let swap = InventoryPathSwap()
+        let ancestorName = fixture.root.deletingLastPathComponent().lastPathComponent
+        let inventory = FileInventory(onBeforeOpeningRootPathComponent: { component, _ in
+            guard component == ancestorName else { return }
+            swap.perform { try fixture.replaceAncestorWithEscapingSymlink() }
+        })
+
+        do {
+            _ = try await inventory.inventory(root: fixture.root)
+            XCTFail("A root ancestor swapped to a symbolic link must be rejected.")
+        } catch let error as PreflightError {
+            XCTAssertTrue(swap.didPerform)
+            XCTAssertNil(swap.error)
+            XCTAssertFalse(String(describing: error).contains(externalSentinel.path))
+        }
+    }
+
     func testSpecialEntriesBecomeFindingsWithoutStoppingInventory() async throws {
         let fixture = try TemporaryInventoryFixture.make()
         defer { fixture.remove() }
@@ -135,22 +177,61 @@ private final class InventoryEnumerationGate: @unchecked Sendable {
     }
 }
 
-private final class TemporaryInventoryFixture {
+private final class InventoryPathSwap: @unchecked Sendable {
+    private let lock = NSLock()
+    private var performed = false
+    private var storedError: Error?
+
+    var didPerform: Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return performed
+    }
+
+    var error: Error? {
+        lock.lock()
+        defer { lock.unlock() }
+        return storedError
+    }
+
+    func perform(_ operation: () throws -> Void) {
+        lock.lock()
+        guard !performed else {
+            lock.unlock()
+            return
+        }
+        performed = true
+        lock.unlock()
+
+        do {
+            try operation()
+        } catch {
+            lock.lock()
+            storedError = error
+            lock.unlock()
+        }
+    }
+}
+
+private final class TemporaryInventoryFixture: @unchecked Sendable {
     let root: URL
     private let externalRoot: URL
+    private let containerRoot: URL
 
-    private init(root: URL, externalRoot: URL) {
+    private init(root: URL, externalRoot: URL, containerRoot: URL) {
         self.root = root
         self.externalRoot = externalRoot
+        self.containerRoot = containerRoot
     }
 
     static func make() throws -> TemporaryInventoryFixture {
-        let temporaryDirectory = FileManager.default.temporaryDirectory
-        let root = temporaryDirectory.appendingPathComponent("FileInventoryTests-\\(UUID().uuidString)", isDirectory: true)
-        let externalRoot = temporaryDirectory.appendingPathComponent("FileInventoryExternal-\\(UUID().uuidString)", isDirectory: true)
+        let temporaryDirectory = URL(fileURLWithPath: "/private/tmp", isDirectory: true)
+        let containerRoot = temporaryDirectory.appendingPathComponent("FileInventoryTests-\(UUID().uuidString)", isDirectory: true)
+        let root = containerRoot.appendingPathComponent("ancestor/selected", isDirectory: true)
+        let externalRoot = temporaryDirectory.appendingPathComponent("FileInventoryExternal-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         try FileManager.default.createDirectory(at: externalRoot, withIntermediateDirectories: true)
-        return TemporaryInventoryFixture(root: root, externalRoot: externalRoot)
+        return TemporaryInventoryFixture(root: root, externalRoot: externalRoot, containerRoot: containerRoot)
     }
 
     func write(_ contents: String, to relativePath: String) throws {
@@ -174,9 +255,28 @@ private final class TemporaryInventoryFixture {
     }
 
     func createEscapingRootSymlink(named name: String) throws -> URL {
-        let symlink = root.deletingLastPathComponent().appendingPathComponent(name)
+        let symlink = containerRoot.appendingPathComponent(name)
         try FileManager.default.createSymbolicLink(at: symlink, withDestinationURL: externalRoot)
         return symlink
+    }
+
+    func prepareExternalSelectedDirectory() throws {
+        let selected = externalRoot.appendingPathComponent(root.lastPathComponent, isDirectory: true)
+        try FileManager.default.createDirectory(at: selected, withIntermediateDirectories: true)
+        try Data("PRIVATE ANCESTOR CHILD".utf8).write(to: selected.appendingPathComponent("sentinel.txt"))
+    }
+
+    func replaceRootWithEscapingSymlink() throws {
+        let backup = root.deletingLastPathComponent().appendingPathComponent("selected-original", isDirectory: true)
+        try FileManager.default.moveItem(at: root, to: backup)
+        try FileManager.default.createSymbolicLink(at: root, withDestinationURL: externalRoot)
+    }
+
+    func replaceAncestorWithEscapingSymlink() throws {
+        let ancestor = root.deletingLastPathComponent()
+        let backup = containerRoot.appendingPathComponent("ancestor-original", isDirectory: true)
+        try FileManager.default.moveItem(at: ancestor, to: backup)
+        try FileManager.default.createSymbolicLink(at: ancestor, withDestinationURL: externalRoot)
     }
 
     func createFIFO(named name: String) throws {
@@ -194,7 +294,7 @@ private final class TemporaryInventoryFixture {
     }
 
     func remove() {
-        try? FileManager.default.removeItem(at: root)
+        try? FileManager.default.removeItem(at: containerRoot)
         try? FileManager.default.removeItem(at: externalRoot)
     }
 }

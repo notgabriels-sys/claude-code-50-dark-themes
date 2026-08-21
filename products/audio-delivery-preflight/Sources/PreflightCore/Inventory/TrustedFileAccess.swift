@@ -22,6 +22,7 @@ enum TrustedFileAccess {
     private static let headerByteCount = 12
 
     typealias OpenPathComponentHook = @Sendable (RelativePath, Int) -> Void
+    typealias OpenRootPathComponentHook = @Sendable (String, Int) -> Void
     typealias CopyProgressHook = @Sendable (RelativePath, Int64) -> Void
 
     static func stageRegularFile(
@@ -30,14 +31,17 @@ enum TrustedFileAccess {
         onBeforeOpeningPathComponent: OpenPathComponentHook? = nil,
         onAfterCopyingChunk: CopyProgressHook? = nil
     ) throws -> TrustedFileSnapshot {
+        try Task.checkCancellation()
         let rootDescriptor = try openTrustedRoot(at: source.root)
         defer { Darwin.close(rootDescriptor) }
+        try Task.checkCancellation()
         let sourceDescriptor = try openRegularFile(
             relativePath: source.relativePath,
             from: rootDescriptor,
             onBeforeOpeningPathComponent: onBeforeOpeningPathComponent
         )
         defer { Darwin.close(sourceDescriptor) }
+        try Task.checkCancellation()
 
         let initialStatus = try status(of: sourceDescriptor)
         guard initialStatus.st_size >= 0 else {
@@ -53,6 +57,7 @@ enum TrustedFileAccess {
             }
         }
 
+        try Task.checkCancellation()
         try requireSufficientCapacity(
             for: Int64(initialStatus.st_size),
             onFileSystemContaining: stagingFile.descriptor
@@ -64,6 +69,7 @@ enum TrustedFileAccess {
             relativePath: source.relativePath,
             onAfterCopyingChunk: onAfterCopyingChunk
         )
+        try Task.checkCancellation()
         let finalSourceStatus = try status(of: sourceDescriptor)
         guard sourceIsUnchanged(from: initialStatus, to: finalSourceStatus) else {
             throw TrustedFileAccessError.sourceChanged
@@ -75,6 +81,7 @@ enum TrustedFileAccess {
         guard Darwin.fsync(stagingFile.descriptor) == 0 else {
             throw TrustedFileAccessError.writeFailed
         }
+        try Task.checkCancellation()
 
         completed = true
         return TrustedFileSnapshot(
@@ -84,17 +91,61 @@ enum TrustedFileAccess {
         )
     }
 
-    static func openTrustedRoot(at root: URL) throws -> Int32 {
+    static func openTrustedRoot(
+        at root: URL,
+        onBeforeOpeningPathComponent: OpenRootPathComponentHook? = nil
+    ) throws -> Int32 {
         guard root.isFileURL else {
             throw TrustedFileAccessError.nonFileRoot
         }
-        let descriptor = try openURL(root.standardizedFileURL, flags: O_RDONLY | O_DIRECTORY | O_NOFOLLOW)
-        do {
-            try requireDirectory(descriptor)
-        } catch {
-            Darwin.close(descriptor)
-            throw error
+
+        let components = root.pathComponents
+        guard components.first == "/",
+              components.dropFirst().allSatisfy({ !$0.isEmpty && $0 != "." && $0 != ".." })
+        else {
+            throw TrustedFileAccessError.nonFileRoot
         }
+        var descriptor = try openURL(
+            URL(fileURLWithPath: "/", isDirectory: true),
+            flags: O_RDONLY | O_DIRECTORY | O_NOFOLLOW
+        )
+        var shouldClose = true
+        defer {
+            if shouldClose {
+                Darwin.close(descriptor)
+            }
+        }
+
+        for (componentIndex, componentSubstring) in components.dropFirst().enumerated() {
+            try Task.checkCancellation()
+            let component = String(componentSubstring)
+            onBeforeOpeningPathComponent?(component, componentIndex)
+            try Task.checkCancellation()
+
+            let childDescriptor: Int32
+            do {
+                childDescriptor = try openAt(
+                    descriptor,
+                    name: component,
+                    flags: O_RDONLY | O_DIRECTORY | O_NOFOLLOW
+                )
+            } catch {
+                if isSymbolicLink(name: component, from: descriptor) {
+                    throw TrustedFileAccessError.symbolicLinkNotAllowed
+                }
+                throw error
+            }
+            do {
+                try requireDirectory(childDescriptor)
+            } catch {
+                Darwin.close(childDescriptor)
+                throw error
+            }
+            Darwin.close(descriptor)
+            descriptor = childDescriptor
+        }
+
+        shouldClose = false
         return descriptor
     }
 
@@ -160,6 +211,75 @@ enum TrustedFileAccess {
         return descriptor
     }
 
+    static func readBoundedRegularFile(at fileURL: URL, maximumByteCount: Int) throws -> Data {
+        guard maximumByteCount >= 0, fileURL.isFileURL else {
+            throw TrustedFileAccessError.invalidFileSize
+        }
+        let components = fileURL.pathComponents
+        guard components.first == "/",
+              components.count > 1,
+              components.dropFirst().allSatisfy({ !$0.isEmpty && $0 != "." && $0 != ".." }),
+              let filename = components.last
+        else {
+            throw TrustedFileAccessError.nonFileRoot
+        }
+
+        try Task.checkCancellation()
+        let parentDescriptor = try openTrustedRoot(at: fileURL.deletingLastPathComponent())
+        defer { Darwin.close(parentDescriptor) }
+        try Task.checkCancellation()
+
+        let descriptor: Int32
+        do {
+            descriptor = try openAt(parentDescriptor, name: filename, flags: O_RDONLY | O_NOFOLLOW)
+        } catch {
+            if isSymbolicLink(name: filename, from: parentDescriptor) {
+                throw TrustedFileAccessError.symbolicLinkNotAllowed
+            }
+            throw error
+        }
+        defer { Darwin.close(descriptor) }
+        try requireRegularFile(descriptor)
+
+        let initialStatus = try status(of: descriptor)
+        guard initialStatus.st_size >= 0,
+              UInt64(initialStatus.st_size) <= UInt64(maximumByteCount)
+        else {
+            throw TrustedFileAccessError.fileTooLarge
+        }
+
+        var data = Data()
+        data.reserveCapacity(Int(initialStatus.st_size))
+        var buffer = [UInt8](repeating: 0, count: copyChunkSize)
+        while true {
+            try Task.checkCancellation()
+            let remainingCapacity = maximumByteCount - data.count
+            guard remainingCapacity >= 0 else {
+                throw TrustedFileAccessError.fileTooLarge
+            }
+            let requestedByteCount = min(buffer.count, remainingCapacity + 1)
+            let readByteCount = try read(
+                from: descriptor,
+                into: &buffer,
+                byteCount: requestedByteCount
+            )
+            guard readByteCount > 0 else { break }
+            guard data.count + readByteCount <= maximumByteCount else {
+                throw TrustedFileAccessError.fileTooLarge
+            }
+            data.append(contentsOf: buffer.prefix(readByteCount))
+        }
+        try Task.checkCancellation()
+
+        let finalStatus = try status(of: descriptor)
+        guard sourceIsUnchanged(from: initialStatus, to: finalStatus),
+              data.count == Int(initialStatus.st_size)
+        else {
+            throw TrustedFileAccessError.sourceChanged
+        }
+        return data
+    }
+
     private static func openURL(_ url: URL, flags: Int32) throws -> Int32 {
         let descriptor: Int32 = url.withUnsafeFileSystemRepresentation { representation in
             guard let representation else {
@@ -181,6 +301,14 @@ enum TrustedFileAccess {
             throw TrustedFileAccessError.openFailed
         }
         return descriptor
+    }
+
+    private static func isSymbolicLink(name: String, from directoryDescriptor: Int32) -> Bool {
+        var fileStatus = stat()
+        let result = name.withCString { representation in
+            Darwin.fstatat(directoryDescriptor, representation, &fileStatus, AT_SYMLINK_NOFOLLOW)
+        }
+        return result == 0 && fileStatus.st_mode & S_IFMT == S_IFLNK
     }
 
     private static func createStagingFile(in directory: URL) throws -> (url: URL, descriptor: Int32) {
@@ -238,6 +366,7 @@ enum TrustedFileAccess {
         var header = Data()
 
         while remainingByteCount > 0 {
+            try Task.checkCancellation()
             let requestedByteCount = min(buffer.count, Int(remainingByteCount))
             let readByteCount = try read(
                 from: sourceDescriptor,
@@ -247,6 +376,7 @@ enum TrustedFileAccess {
             guard readByteCount > 0 else {
                 throw TrustedFileAccessError.incompleteCopy
             }
+            try Task.checkCancellation()
 
             if header.count < headerByteCount {
                 let headerBytesNeeded = min(headerByteCount - header.count, readByteCount)
@@ -257,9 +387,11 @@ enum TrustedFileAccess {
                 byteCount: readByteCount,
                 to: destinationDescriptor
             )
+            try Task.checkCancellation()
             copiedByteCount += Int64(readByteCount)
             remainingByteCount -= Int64(readByteCount)
             onAfterCopyingChunk?(relativePath, copiedByteCount)
+            try Task.checkCancellation()
         }
 
         return header
@@ -271,6 +403,7 @@ enum TrustedFileAccess {
         byteCount: Int
     ) throws -> Int {
         while true {
+            try Task.checkCancellation()
             let result = buffer.withUnsafeMutableBytes { bytes in
                 Darwin.read(descriptor, bytes.baseAddress, byteCount)
             }
@@ -290,6 +423,7 @@ enum TrustedFileAccess {
     ) throws {
         var writtenByteCount = 0
         while writtenByteCount < byteCount {
+            try Task.checkCancellation()
             let result = buffer.withUnsafeBytes { bytes in
                 Darwin.write(
                     descriptor,
@@ -299,6 +433,7 @@ enum TrustedFileAccess {
             }
             if result > 0 {
                 writtenByteCount += result
+                try Task.checkCancellation()
             } else if result < 0, errno == EINTR {
                 continue
             } else {
@@ -353,6 +488,7 @@ enum TrustedFileAccess {
 enum TrustedFileAccessError: Error {
     case capacityCheckFailed
     case incompleteCopy
+    case fileTooLarge
     case insufficientStagingCapacity
     case invalidRelativePath
     case invalidFileSize
@@ -364,6 +500,7 @@ enum TrustedFileAccessError: Error {
     case stagingCreationFailed
     case stagingPermissionFailed
     case statusFailed
+    case symbolicLinkNotAllowed
     case unexpectedFileKind
     case writeFailed
 }

@@ -3,7 +3,7 @@ import Foundation
 import ImageIO
 
 public protocol ImageInspecting: Sendable {
-    func inspect(source: TrustedMediaSource) -> InspectionOutcome<ImageProperties>
+    func inspect(source: TrustedMediaSource) async throws -> InspectionOutcome<ImageProperties>
 }
 
 public struct ImageInspector: ImageInspecting {
@@ -33,26 +33,37 @@ public struct ImageInspector: ImageInspecting {
         self.onAfterCopyingChunk = onAfterCopyingChunk
     }
 
-    public func inspect(source: TrustedMediaSource) -> InspectionOutcome<ImageProperties> {
+    public func inspect(source: TrustedMediaSource) async throws -> InspectionOutcome<ImageProperties> {
         let snapshot: TrustedFileSnapshot
         do {
+            try Task.checkCancellation()
             snapshot = try TrustedFileAccess.stageRegularFile(
                 source: source,
                 in: stagingDirectory,
                 onBeforeOpeningPathComponent: onBeforeOpeningPathComponent,
                 onAfterCopyingChunk: onAfterCopyingChunk
             )
+            try Task.checkCancellation()
+        } catch is CancellationError {
+            throw CancellationError()
         } catch {
-            return Self.unreadableOutcome()
+            return Self.unreadableOutcome(path: source.relativePath)
         }
         defer { try? FileManager.default.removeItem(at: snapshot.stagingURL) }
 
-        guard let imageSource = CGImageSourceCreateWithURL(snapshot.stagingURL as CFURL, nil),
-              let sourceType = CGImageSourceGetType(imageSource),
-              let properties = CGImageSourceCopyPropertiesAtIndex(imageSource, 0, nil) as? [CFString: Any]
-        else {
-            return Self.unreadableOutcome()
+        try Task.checkCancellation()
+        guard let imageSource = CGImageSourceCreateWithURL(snapshot.stagingURL as CFURL, nil) else {
+            return Self.unreadableOutcome(path: source.relativePath)
         }
+        try Task.checkCancellation()
+        guard let sourceType = CGImageSourceGetType(imageSource) else {
+            return Self.unreadableOutcome(path: source.relativePath)
+        }
+        try Task.checkCancellation()
+        guard let properties = CGImageSourceCopyPropertiesAtIndex(imageSource, 0, nil) as? [CFString: Any] else {
+            return Self.unreadableOutcome(path: source.relativePath)
+        }
+        try Task.checkCancellation()
 
         let width = (properties[kCGImagePropertyPixelWidth] as? NSNumber)?.intValue
         let height = (properties[kCGImagePropertyPixelHeight] as? NSNumber)?.intValue
@@ -61,6 +72,7 @@ public struct ImageInspector: ImageInspecting {
         }
         let hasAlpha = (properties[kCGImagePropertyHasAlpha] as? NSNumber)?.boolValue
             ?? CGImageSourceCreateImageAtIndex(imageSource, 0, nil).flatMap(Self.hasAlpha(in:))
+        try Task.checkCancellation()
 
         return InspectionOutcome(
             status: .succeeded,
@@ -89,17 +101,17 @@ public struct ImageInspector: ImageInspecting {
         }
     }
 
-    private static func unreadableOutcome() -> InspectionOutcome<ImageProperties> {
+    private static func unreadableOutcome(path: RelativePath) -> InspectionOutcome<ImageProperties> {
         InspectionOutcome(
             status: .failed,
             value: ImageProperties(isReadable: false),
             findings: [
                 Finding(
-                    ruleID: "image.unreadable",
+                    ruleID: "inspection.image-unreadable",
                     severity: .error,
                     title: "Image file could not be read",
                     explanation: "The selected image file could not be read safely.",
-                    affectedPaths: [],
+                    affectedPaths: [path],
                     evidence: [.init(label: "isReadable", value: .boolean(false))],
                     expected: "A readable regular image file inside the selected root.",
                     suggestedAction: "Replace or re-export the image file.",

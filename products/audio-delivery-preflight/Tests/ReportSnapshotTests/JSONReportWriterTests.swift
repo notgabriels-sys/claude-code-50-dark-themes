@@ -93,14 +93,16 @@ final class JSONReportWriterTests: XCTestCase {
             "schemaVersion", "identifier", "name", "audio", "filename", "roles",
             "serviceFileSeverity", "symbolicLinkSeverity", "exactDuplicateSeverity",
         ])
-        XCTAssertEqual(Set(try dictionary(definition["audio"]).keys), ["requireConsistentSampleRate", "severity"])
+        XCTAssertEqual(Set(try dictionary(definition["audio"]).keys), [
+            "requireConsistentSampleRate", "requireConsistentBitDepth", "requireConsistentChannelCount", "severity",
+        ])
         XCTAssertEqual(Set(try dictionary(definition["filename"]).keys), ["ambiguousVersionPattern", "ambiguousVersionSeverity"])
 
         let inventory = try arrayOfDictionaries(object["inventory"])
         let audioEntry = try XCTUnwrap(inventory.first { $0["category"] as? String == "audio" })
         XCTAssertEqual(Set(audioEntry.keys), [
             "relativePath", "normalizedFilename", "normalizedExtension", "category", "byteSize",
-            "modificationDate", "kind", "sha256", "inspectionStatus", "audioProperties", "evidence",
+            "modificationDate", "kind", "sha256", "checksumStatus", "inspectionStatus", "audioProperties", "evidence",
         ])
         XCTAssertEqual(Set(try dictionary(audioEntry["audioProperties"]).keys), ["channelCount", "sampleRate", "isReadable", "metadata"])
         XCTAssertEqual(Set(try firstDictionary(audioEntry["evidence"]).keys), ["label", "value"])
@@ -126,7 +128,7 @@ final class JSONReportWriterTests: XCTestCase {
         let digitalRole = try firstDictionary(digitalDefinition["roles"])
         XCTAssertEqual(Set(digitalRole.keys), [
             "identifier", "name", "pattern", "required", "category", "allowedExtensions",
-            "readability", "severity", "ambiguitySeverity",
+            "allowedEncodings", "readability", "severity", "ambiguitySeverity",
         ])
 
         let artworkPreset = Preset(
@@ -171,7 +173,8 @@ enum ReportFixture {
     static func result(
         relativePath: String = "Masters/Track.wav",
         selectedFolderName: String = "private-delivery",
-        preset presetDefinition: Preset = BuiltInPresets.generalAudio
+        preset presetDefinition: Preset = BuiltInPresets.generalAudio,
+        audioProperties: AudioProperties = AudioProperties(channelCount: 2, sampleRate: 48_000, isReadable: true)
     ) throws -> ScanResult {
         let path = try RelativePath(relativePath)
         let preset = try PresetResolver().resolve(presetDefinition)
@@ -185,7 +188,7 @@ enum ReportFixture {
             kind: .regular,
             sha256: "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
             inspectionStatus: .succeeded,
-            audioProperties: AudioProperties(channelCount: 2, sampleRate: 48_000, isReadable: true),
+            audioProperties: audioProperties,
             evidence: [Evidence(label: "sampleRate", value: .number(48_000))]
         )
         let imagePath = try RelativePath("Artwork/Cover.png")

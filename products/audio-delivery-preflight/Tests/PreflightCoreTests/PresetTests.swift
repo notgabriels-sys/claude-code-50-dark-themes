@@ -6,7 +6,7 @@ final class PresetTests: XCTestCase {
     func testBuiltInPresetsResolveWithExactIdentifiersAndSerializableRequirements() throws {
         let presets = BuiltInPresets.all
 
-        XCTAssertEqual(presets.map(\.identifier), ["general-audio", "stereo-premaster", "digital-release"])
+        XCTAssertEqual(presets.map(\.identifier), ["general-audio", "stereo-premaster", "digital-release", "custom"])
 
         let resolved = try presets.map { try PresetResolver().resolve($0) }
         let encoded = try JSONEncoder().encode(resolved)
@@ -29,9 +29,13 @@ final class PresetTests: XCTestCase {
 
         XCTAssertTrue(role.required)
         XCTAssertEqual(role.category, .audio)
-        XCTAssertEqual(role.allowedExtensions, ["aif", "aiff", "flac", "wav"])
+        XCTAssertEqual(role.allowedExtensions, ["aif", "aiff", "flac", "m4a", "wav"])
+        XCTAssertEqual(role.allowedEncodings, ["ALAC", "FLAC", "Linear PCM"])
         XCTAssertEqual(role.channelCount, NumericConstraint(exactly: 2))
         XCTAssertEqual(role.readability, .error)
+        XCTAssertTrue(preset.definition.audio.requireConsistentSampleRate)
+        XCTAssertTrue(preset.definition.audio.requireConsistentBitDepth)
+        XCTAssertTrue(preset.definition.audio.requireConsistentChannelCount)
     }
 
     func testDigitalReleaseRequiresLosslessMainMasterArtworkAndMetadataOrCreditsDocument() throws {
@@ -43,8 +47,69 @@ final class PresetTests: XCTestCase {
         )
         XCTAssertEqual(
             preset.definition.roles.first { $0.identifier == "main-master" }?.allowedExtensions,
-            ["aif", "aiff", "flac", "wav"]
+            ["aif", "aiff", "flac", "m4a", "wav"]
         )
+        XCTAssertEqual(
+            preset.definition.roles.first { $0.identifier == "main-master" }?.allowedEncodings,
+            ["ALAC", "FLAC", "Linear PCM"]
+        )
+        XCTAssertEqual(
+            preset.definition.artwork,
+            ArtworkRequirement(minimumWidth: 3_000, minimumHeight: 3_000, requiresSquare: true, severity: .error)
+        )
+    }
+
+    func testGeneralAudioEnablesAllPromisedConsistencyDimensions() throws {
+        let preset = try PresetResolver().resolve(BuiltInPresets.generalAudio)
+
+        XCTAssertTrue(preset.definition.audio.requireConsistentSampleRate)
+        XCTAssertTrue(preset.definition.audio.requireConsistentBitDepth)
+        XCTAssertTrue(preset.definition.audio.requireConsistentChannelCount)
+    }
+
+    func testCustomPresetUsesTheSameCompleteEditableSchema() throws {
+        let custom = BuiltInPresets.custom
+        let configured = Preset(
+            identifier: custom.identifier,
+            name: custom.name,
+            audio: AudioRequirement(
+                allowedExtensions: ["wav"],
+                allowedEncodings: ["Linear PCM"],
+                sampleRate: NumericConstraint(exactly: 48_000),
+                bitDepth: NumericConstraint(exactly: 24),
+                requireConsistentSampleRate: true,
+                requireConsistentBitDepth: true,
+                requireConsistentChannelCount: true,
+                severity: .error
+            ),
+            artwork: ArtworkRequirement(minimumWidth: 3_000, minimumHeight: 3_000, requiresSquare: true, severity: .error),
+            filename: FilenameRequirement(ambiguousVersionPattern: "(?i)final\\d+", ambiguousVersionSeverity: .error),
+            roles: [
+                DeliveryRole(
+                    identifier: "main",
+                    name: "Main master",
+                    pattern: "(?i)main\\.wav$",
+                    required: true,
+                    category: .audio,
+                    allowedExtensions: ["wav"],
+                    allowedEncodings: ["Linear PCM"],
+                    channelCount: NumericConstraint(exactly: 2),
+                    sampleRate: NumericConstraint(exactly: 48_000),
+                    bitDepth: NumericConstraint(exactly: 24),
+                    readability: .error,
+                    severity: .error,
+                    ambiguitySeverity: .error
+                ),
+            ],
+            serviceFileSeverity: .warning,
+            symbolicLinkSeverity: .error,
+            exactDuplicateSeverity: .information
+        )
+
+        let resolved = try PresetResolver().resolve(configured)
+        let roundTripped = try JSONDecoder().decode(ResolvedPreset.self, from: JSONEncoder().encode(resolved))
+
+        XCTAssertEqual(roundTripped.definition, configured)
     }
 
     func testResolverRejectsInvalidRoleRegex() throws {
@@ -68,6 +133,55 @@ final class PresetTests: XCTestCase {
 
         XCTAssertThrowsError(try PresetResolver().resolve(preset)) { error in
             XCTAssertEqual(error as? PreflightError, .invalidPreset(field: "audio.sampleRate", reason: "The minimum cannot exceed the maximum."))
+        }
+    }
+
+    func testResolverRejectsUnsupportedPresetSchemaVersion() {
+        let preset = Preset(schemaVersion: "2.0", identifier: "future", name: "Future")
+
+        XCTAssertThrowsError(try PresetResolver().resolve(preset)) { error in
+            XCTAssertEqual(
+                error as? PreflightError,
+                .invalidPreset(field: "schemaVersion", reason: "Only preset schema version 1.0 is supported.")
+            )
+        }
+    }
+
+    func testResolverRequiresNonReadySeverityForConstrainedOrUnavailableMeasurements() {
+        let presets = [
+            Preset(
+                identifier: "audio-information",
+                name: "Audio information",
+                audio: AudioRequirement(sampleRate: NumericConstraint(exactly: 48_000), severity: .information)
+            ),
+            Preset(
+                identifier: "audio-pass",
+                name: "Audio pass",
+                audio: AudioRequirement(allowedEncodings: ["Linear PCM"], severity: .pass)
+            ),
+            Preset(
+                identifier: "artwork-information",
+                name: "Artwork information",
+                artwork: ArtworkRequirement(minimumWidth: 3_000, severity: .information)
+            ),
+            Preset(
+                identifier: "role-information",
+                name: "Role information",
+                roles: [DeliveryRole(
+                    identifier: "master",
+                    pattern: ".*",
+                    required: true,
+                    category: .audio,
+                    channelCount: NumericConstraint(exactly: 2),
+                    readability: .information,
+                    severity: .information,
+                    ambiguitySeverity: .information
+                )]
+            ),
+        ]
+
+        for preset in presets {
+            XCTAssertThrowsError(try PresetResolver().resolve(preset), preset.identifier)
         }
     }
 

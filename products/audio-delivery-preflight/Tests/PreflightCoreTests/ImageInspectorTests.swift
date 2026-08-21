@@ -3,7 +3,7 @@ import XCTest
 @testable import PreflightCore
 
 final class ImageInspectorTests: XCTestCase {
-    func testPNGReportsDimensionsAndAlphaFromTrustedSource() throws {
+    func testPNGReportsDimensionsAndAlphaFromTrustedSource() async throws {
         let fixture = try InspectionFixture.make()
         defer { fixture.remove() }
         let imageURL = try FixtureFactory.png(width: 300, height: 300, alpha: true)
@@ -11,7 +11,7 @@ final class ImageInspectorTests: XCTestCase {
         let imageData = try Data(contentsOf: imageURL)
         let path = try fixture.write(imageData, to: "Artwork/cover.png")
 
-        let outcome = ImageInspector().inspect(source: fixture.source(path))
+        let outcome = try await ImageInspector().inspect(source: fixture.source(path))
         let properties = try XCTUnwrap(outcome.value)
 
         XCTAssertEqual(outcome.status, .succeeded)
@@ -24,14 +24,14 @@ final class ImageInspectorTests: XCTestCase {
         XCTAssertEqual(properties.byteSize, Int64(imageData.count))
     }
 
-    func testJPEGReportsNonSquareDimensionsAndNoAlphaFromTrustedSource() throws {
+    func testJPEGReportsNonSquareDimensionsAndNoAlphaFromTrustedSource() async throws {
         let fixture = try InspectionFixture.make()
         defer { fixture.remove() }
         let imageURL = try FixtureFactory.jpeg(width: 640, height: 360)
         defer { try? FileManager.default.removeItem(at: imageURL) }
         let path = try fixture.write(Data(contentsOf: imageURL), to: "Artwork/cover.jpg")
 
-        let outcome = ImageInspector().inspect(source: fixture.source(path))
+        let outcome = try await ImageInspector().inspect(source: fixture.source(path))
         let properties = try XCTUnwrap(outcome.value)
 
         XCTAssertEqual(outcome.status, .succeeded)
@@ -42,18 +42,19 @@ final class ImageInspectorTests: XCTestCase {
         XCTAssertEqual(properties.hasAlpha, false)
     }
 
-    func testUnreadableImageProducesEvidenceBackedFailure() throws {
+    func testUnreadableImageProducesEvidenceBackedFailure() async throws {
         let fixture = try InspectionFixture.make()
         defer { fixture.remove() }
         let path = try fixture.write(Data("not image".utf8), to: "Artwork/cover.png")
 
-        let outcome = ImageInspector().inspect(source: fixture.source(path))
+        let outcome = try await ImageInspector().inspect(source: fixture.source(path))
 
         XCTAssertEqual(outcome.status, .failed)
         XCTAssertEqual(outcome.value?.isReadable, false)
+        XCTAssertEqual(outcome.findings.map(\.affectedPaths), [[path]])
     }
 
-    func testSwappedLeafCannotCauseExternalImageToBeInspected() throws {
+    func testSwappedLeafCannotCauseExternalImageToBeInspected() async throws {
         let fixture = try InspectionFixture.make()
         defer { fixture.remove() }
         let imageURL = try FixtureFactory.png(width: 300, height: 300, alpha: true)
@@ -69,13 +70,14 @@ final class ImageInspectorTests: XCTestCase {
             try? fixture.replaceLeaf(path, with: externalURL)
         })
 
-        let outcome = inspector.inspect(source: fixture.source(path))
+        let outcome = try await inspector.inspect(source: fixture.source(path))
 
         XCTAssertEqual(outcome.status, .failed)
         XCTAssertEqual(outcome.value?.isReadable, false)
+        XCTAssertEqual(outcome.findings.map(\.affectedPaths), [[path]])
     }
 
-    func testSwappedAncestorCannotCauseExternalImageToBeInspected() throws {
+    func testSwappedAncestorCannotCauseExternalImageToBeInspected() async throws {
         let fixture = try InspectionFixture.make()
         defer { fixture.remove() }
         let imageURL = try FixtureFactory.png(width: 300, height: 300, alpha: true)
@@ -87,13 +89,14 @@ final class ImageInspectorTests: XCTestCase {
             try? fixture.replaceFirstAncestor(with: fixture.externalRoot)
         })
 
-        let outcome = inspector.inspect(source: fixture.source(path))
+        let outcome = try await inspector.inspect(source: fixture.source(path))
 
         XCTAssertEqual(outcome.status, .failed)
         XCTAssertEqual(outcome.value?.isReadable, false)
+        XCTAssertEqual(outcome.findings.map(\.affectedPaths), [[path]])
     }
 
-    func testGrowingImageSourceIsRejectedWithoutCopyingBeyondInitialSnapshot() throws {
+    func testGrowingImageSourceIsRejectedWithoutCopyingBeyondInitialSnapshot() async throws {
         let fixture = try InspectionFixture.make()
         defer { fixture.remove() }
         let imageURL = try FixtureFactory.png(width: 300, height: 300, alpha: true)
@@ -115,7 +118,7 @@ final class ImageInspectorTests: XCTestCase {
             }
         )
 
-        let outcome = inspector.inspect(source: fixture.source(path))
+        let outcome = try await inspector.inspect(source: fixture.source(path))
 
         XCTAssertTrue(mutation.didPerform)
         XCTAssertNil(mutation.error)

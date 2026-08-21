@@ -11,7 +11,10 @@ public struct HTMLReportWriter: Sendable {
             "<li><strong>\(escape(requirement.severity.rawValue.capitalized)):</strong> \(escape(requirement.description))</li>"
         }.joined()
         let inventory = result.inventory.map { entry in
-            "<tr><td>\(escape(entry.relativePath.value))</td><td>\(escape(entry.category.rawValue))</td><td>\(escape(entry.kind.rawValue))</td><td>\(escape(entry.sha256 ?? "Unknown"))</td></tr>"
+            let measured = Self.measuredProperties(for: entry)
+                .map(escape)
+                .joined(separator: "<br>")
+            return "<tr><td>\(escape(entry.relativePath.value))</td><td>\(escape(entry.category.rawValue))</td><td>\(escape(entry.kind.rawValue))</td><td>\(measured.isEmpty ? "Unknown" : measured)</td><td>\(escape(entry.checksumStatus.rawValue))</td><td>\(escape(entry.sha256 ?? "Unknown"))</td></tr>"
         }.joined()
         let findings = result.findings.map { finding in
             let paths = finding.affectedPaths.map(\.value).map(escape).joined(separator: ", ")
@@ -33,7 +36,7 @@ public struct HTMLReportWriter: Sendable {
         <main>
         <section aria-labelledby="summary"><h2 id="summary">Summary</h2><table><tbody><tr><th scope="row">Overall status</th><td><strong>\(escape(statusText(result.overallStatus)))</strong></td></tr><tr><th scope="row">Preset</th><td>\(escape(result.preset.name))</td></tr><tr><th scope="row">Engine version</th><td>\(escape(result.engineVersion))</td></tr><tr><th scope="row">Scan started</th><td>\(escape(dateText(result.startedAt)))</td></tr><tr><th scope="row">Scan completed</th><td>\(escape(result.completedAt.map { dateText($0) } ?? "Not completed"))</td></tr></tbody></table></section>
         <section aria-labelledby="requirements"><h2 id="requirements">Resolved requirements</h2><ul>\(requirements)</ul></section>
-        <section aria-labelledby="inventory"><h2 id="inventory">Inventory</h2><table><thead><tr><th>Relative path</th><th>Category</th><th>Kind</th><th>SHA-256</th></tr></thead><tbody>\(inventory)</tbody></table></section>
+        <section aria-labelledby="inventory"><h2 id="inventory">Inventory</h2><table><thead><tr><th>Relative path</th><th>Category</th><th>Kind</th><th>Measured properties</th><th>Checksum status</th><th>SHA-256</th></tr></thead><tbody>\(inventory)</tbody></table></section>
         <section aria-labelledby="findings"><h2 id="findings">Findings</h2>\(findings.isEmpty ? "<p>No findings.</p>" : findings)</section>
         </main>
         <footer><p>Source files were not intentionally modified by this scan. This report contains technical checks only; it does not assess artistic quality, replace professional listening, or guarantee distributor acceptance.</p></footer>
@@ -65,5 +68,39 @@ public struct HTMLReportWriter: Sendable {
 
     private func dateText(_ date: Date) -> String {
         ISO8601DateFormatter().string(from: date)
+    }
+
+    private static func measuredProperties(for entry: InventoryEntry) -> [String] {
+        if let audio = entry.audioProperties {
+            var values: [String] = []
+            if let container = audio.container { values.append("Container: \(container)") }
+            if let encoding = audio.encoding { values.append("Encoding: \(encoding)") }
+            if let duration = audio.durationSeconds { values.append("Duration: \(duration) s") }
+            if let channels = audio.channelCount { values.append("Channels: \(channels)") }
+            if let sampleRate = audio.sampleRate { values.append("Sample rate: \(sampleRate) Hz") }
+            if let bitDepth = audio.pcmBitDepth { values.append("PCM bit depth: \(bitDepth)") }
+            if let readable = audio.isReadable { values.append("Readable: \(readable ? "Yes" : "No")") }
+            for key in audio.metadata.keys.sorted(by: unicodeScalarLessThan) {
+                if let value = audio.metadata[key] {
+                    values.append("Metadata \(key): \(value)")
+                }
+            }
+            return values
+        }
+        if let image = entry.imageProperties {
+            var values: [String] = []
+            if let width = image.pixelWidth { values.append("Width: \(width) px") }
+            if let height = image.pixelHeight { values.append("Height: \(height) px") }
+            if let format = image.format { values.append("Format: \(format)") }
+            if let colorModel = image.colorModel { values.append("Color model: \(colorModel)") }
+            if let alpha = image.hasAlpha { values.append("Alpha: \(alpha ? "Yes" : "No")") }
+            if let readable = image.isReadable { values.append("Readable: \(readable ? "Yes" : "No")") }
+            return values
+        }
+        return []
+    }
+
+    private static func unicodeScalarLessThan(_ left: String, _ right: String) -> Bool {
+        left.unicodeScalars.lexicographicallyPrecedes(right.unicodeScalars)
     }
 }

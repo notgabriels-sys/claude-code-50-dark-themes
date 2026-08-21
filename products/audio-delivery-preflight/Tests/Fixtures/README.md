@@ -2,6 +2,8 @@
 
 The automated suites create small, original fixtures inside per-test temporary directories. The committed `valid-digital-release` package is also generated entirely by `scripts/generate-valid-digital-release-fixture.swift`; it contains a one-second synthetic 440 Hz WAV, a generated solid-color PNG, and synthetic credits text. No customer delivery, commercial recording, artist master, account data, or private report belongs in this directory.
 
+The renamed-lossy regression uses a separate 794-byte synthetic AAC-LC M4A byte stream embedded in `Tests/PreflightCoreTests/FixtureFactory.swift`. Its exact FFmpeg 8.1.1 generation command and SHA-256 are recorded beside the bytes so provenance can be checked without relying on a runtime encoder.
+
 Generated fixtures cover:
 
 - mono and stereo PCM WAV files;

@@ -5,7 +5,8 @@ struct RequirementsView: View {
     let model: AppModel
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 18) {
             Label("Review requirements", systemImage: "checklist")
                 .font(.largeTitle.bold())
 
@@ -14,6 +15,15 @@ struct RequirementsView: View {
                 .accessibilityIdentifier("selected-folder-name")
             Text("Preset: \(model.selectedPresetName)")
                 .foregroundStyle(.secondary)
+
+            if model.isCustomPresetSelected {
+                CustomPresetEditorView(model: model)
+            } else {
+                Button("Edit this preset as Custom") {
+                    model.editSelectedPresetAsCustom()
+                }
+                .accessibilityIdentifier("edit-preset-as-custom-button")
+            }
 
             GroupBox("Resolved requirements") {
                 if model.resolvedRequirements.isEmpty {
@@ -64,8 +74,9 @@ struct RequirementsView: View {
                 .disabled(!model.canStartScan)
                 .accessibilityIdentifier("start-scan-button")
             }
+            }
+            .frame(maxWidth: 760, alignment: .leading)
         }
-        .frame(maxWidth: 760, alignment: .leading)
         .accessibilityIdentifier("requirements-view")
     }
 }

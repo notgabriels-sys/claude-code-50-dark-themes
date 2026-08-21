@@ -47,10 +47,9 @@ public struct ChecksumService: InventoryChecksumming {
     }
 
     public func checksummedInventory(entries: [InventoryEntry], root: URL) async throws -> InventorySnapshot {
-        let standardizedRoot = root.standardizedFileURL
         var checksummedEntries: [InventoryEntry] = []
         var findings: [Finding] = []
-        let rootDescriptor = try TrustedFileAccess.openTrustedRoot(at: standardizedRoot)
+        let rootDescriptor = try TrustedFileAccess.openTrustedRoot(at: root)
         defer { Darwin.close(rootDescriptor) }
 
         for entry in entries {
@@ -71,12 +70,12 @@ public struct ChecksumService: InventoryChecksumming {
                 checksummedEntries.append(Self.copying(
                     entry,
                     sha256: digest,
-                    inspectionStatus: entry.inspectionStatus == .failed ? .failed : .succeeded
+                    checksumStatus: .succeeded
                 ))
             } catch is CancellationError {
                 throw CancellationError()
             } catch {
-                checksummedEntries.append(Self.copying(entry, sha256: nil, inspectionStatus: .failed))
+                checksummedEntries.append(Self.copying(entry, sha256: nil, checksumStatus: .failed))
                 findings.append(Self.finding(
                     ruleID: "checksum.read-failed",
                     title: "Checksum could not be calculated",
@@ -93,7 +92,7 @@ public struct ChecksumService: InventoryChecksumming {
         let groupedPaths = Dictionary(grouping: entries.filter {
             $0.kind == .regular
                 && $0.category != .serviceFile
-                && $0.inspectionStatus == .succeeded
+                && $0.checksumStatus == .succeeded
                 && $0.sha256 != nil
         }, by: { $0.sha256! })
 
@@ -127,7 +126,7 @@ public struct ChecksumService: InventoryChecksumming {
     private static func copying(
         _ entry: InventoryEntry,
         sha256: String?,
-        inspectionStatus: InspectionStatus
+        checksumStatus: ChecksumStatus
     ) -> InventoryEntry {
         InventoryEntry(
             relativePath: entry.relativePath,
@@ -138,7 +137,8 @@ public struct ChecksumService: InventoryChecksumming {
             modificationDate: entry.modificationDate,
             kind: entry.kind,
             sha256: sha256,
-            inspectionStatus: inspectionStatus,
+            inspectionStatus: entry.inspectionStatus,
+            checksumStatus: checksumStatus,
             audioProperties: entry.audioProperties,
             imageProperties: entry.imageProperties,
             evidence: entry.evidence

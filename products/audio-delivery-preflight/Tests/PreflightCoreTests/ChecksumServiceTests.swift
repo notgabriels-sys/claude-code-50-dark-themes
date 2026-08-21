@@ -49,14 +49,29 @@ final class ChecksumServiceTests: XCTestCase {
         XCTAssertTrue(ChecksumService().duplicateGroups(entries: entries).isEmpty)
     }
 
-    func testFailedChecksumIsExcludedFromDuplicateGroups() throws {
+    func testDuplicateGroupingUsesValidChecksumRegardlessOfInspectionStatus() throws {
         let digest = "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
         let entries = [
-            try inventoryEntry(path: "Masters/one.wav", category: .audio, sha256: digest, inspectionStatus: .succeeded),
-            try inventoryEntry(path: "Masters/two.wav", category: .audio, sha256: digest, inspectionStatus: .failed),
+            try inventoryEntry(path: "Masters/one.wav", category: .audio, sha256: digest, inspectionStatus: .failed, checksumStatus: .succeeded),
+            try inventoryEntry(path: "Masters/two.wav", category: .audio, sha256: digest, inspectionStatus: .failed, checksumStatus: .succeeded),
         ]
 
-        XCTAssertTrue(ChecksumService().duplicateGroups(entries: entries).isEmpty)
+        let group = try XCTUnwrap(ChecksumService().duplicateGroups(entries: entries).first)
+        XCTAssertEqual(group.paths.map(\.value), ["Masters/one.wav", "Masters/two.wav"])
+    }
+
+    func testSuccessfulChecksumPreservesDocumentInspectionState() async throws {
+        let fixture = try TemporaryChecksumFixture.make()
+        defer { fixture.remove() }
+        _ = try fixture.write("credits", to: "Credits/credits.md")
+        let inventory = try await FileInventory().inventory(root: fixture.root)
+
+        let snapshot = try await ChecksumService().checksummedInventory(entries: inventory.entries, root: fixture.root)
+        let document = try XCTUnwrap(snapshot.entries.first { $0.relativePath.value == "Credits/credits.md" })
+
+        XCTAssertEqual(document.inspectionStatus, .notInspected)
+        XCTAssertEqual(document.checksumStatus, .succeeded)
+        XCTAssertNotNil(document.sha256)
     }
 
     func testReadFailureLeavesChecksumUnknownAndProducesFinding() async throws {
@@ -67,7 +82,8 @@ final class ChecksumServiceTests: XCTestCase {
         let snapshot = try await ChecksumService().checksummedInventory(entries: [missingEntry], root: fixture.root)
 
         XCTAssertNil(snapshot.entries[0].sha256)
-        XCTAssertEqual(snapshot.entries[0].inspectionStatus, .failed)
+        XCTAssertEqual(snapshot.entries[0].inspectionStatus, .notInspected)
+        XCTAssertEqual(snapshot.entries[0].checksumStatus, .failed)
         let finding = try XCTUnwrap(snapshot.findings.first { $0.ruleID == "checksum.read-failed" })
         XCTAssertEqual(finding.explanation, "The regular file could not be read safely.")
         XCTAssertFalse(finding.explanation.contains(fixture.root.path))
@@ -90,7 +106,8 @@ final class ChecksumServiceTests: XCTestCase {
         XCTAssertNil(swap.error)
         let entry = try XCTUnwrap(snapshot.entries.first { $0.relativePath.value == "Masters/Track.wav" })
         XCTAssertNil(entry.sha256)
-        XCTAssertEqual(entry.inspectionStatus, .failed)
+        XCTAssertEqual(entry.inspectionStatus, .notInspected)
+        XCTAssertEqual(entry.checksumStatus, .failed)
         let finding = try XCTUnwrap(snapshot.findings.first { $0.ruleID == "checksum.read-failed" })
         XCTAssertFalse(finding.explanation.contains(fixture.root.path))
         XCTAssertFalse(finding.explanation.contains(externalSentinel.path))
@@ -130,7 +147,8 @@ final class ChecksumServiceTests: XCTestCase {
         path: String,
         category: FileCategory,
         sha256: String? = nil,
-        inspectionStatus: InspectionStatus = .notInspected
+        inspectionStatus: InspectionStatus = .notInspected,
+        checksumStatus: ChecksumStatus? = nil
     ) throws -> InventoryEntry {
         InventoryEntry(
             relativePath: try RelativePath(path),
@@ -139,7 +157,8 @@ final class ChecksumServiceTests: XCTestCase {
             category: category,
             kind: .regular,
             sha256: sha256,
-            inspectionStatus: inspectionStatus
+            inspectionStatus: inspectionStatus,
+            checksumStatus: checksumStatus
         )
     }
 }
@@ -154,7 +173,7 @@ private final class TemporaryChecksumFixture {
     }
 
     static func make() throws -> TemporaryChecksumFixture {
-        let temporaryDirectory = FileManager.default.temporaryDirectory
+        let temporaryDirectory = URL(fileURLWithPath: "/private/tmp", isDirectory: true)
         let root = temporaryDirectory
             .appendingPathComponent("ChecksumServiceTests-\\(UUID().uuidString)", isDirectory: true)
         let externalRoot = temporaryDirectory

@@ -47,6 +47,12 @@ public enum InspectionStatus: String, Codable, Sendable, Equatable {
     case failed
 }
 
+public enum ChecksumStatus: String, Codable, Sendable, Equatable {
+    case notCalculated
+    case succeeded
+    case failed
+}
+
 public enum RuleOrigin: String, Codable, Sendable, Equatable {
     case engine
     case preset
@@ -277,6 +283,7 @@ public struct InventoryEntry: Sendable, Codable, Equatable {
     public let modificationDate: Date?
     public let kind: FileKind
     public let sha256: String?
+    public let checksumStatus: ChecksumStatus
     public let inspectionStatus: InspectionStatus
     public let audioProperties: AudioProperties?
     public let imageProperties: ImageProperties?
@@ -292,6 +299,7 @@ public struct InventoryEntry: Sendable, Codable, Equatable {
         kind: FileKind,
         sha256: String? = nil,
         inspectionStatus: InspectionStatus = .notInspected,
+        checksumStatus: ChecksumStatus? = nil,
         audioProperties: AudioProperties? = nil,
         imageProperties: ImageProperties? = nil,
         evidence: [Evidence] = []
@@ -304,10 +312,65 @@ public struct InventoryEntry: Sendable, Codable, Equatable {
         self.modificationDate = modificationDate
         self.kind = kind
         self.sha256 = sha256
+        self.checksumStatus = checksumStatus ?? (sha256 == nil ? .notCalculated : .succeeded)
         self.inspectionStatus = inspectionStatus
         self.audioProperties = audioProperties
         self.imageProperties = imageProperties
         self.evidence = evidence
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case relativePath
+        case normalizedFilename
+        case normalizedExtension
+        case category
+        case byteSize
+        case modificationDate
+        case kind
+        case sha256
+        case checksumStatus
+        case inspectionStatus
+        case audioProperties
+        case imageProperties
+        case evidence
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let sha256 = try container.decodeIfPresent(String.self, forKey: .sha256)
+
+        self.init(
+            relativePath: try container.decode(RelativePath.self, forKey: .relativePath),
+            normalizedFilename: try container.decode(String.self, forKey: .normalizedFilename),
+            normalizedExtension: try container.decode(String.self, forKey: .normalizedExtension),
+            category: try container.decode(FileCategory.self, forKey: .category),
+            byteSize: try container.decodeIfPresent(Int64.self, forKey: .byteSize),
+            modificationDate: try container.decodeIfPresent(Date.self, forKey: .modificationDate),
+            kind: try container.decode(FileKind.self, forKey: .kind),
+            sha256: sha256,
+            inspectionStatus: try container.decode(InspectionStatus.self, forKey: .inspectionStatus),
+            checksumStatus: try container.decodeIfPresent(ChecksumStatus.self, forKey: .checksumStatus),
+            audioProperties: try container.decodeIfPresent(AudioProperties.self, forKey: .audioProperties),
+            imageProperties: try container.decodeIfPresent(ImageProperties.self, forKey: .imageProperties),
+            evidence: try container.decode([Evidence].self, forKey: .evidence)
+        )
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(relativePath, forKey: .relativePath)
+        try container.encode(normalizedFilename, forKey: .normalizedFilename)
+        try container.encode(normalizedExtension, forKey: .normalizedExtension)
+        try container.encode(category, forKey: .category)
+        try container.encodeIfPresent(byteSize, forKey: .byteSize)
+        try container.encodeIfPresent(modificationDate, forKey: .modificationDate)
+        try container.encode(kind, forKey: .kind)
+        try container.encodeIfPresent(sha256, forKey: .sha256)
+        try container.encode(checksumStatus, forKey: .checksumStatus)
+        try container.encode(inspectionStatus, forKey: .inspectionStatus)
+        try container.encodeIfPresent(audioProperties, forKey: .audioProperties)
+        try container.encodeIfPresent(imageProperties, forKey: .imageProperties)
+        try container.encode(evidence, forKey: .evidence)
     }
 }
 

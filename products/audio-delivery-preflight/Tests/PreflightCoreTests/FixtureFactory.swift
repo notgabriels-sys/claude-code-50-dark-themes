@@ -1,4 +1,3 @@
-import AudioToolbox
 import AVFoundation
 import CoreGraphics
 import Foundation
@@ -63,26 +62,21 @@ enum FixtureFactory {
     }
 
     static func aacM4A(sampleRate: Double, channels: AVAudioChannelCount, frameCount: AVAudioFrameCount) throws -> URL {
-        let url = temporaryURL(pathExtension: "m4a")
-        do {
-            let settings: [String: Any] = [
-                AVFormatIDKey: kAudioFormatMPEG4AAC,
-                AVSampleRateKey: sampleRate,
-                AVNumberOfChannelsKey: Int(channels),
-                AVEncoderBitRateKey: 64_000,
-            ]
-            let file = try AVAudioFile(forWriting: url, settings: settings)
-            guard let buffer = AVAudioPCMBuffer(pcmFormat: file.processingFormat, frameCapacity: frameCount) else {
-                throw FixtureError.audioBufferCreationFailed
-            }
-            buffer.frameLength = frameCount
-            if let channelData = buffer.floatChannelData {
-                for channel in 0 ..< Int(buffer.format.channelCount) {
-                    channelData[channel].initialize(repeating: 0, count: Int(frameCount))
-                }
-            }
-            try file.write(from: buffer)
+        guard sampleRate == 44_100, channels == 1, frameCount == 4_410 else {
+            throw FixtureError.unsupportedAACFixtureConfiguration
         }
+        let url = temporaryURL(pathExtension: "m4a")
+        // Synthetic 0.1 s mono AAC-LC silence. Generated with FFmpeg 8.1.1 using:
+        // ffmpeg -f lavfi -i anullsrc=r=44100:cl=mono -t 0.1 -c:a aac -b:a 64000
+        //   -movflags +faststart -map_metadata -1 -fflags +bitexact -flags:a +bitexact silence.m4a
+        // SHA-256: f995d9f26e1ea62f9f3a12e6569f870e28b25a0d1ee3da9169076a8137aed089
+        let base64 = """
+        AAAAHGZ0eXBNNEEgAAACAE00QSBpc29taXNvMgAAAtZtb292AAAAbG12aGQAAAAAAAAAAAAAAAAAAAPoAAAAZAABAAABAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAACJXRyYWsAAABcdGtoZAAAAAMAAAAAAAAAAAAAAAEAAAAAAAAAZAAAAAAAAAAAAAAAAQEAAAAAAQAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAACRlZHRzAAAAHGVsc3QAAAAAAAAAAQAAAGQAAAQAAAEAAAAAAZ1tZGlhAAAAIG1kaGQAAAAAAAAAAAAAAAAAAKxEAAAVOlXEAAAAAAAtaGRscgAAAAAAAAAAc291bgAAAAAAAAAAAAAAAFNvdW5kSGFuZGxlcgAAAAFIbWluZgAAABBzbWhkAAAAAAAAAAAAAAAkZGluZgAAABxkcmVmAAAAAAAAAAEAAAAMdXJsIAAAAAEAAAEMc3RibAAAAGpzdHNkAAAAAAAAAAEAAABabXA0YQAAAAAAAAABAAAAAAAAAAAAAQAQAAAAAKxEAAAAAAA2ZXNkcwAAAAADgICAJQABAASAgIAXQBUAAAAAAPoAAAAGFgWAgIAFEghW5QAGgICAAQIAAAAgc3R0cwAAAAAAAAACAAAABQAABAAAAAABAAABOgAAABxzdHNjAAAAAAAAAAEAAAABAAAABgAAAAEAAAAUc3RzegAAAAAAAAAEAAAABgAAABRzdGNvAAAAAAAAAAEAAAMCAAAAGnNncGQBAAAAcm9sbAAAAAIAAAAB//8AAAAcc2JncAAAAAByb2xsAAAAAQAAAAYAAAABAAAAPXVkdGEAAAA1bWV0YQAAAAAAAAAhaGRscgAAAAAAAAAAbWRpcmFwcGwAAAAAAAAAAAAAAAAIaWxzdAAAAAhmcmVlAAAAIG1kYXQBGCAHARggBwEYIAcBGCAHARggBwEYIAc=
+        """
+        guard let data = Data(base64Encoded: base64, options: .ignoreUnknownCharacters) else {
+            throw FixtureError.audioFixtureDecodeFailed
+        }
+        try data.write(to: url)
         return url
     }
 
@@ -132,7 +126,7 @@ enum FixtureFactory {
     }
 
     private static func temporaryURL(pathExtension: String) -> URL {
-        FileManager.default.temporaryDirectory.resolvingSymlinksInPath()
+        URL(fileURLWithPath: "/private/tmp", isDirectory: true)
             .appendingPathComponent("PreflightFixture-\(UUID().uuidString)")
             .appendingPathExtension(pathExtension)
     }
@@ -146,7 +140,8 @@ enum FixtureFactory {
         case imageCreationFailed
         case imageDestinationCreationFailed
         case imageWriteFailed
-        case audioBufferCreationFailed
+        case audioFixtureDecodeFailed
+        case unsupportedAACFixtureConfiguration
     }
 }
 
@@ -162,7 +157,7 @@ final class InspectionFixture: @unchecked Sendable {
     }
 
     static func make() throws -> InspectionFixture {
-        let temporaryDirectory = FileManager.default.temporaryDirectory.resolvingSymlinksInPath()
+        let temporaryDirectory = URL(fileURLWithPath: "/private/tmp", isDirectory: true)
         let root = temporaryDirectory.appendingPathComponent("InspectionFixture-\(UUID().uuidString)", isDirectory: true)
         let externalRoot = temporaryDirectory.appendingPathComponent("InspectionFixtureExternal-\(UUID().uuidString)", isDirectory: true)
         let stagingDirectory = temporaryDirectory.appendingPathComponent("InspectionFixtureStage-\(UUID().uuidString)", isDirectory: true)

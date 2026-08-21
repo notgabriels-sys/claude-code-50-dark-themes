@@ -49,7 +49,7 @@ public struct ScanService: ScanServicing, Sendable {
 
     public func scan(_ request: ScanRequest) async -> ScanResult {
         let startedAt = now()
-        let root = request.selectedFolderURL.standardizedFileURL
+        let root = request.selectedFolderURL
 
         do {
             try Task.checkCancellation()
@@ -60,7 +60,7 @@ public struct ScanService: ScanServicing, Sendable {
             let before = try fingerprinting.fingerprint(root: root, entries: inventoried.entries)
 
             try Task.checkCancellation()
-            let inspected = await inspect(entries: inventoried.entries, root: root)
+            let inspected = try await inspect(entries: inventoried.entries, root: root)
 
             try Task.checkCancellation()
             let checksummed = try await checksums.checksummedInventory(entries: inspected.entries, root: root)
@@ -132,14 +132,12 @@ public struct ScanService: ScanServicing, Sendable {
         }
     }
 
-    private func inspect(entries: [InventoryEntry], root: URL) async -> InventorySnapshot {
+    private func inspect(entries: [InventoryEntry], root: URL) async throws -> InventorySnapshot {
         var inspectedEntries: [InventoryEntry] = []
         var findings: [Finding] = []
 
         for entry in entries {
-            if Task.isCancelled {
-                return InventorySnapshot(entries: inspectedEntries, findings: findings)
-            }
+            try Task.checkCancellation()
 
             guard entry.kind == .regular else {
                 inspectedEntries.append(entry)
@@ -149,11 +147,11 @@ public struct ScanService: ScanServicing, Sendable {
             let source = TrustedMediaSource(root: root, relativePath: entry.relativePath)
             switch entry.category {
             case .audio:
-                let outcome = await audioInspector.inspect(source: source)
+                let outcome = try await audioInspector.inspect(source: source)
                 inspectedEntries.append(merging(entry, audio: outcome))
                 findings.append(contentsOf: outcome.findings)
             case .artwork:
-                let outcome = imageInspector.inspect(source: source)
+                let outcome = try await imageInspector.inspect(source: source)
                 inspectedEntries.append(merging(entry, image: outcome))
                 findings.append(contentsOf: outcome.findings)
             case .document, .serviceFile, .other:
@@ -178,6 +176,7 @@ public struct ScanService: ScanServicing, Sendable {
             kind: entry.kind,
             sha256: entry.sha256,
             inspectionStatus: outcome.status,
+            checksumStatus: entry.checksumStatus,
             audioProperties: outcome.value,
             imageProperties: entry.imageProperties,
             evidence: entry.evidence
@@ -198,6 +197,7 @@ public struct ScanService: ScanServicing, Sendable {
             kind: entry.kind,
             sha256: entry.sha256,
             inspectionStatus: outcome.status,
+            checksumStatus: entry.checksumStatus,
             audioProperties: entry.audioProperties,
             imageProperties: outcome.value,
             evidence: entry.evidence

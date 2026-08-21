@@ -23,7 +23,7 @@ Readable compressed formats can vary with the media frameworks installed on the 
 - Rejects paths that cannot be opened safely beneath the selected root.
 - Classifies `.DS_Store` and AppleDouble `._*` files as service files.
 - Calculates SHA-256 for regular delivery files and reports exact duplicates.
-- Measures supported audio container, encoding, duration, channel count, sample rate, and PCM bit depth when those values can be proven.
+- Measures supported audio container, encoding, duration, channel count, sample rate, PCM bit depth, and bounded common text metadata when those values are exposed reliably by AVFoundation.
 - Measures supported artwork dimensions, aspect ratio, format, color model, alpha presence, byte size, and readability when available.
 - Reports unreadable media, filename ambiguity, case-insensitive filename collisions, preset role failures, service files, symbolic links, and exact duplicates.
 - Compares source fingerprints before and after a scan and refuses to call a changed or incomplete source `ready`.
@@ -38,17 +38,19 @@ Documents are inventoried by these extensions: `csv`, `doc`, `docx`, `md`, `pdf`
 
 ### General Audio (`general-audio`)
 
-Inventories and inspects the folder without imposing a universal sample rate or bit depth. It reports ambiguous version markers, case-insensitive collisions, symbolic links, service files, and exact duplicates.
+Inventories and inspects the folder without imposing a universal sample rate or bit depth. It warns when readable audio has inconsistent inspected sample rates, PCM bit depths, or channel counts, and when a required consistency measurement is unavailable. It also reports ambiguous version markers, portable filename collisions, symbolic links, service files, and exact duplicates.
 
 ### Stereo Premaster (`stereo-premaster`)
 
-Requires one readable lossless stereo premaster candidate using `aif`, `aiff`, `flac`, or `wav`. More than one matching candidate is reported for review rather than silently choosing one.
+Requires one readable lossless stereo premaster candidate using `aif`, `aiff`, `flac`, `m4a`, or `wav`. The inspected encoding must prove Linear PCM, FLAC, or ALAC; AAC, MP3, and unknown encodings cannot satisfy the role even when renamed with a lossless-looking extension. More than one matching candidate is reported for review rather than silently choosing one.
 
 ### Digital Release (`digital-release`)
 
-Requires one readable lossless main-master candidate, one readable artwork candidate, and one metadata-or-credits document matched through the displayed filename patterns. This is a package-consistency preset, not a distributor certification.
+Requires one readable lossless main-master candidate with a proven Linear PCM, FLAC, or ALAC encoding, one readable artwork candidate, and one metadata-or-credits document matched through the displayed filename patterns. The visible artwork rule requires square artwork of at least 3000 by 3000 pixels. This is a package-consistency preset, not a distributor certification.
 
-The core preset schema supports programmatic custom definitions. Version 0.1.0 does not provide custom-preset import or editing in the app or CLI.
+### Custom (`custom`)
+
+The native app exposes an in-memory Custom editor for audio filename formats and inspected encodings, numeric bounds and consistency, artwork, filename patterns, arbitrary delivery roles, and finding severities. Any built-in preset can be copied into Custom, so Digital Release artwork expectations remain visible and editable. Custom edits are not persisted automatically; the resolved definition is included in a completed JSON report.
 
 ## Native app
 
@@ -61,7 +63,7 @@ swift run AudioDeliveryPreflightApp
 The app workflow is explicit:
 
 1. Choose or drop one folder.
-2. Choose a built-in preset.
+2. Choose a built-in preset or edit Custom.
 3. Review the resolved requirements.
 4. Start the scan.
 5. Review status, findings, evidence, and inventory.
@@ -72,7 +74,7 @@ Selecting a folder never starts a scan automatically, and reports are never expo
 ## Command-line interface
 
 ```text
-audio-preflight scan <folder> [--preset <id>] [--report-html <path>] [--report-json <path>] [--checksums <path>]
+audio-preflight scan <folder> [--preset <id> | --preset-file <path>] [--report-html <path>] [--report-json <path>] [--checksums <path>]
 audio-preflight presets
 audio-preflight preset show <id>
 audio-preflight version
@@ -80,17 +82,67 @@ audio-preflight version
 
 The default scan preset is `general-audio`.
 
+`--preset` and `--preset-file` are mutually exclusive. A preset file must be a regular JSON file no larger than 1 MiB, must not be reached through a symbolic-link file or ancestor, must use schema version `1.0`, and must resolve successfully before folder access or scanning begins. Invalid imports are rejected without printing the private preset path.
+
 Examples:
 
 ```bash
 swift run audio-preflight presets
 swift run audio-preflight preset show digital-release
 swift run audio-preflight scan "/path/to/delivery" --preset digital-release
+swift run audio-preflight scan "/path/to/delivery" --preset-file "/path/to/custom-preset.json"
 swift run audio-preflight scan "/path/to/delivery" \
   --report-html "/path/to/new-report.html" \
   --report-json "/path/to/new-report.json" \
   --checksums "/path/to/new-SHA256SUMS.txt"
 ```
+
+A minimal valid custom-preset file is:
+
+```json
+{
+  "schemaVersion": "1.0",
+  "identifier": "custom-stereo",
+  "name": "Custom Stereo Delivery",
+  "audio": {
+    "allowedExtensions": ["wav", "aiff"],
+    "allowedEncodings": ["Linear PCM"],
+    "sampleRate": {"minimum": 48000, "maximum": 96000},
+    "bitDepth": {"minimum": 24, "maximum": 32},
+    "requireConsistentSampleRate": true,
+    "requireConsistentBitDepth": true,
+    "requireConsistentChannelCount": true,
+    "severity": "error"
+  },
+  "artwork": null,
+  "filename": {
+    "ambiguousVersionPattern": "(?i)(final|version)\\s*\\d+",
+    "ambiguousVersionSeverity": "warning"
+  },
+  "roles": [
+    {
+      "identifier": "premaster",
+      "name": "Stereo premaster",
+      "pattern": "(?i)(^|/).+\\.(aif|aiff|wav)$",
+      "required": true,
+      "category": "audio",
+      "allowedExtensions": ["aif", "aiff", "wav"],
+      "allowedEncodings": ["Linear PCM"],
+      "channelCount": {"minimum": 2, "maximum": 2},
+      "sampleRate": null,
+      "bitDepth": null,
+      "readability": "error",
+      "severity": "error",
+      "ambiguitySeverity": "warning"
+    }
+  ],
+  "serviceFileSeverity": "information",
+  "symbolicLinkSeverity": "warning",
+  "exactDuplicateSeverity": "warning"
+}
+```
+
+Constraint and indeterminate-measurement severities must be `error` or `warning`, so an unavailable required value cannot produce a false `ready` result.
 
 Report destinations must be distinct, must not already exist, and must not traverse symbolic-link ancestors. A new destination inside the selected folder is allowed only when it does not collide with any inventoried source path. Prefer a separate report folder when source-folder immutability matters.
 
@@ -107,9 +159,9 @@ Report destinations must be distinct, must not already exist, and must not trave
 
 ## Reports
 
-- **HTML:** A self-contained, accessible report with visible status, resolved requirements, relative inventory paths, checksums, findings, evidence, and limitations.
-- **JSON:** Stable schema `1.0`, pretty-printed with sorted keys and ISO-8601 dates. It includes the resolved preset definition, inventory, measured evidence, findings, versions, and scan status.
-- **SHA-256 manifest:** Lowercase SHA-256 values and relative paths for regular non-service files with known checksums.
+- **HTML:** A self-contained, accessible report with visible status, resolved requirements, relative inventory paths, measured media properties and optional metadata, checksum state, findings, evidence, and limitations.
+- **JSON:** Stable schema `1.0`, pretty-printed with sorted keys and ISO-8601 dates. It includes the resolved preset definition, explicit inspection and checksum states, inventory, measured evidence, findings, versions, and scan status.
+- **SHA-256 manifest:** Lowercase SHA-256 values and relative paths for regular non-service files whose checksum state is explicitly successful.
 
 Reports use relative source paths and the selected folder's final name, not its absolute source path. Checksums and filenames can still be sensitive, so review a report before sharing it.
 

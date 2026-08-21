@@ -16,7 +16,7 @@ public struct InspectionOutcome<Value: Sendable>: Sendable {
 }
 
 public protocol AudioInspecting: Sendable {
-    func inspect(source: TrustedMediaSource) async -> InspectionOutcome<AudioProperties>
+    func inspect(source: TrustedMediaSource) async throws -> InspectionOutcome<AudioProperties>
 }
 
 public struct AudioInspector: AudioInspecting {
@@ -46,8 +46,9 @@ public struct AudioInspector: AudioInspecting {
         self.onAfterCopyingChunk = onAfterCopyingChunk
     }
 
-    public func inspect(source: TrustedMediaSource) async -> InspectionOutcome<AudioProperties> {
+    public func inspect(source: TrustedMediaSource) async throws -> InspectionOutcome<AudioProperties> {
         do {
+            try Task.checkCancellation()
             let snapshot = try TrustedFileAccess.stageRegularFile(
                 source: source,
                 in: stagingDirectory,
@@ -55,6 +56,7 @@ public struct AudioInspector: AudioInspecting {
                 onAfterCopyingChunk: onAfterCopyingChunk
             )
             defer { try? FileManager.default.removeItem(at: snapshot.stagingURL) }
+            try Task.checkCancellation()
             let candidate = Self.contentCandidate(for: snapshot.header)
 
             let asset: AVURLAsset
@@ -66,21 +68,29 @@ public struct AudioInspector: AudioInspecting {
             } else {
                 asset = AVURLAsset(url: snapshot.stagingURL)
             }
+            try Task.checkCancellation()
             return try await Self.inspect(asset: asset, container: candidate?.container)
+        } catch is CancellationError {
+            throw CancellationError()
         } catch {
-            return Self.unreadableOutcome()
+            return Self.unreadableOutcome(path: source.relativePath)
         }
     }
 
     private static func inspect(asset: AVURLAsset, container: String?) async throws -> InspectionOutcome<AudioProperties> {
+        try Task.checkCancellation()
         let duration = try await asset.load(.duration)
+        try Task.checkCancellation()
         let audioTracks = try await asset.loadTracks(withMediaType: .audio)
+        try Task.checkCancellation()
         guard let audioTrack = audioTracks.first else {
             throw InspectionError.noAudioTrack
         }
         let formatDescriptions = try await audioTrack.load(.formatDescriptions)
+        try Task.checkCancellation()
         let streamDescription = formatDescriptions.lazy.compactMap(Self.streamDescription(from:)).first
         let durationSeconds = CMTimeGetSeconds(duration)
+        let metadata = try await loadCommonMetadata(from: asset)
 
         return InspectionOutcome(
             status: .succeeded,
@@ -91,10 +101,61 @@ public struct AudioInspector: AudioInspecting {
                 channelCount: streamDescription.flatMap { $0.mChannelsPerFrame > 0 ? Int($0.mChannelsPerFrame) : nil },
                 sampleRate: streamDescription.flatMap { $0.mSampleRate > 0 ? $0.mSampleRate : nil },
                 pcmBitDepth: streamDescription.flatMap(Self.pcmBitDepth(from:)),
-                isReadable: true
+                isReadable: true,
+                metadata: metadata
             ),
             findings: []
         )
+    }
+
+    private static func loadCommonMetadata(from asset: AVURLAsset) async throws -> [String: String] {
+        do {
+            try Task.checkCancellation()
+            let items = try await asset.load(.commonMetadata)
+            try Task.checkCancellation()
+            return try await metadataDictionary(from: items)
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            try Task.checkCancellation()
+            return [:]
+        }
+    }
+
+    static func metadataDictionary(from items: [AVMetadataItem]) async throws -> [String: String] {
+        var fields: [(key: String, value: String)] = []
+        for item in items.prefix(64) {
+            try Task.checkCancellation()
+            guard let key = item.commonKey?.rawValue.trimmingCharacters(in: .whitespacesAndNewlines),
+                  !key.isEmpty,
+                  key.count <= 128
+            else {
+                continue
+            }
+
+            let stringValue: String?
+            do {
+                stringValue = try await item.load(.stringValue)
+            } catch {
+                try Task.checkCancellation()
+                continue
+            }
+            try Task.checkCancellation()
+            guard let value = stringValue?.trimmingCharacters(in: .whitespacesAndNewlines),
+                  !value.isEmpty
+            else {
+                continue
+            }
+            fields.append((key.lowercased(), String(value.prefix(4_096))))
+        }
+
+        return fields.sorted {
+            $0.key == $1.key ? $0.value.unicodeScalars.lexicographicallyPrecedes($1.value.unicodeScalars) : $0.key.unicodeScalars.lexicographicallyPrecedes($1.key.unicodeScalars)
+        }.reduce(into: [:]) { result, field in
+            if result[field.key] == nil {
+                result[field.key] = field.value
+            }
+        }
     }
 
     private static func streamDescription(from description: CMFormatDescription) -> AudioStreamBasicDescription? {
@@ -153,17 +214,17 @@ public struct AudioInspector: AudioInspecting {
         return Int(streamDescription.mBitsPerChannel)
     }
 
-    private static func unreadableOutcome() -> InspectionOutcome<AudioProperties> {
+    private static func unreadableOutcome(path: RelativePath) -> InspectionOutcome<AudioProperties> {
         InspectionOutcome(
             status: .failed,
             value: AudioProperties(isReadable: false),
             findings: [
                 Finding(
-                    ruleID: "audio.unreadable",
+                    ruleID: "inspection.audio-unreadable",
                     severity: .error,
                     title: "Audio file could not be read",
                     explanation: "The selected audio file could not be read safely.",
-                    affectedPaths: [],
+                    affectedPaths: [path],
                     evidence: [.init(label: "isReadable", value: .boolean(false))],
                     expected: "A readable regular audio file inside the selected root.",
                     suggestedAction: "Replace or re-export the audio file.",

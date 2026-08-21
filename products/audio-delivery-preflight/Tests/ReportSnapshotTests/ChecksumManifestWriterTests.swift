@@ -27,4 +27,29 @@ final class ChecksumManifestWriterTests: XCTestCase {
         let scan = ScanResult(selectedFolderName: result.selectedFolderName, preset: result.preset, applicationVersion: result.applicationVersion, engineVersion: result.engineVersion, startedAt: result.startedAt, inventory: [unsafe, entry], findings: [], overallStatus: .ready)
         XCTAssertEqual(ChecksumManifestWriter().text(for: scan), "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad  safe.wav\n")
     }
+
+    func testManifestRejectsDigestUnlessChecksumStatusSucceeded() throws {
+        let result = try ReportFixture.result()
+        let entry = InventoryEntry(
+            relativePath: try RelativePath("stale.wav"),
+            normalizedFilename: "stale.wav",
+            normalizedExtension: "wav",
+            category: .audio,
+            kind: .regular,
+            sha256: "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+            checksumStatus: .failed
+        )
+        let scan = ScanResult(
+            selectedFolderName: result.selectedFolderName,
+            preset: result.preset,
+            applicationVersion: result.applicationVersion,
+            engineVersion: result.engineVersion,
+            startedAt: result.startedAt,
+            inventory: [entry],
+            findings: [],
+            overallStatus: .ready
+        )
+
+        XCTAssertEqual(ChecksumManifestWriter().text(for: scan), "")
+    }
 }

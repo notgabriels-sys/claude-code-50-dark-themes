@@ -2,6 +2,29 @@ import XCTest
 @testable import PreflightCore
 
 final class DomainModelTests: XCTestCase {
+    func testInventoryChecksumStatusRoundTripAndLegacyDefault() throws {
+        let entry = InventoryEntry(
+            relativePath: try RelativePath("Credits/credits.md"),
+            normalizedFilename: "credits.md",
+            normalizedExtension: "md",
+            category: .document,
+            kind: .regular,
+            sha256: String(repeating: "a", count: 64),
+            inspectionStatus: .notInspected,
+            checksumStatus: .succeeded
+        )
+
+        XCTAssertEqual(try JSONDecoder().decode(InventoryEntry.self, from: JSONEncoder().encode(entry)), entry)
+
+        var object = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(entry)) as? [String: Any])
+        object.removeValue(forKey: "checksumStatus")
+        let decodedLegacy = try JSONDecoder().decode(
+            InventoryEntry.self,
+            from: JSONSerialization.data(withJSONObject: object)
+        )
+        XCTAssertEqual(decodedLegacy.checksumStatus, .succeeded)
+        XCTAssertEqual(decodedLegacy.inspectionStatus, .notInspected)
+    }
     func testFindingRoundTripPreservesEvidenceAndOrigin() throws {
         let finding = Finding(
             ruleID: "audio.mixed-sample-rates",

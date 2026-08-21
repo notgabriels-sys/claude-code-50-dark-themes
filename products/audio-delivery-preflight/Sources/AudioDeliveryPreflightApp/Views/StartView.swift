@@ -8,7 +8,8 @@ struct StartView: View {
     @State private var isDropTargeted = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 24) {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 24) {
             VStack(alignment: .leading, spacing: 8) {
                 Text("Audio Delivery Preflight")
                     .font(.largeTitle.bold())
@@ -29,6 +30,10 @@ struct StartView: View {
             }
             .accessibilityLabel("Delivery preset")
             .accessibilityIdentifier("preset-selector")
+
+            if model.isCustomPresetSelected {
+                CustomPresetEditorView(model: model)
+            }
 
             Button {
                 showingFolderImporter = true
@@ -79,9 +84,9 @@ struct StartView: View {
                     .accessibilityIdentifier("start-error-message")
             }
 
-            Spacer(minLength: 0)
+            }
+            .frame(maxWidth: 760, alignment: .leading)
         }
-        .frame(maxWidth: 760, alignment: .leading)
         .accessibilityIdentifier("start-view")
     }
 }

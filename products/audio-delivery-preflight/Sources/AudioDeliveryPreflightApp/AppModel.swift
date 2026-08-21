@@ -89,6 +89,7 @@ final class AppModel {
     private(set) var result: ScanResult?
     private(set) var availablePresets: [Preset]
     private(set) var selectedPresetID: String
+    var customPresetDraft: CustomPresetDraft
     var selectedFindingID: FindingPresentationRow.ID?
     var activeSeverities = Set(FindingSeverity.allCases)
     var lastExportedFormat: ExportFormat?
@@ -107,6 +108,10 @@ final class AppModel {
     ) {
         self.environment = environment
         self.availablePresets = presets
+        self.customPresetDraft = CustomPresetDraft(
+            preset: presets.first(where: { $0.identifier == BuiltInPresets.custom.identifier })
+                ?? BuiltInPresets.custom
+        )
         self.selectedPresetID = presets.contains(where: { $0.identifier == initialPresetID })
             ? initialPresetID
             : presets.first?.identifier ?? initialPresetID
@@ -147,6 +152,14 @@ final class AppModel {
             ?? "Selected preset"
     }
 
+    var selectedPresetDefinition: Preset? {
+        resolvedPreset?.definition
+    }
+
+    var isCustomPresetSelected: Bool {
+        selectedPresetID == BuiltInPresets.custom.identifier
+    }
+
     var requiredRoles: [DeliveryRole] {
         resolvedPreset?.definition.roles.filter(\.required) ?? []
     }
@@ -181,7 +194,7 @@ final class AppModel {
         activeScan?.cancel()
         activeScan = nil
         selectionGeneration += 1
-        selectedFolderURL = url.standardizedFileURL
+        selectedFolderURL = url
         selectedFolderName = Self.safeDisplayName(for: url)
         clearSessionStateForNewSelection()
         resolveSelectedPreset()
@@ -205,6 +218,56 @@ final class AppModel {
         errorMessage = nil
         resolveSelectedPreset()
         phase = selectedFolderURL == nil ? .start : .requirements
+    }
+
+    func editSelectedPresetAsCustom() {
+        guard phase != .scanning else { return }
+        let selectedDefinition = resolvedPreset?.definition
+            ?? availablePresets.first(where: { $0.identifier == selectedPresetID })
+            ?? BuiltInPresets.custom
+        customPresetDraft = CustomPresetDraft(preset: selectedDefinition)
+        if !availablePresets.contains(where: { $0.identifier == BuiltInPresets.custom.identifier }) {
+            availablePresets.append(BuiltInPresets.custom)
+        }
+        selectedPresetID = BuiltInPresets.custom.identifier
+        result = nil
+        selectedFindingID = nil
+        lastExportedFormat = nil
+        errorMessage = nil
+        resolveSelectedPreset()
+        phase = selectedFolderURL == nil ? .start : .requirements
+    }
+
+    @discardableResult
+    func applyCustomPreset() -> Bool {
+        guard phase != .scanning, isCustomPresetSelected else { return false }
+        do {
+            let preset = try customPresetDraft.makePreset()
+            let resolved = try environment.resolvePreset(preset)
+            resolvedPreset = resolved
+            resolvedRequirements = resolved.requirements
+            result = nil
+            selectedFindingID = nil
+            lastExportedFormat = nil
+            errorMessage = nil
+            phase = selectedFolderURL == nil ? .start : .requirements
+            return true
+        } catch {
+            resolvedPreset = nil
+            resolvedRequirements = []
+            result = nil
+            selectedFindingID = nil
+            lastExportedFormat = nil
+            errorMessage = "The Custom preset could not be applied. Review its fields and try again."
+            phase = selectedFolderURL == nil ? .start : .requirements
+            return false
+        }
+    }
+
+    func replaceCustomPresetDraft(_ draft: CustomPresetDraft) {
+        guard phase != .scanning, isCustomPresetSelected else { return }
+        customPresetDraft = draft
+        _ = applyCustomPreset()
     }
 
     func startScan() {
@@ -323,11 +386,18 @@ final class AppModel {
     }
 
     private func resolveSelectedPreset() {
-        guard let preset = availablePresets.first(where: { $0.identifier == selectedPresetID }) else {
-            errorMessage = "The selected preset is unavailable."
-            return
-        }
         do {
+            let preset: Preset
+            if isCustomPresetSelected {
+                preset = try customPresetDraft.makePreset()
+            } else if let selected = availablePresets.first(where: { $0.identifier == selectedPresetID }) {
+                preset = selected
+            } else {
+                errorMessage = "The selected preset is unavailable."
+                resolvedPreset = nil
+                resolvedRequirements = []
+                return
+            }
             let resolved = try environment.resolvePreset(preset)
             resolvedPreset = resolved
             resolvedRequirements = resolved.requirements

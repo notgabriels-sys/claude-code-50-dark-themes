@@ -8,11 +8,12 @@ The application reads the selected folder's filesystem metadata and regular deli
 
 - build a bounded inventory;
 - inspect supported audio and image properties;
+- read bounded common text metadata that AVFoundation exposes reliably;
 - calculate SHA-256 checksums;
 - evaluate the selected preset; and
 - compare source evidence before and after the scan.
 
-Symbolic links are recorded and are not followed. A regular file is opened through a descriptor-relative path beneath the selected root. Entries that cannot be proven safe are not treated as normal source files.
+Symbolic links are recorded and are not followed. The selected root is opened component by component with no-follow semantics, and inventory traversal remains anchored to directory descriptors. A regular file is then opened through a descriptor-relative path beneath that root. Entries that cannot be proven safe are not treated as normal source files.
 
 ## Temporary media copies
 
@@ -30,15 +31,15 @@ Report export is a separate, explicit write. The CLI and app do not overwrite an
 
 ## Data in exported reports
 
-Reports contain the selected folder's final name, relative source paths, measured technical properties, findings, resolved preset requirements, timestamps, application and engine versions, and checksums where available.
+Reports contain the selected folder's final name, relative source paths, measured technical properties, optional bounded embedded metadata text, findings, resolved preset requirements, timestamps, application and engine versions, and checksums where available.
 
 Reports do not export the absolute selected-root path by default. They also reject unsafe absolute, parent-traversal, drive-qualified, or non-canonical source paths.
 
-Relative filenames and SHA-256 checksums can still reveal information about a project or identify known files. Treat exported reports as project data and review them before sharing.
+Relative filenames, SHA-256 checksums, and embedded metadata text can still reveal information about a project or identify known files. Treat exported reports as project data and review them before sharing.
 
 ## Persistence
 
-Recent source folders are not saved or restored by default. Scan state remains in the running process unless the user explicitly exports a report.
+Recent source folders and Custom editor state are not saved or restored by default. Scan state remains in the running process unless the user explicitly exports a report. The CLI reads a requested custom preset through a bounded descriptor-anchored no-follow import and does not rewrite it.
 
 ## Network boundary
 

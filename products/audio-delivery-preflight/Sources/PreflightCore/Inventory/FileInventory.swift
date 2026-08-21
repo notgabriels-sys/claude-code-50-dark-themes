@@ -1,3 +1,4 @@
+import Darwin
 import Foundation
 
 public protocol FileInventorying: Sendable {
@@ -15,72 +16,99 @@ public struct InventorySnapshot: Sendable, Codable, Equatable {
 }
 
 public struct FileInventory: FileInventorying {
-    private static let resourceKeys: Set<URLResourceKey> = [
-        .isRegularFileKey,
-        .isDirectoryKey,
-        .isSymbolicLinkKey,
-        .isHiddenKey,
-        .fileSizeKey,
-        .contentModificationDateKey,
-    ]
     private let onBeforeEnumeratingEntry: (@Sendable () -> Void)?
+    private let onBeforeOpeningRootPathComponent: TrustedFileAccess.OpenRootPathComponentHook?
 
     public init() {
         self.onBeforeEnumeratingEntry = nil
+        self.onBeforeOpeningRootPathComponent = nil
     }
 
     init(onBeforeEnumeratingEntry: @escaping @Sendable () -> Void) {
         self.onBeforeEnumeratingEntry = onBeforeEnumeratingEntry
+        self.onBeforeOpeningRootPathComponent = nil
+    }
+
+    init(onBeforeOpeningRootPathComponent: @escaping TrustedFileAccess.OpenRootPathComponentHook) {
+        self.onBeforeEnumeratingEntry = nil
+        self.onBeforeOpeningRootPathComponent = onBeforeOpeningRootPathComponent
     }
 
     public func inventory(root: URL) async throws -> InventorySnapshot {
         try Task.checkCancellation()
-        let standardizedRoot = root.standardizedFileURL
-        let rootValues: URLResourceValues
-        do {
-            rootValues = try standardizedRoot.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey])
-        } catch {
-            throw PreflightError.invalidScanRequest(reason: "The selected inventory root could not be accessed safely.")
-        }
-        guard rootValues.isSymbolicLink != true else {
-            throw PreflightError.invalidScanRequest(reason: "The selected inventory root must not be a symbolic link.")
-        }
-        guard rootValues.isDirectory == true else {
-            throw PreflightError.invalidScanRequest(reason: "The selected inventory root must be a directory.")
-        }
 
+        let rootDescriptor: Int32
+        do {
+            rootDescriptor = try TrustedFileAccess.openTrustedRoot(
+                at: root,
+                onBeforeOpeningPathComponent: onBeforeOpeningRootPathComponent
+            )
+        } catch TrustedFileAccessError.symbolicLinkNotAllowed {
+            throw PreflightError.invalidScanRequest(
+                reason: "The selected inventory root must not be a symbolic link."
+            )
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            throw PreflightError.invalidScanRequest(
+                reason: "The selected inventory root could not be accessed safely."
+            )
+        }
+        defer { Darwin.close(rootDescriptor) }
+
+        var entries: [InventoryEntry] = []
         var findings: [Finding] = []
-        guard let enumerator = FileManager.default.enumerator(
-            at: standardizedRoot,
-            includingPropertiesForKeys: Array(Self.resourceKeys),
-            options: [],
-            errorHandler: { url, error in
-                if Task.isCancelled {
-                    return false
-                }
+        try walkDirectory(
+            descriptor: rootDescriptor,
+            relativeComponents: [],
+            entries: &entries,
+            findings: &findings
+        )
+
+        entries.sort { Self.unicodeScalarLessThan($0.relativePath.value, $1.relativePath.value) }
+        findings.sort(by: Self.findingLessThan)
+        return InventorySnapshot(entries: entries, findings: findings)
+    }
+
+    private func walkDirectory(
+        descriptor: Int32,
+        relativeComponents: [String],
+        entries: inout [InventoryEntry],
+        findings: inout [Finding]
+    ) throws {
+        try Task.checkCancellation()
+
+        let names: [String]
+        do {
+            names = try Self.directoryNames(from: descriptor)
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            if let relativePath = try? Self.relativePath(relativeComponents) {
                 findings.append(Self.finding(
                     ruleID: "filesystem.enumeration-failed",
                     severity: .warning,
                     title: "Directory entry could not be enumerated",
                     explanation: "The directory entry could not be enumerated safely.",
-                    affectedPaths: Self.validatedRelativePath(for: url, root: standardizedRoot).map { [$0] } ?? []
+                    affectedPaths: [relativePath]
                 ))
-                return true
+                return
             }
-        ) else {
-            throw PreflightError.invalidScanRequest(reason: "The selected inventory root could not be enumerated.")
+            throw PreflightError.invalidScanRequest(
+                reason: "The selected inventory root could not be enumerated."
+            )
         }
 
-        var entries: [InventoryEntry] = []
-        while true {
+        for name in names {
             try Task.checkCancellation()
             onBeforeEnumeratingEntry?()
             try Task.checkCancellation()
-            guard let url = enumerator.nextObject() as? URL else {
-                break
-            }
-            let standardizedURL = url.standardizedFileURL
-            guard let relativePath = Self.validatedRelativePath(for: standardizedURL, root: standardizedRoot) else {
+
+            let components = relativeComponents + [name]
+            let relativePath: RelativePath
+            do {
+                relativePath = try Self.relativePath(components)
+            } catch {
                 findings.append(Self.finding(
                     ruleID: "filesystem.invalid-relative-path",
                     severity: .warning,
@@ -88,15 +116,19 @@ public struct FileInventory: FileInventorying {
                     explanation: "The directory entry is outside the selected root or cannot be represented as a RelativePath.",
                     affectedPaths: []
                 ))
-                enumerator.skipDescendants()
                 continue
             }
 
-            let values: URLResourceValues
+            let fileStatus: stat
             do {
-                values = try standardizedURL.resourceValues(forKeys: Self.resourceKeys)
+                fileStatus = try Self.status(name: name, from: descriptor)
             } catch {
-                entries.append(Self.entry(relativePath: relativePath, url: standardizedURL, values: nil, kind: .special))
+                entries.append(Self.entry(
+                    relativePath: relativePath,
+                    filename: name,
+                    status: nil,
+                    kind: .special
+                ))
                 findings.append(Self.finding(
                     ruleID: "filesystem.metadata-unreadable",
                     severity: .warning,
@@ -104,16 +136,19 @@ public struct FileInventory: FileInventorying {
                     explanation: "The directory entry metadata could not be read safely.",
                     affectedPaths: [relativePath]
                 ))
-                enumerator.skipDescendants()
                 continue
             }
 
-            let kind = Self.kind(for: values)
-            entries.append(Self.entry(relativePath: relativePath, url: standardizedURL, values: values, kind: kind))
+            let kind = Self.kind(for: fileStatus)
+            entries.append(Self.entry(
+                relativePath: relativePath,
+                filename: name,
+                status: fileStatus,
+                kind: kind
+            ))
 
             switch kind {
             case .symbolicLink:
-                enumerator.skipDescendants()
                 findings.append(Self.finding(
                     ruleID: "filesystem.symlink-not-followed",
                     severity: .information,
@@ -121,6 +156,7 @@ public struct FileInventory: FileInventorying {
                     explanation: "Symbolic links are recorded but their destinations are never enumerated.",
                     affectedPaths: [relativePath]
                 ))
+
             case .special:
                 findings.append(Self.finding(
                     ruleID: "filesystem.special-entry",
@@ -129,67 +165,160 @@ public struct FileInventory: FileInventorying {
                     explanation: "Only regular files and directories can be safely inventoried.",
                     affectedPaths: [relativePath]
                 ))
-            case .regular, .directory:
+
+            case .regular:
+                if !Self.isReadableRegularFile(name: name, from: descriptor) {
+                    findings.append(Self.finding(
+                        ruleID: "filesystem.unreadable-entry",
+                        severity: .warning,
+                        title: "Regular file could not be read",
+                        explanation: "The file is recorded but later inspection may not be possible.",
+                        affectedPaths: [relativePath]
+                    ))
+                }
+
+            case .directory:
+                let childDescriptor: Int32
+                do {
+                    childDescriptor = try Self.openDirectory(name: name, from: descriptor)
+                } catch {
+                    findings.append(Self.finding(
+                        ruleID: "filesystem.enumeration-failed",
+                        severity: .warning,
+                        title: "Directory entry could not be enumerated",
+                        explanation: "The directory entry could not be enumerated safely.",
+                        affectedPaths: [relativePath]
+                    ))
+                    continue
+                }
+                defer { Darwin.close(childDescriptor) }
+                try walkDirectory(
+                    descriptor: childDescriptor,
+                    relativeComponents: components,
+                    entries: &entries,
+                    findings: &findings
+                )
+            }
+        }
+    }
+
+    private static func directoryNames(from descriptor: Int32) throws -> [String] {
+        try Task.checkCancellation()
+        let duplicate = Darwin.dup(descriptor)
+        guard duplicate >= 0 else {
+            throw TrustedFileAccessError.openFailed
+        }
+        guard let directory = Darwin.fdopendir(duplicate) else {
+            Darwin.close(duplicate)
+            throw TrustedFileAccessError.openFailed
+        }
+        defer { Darwin.closedir(directory) }
+
+        var names: [String] = []
+        while true {
+            try Task.checkCancellation()
+            errno = 0
+            guard let directoryEntry = Darwin.readdir(directory) else {
+                guard errno == 0 else {
+                    throw TrustedFileAccessError.readFailed
+                }
                 break
             }
-
-            if kind == .regular, !FileManager.default.isReadableFile(atPath: standardizedURL.path) {
-                findings.append(Self.finding(
-                    ruleID: "filesystem.unreadable-entry",
-                    severity: .warning,
-                    title: "Regular file could not be read",
-                    explanation: "The file is recorded but later inspection may not be possible.",
-                    affectedPaths: [relativePath]
-                ))
+            let capacity = MemoryLayout.size(ofValue: directoryEntry.pointee.d_name)
+            let name = withUnsafePointer(to: &directoryEntry.pointee.d_name) { pointer in
+                pointer.withMemoryRebound(to: CChar.self, capacity: capacity) {
+                    String(cString: $0)
+                }
             }
+            guard name != ".", name != ".." else { continue }
+            names.append(name)
         }
 
-        entries.sort { Self.unicodeScalarLessThan($0.relativePath.value, $1.relativePath.value) }
-        return InventorySnapshot(entries: entries, findings: findings)
+        return names.sorted(by: unicodeScalarLessThan)
     }
 
-    private static func validatedRelativePath(for url: URL, root: URL) -> RelativePath? {
-        let urlComponents = url.standardizedFileURL.pathComponents
-        let rootComponents = root.standardizedFileURL.pathComponents
-        guard urlComponents.count > rootComponents.count, urlComponents.starts(with: rootComponents) else {
-            return nil
+    private static func status(name: String, from directoryDescriptor: Int32) throws -> stat {
+        var fileStatus = stat()
+        let result = name.withCString { representation in
+            Darwin.fstatat(directoryDescriptor, representation, &fileStatus, AT_SYMLINK_NOFOLLOW)
         }
-
-        return try? RelativePath(urlComponents.dropFirst(rootComponents.count).joined(separator: "/"))
+        guard result == 0 else {
+            throw TrustedFileAccessError.statusFailed
+        }
+        return fileStatus
     }
 
-    private static func kind(for values: URLResourceValues) -> FileKind {
-        if values.isSymbolicLink == true {
-            return .symbolicLink
+    private static func openDirectory(name: String, from directoryDescriptor: Int32) throws -> Int32 {
+        let descriptor = name.withCString { representation in
+            Darwin.openat(directoryDescriptor, representation, O_RDONLY | O_DIRECTORY | O_NOFOLLOW)
+        }
+        guard descriptor >= 0 else {
+            throw TrustedFileAccessError.openFailed
         }
 
-        if values.isDirectory == true {
-            return .directory
+        var fileStatus = stat()
+        guard Darwin.fstat(descriptor, &fileStatus) == 0,
+              fileStatus.st_mode & S_IFMT == S_IFDIR
+        else {
+            Darwin.close(descriptor)
+            throw TrustedFileAccessError.unexpectedFileKind
         }
+        return descriptor
+    }
 
-        if values.isRegularFile == true {
-            return .regular
+    private static func isReadableRegularFile(name: String, from directoryDescriptor: Int32) -> Bool {
+        let descriptor = name.withCString { representation in
+            Darwin.openat(directoryDescriptor, representation, O_RDONLY | O_NONBLOCK | O_NOFOLLOW)
         }
+        guard descriptor >= 0 else { return false }
+        defer { Darwin.close(descriptor) }
 
-        return .special
+        var fileStatus = stat()
+        return Darwin.fstat(descriptor, &fileStatus) == 0
+            && fileStatus.st_mode & S_IFMT == S_IFREG
+    }
+
+    private static func relativePath(_ components: [String]) throws -> RelativePath {
+        guard !components.isEmpty else {
+            throw TrustedFileAccessError.invalidRelativePath
+        }
+        return try RelativePath(components.joined(separator: "/"))
+    }
+
+    private static func kind(for status: stat) -> FileKind {
+        switch status.st_mode & S_IFMT {
+        case S_IFREG: .regular
+        case S_IFDIR: .directory
+        case S_IFLNK: .symbolicLink
+        default: .special
+        }
     }
 
     private static func entry(
         relativePath: RelativePath,
-        url: URL,
-        values: URLResourceValues?,
+        filename: String,
+        status: stat?,
         kind: FileKind
     ) -> InventoryEntry {
-        let filename = url.lastPathComponent.lowercased()
+        let normalizedFilename = filename.lowercased()
+        let isHidden = filename.hasPrefix(".")
+            || status.map { $0.st_flags & UInt32(UF_HIDDEN) != 0 } == true
         return InventoryEntry(
             relativePath: relativePath,
-            normalizedFilename: filename,
-            normalizedExtension: url.pathExtension.lowercased(),
-            category: category(for: filename),
-            byteSize: values?.fileSize.map(Int64.init),
-            modificationDate: values?.contentModificationDate,
+            normalizedFilename: normalizedFilename,
+            normalizedExtension: (filename as NSString).pathExtension.lowercased(),
+            category: category(for: normalizedFilename),
+            byteSize: status.map { Int64($0.st_size) },
+            modificationDate: status.map(modificationDate),
             kind: kind,
-            evidence: values?.isHidden.map { [Evidence(label: "isHidden", value: .boolean($0))] } ?? []
+            evidence: [Evidence(label: "isHidden", value: .boolean(isHidden))]
+        )
+    }
+
+    private static func modificationDate(from status: stat) -> Date {
+        Date(
+            timeIntervalSince1970: TimeInterval(status.st_mtimespec.tv_sec)
+                + TimeInterval(status.st_mtimespec.tv_nsec) / 1_000_000_000
         )
     }
 
@@ -198,19 +327,16 @@ public struct FileInventory: FileInventorying {
             return .serviceFile
         }
 
-        let extensionName = URL(fileURLWithPath: filename).pathExtension
+        let extensionName = (filename as NSString).pathExtension
         if ["aif", "aiff", "flac", "m4a", "mp3", "wav"].contains(extensionName) {
             return .audio
         }
-
         if ["gif", "heic", "jpeg", "jpg", "png", "tif", "tiff", "webp"].contains(extensionName) {
             return .artwork
         }
-
         if ["csv", "doc", "docx", "md", "pdf", "rtf", "txt"].contains(extensionName) {
             return .document
         }
-
         return .other
     }
 
@@ -233,6 +359,15 @@ public struct FileInventory: FileInventorying {
             origin: .engine,
             engineVersion: "0.1.0"
         )
+    }
+
+    private static func findingLessThan(_ left: Finding, _ right: Finding) -> Bool {
+        let leftPath = left.affectedPaths.first?.value ?? ""
+        let rightPath = right.affectedPaths.first?.value ?? ""
+        if leftPath != rightPath {
+            return unicodeScalarLessThan(leftPath, rightPath)
+        }
+        return unicodeScalarLessThan(left.ruleID, right.ruleID)
     }
 
     private static func unicodeScalarLessThan(_ left: String, _ right: String) -> Bool {

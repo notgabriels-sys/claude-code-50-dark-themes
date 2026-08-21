@@ -122,16 +122,22 @@ private struct JSONNumericConstraintV1: Encodable {
 
 private struct JSONAudioRequirementV1: Encodable {
     let allowedExtensions: [String]?
+    let allowedEncodings: [String]?
     let sampleRate: JSONNumericConstraintV1?
     let bitDepth: JSONNumericConstraintV1?
     let requireConsistentSampleRate: Bool
+    let requireConsistentBitDepth: Bool
+    let requireConsistentChannelCount: Bool
     let severity: String
 
     init(_ value: AudioRequirement) {
         allowedExtensions = value.allowedExtensions
+        allowedEncodings = value.allowedEncodings
         sampleRate = value.sampleRate.map(JSONNumericConstraintV1.init)
         bitDepth = value.bitDepth.map(JSONNumericConstraintV1.init)
         requireConsistentSampleRate = value.requireConsistentSampleRate
+        requireConsistentBitDepth = value.requireConsistentBitDepth
+        requireConsistentChannelCount = value.requireConsistentChannelCount
         severity = value.severity.rawValue
     }
 }
@@ -167,6 +173,7 @@ private struct JSONDeliveryRoleV1: Encodable {
     let required: Bool
     let category: String?
     let allowedExtensions: [String]?
+    let allowedEncodings: [String]?
     let channelCount: JSONNumericConstraintV1?
     let sampleRate: JSONNumericConstraintV1?
     let bitDepth: JSONNumericConstraintV1?
@@ -181,6 +188,7 @@ private struct JSONDeliveryRoleV1: Encodable {
         required = value.required
         category = value.category?.rawValue
         allowedExtensions = value.allowedExtensions
+        allowedEncodings = value.allowedEncodings
         channelCount = value.channelCount.map(JSONNumericConstraintV1.init)
         sampleRate = value.sampleRate.map(JSONNumericConstraintV1.init)
         bitDepth = value.bitDepth.map(JSONNumericConstraintV1.init)
@@ -199,6 +207,7 @@ private struct JSONInventoryEntryV1: Encodable {
     let modificationDate: Date?
     let kind: String
     let sha256: String?
+    let checksumStatus: String
     let inspectionStatus: String
     let audioProperties: JSONAudioPropertiesV1?
     let imageProperties: JSONImagePropertiesV1?
@@ -217,6 +226,7 @@ private struct JSONInventoryEntryV1: Encodable {
         modificationDate = entry.modificationDate
         kind = entry.kind.rawValue
         sha256 = entry.sha256
+        checksumStatus = entry.checksumStatus.rawValue
         inspectionStatus = entry.inspectionStatus.rawValue
         audioProperties = entry.audioProperties.map(JSONAudioPropertiesV1.init)
         imageProperties = entry.imageProperties.map(JSONImagePropertiesV1.init)

@@ -9,7 +9,6 @@ public struct RuleEngine: RuleEvaluating {
 
     public func evaluate(snapshot: InventorySnapshot, preset: ResolvedPreset, engineVersion: String) -> [Finding] {
         var findings = snapshot.findings
-        findings.append(contentsOf: readability(in: snapshot.entries, engineVersion: engineVersion))
         findings.append(contentsOf: audioRequirements(in: snapshot.entries, requirement: preset.definition.audio, engineVersion: engineVersion))
         findings.append(contentsOf: audioConsistency(in: snapshot.entries, requirement: preset.definition.audio, engineVersion: engineVersion))
         findings.append(contentsOf: filenameHygiene(in: snapshot.entries, requirement: preset.definition.filename, engineVersion: engineVersion))
@@ -21,42 +20,6 @@ public struct RuleEngine: RuleEvaluating {
         return findings.sorted(by: findingLessThan)
     }
 
-    private func readability(in entries: [InventoryEntry], engineVersion: String) -> [Finding] {
-        entries.compactMap { entry in
-            guard entry.kind == .regular else { return nil }
-            switch entry.category {
-            case .audio where entry.audioProperties?.isReadable == false || entry.inspectionStatus == .failed:
-                return finding(
-                    ruleID: "inspection.audio-unreadable",
-                    severity: .warning,
-                    title: "Audio file was not readable during inspection",
-                    explanation: "The audio inspector could not read this file.",
-                    paths: [entry.relativePath],
-                    evidence: entry.evidence,
-                    expected: "A readable audio file.",
-                    suggestedAction: "Re-export or replace the file, then inspect it again.",
-                    origin: .engine,
-                    engineVersion: engineVersion
-                )
-            case .artwork where entry.imageProperties?.isReadable == false || entry.inspectionStatus == .failed:
-                return finding(
-                    ruleID: "inspection.artwork-unreadable",
-                    severity: .warning,
-                    title: "Artwork file was not readable during inspection",
-                    explanation: "The artwork inspector could not read this file.",
-                    paths: [entry.relativePath],
-                    evidence: entry.evidence,
-                    expected: "A readable artwork file.",
-                    suggestedAction: "Re-export or replace the file, then inspect it again.",
-                    origin: .engine,
-                    engineVersion: engineVersion
-                )
-            default:
-                return nil
-            }
-        }
-    }
-
     private func audioRequirements(
         in entries: [InventoryEntry],
         requirement: AudioRequirement,
@@ -64,7 +27,29 @@ public struct RuleEngine: RuleEvaluating {
     ) -> [Finding] {
         entries.filter { $0.kind == .regular && $0.category == .audio }.flatMap { entry in
             var findings: [Finding] = []
-            if let extensions = requirement.allowedExtensions, !extensions.contains(entry.normalizedExtension) {
+            if let expectedContainer = Self.containerExpected(forExtension: entry.normalizedExtension),
+               let measuredContainer = entry.audioProperties?.container,
+               !Self.equalIgnoringCase(expectedContainer, measuredContainer)
+            {
+                findings.append(finding(
+                    ruleID: "audio.filename-content-mismatch",
+                    severity: .warning,
+                    title: "Audio filename extension does not match inspected content",
+                    explanation: "The inspected audio container does not match the filename extension.",
+                    paths: [entry.relativePath],
+                    evidence: [
+                        Evidence(label: "extension", value: .string(entry.normalizedExtension)),
+                        Evidence(label: "container", value: .string(measuredContainer)),
+                    ],
+                    expected: "A filename extension consistent with the inspected audio container.",
+                    suggestedAction: "Re-export the file in the intended format or correct its filename before delivery.",
+                    origin: .engine,
+                    engineVersion: engineVersion
+                ))
+            }
+            if let extensions = requirement.allowedExtensions,
+               !extensions.contains(where: { Self.equalIgnoringCase($0, entry.normalizedExtension) })
+            {
                 findings.append(finding(
                     ruleID: "audio.disallowed-format",
                     severity: requirement.severity,
@@ -78,24 +63,33 @@ public struct RuleEngine: RuleEvaluating {
                     engineVersion: engineVersion
                 ))
             }
-            if let constraint = requirement.sampleRate, let value = entry.audioProperties?.sampleRate, !matches(value, constraint) {
-                findings.append(numericFinding(
+            if let encodings = requirement.allowedEncodings {
+                findings.append(contentsOf: allowedEncodingFindings(
+                    entry: entry,
+                    allowedEncodings: encodings,
+                    ruleIDPrefix: "audio",
+                    severity: requirement.severity,
+                    engineVersion: engineVersion
+                ))
+            }
+            if let constraint = requirement.sampleRate {
+                findings.append(contentsOf: requiredNumericFindings(
                     ruleID: "audio.sample-rate",
                     title: "Audio sample rate is outside the preset range",
                     path: entry.relativePath,
-                    value: value,
+                    value: entry.audioProperties?.sampleRate,
                     label: "sampleRate",
                     constraint: constraint,
                     severity: requirement.severity,
                     engineVersion: engineVersion
                 ))
             }
-            if let constraint = requirement.bitDepth, let value = entry.audioProperties?.pcmBitDepth.map(Double.init), !matches(value, constraint) {
-                findings.append(numericFinding(
+            if let constraint = requirement.bitDepth {
+                findings.append(contentsOf: requiredNumericFindings(
                     ruleID: "audio.bit-depth",
                     title: "Audio bit depth is outside the preset range",
                     path: entry.relativePath,
-                    value: value,
+                    value: entry.audioProperties?.pcmBitDepth.map(Double.init),
                     label: "bitDepth",
                     constraint: constraint,
                     severity: requirement.severity,
@@ -111,27 +105,60 @@ public struct RuleEngine: RuleEvaluating {
         requirement: AudioRequirement,
         engineVersion: String
     ) -> [Finding] {
-        guard requirement.requireConsistentSampleRate else { return [] }
-        let sampleRates = Set(entries.compactMap { entry -> Double? in
-            guard entry.kind == .regular, entry.category == .audio else { return nil }
-            return entry.audioProperties?.sampleRate
-        })
-        guard sampleRates.count > 1 else { return [] }
-        let paths = entries.filter { $0.kind == .regular && $0.category == .audio && $0.audioProperties?.sampleRate != nil }
-            .map(\.relativePath)
-            .sorted(by: relativePathLessThan)
-        return [finding(
-            ruleID: "audio.mixed-sample-rate",
-            severity: requirement.severity,
-            title: "Audio files have mixed sample rates",
-            explanation: "The inspected audio files do not all report the same sample rate.",
-            paths: paths,
-            evidence: sampleRates.sorted().map { Evidence(label: "sampleRate", value: .number($0)) },
-            expected: "Audio files must use one inspected sample rate.",
-            suggestedAction: "Review the measured sample rates and provide files that meet this preset requirement.",
-            origin: .preset,
-            engineVersion: engineVersion
-        )]
+        let readableAudio = entries.filter {
+            $0.kind == .regular && $0.category == .audio && $0.audioProperties?.isReadable == true
+        }
+        guard !readableAudio.isEmpty else { return [] }
+
+        var findings: [Finding] = []
+        if requirement.requireConsistentSampleRate {
+            findings.append(contentsOf: consistencyFindings(
+                entries: readableAudio,
+                value: { $0.audioProperties?.sampleRate },
+                unavailableRuleID: "audio.consistent-sample-rate-unavailable",
+                mixedRuleID: "audio.mixed-sample-rate",
+                unavailableTitle: "Audio sample-rate consistency could not be established",
+                mixedTitle: "Audio files have mixed sample rates",
+                label: "sampleRate",
+                expected: "Audio files must use one inspected sample rate.",
+                severity: requirement.severity,
+                engineVersion: engineVersion
+            ))
+        }
+        if requirement.requireConsistentChannelCount {
+            findings.append(contentsOf: consistencyFindings(
+                entries: readableAudio,
+                value: { $0.audioProperties?.channelCount.map(Double.init) },
+                unavailableRuleID: "audio.consistent-channel-count-unavailable",
+                mixedRuleID: "audio.mixed-channel-count",
+                unavailableTitle: "Audio channel-count consistency could not be established",
+                mixedTitle: "Audio files have mixed channel counts",
+                label: "channelCount",
+                expected: "Audio files must use one inspected channel count.",
+                severity: requirement.severity,
+                engineVersion: engineVersion
+            ))
+        }
+        if requirement.requireConsistentBitDepth {
+            let pcmOrUnknown = readableAudio.filter {
+                $0.audioProperties?.encoding == nil || Self.equalIgnoringCase($0.audioProperties?.encoding ?? "", "Linear PCM")
+            }
+            if !pcmOrUnknown.isEmpty {
+                findings.append(contentsOf: consistencyFindings(
+                    entries: pcmOrUnknown,
+                    value: { $0.audioProperties?.pcmBitDepth.map(Double.init) },
+                    unavailableRuleID: "audio.consistent-bit-depth-unavailable",
+                    mixedRuleID: "audio.mixed-bit-depth",
+                    unavailableTitle: "PCM bit-depth consistency could not be established",
+                    mixedTitle: "Linear PCM files have mixed bit depths",
+                    label: "bitDepth",
+                    expected: "Linear PCM audio files must use one inspected PCM bit depth.",
+                    severity: requirement.severity,
+                    engineVersion: engineVersion
+                ))
+            }
+        }
+        return findings
     }
 
     private func filenameHygiene(
@@ -160,7 +187,10 @@ public struct RuleEngine: RuleEvaluating {
             }
         }
 
-        let collisions = Dictionary(grouping: entries.filter { $0.kind == .regular }, by: { $0.relativePath.value.lowercased() })
+        let collisions = Dictionary(
+            grouping: entries.filter { $0.kind == .regular },
+            by: { PortablePathIdentity.key($0.relativePath.value) }
+        )
         for matchingEntries in collisions.values where matchingEntries.count > 1 {
             let paths = matchingEntries.map(\.relativePath).sorted(by: relativePathLessThan)
             findings.append(finding(
@@ -203,7 +233,7 @@ public struct RuleEngine: RuleEvaluating {
                 )]
             }
             if paths.count > 1 {
-                return [finding(
+                let ambiguity = finding(
                     ruleID: "role.ambiguous.\(role.identifier)",
                     severity: role.ambiguitySeverity,
                     title: "Delivery role matches multiple files",
@@ -214,7 +244,10 @@ public struct RuleEngine: RuleEvaluating {
                     suggestedAction: "Rename, remove, or refine files so this role has one unambiguous match.",
                     origin: .preset,
                     engineVersion: engineVersion
-                )]
+                )
+                return [ambiguity] + matchingEntries.flatMap {
+                    rolePropertyFindings(for: $0, role: role, engineVersion: engineVersion)
+                }
             }
             guard let entry = matchingEntries.first else { return [] }
             return rolePropertyFindings(for: entry, role: role, engineVersion: engineVersion)
@@ -251,14 +284,51 @@ public struct RuleEngine: RuleEvaluating {
                 engineVersion: engineVersion
             ))
         }
-        if let constraint = role.channelCount, let value = entry.audioProperties?.channelCount.map(Double.init), !matches(value, constraint) {
-            findings.append(numericFinding(ruleID: "role.channel-count.\(role.identifier)", title: "Delivery role channel count is outside the preset range", path: entry.relativePath, value: value, label: "channelCount", constraint: constraint, severity: role.severity, engineVersion: engineVersion))
+        if role.category == .audio, let encodings = role.allowedEncodings {
+            findings.append(contentsOf: allowedEncodingFindings(
+                entry: entry,
+                allowedEncodings: encodings,
+                ruleIDPrefix: "role",
+                roleIdentifier: role.identifier,
+                severity: role.severity,
+                engineVersion: engineVersion
+            ))
         }
-        if let constraint = role.sampleRate, let value = entry.audioProperties?.sampleRate, !matches(value, constraint) {
-            findings.append(numericFinding(ruleID: "role.sample-rate.\(role.identifier)", title: "Delivery role sample rate is outside the preset range", path: entry.relativePath, value: value, label: "sampleRate", constraint: constraint, severity: role.severity, engineVersion: engineVersion))
+        if let constraint = role.channelCount {
+            findings.append(contentsOf: requiredNumericFindings(
+                ruleID: "role.channel-count.\(role.identifier)",
+                title: "Delivery role channel count is outside the preset range",
+                path: entry.relativePath,
+                value: entry.audioProperties?.channelCount.map(Double.init),
+                label: "channelCount",
+                constraint: constraint,
+                severity: role.severity,
+                engineVersion: engineVersion
+            ))
         }
-        if let constraint = role.bitDepth, let value = entry.audioProperties?.pcmBitDepth.map(Double.init), !matches(value, constraint) {
-            findings.append(numericFinding(ruleID: "role.bit-depth.\(role.identifier)", title: "Delivery role bit depth is outside the preset range", path: entry.relativePath, value: value, label: "bitDepth", constraint: constraint, severity: role.severity, engineVersion: engineVersion))
+        if let constraint = role.sampleRate {
+            findings.append(contentsOf: requiredNumericFindings(
+                ruleID: "role.sample-rate.\(role.identifier)",
+                title: "Delivery role sample rate is outside the preset range",
+                path: entry.relativePath,
+                value: entry.audioProperties?.sampleRate,
+                label: "sampleRate",
+                constraint: constraint,
+                severity: role.severity,
+                engineVersion: engineVersion
+            ))
+        }
+        if let constraint = role.bitDepth {
+            findings.append(contentsOf: requiredNumericFindings(
+                ruleID: "role.bit-depth.\(role.identifier)",
+                title: "Delivery role bit depth is outside the preset range",
+                path: entry.relativePath,
+                value: entry.audioProperties?.pcmBitDepth.map(Double.init),
+                label: "bitDepth",
+                constraint: constraint,
+                severity: role.severity,
+                engineVersion: engineVersion
+            ))
         }
         return findings
     }
@@ -266,7 +336,23 @@ public struct RuleEngine: RuleEvaluating {
     private func artworkRequirements(in entries: [InventoryEntry], requirement: ArtworkRequirement?, engineVersion: String) -> [Finding] {
         guard let requirement else { return [] }
         return entries.filter { $0.kind == .regular && $0.category == .artwork }.flatMap { entry in
-            guard let width = entry.imageProperties?.pixelWidth, let height = entry.imageProperties?.pixelHeight else { return [Finding]() }
+            guard let width = entry.imageProperties?.pixelWidth, let height = entry.imageProperties?.pixelHeight else {
+                return [finding(
+                    ruleID: "artwork.dimensions-unavailable",
+                    severity: requirement.severity,
+                    title: "Artwork dimensions could not be measured",
+                    explanation: "The configured artwork requirement cannot pass because width or height is unavailable.",
+                    paths: [entry.relativePath],
+                    evidence: [
+                        Evidence(label: "pixelWidth", value: entry.imageProperties?.pixelWidth.map { .integer($0) } ?? .unknown),
+                        Evidence(label: "pixelHeight", value: entry.imageProperties?.pixelHeight.map { .integer($0) } ?? .unknown),
+                    ],
+                    expected: artworkExpectation(requirement),
+                    suggestedAction: "Provide readable artwork with measurable dimensions, then run the preflight again.",
+                    origin: .preset,
+                    engineVersion: engineVersion
+                )]
+            }
             var findings: [Finding] = []
             if requirement.requiresSquare, width != height {
                 findings.append(finding(
@@ -365,6 +451,142 @@ public struct RuleEngine: RuleEvaluating {
         }
     }
 
+    private func allowedEncodingFindings(
+        entry: InventoryEntry,
+        allowedEncodings: [String],
+        ruleIDPrefix: String,
+        roleIdentifier: String? = nil,
+        severity: FindingSeverity,
+        engineVersion: String
+    ) -> [Finding] {
+        let suffix = roleIdentifier.map { ".\($0)" } ?? ""
+        let evidence = [
+            Evidence(label: "extension", value: .string(entry.normalizedExtension)),
+            Evidence(label: "container", value: entry.audioProperties?.container.map { .string($0) } ?? .unknown),
+            Evidence(label: "encoding", value: entry.audioProperties?.encoding.map { .string($0) } ?? .unknown),
+        ]
+        guard let encoding = entry.audioProperties?.encoding else {
+            return [finding(
+                ruleID: "\(ruleIDPrefix).encoding-unavailable\(suffix)",
+                severity: severity,
+                title: "Required audio encoding could not be established",
+                explanation: "The configured encoding requirement cannot pass because the inspected encoding is unavailable.",
+                paths: [entry.relativePath],
+                evidence: evidence,
+                expected: "One of the inspected encodings: \(allowedEncodings.joined(separator: ", ")).",
+                suggestedAction: "Provide a file whose encoding can be inspected and meets the configured requirement.",
+                origin: .preset,
+                engineVersion: engineVersion
+            )]
+        }
+        guard !allowedEncodings.contains(where: { Self.equalIgnoringCase($0, encoding) }) else { return [] }
+        return [finding(
+            ruleID: "\(ruleIDPrefix).disallowed-encoding\(suffix)",
+            severity: severity,
+            title: "Audio encoding is not allowed by the preset",
+            explanation: "The inspected audio encoding is outside the configured accepted encodings.",
+            paths: [entry.relativePath],
+            evidence: evidence,
+            expected: "One of the inspected encodings: \(allowedEncodings.joined(separator: ", ")).",
+            suggestedAction: "Supply a file whose inspected encoding meets the visible preset requirement.",
+            origin: .preset,
+            engineVersion: engineVersion
+        )]
+    }
+
+    private func requiredNumericFindings(
+        ruleID: String,
+        title: String,
+        path: RelativePath,
+        value: Double?,
+        label: String,
+        constraint: NumericConstraint,
+        severity: FindingSeverity,
+        engineVersion: String
+    ) -> [Finding] {
+        guard let value else {
+            return [finding(
+                ruleID: unavailableRuleID(for: ruleID),
+                severity: severity,
+                title: "Required \(label) measurement is unavailable",
+                explanation: "The configured numeric requirement cannot pass because the inspected measurement is unavailable.",
+                paths: [path],
+                evidence: [Evidence(label: "measured", value: .unknown)],
+                expected: numericExpectation(constraint),
+                suggestedAction: "Provide a readable file with a measurable value, then run the preflight again.",
+                origin: .preset,
+                engineVersion: engineVersion
+            )]
+        }
+        guard !matches(value, constraint) else { return [] }
+        return [numericFinding(
+            ruleID: ruleID,
+            title: title,
+            path: path,
+            value: value,
+            label: label,
+            constraint: constraint,
+            severity: severity,
+            engineVersion: engineVersion
+        )]
+    }
+
+    private func consistencyFindings(
+        entries: [InventoryEntry],
+        value: (InventoryEntry) -> Double?,
+        unavailableRuleID: String,
+        mixedRuleID: String,
+        unavailableTitle: String,
+        mixedTitle: String,
+        label: String,
+        expected: String,
+        severity: FindingSeverity,
+        engineVersion: String
+    ) -> [Finding] {
+        let missingPaths = entries.filter { value($0) == nil }.map(\.relativePath).sorted(by: relativePathLessThan)
+        let measured = entries.compactMap(value)
+        var findings: [Finding] = []
+        if !missingPaths.isEmpty {
+            findings.append(finding(
+                ruleID: unavailableRuleID,
+                severity: severity,
+                title: unavailableTitle,
+                explanation: "Consistency cannot be established because at least one required inspected value is unavailable.",
+                paths: missingPaths,
+                evidence: [Evidence(label: label, value: .unknown)],
+                expected: expected,
+                suggestedAction: "Provide files with measurable properties, then run the preflight again.",
+                origin: .preset,
+                engineVersion: engineVersion
+            ))
+        }
+        let values = Set(measured)
+        if values.count > 1 {
+            let measuredPaths = entries.filter { value($0) != nil }.map(\.relativePath).sorted(by: relativePathLessThan)
+            findings.append(finding(
+                ruleID: mixedRuleID,
+                severity: severity,
+                title: mixedTitle,
+                explanation: "The inspected audio files do not all report the same configured property.",
+                paths: measuredPaths,
+                evidence: values.sorted().map { Evidence(label: label, value: .number($0)) },
+                expected: expected,
+                suggestedAction: "Review the measured values and provide files that meet this preset requirement.",
+                origin: .preset,
+                engineVersion: engineVersion
+            ))
+        }
+        return findings
+    }
+
+    private func unavailableRuleID(for ruleID: String) -> String {
+        let components = ruleID.split(separator: ".", omittingEmptySubsequences: false)
+        guard components.first == "role", components.count >= 3 else {
+            return "\(ruleID)-unavailable"
+        }
+        return "role.\(components[1])-unavailable.\(components.dropFirst(2).joined(separator: "."))"
+    }
+
     private func numericFinding(
         ruleID: String,
         title: String,
@@ -394,7 +616,8 @@ public struct RuleEngine: RuleEvaluating {
     }
 
     private func extensionMatches(_ entry: InventoryEntry, role: DeliveryRole) -> Bool {
-        role.allowedExtensions == nil || role.allowedExtensions?.contains(entry.normalizedExtension) == true
+        role.allowedExtensions == nil
+            || role.allowedExtensions?.contains(where: { Self.equalIgnoringCase($0, entry.normalizedExtension) }) == true
     }
 
     private func matches(_ value: Double, _ constraint: NumericConstraint) -> Bool {
@@ -414,6 +637,29 @@ public struct RuleEngine: RuleEvaluating {
         case (.none, .none):
             return "No numeric bound is configured."
         }
+    }
+
+    private func artworkExpectation(_ requirement: ArtworkRequirement) -> String {
+        var parts: [String] = []
+        if requirement.requiresSquare { parts.append("square") }
+        if let minimumWidth = requirement.minimumWidth { parts.append("at least \(minimumWidth) px wide") }
+        if let minimumHeight = requirement.minimumHeight { parts.append("at least \(minimumHeight) px high") }
+        return parts.isEmpty ? "Measurable artwork dimensions." : "Artwork that is \(parts.joined(separator: ", "))."
+    }
+
+    private static func containerExpected(forExtension extensionName: String) -> String? {
+        switch extensionName.lowercased() {
+        case "wav": "WAV"
+        case "aif", "aiff": "AIFF"
+        case "flac": "FLAC"
+        case "mp3": "MP3"
+        case "m4a": "M4A"
+        default: nil
+        }
+    }
+
+    private static func equalIgnoringCase(_ left: String, _ right: String) -> Bool {
+        left.compare(right, options: [.caseInsensitive], locale: Locale(identifier: "en_US_POSIX")) == .orderedSame
     }
 
     private func finding(

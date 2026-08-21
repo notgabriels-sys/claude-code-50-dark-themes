@@ -312,6 +312,38 @@ final class ScanServiceTests: XCTestCase {
         XCTAssertEqual(result.overallStatus, .requirementsNotMet)
     }
 
+    func testProductionScanRejectsAACContentRenamedAsMainMasterWAVWithMismatchEvidence() async throws {
+        let fixture = try ScanPackageFixture.make()
+        defer { fixture.remove() }
+        let mediaURL = try FixtureFactory.aacM4A(sampleRate: 44_100, channels: 1, frameCount: 4_410)
+        defer { try? FileManager.default.removeItem(at: mediaURL) }
+        try Data(contentsOf: mediaURL).write(
+            to: fixture.root.appendingPathComponent("Masters/Main Master.wav")
+        )
+        let before = try fixture.snapshots()
+        let preset = try PresetResolver().resolve(BuiltInPresets.digitalRelease)
+
+        let result = await ScanService().scan(request(root: fixture.root, preset: preset))
+        let after = try fixture.snapshots()
+
+        let masterPath = try RelativePath("Masters/Main Master.wav")
+        let master = try XCTUnwrap(result.inventory.first { $0.relativePath == masterPath })
+        XCTAssertEqual(master.audioProperties?.container, "M4A")
+        XCTAssertEqual(master.audioProperties?.encoding, "AAC")
+        let mismatch = try XCTUnwrap(result.findings.first { $0.ruleID == "audio.filename-content-mismatch" })
+        XCTAssertEqual(mismatch.affectedPaths, [masterPath])
+        XCTAssertEqual(mismatch.evidence, [
+            Evidence(label: "extension", value: .string("wav")),
+            Evidence(label: "container", value: .string("M4A")),
+        ])
+        let lossy = try XCTUnwrap(result.findings.first { $0.ruleID == "role.disallowed-encoding.main-master" })
+        XCTAssertEqual(lossy.affectedPaths, [masterPath])
+        XCTAssertTrue(lossy.evidence.contains(Evidence(label: "encoding", value: .string("AAC"))))
+        XCTAssertFalse(result.findings.contains { $0.ruleID == "inspection.audio-unreadable" })
+        XCTAssertEqual(result.overallStatus, .requirementsNotMet)
+        XCTAssertEqual(after, before)
+    }
+
     func testProductionServiceReadiesDigitalReleaseWithoutChangingSourceFiles() async throws {
         let fixture = try ScanPackageFixture.make()
         defer { fixture.remove() }
@@ -755,7 +787,7 @@ private final class ScanPackageFixture {
     }
 
     static func make() throws -> ScanPackageFixture {
-        let root = FileManager.default.temporaryDirectory
+        let root = URL(fileURLWithPath: "/private/tmp", isDirectory: true)
             .appendingPathComponent("ScanServiceTests-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         let fixture = ScanPackageFixture(root: root)
@@ -815,7 +847,7 @@ private final class ScanMutationFixture {
     }
 
     static func make() throws -> ScanMutationFixture {
-        let root = FileManager.default.temporaryDirectory
+        let root = URL(fileURLWithPath: "/private/tmp", isDirectory: true)
             .appendingPathComponent("ScanMutationFixture-\(UUID().uuidString)", isDirectory: true)
         let url = root.appendingPathComponent("Masters/Main Master.wav")
         try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)

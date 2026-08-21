@@ -121,9 +121,46 @@ struct ResultsView: View {
                 Text("\(entry.category.rawValue) · \(entry.kind.rawValue) · \(entry.inspectionStatus.rawValue)")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                ForEach(measuredProperties(for: entry), id: \.self) { property in
+                    Text(property)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
             .accessibilityLabel("\(entry.relativePath.value), \(entry.category.rawValue), \(entry.kind.rawValue)")
         }
         .accessibilityIdentifier("inventory-view")
+    }
+
+    private func measuredProperties(for entry: InventoryEntry) -> [String] {
+        if let audio = entry.audioProperties {
+            var values: [String] = []
+            if let container = audio.container { values.append("Container: \(container)") }
+            if let encoding = audio.encoding { values.append("Encoding: \(encoding)") }
+            if let duration = audio.durationSeconds { values.append("Duration: \(duration.formatted()) seconds") }
+            if let channels = audio.channelCount { values.append("Channels: \(channels)") }
+            if let sampleRate = audio.sampleRate { values.append("Sample rate: \(sampleRate.formatted()) Hz") }
+            if let bitDepth = audio.pcmBitDepth { values.append("PCM bit depth: \(bitDepth)") }
+            for key in audio.metadata.keys.sorted(by: unicodeScalarLessThan) {
+                if let value = audio.metadata[key] {
+                    values.append("Metadata \(key): \(value)")
+                }
+            }
+            return values
+        }
+        if let image = entry.imageProperties {
+            var values: [String] = []
+            if let width = image.pixelWidth { values.append("Width: \(width) px") }
+            if let height = image.pixelHeight { values.append("Height: \(height) px") }
+            if let format = image.format { values.append("Format: \(format)") }
+            if let colorModel = image.colorModel { values.append("Color model: \(colorModel)") }
+            if let alpha = image.hasAlpha { values.append("Alpha: \(alpha ? "Yes" : "No")") }
+            return values
+        }
+        return []
+    }
+
+    private func unicodeScalarLessThan(_ left: String, _ right: String) -> Bool {
+        left.unicodeScalars.lexicographicallyPrecedes(right.unicodeScalars)
     }
 }

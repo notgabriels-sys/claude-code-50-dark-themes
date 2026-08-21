@@ -3,7 +3,17 @@ import XCTest
 
 final class HTMLReportWriterTests: XCTestCase {
     func testHTMLIsAccessibleEscapedAndPrivate() throws {
-        let result = try ReportFixture.result(relativePath: "Audio/<script>&\"'é.wav")
+        let result = try ReportFixture.result(
+            relativePath: "Audio/<script>&\"'é.wav",
+            audioProperties: AudioProperties(
+                container: "WAV",
+                encoding: "Linear PCM",
+                channelCount: 2,
+                sampleRate: 48_000,
+                isReadable: true,
+                metadata: ["artist": "Artist & <Alias>"]
+            )
+        )
         let html = HTMLReportWriter().html(for: result)
 
         XCTAssertTrue(html.contains("<html lang=\"en\">"))
@@ -18,6 +28,12 @@ final class HTMLReportWriterTests: XCTestCase {
         XCTAssertFalse(html.contains("/Users/example/private-delivery"))
         XCTAssertTrue(html.contains("technical checks only"))
         XCTAssertTrue(html.contains("artistic quality"))
+        XCTAssertTrue(html.contains("Checksum status"))
+        XCTAssertTrue(html.contains("succeeded"))
+        XCTAssertTrue(html.contains("Measured properties"))
+        XCTAssertTrue(html.contains("Encoding: Linear PCM"))
+        XCTAssertTrue(html.contains("Metadata artist: Artist &amp; &lt;Alias&gt;"))
+        XCTAssertFalse(html.contains("Artist & <Alias>"))
     }
 
     func testHTMLEscapesAllFiveSpecialCharacters() {
