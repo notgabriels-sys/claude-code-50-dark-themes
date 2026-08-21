@@ -26,7 +26,7 @@ let package = Package(
         ),
         .testTarget(
             name: "PreflightCoreTests",
-            dependencies: ["PreflightCore", "AudioPreflightCLI"],
+            dependencies: ["PreflightCore", "AudioPreflightCLI", "AudioDeliveryPreflightApp"],
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
         .testTarget(
