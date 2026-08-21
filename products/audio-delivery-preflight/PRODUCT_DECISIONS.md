@@ -6,9 +6,12 @@ These decisions define the intended launch offer. They do not create a live prov
 
 ## Positioning
 
-**Name:** Audio Delivery Preflight  
-**Category:** Native macOS technical delivery utility  
-**Audience:** Independent producers, mixing and mastering engineers, labels, audio post professionals, and delivery coordinators  
+**Name:** Audio Delivery Preflight
+
+**Category:** Native macOS technical delivery utility
+
+**Audience:** Independent producers, mixing and mastering engineers, labels, audio post professionals, and delivery coordinators
+
 **Promise:** Check the technical completeness and internal consistency of an audio-delivery folder before handoff, without modifying or uploading source files.
 
 The product is not an audio editor, mastering processor, artistic approval service, rights review, or guarantee of distributor acceptance.

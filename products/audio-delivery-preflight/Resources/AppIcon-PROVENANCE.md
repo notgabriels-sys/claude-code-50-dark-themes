@@ -2,7 +2,8 @@
 
 Generated for Audio Delivery Preflight on 2026-08-21 using OpenAI’s built-in image-generation tool.
 
-Project master: `AppIcon-1024.png`  
+Project master: `AppIcon-1024.png`
+
 Packaged asset: `AppIcon.icns`
 
 Final prompt:
