@@ -14,12 +14,15 @@ public struct InspectionOutcome<Value: Sendable>: Sendable {
         self.findings = findings
     }
 }
-
 public protocol AudioInspecting: Sendable {
     func inspect(source: TrustedMediaSource) async throws -> InspectionOutcome<AudioProperties>
 }
-
 public struct AudioInspector: AudioInspecting {
+    private static let metadataItemLimit = 64
+    private static let metadataKeyUTF8ByteLimit = 128
+    private static let metadataValueUTF8ByteLimit = 4_096
+    private static let metadataAggregateJSONUTF8ByteLimit = 32_768
+
     private let stagingDirectory: URL
     private let onBeforeOpeningPathComponent: TrustedFileAccess.OpenPathComponentHook?
     private let onAfterCopyingChunk: TrustedFileAccess.CopyProgressHook?
@@ -90,6 +93,7 @@ public struct AudioInspector: AudioInspecting {
         try Task.checkCancellation()
         let streamDescription = formatDescriptions.lazy.compactMap(Self.streamDescription(from:)).first
         let durationSeconds = CMTimeGetSeconds(duration)
+        let metadata = try await loadCommonMetadata(from: asset)
 
         return InspectionOutcome(
             status: .succeeded,
@@ -101,12 +105,165 @@ public struct AudioInspector: AudioInspecting {
                 sampleRate: streamDescription.flatMap { $0.mSampleRate > 0 ? $0.mSampleRate : nil },
                 pcmBitDepth: streamDescription.flatMap(Self.pcmBitDepth(from:)),
                 isReadable: true,
-                // AVFoundation materializes complete metadata collections and values
-                // before callers can enforce byte limits, so v0.1.0 omits them.
-                metadata: [:]
+                metadata: metadata
             ),
             findings: []
         )
+    }
+
+    private static func loadCommonMetadata(from asset: AVURLAsset) async throws -> [String: String] {
+        do {
+            try Task.checkCancellation()
+            let items = try await asset.load(.commonMetadata)
+            try Task.checkCancellation()
+            return try await metadataDictionary(from: items)
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            try Task.checkCancellation()
+            return [:]
+        }
+    }
+
+    static func metadataDictionary(from items: [AVMetadataItem]) async throws -> [String: String] {
+        // Inspect every lightweight key so permutations cannot change the chosen
+        // candidates. Storage remains bounded to 64 groups of at most 64 item
+        // references, and the second phase performs at most 64 async value loads.
+        var candidateGroups: [MetadataCandidateGroup] = []
+        candidateGroups.reserveCapacity(metadataItemLimit)
+
+        for item in items {
+            try Task.checkCancellation()
+            guard let key = normalizedMetadataKey(for: item) else {
+                continue
+            }
+
+            if let index = candidateGroups.firstIndex(where: { $0.key == key }) {
+                candidateGroups[index].record(item, retainingAtMost: metadataItemLimit)
+                continue
+            }
+
+            let group = MetadataCandidateGroup(key: key, item: item)
+            if candidateGroups.count < metadataItemLimit {
+                candidateGroups.append(group)
+                continue
+            }
+
+            guard let largestIndex = candidateGroups.indices.max(by: {
+                metadataTextPrecedes(candidateGroups[$0].key, candidateGroups[$1].key)
+            }), metadataTextPrecedes(key, candidateGroups[largestIndex].key)
+            else {
+                continue
+            }
+            candidateGroups[largestIndex] = group
+        }
+
+        candidateGroups.sort { metadataTextPrecedes($0.key, $1.key) }
+        var fields: [(key: String, value: String)] = []
+        var remainingValueLoadCount = metadataItemLimit
+
+        for group in candidateGroups {
+            try Task.checkCancellation()
+            guard group.retainedItems.count == group.observedItemCount,
+                  group.observedItemCount <= remainingValueLoadCount
+            else {
+                continue
+            }
+            remainingValueLoadCount -= group.observedItemCount
+
+            var selectedValue: String?
+            for item in group.retainedItems {
+                try Task.checkCancellation()
+                let stringValue: String?
+                do {
+                    stringValue = try await item.load(.stringValue)
+                } catch {
+                    try Task.checkCancellation()
+                    continue
+                }
+                try Task.checkCancellation()
+                guard let value = stringValue?.trimmingCharacters(in: .whitespacesAndNewlines),
+                      !value.isEmpty
+                else {
+                    continue
+                }
+                let boundedValue = utf8Prefix(
+                    value,
+                    maximumByteCount: metadataValueUTF8ByteLimit
+                )
+                guard !boundedValue.isEmpty else {
+                    continue
+                }
+                if let currentValue = selectedValue {
+                    if metadataTextPrecedes(boundedValue, currentValue) {
+                        selectedValue = boundedValue
+                    }
+                } else {
+                    selectedValue = boundedValue
+                }
+            }
+
+            guard let selectedValue else {
+                continue
+            }
+            fields.append((group.key, selectedValue))
+        }
+
+        let sortedFields = fields.sorted {
+            $0.key == $1.key ? metadataTextPrecedes($0.value, $1.value) : metadataTextPrecedes($0.key, $1.key)
+        }
+        var result: [String: String] = [:]
+        for field in sortedFields {
+            guard result[field.key] == nil else {
+                continue
+            }
+
+            var candidate = result
+            candidate[field.key] = field.value
+            guard let serialized = try? JSONSerialization.data(
+                withJSONObject: candidate,
+                options: [.sortedKeys]
+            ), serialized.count <= metadataAggregateJSONUTF8ByteLimit
+            else {
+                break
+            }
+            result = candidate
+        }
+        return result
+    }
+
+    private static func normalizedMetadataKey(for item: AVMetadataItem) -> String? {
+        guard let key = item.commonKey?.rawValue.trimmingCharacters(in: .whitespacesAndNewlines),
+              !key.isEmpty
+        else {
+            return nil
+        }
+        let boundedKey = utf8Prefix(
+            key.lowercased(),
+            maximumByteCount: metadataKeyUTF8ByteLimit
+        )
+        return boundedKey.isEmpty ? nil : boundedKey
+    }
+
+    private static func metadataTextPrecedes(_ lhs: String, _ rhs: String) -> Bool {
+        lhs.unicodeScalars.lexicographicallyPrecedes(rhs.unicodeScalars)
+    }
+
+    private static func utf8Prefix(_ value: String, maximumByteCount: Int) -> String {
+        var result = ""
+        result.reserveCapacity(min(value.utf8.count, maximumByteCount))
+        var byteCount = 0
+
+        for scalar in value.unicodeScalars {
+            let scalarByteCount = String(scalar).utf8.count
+            guard byteCount + scalarByteCount <= maximumByteCount else {
+                break
+            }
+            result.unicodeScalars.append(scalar)
+            byteCount += scalarByteCount
+        }
+
+        return result
     }
 
     private static func streamDescription(from description: CMFormatDescription) -> AudioStreamBasicDescription? {
@@ -188,5 +345,24 @@ public struct AudioInspector: AudioInspecting {
 
     private enum InspectionError: Error {
         case noAudioTrack
+    }
+
+    private struct MetadataCandidateGroup {
+        let key: String
+        var retainedItems: [AVMetadataItem]
+        var observedItemCount: Int
+
+        init(key: String, item: AVMetadataItem) {
+            self.key = key
+            self.retainedItems = [item]
+            self.observedItemCount = 1
+        }
+
+        mutating func record(_ item: AVMetadataItem, retainingAtMost limit: Int) {
+            if retainedItems.count < limit {
+                retainedItems.append(item)
+            }
+            observedItemCount = min(observedItemCount + 1, limit + 1)
+        }
     }
 }
