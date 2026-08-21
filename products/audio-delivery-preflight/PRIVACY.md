@@ -8,11 +8,12 @@ The application reads the selected folder's filesystem metadata and regular deli
 
 - build a bounded inventory;
 - inspect supported audio and image properties;
+- read bounded common text metadata that AVFoundation exposes reliably;
 - calculate SHA-256 checksums;
 - evaluate the selected preset; and
 - compare source evidence before and after the scan.
 
-Version 0.1.0 deliberately does not request embedded metadata collections or strings from AVFoundation. Those APIs materialize complete values before the application can enforce a byte or memory limit. Credits and metadata documents can still be matched as package files by relative filename, but their contents are not parsed.
+Credits and metadata documents can be matched as package files by relative filename, but their contents are not parsed.
 
 Symbolic links are recorded and are not followed. The selected root is opened component by component with no-follow semantics, and inventory traversal remains anchored to directory descriptors. A regular file is then opened through a descriptor-relative path beneath that root. Entries that cannot be proven safe are not treated as normal source files.
 
@@ -32,11 +33,11 @@ Report export is a separate, explicit write. The CLI and app do not overwrite an
 
 ## Data in exported reports
 
-Reports contain the selected folder's final name, relative source paths, measured technical properties, findings, successful role assignments, resolved preset requirements, timestamps, application and engine versions, and checksums where available. The versioned media model retains a metadata field for compatibility, but production scans leave it empty in version 0.1.0.
+Reports contain the selected folder's final name, relative source paths, measured technical properties, optional bounded embedded metadata text, findings, successful role assignments, resolved preset requirements, timestamps, application and engine versions, and checksums where available.
 
 Reports do not export the absolute selected-root path by default. They also reject unsafe absolute, parent-traversal, drive-qualified, or non-canonical source paths.
 
-Relative filenames and SHA-256 checksums can still reveal information about a project or identify known files. Treat exported reports as project data and review them before sharing.
+Relative filenames, SHA-256 checksums, and embedded metadata text can still reveal information about a project or identify known files. Treat exported reports as project data and review them before sharing.
 
 ## Persistence
 
