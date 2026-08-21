@@ -126,6 +126,44 @@ final class AudioInspectorTests: XCTestCase {
         XCTAssertLessThanOrEqual(encoded.count, 32_768)
     }
 
+    func testMetadataSelectionIsDeterministicAcrossMoreThanSixtyFourDistinctItems() async throws {
+        let items = (0...64).map { index in
+            metadataItem(
+                key: String(format: "field-%02d", index),
+                value: String(format: "value-%02d", index)
+            )
+        }
+
+        let forward = try await AudioInspector.metadataDictionary(from: items)
+        let reversed = try await AudioInspector.metadataDictionary(from: items.reversed())
+
+        XCTAssertEqual(forward, reversed)
+        XCTAssertEqual(forward.count, 64)
+        XCTAssertEqual(forward["field-00"], "value-00")
+        XCTAssertEqual(forward["field-63"], "value-63")
+        XCTAssertNil(forward["field-64"])
+    }
+
+    func testMetadataDuplicateResolutionIsDeterministicAcrossOldSelectionBoundary() async throws {
+        let fillers = (0..<63).map { index in
+            metadataItem(
+                key: String(format: "field-%02d", index),
+                value: String(format: "value-%02d", index)
+            )
+        }
+        let items = [metadataItem(key: "album", value: "Zulu")] + fillers + [
+            metadataItem(key: "album", value: "Alpha"),
+        ]
+
+        let forward = try await AudioInspector.metadataDictionary(from: items)
+        let reversed = try await AudioInspector.metadataDictionary(from: items.reversed())
+
+        XCTAssertEqual(forward, reversed)
+        XCTAssertEqual(forward["album"], "Alpha")
+        XCTAssertEqual(forward.count, 63)
+        XCTAssertNil(forward["field-62"])
+    }
+
     func testWAVBytesNamedMP3ReportValidatedWAVContainer() async throws {
         let fixture = try InspectionFixture.make()
         defer { fixture.remove() }

@@ -128,44 +128,91 @@ public struct AudioInspector: AudioInspecting {
     }
 
     static func metadataDictionary(from items: [AVMetadataItem]) async throws -> [String: String] {
-        var fields: [(key: String, value: String)] = []
-        for item in items.prefix(metadataItemLimit) {
+        // Inspect every lightweight key so permutations cannot change the chosen
+        // candidates. Storage remains bounded to 64 groups of at most 64 item
+        // references, and the second phase performs at most 64 async value loads.
+        var candidateGroups: [MetadataCandidateGroup] = []
+        candidateGroups.reserveCapacity(metadataItemLimit)
+
+        for item in items {
             try Task.checkCancellation()
-            guard let key = item.commonKey?.rawValue.trimmingCharacters(in: .whitespacesAndNewlines),
-                  !key.isEmpty
-            else {
+            guard let key = normalizedMetadataKey(for: item) else {
                 continue
             }
 
-            let stringValue: String?
-            do {
-                stringValue = try await item.load(.stringValue)
-            } catch {
-                try Task.checkCancellation()
+            if let index = candidateGroups.firstIndex(where: { $0.key == key }) {
+                candidateGroups[index].record(item, retainingAtMost: metadataItemLimit)
                 continue
             }
-            try Task.checkCancellation()
-            guard let value = stringValue?.trimmingCharacters(in: .whitespacesAndNewlines),
-                  !value.isEmpty
+
+            let group = MetadataCandidateGroup(key: key, item: item)
+            if candidateGroups.count < metadataItemLimit {
+                candidateGroups.append(group)
+                continue
+            }
+
+            guard let largestIndex = candidateGroups.indices.max(by: {
+                metadataTextPrecedes(candidateGroups[$0].key, candidateGroups[$1].key)
+            }), metadataTextPrecedes(key, candidateGroups[largestIndex].key)
             else {
                 continue
             }
-            let boundedKey = utf8Prefix(
-                key.lowercased(),
-                maximumByteCount: metadataKeyUTF8ByteLimit
-            )
-            let boundedValue = utf8Prefix(
-                value,
-                maximumByteCount: metadataValueUTF8ByteLimit
-            )
-            guard !boundedKey.isEmpty, !boundedValue.isEmpty else {
+            candidateGroups[largestIndex] = group
+        }
+
+        candidateGroups.sort { metadataTextPrecedes($0.key, $1.key) }
+        var fields: [(key: String, value: String)] = []
+        var remainingValueLoadCount = metadataItemLimit
+
+        for group in candidateGroups {
+            try Task.checkCancellation()
+            guard group.retainedItems.count == group.observedItemCount,
+                  group.observedItemCount <= remainingValueLoadCount
+            else {
                 continue
             }
-            fields.append((boundedKey, boundedValue))
+            remainingValueLoadCount -= group.observedItemCount
+
+            var selectedValue: String?
+            for item in group.retainedItems {
+                try Task.checkCancellation()
+                let stringValue: String?
+                do {
+                    stringValue = try await item.load(.stringValue)
+                } catch {
+                    try Task.checkCancellation()
+                    continue
+                }
+                try Task.checkCancellation()
+                guard let value = stringValue?.trimmingCharacters(in: .whitespacesAndNewlines),
+                      !value.isEmpty
+                else {
+                    continue
+                }
+                let boundedValue = utf8Prefix(
+                    value,
+                    maximumByteCount: metadataValueUTF8ByteLimit
+                )
+                guard !boundedValue.isEmpty else {
+                    continue
+                }
+                if let currentValue = selectedValue {
+                    if metadataTextPrecedes(boundedValue, currentValue) {
+                        selectedValue = boundedValue
+                    }
+                } else {
+                    selectedValue = boundedValue
+                }
+            }
+
+            guard let selectedValue else {
+                continue
+            }
+            fields.append((group.key, selectedValue))
         }
 
         let sortedFields = fields.sorted {
-            $0.key == $1.key ? $0.value.unicodeScalars.lexicographicallyPrecedes($1.value.unicodeScalars) : $0.key.unicodeScalars.lexicographicallyPrecedes($1.key.unicodeScalars)
+            $0.key == $1.key ? metadataTextPrecedes($0.value, $1.value) : metadataTextPrecedes($0.key, $1.key)
         }
         var result: [String: String] = [:]
         for field in sortedFields {
@@ -185,6 +232,23 @@ public struct AudioInspector: AudioInspecting {
             result = candidate
         }
         return result
+    }
+
+    private static func normalizedMetadataKey(for item: AVMetadataItem) -> String? {
+        guard let key = item.commonKey?.rawValue.trimmingCharacters(in: .whitespacesAndNewlines),
+              !key.isEmpty
+        else {
+            return nil
+        }
+        let boundedKey = utf8Prefix(
+            key.lowercased(),
+            maximumByteCount: metadataKeyUTF8ByteLimit
+        )
+        return boundedKey.isEmpty ? nil : boundedKey
+    }
+
+    private static func metadataTextPrecedes(_ lhs: String, _ rhs: String) -> Bool {
+        lhs.unicodeScalars.lexicographicallyPrecedes(rhs.unicodeScalars)
     }
 
     private static func utf8Prefix(_ value: String, maximumByteCount: Int) -> String {
@@ -283,5 +347,24 @@ public struct AudioInspector: AudioInspecting {
 
     private enum InspectionError: Error {
         case noAudioTrack
+    }
+
+    private struct MetadataCandidateGroup {
+        let key: String
+        var retainedItems: [AVMetadataItem]
+        var observedItemCount: Int
+
+        init(key: String, item: AVMetadataItem) {
+            self.key = key
+            self.retainedItems = [item]
+            self.observedItemCount = 1
+        }
+
+        mutating func record(_ item: AVMetadataItem, retainingAtMost limit: Int) {
+            if retainedItems.count < limit {
+                retainedItems.append(item)
+            }
+            observedItemCount = min(observedItemCount + 1, limit + 1)
+        }
     }
 }
