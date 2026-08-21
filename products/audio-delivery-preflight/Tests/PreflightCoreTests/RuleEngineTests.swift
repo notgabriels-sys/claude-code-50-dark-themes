@@ -99,6 +99,138 @@ final class RuleEngineTests: XCTestCase {
         XCTAssertNotEqual(OverallStatus.completed(findings: findings), .ready)
     }
 
+    func testExplicitAudioRoleRejectsAACMP3UnknownEncodingAndUnreadableMedia() throws {
+        let configured = try preset(
+            identifier: "lossless-role",
+            roles: [DeliveryRole(
+                identifier: "main",
+                name: "Main master",
+                pattern: "(?i)main\\.(m4a|mp3|wav)$",
+                required: true,
+                category: .audio,
+                allowedEncodings: ["Linear PCM"],
+                readability: .error,
+                severity: .error
+            )]
+        )
+
+        for (path, encoding) in [("Main.m4a", "AAC"), ("Main.mp3", "MPEG-1 Layer 3")] {
+            let findings = evaluate([audio(path, encoding: encoding)], preset: configured)
+            XCTAssertTrue(findings.contains { $0.ruleID == "role.disallowed-encoding.main" }, path)
+            XCTAssertEqual(OverallStatus.completed(findings: findings), .requirementsNotMet, path)
+        }
+
+        let unknown = evaluate([audio("Main.wav", encoding: nil)], preset: configured)
+        XCTAssertTrue(unknown.contains { $0.ruleID == "role.encoding-unavailable.main" })
+        XCTAssertEqual(OverallStatus.completed(findings: unknown), .requirementsNotMet)
+
+        let unreadable = evaluate([audio("Main.wav", isReadable: false)], preset: configured)
+        XCTAssertTrue(unreadable.contains { $0.ruleID == "role.unreadable.main" })
+        XCTAssertEqual(OverallStatus.completed(findings: unreadable), .requirementsNotMet)
+    }
+
+    func testNonAudioRoleMatchesWithoutApplyingMediaInspectionConstraints() throws {
+        let configured = try preset(
+            identifier: "document-role",
+            roles: [DeliveryRole(
+                identifier: "credits",
+                name: "Credits",
+                pattern: "(?i)credits\\.txt$",
+                required: true,
+                category: .document,
+                severity: .error
+            )]
+        )
+
+        let findings = evaluate([document("Credits.txt")], preset: configured)
+
+        XCTAssertFalse(findings.contains { $0.ruleID.hasPrefix("role.missing") })
+        XCTAssertFalse(findings.contains { $0.ruleID.contains("encoding") || $0.ruleID.contains("unreadable") })
+    }
+
+    func testSuccessfulUniqueRoleCreatesAuditableAssignmentWithAcceptedEvidence() throws {
+        let configured = try preset(
+            identifier: "auditable-role",
+            roles: [DeliveryRole(
+                identifier: "main",
+                name: "Main master",
+                pattern: "(?i)main\\.wav$",
+                required: true,
+                category: .audio,
+                allowedExtensions: ["wav"],
+                allowedEncodings: ["Linear PCM"],
+                channelCount: NumericConstraint(exactly: 2),
+                sampleRate: NumericConstraint(exactly: 48_000),
+                bitDepth: NumericConstraint(exactly: 24),
+                readability: .error,
+                severity: .error
+            )]
+        )
+        let snapshot = InventorySnapshot(entries: [audio("Masters/Main.wav")], findings: [])
+
+        let assignments = RuleEngine().roleAssignments(
+            snapshot: snapshot,
+            preset: configured,
+            engineVersion: engineVersion
+        )
+
+        XCTAssertEqual(assignments, [RoleAssignment(
+            roleIdentifier: "main",
+            roleName: "Main master",
+            pattern: "(?i)main\\.wav$",
+            matchedPath: try RelativePath("Masters/Main.wav"),
+            category: .audio,
+            acceptedEvidence: [
+                Evidence(label: "extension", value: .string("wav")),
+                Evidence(label: "isReadable", value: .boolean(true)),
+                Evidence(label: "container", value: .string("WAV")),
+                Evidence(label: "encoding", value: .string("Linear PCM")),
+                Evidence(label: "channelCount", value: .integer(2)),
+                Evidence(label: "sampleRate", value: .number(48_000)),
+                Evidence(label: "bitDepth", value: .integer(24)),
+            ]
+        )])
+    }
+
+    func testAmbiguousOrConstraintFailingRoleDoesNotCreateAssignment() throws {
+        let configured = try preset(
+            identifier: "no-silent-assignment",
+            roles: [DeliveryRole(
+                identifier: "main",
+                pattern: "(?i)main.*\\.wav$",
+                required: true,
+                category: .audio,
+                allowedEncodings: ["Linear PCM"],
+                readability: .error,
+                severity: .error
+            )]
+        )
+        let engine = RuleEngine()
+
+        let ambiguous = engine.roleAssignments(
+            snapshot: InventorySnapshot(
+                entries: [audio("Main.wav"), audio("Main alternate.wav")],
+                findings: []
+            ),
+            preset: configured,
+            engineVersion: engineVersion
+        )
+        let lossy = engine.roleAssignments(
+            snapshot: InventorySnapshot(entries: [audio("Main.wav", encoding: "AAC")], findings: []),
+            preset: configured,
+            engineVersion: engineVersion
+        )
+        let unreadable = engine.roleAssignments(
+            snapshot: InventorySnapshot(entries: [audio("Main.wav", isReadable: false)], findings: []),
+            preset: configured,
+            engineVersion: engineVersion
+        )
+
+        XCTAssertTrue(ambiguous.isEmpty)
+        XCTAssertTrue(lossy.isEmpty)
+        XCTAssertTrue(unreadable.isEmpty)
+    }
+
     func testUnknownRequiredAudioMeasurementsNeverPass() throws {
         let configured = try preset(
             identifier: "unknown-audio",
@@ -290,6 +422,7 @@ final class RuleEngineTests: XCTestCase {
         channelCount: Int? = 2,
         sampleRate: Double? = 48_000,
         bitDepth: Int? = 24,
+        isReadable: Bool? = true,
         byteSize: Int64 = 1_024,
         sha256: String? = nil
     ) -> InventoryEntry {
@@ -302,7 +435,7 @@ final class RuleEngineTests: XCTestCase {
             kind: .regular,
             sha256: sha256,
             inspectionStatus: .succeeded,
-            audioProperties: AudioProperties(container: container, encoding: encoding, channelCount: channelCount, sampleRate: sampleRate, pcmBitDepth: bitDepth, isReadable: true)
+            audioProperties: AudioProperties(container: container, encoding: encoding, channelCount: channelCount, sampleRate: sampleRate, pcmBitDepth: bitDepth, isReadable: isReadable)
         )
     }
 

@@ -2,6 +2,13 @@ import Foundation
 
 public protocol RuleEvaluating: Sendable {
     func evaluate(snapshot: InventorySnapshot, preset: ResolvedPreset, engineVersion: String) -> [Finding]
+    func roleAssignments(snapshot: InventorySnapshot, preset: ResolvedPreset, engineVersion: String) -> [RoleAssignment]
+}
+
+public extension RuleEvaluating {
+    func roleAssignments(snapshot: InventorySnapshot, preset: ResolvedPreset, engineVersion: String) -> [RoleAssignment] {
+        []
+    }
 }
 
 public struct RuleEngine: RuleEvaluating {
@@ -12,12 +19,20 @@ public struct RuleEngine: RuleEvaluating {
         findings.append(contentsOf: audioRequirements(in: snapshot.entries, requirement: preset.definition.audio, engineVersion: engineVersion))
         findings.append(contentsOf: audioConsistency(in: snapshot.entries, requirement: preset.definition.audio, engineVersion: engineVersion))
         findings.append(contentsOf: filenameHygiene(in: snapshot.entries, requirement: preset.definition.filename, engineVersion: engineVersion))
-        findings.append(contentsOf: roleMatching(in: snapshot.entries, preset: preset, engineVersion: engineVersion))
+        findings.append(contentsOf: roleMatching(in: snapshot.entries, preset: preset, engineVersion: engineVersion).findings)
         findings.append(contentsOf: artworkRequirements(in: snapshot.entries, requirement: preset.definition.artwork, engineVersion: engineVersion))
         findings.append(contentsOf: serviceFiles(in: snapshot.entries, severity: preset.definition.serviceFileSeverity, engineVersion: engineVersion))
         findings.append(contentsOf: symbolicLinks(in: snapshot.entries, severity: preset.definition.symbolicLinkSeverity, engineVersion: engineVersion))
         findings.append(contentsOf: exactDuplicates(in: snapshot.entries, severity: preset.definition.exactDuplicateSeverity, engineVersion: engineVersion))
         return findings.sorted(by: findingLessThan)
+    }
+
+    public func roleAssignments(
+        snapshot: InventorySnapshot,
+        preset: ResolvedPreset,
+        engineVersion: String
+    ) -> [RoleAssignment] {
+        roleMatching(in: snapshot.entries, preset: preset, engineVersion: engineVersion).assignments
     }
 
     private func audioRequirements(
@@ -209,8 +224,18 @@ public struct RuleEngine: RuleEvaluating {
         return findings
     }
 
-    private func roleMatching(in entries: [InventoryEntry], preset: ResolvedPreset, engineVersion: String) -> [Finding] {
-        preset.compiledRoles.flatMap { compiledRole in
+    private struct RoleMatchingOutcome {
+        var findings: [Finding] = []
+        var assignments: [RoleAssignment] = []
+    }
+
+    private func roleMatching(
+        in entries: [InventoryEntry],
+        preset: ResolvedPreset,
+        engineVersion: String
+    ) -> RoleMatchingOutcome {
+        var outcome = RoleMatchingOutcome()
+        for compiledRole in preset.compiledRoles {
             let role = compiledRole.role
             let matchingEntries = entries.filter { entry in
                 guard entry.kind == .regular, categoryMatches(entry, role: role), extensionMatches(entry, role: role) else { return false }
@@ -219,7 +244,7 @@ public struct RuleEngine: RuleEvaluating {
             }
             let paths = matchingEntries.map(\.relativePath).sorted(by: relativePathLessThan)
             if paths.isEmpty, role.required {
-                return [finding(
+                outcome.findings.append(finding(
                     ruleID: "role.missing.\(role.identifier)",
                     severity: role.severity,
                     title: "Required delivery role is missing",
@@ -230,7 +255,8 @@ public struct RuleEngine: RuleEvaluating {
                     suggestedAction: "Add the required delivery file or adjust the visible role pattern if it is incorrect.",
                     origin: .preset,
                     engineVersion: engineVersion
-                )]
+                ))
+                continue
             }
             if paths.count > 1 {
                 let ambiguity = finding(
@@ -245,13 +271,27 @@ public struct RuleEngine: RuleEvaluating {
                     origin: .preset,
                     engineVersion: engineVersion
                 )
-                return [ambiguity] + matchingEntries.flatMap {
+                outcome.findings.append(ambiguity)
+                outcome.findings.append(contentsOf: matchingEntries.flatMap {
                     rolePropertyFindings(for: $0, role: role, engineVersion: engineVersion)
-                }
+                })
+                continue
             }
-            guard let entry = matchingEntries.first else { return [] }
-            return rolePropertyFindings(for: entry, role: role, engineVersion: engineVersion)
+            guard let entry = matchingEntries.first else { continue }
+            let propertyFindings = rolePropertyFindings(for: entry, role: role, engineVersion: engineVersion)
+            outcome.findings.append(contentsOf: propertyFindings)
+            if propertyFindings.isEmpty {
+                outcome.assignments.append(RoleAssignment(
+                    roleIdentifier: role.identifier,
+                    roleName: role.name,
+                    pattern: role.pattern,
+                    matchedPath: entry.relativePath,
+                    category: entry.category,
+                    acceptedEvidence: acceptedRoleEvidence(for: entry, role: role)
+                ))
+            }
         }
+        return outcome
     }
 
     private func rolePropertyFindings(for entry: InventoryEntry, role: DeliveryRole, engineVersion: String) -> [Finding] {
@@ -331,6 +371,34 @@ public struct RuleEngine: RuleEvaluating {
             ))
         }
         return findings
+    }
+
+    private func acceptedRoleEvidence(for entry: InventoryEntry, role: DeliveryRole) -> [Evidence] {
+        var evidence: [Evidence] = []
+        if role.allowedExtensions != nil {
+            evidence.append(Evidence(label: "extension", value: .string(entry.normalizedExtension)))
+        }
+        if role.category == .audio || role.category == .artwork {
+            evidence.append(Evidence(label: "isReadable", value: .boolean(true)))
+        }
+        if role.category == .audio, role.allowedEncodings != nil {
+            if let container = entry.audioProperties?.container {
+                evidence.append(Evidence(label: "container", value: .string(container)))
+            }
+            if let encoding = entry.audioProperties?.encoding {
+                evidence.append(Evidence(label: "encoding", value: .string(encoding)))
+            }
+        }
+        if role.channelCount != nil, let value = entry.audioProperties?.channelCount {
+            evidence.append(Evidence(label: "channelCount", value: .integer(value)))
+        }
+        if role.sampleRate != nil, let value = entry.audioProperties?.sampleRate {
+            evidence.append(Evidence(label: "sampleRate", value: .number(value)))
+        }
+        if role.bitDepth != nil, let value = entry.audioProperties?.pcmBitDepth {
+            evidence.append(Evidence(label: "bitDepth", value: .integer(value)))
+        }
+        return evidence
     }
 
     private func artworkRequirements(in entries: [InventoryEntry], requirement: ArtworkRequirement?, engineVersion: String) -> [Finding] {

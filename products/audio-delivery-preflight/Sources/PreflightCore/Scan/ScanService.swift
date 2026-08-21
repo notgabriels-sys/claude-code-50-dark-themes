@@ -66,11 +66,17 @@ public struct ScanService: ScanServicing, Sendable {
             let checksummed = try await checksums.checksummedInventory(entries: inspected.entries, root: root)
 
             try Task.checkCancellation()
+            let evaluatedSnapshot = InventorySnapshot(
+                entries: checksummed.entries,
+                findings: inventoried.findings + inspected.findings + checksummed.findings
+            )
             var findings = ruleEngine.evaluate(
-                snapshot: InventorySnapshot(
-                    entries: checksummed.entries,
-                    findings: inventoried.findings + inspected.findings + checksummed.findings
-                ),
+                snapshot: evaluatedSnapshot,
+                preset: preset,
+                engineVersion: request.engineVersion
+            )
+            let roleAssignments = ruleEngine.roleAssignments(
+                snapshot: evaluatedSnapshot,
                 preset: preset,
                 engineVersion: request.engineVersion
             )
@@ -112,6 +118,7 @@ public struct ScanService: ScanServicing, Sendable {
                 startedAt: startedAt,
                 completedAt: now(),
                 inventory: checksummed.entries,
+                roleAssignments: roleAssignments,
                 findings: findings,
                 overallStatus: OverallStatus.completed(findings: findings)
             )

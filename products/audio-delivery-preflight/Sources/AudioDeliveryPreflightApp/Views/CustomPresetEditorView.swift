@@ -2,7 +2,10 @@ import PreflightCore
 import SwiftUI
 
 struct CustomPresetEditorView: View {
+    private enum AccessibilityTarget: Hashable { case validationError }
+
     let model: AppModel
+    @AccessibilityFocusState private var focusedAccessibilityTarget: AccessibilityTarget?
 
     private let blockingSeverities: [FindingSeverity] = [.error, .warning]
     private let issueSeverities: [FindingSeverity] = [.error, .warning, .information]
@@ -14,6 +17,13 @@ struct CustomPresetEditorView: View {
                 Text("Changes stay in memory for this app session. Apply a valid configuration before scanning.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+
+                if let validationMessage = model.customPresetValidationMessage {
+                    Label(validationMessage, systemImage: "exclamationmark.triangle")
+                        .foregroundStyle(.red)
+                        .accessibilityIdentifier("custom-preset-validation-error")
+                        .accessibilityFocused($focusedAccessibilityTarget, equals: .validationError)
+                }
 
                 TextField("Preset name", text: draftBinding(\.name))
                     .textFieldStyle(.roundedBorder)
@@ -43,6 +53,11 @@ struct CustomPresetEditorView: View {
             .padding(.top, 4)
         }
         .accessibilityIdentifier("custom-preset-editor")
+        .task(id: model.customPresetValidationMessage) {
+            if model.customPresetValidationMessage != nil {
+                focusedAccessibilityTarget = .validationError
+            }
+        }
     }
 
     private var audioSection: some View {
@@ -237,7 +252,7 @@ private struct CustomRoleEditorView: View {
                 TextField("Relative filename regular expression", text: $role.pattern)
                 HStack {
                     Toggle("Required", isOn: $role.required)
-                    Picker("Category", selection: $role.category) {
+                    Picker("Category", selection: categoryBinding) {
                         Text("Any category").tag(FileCategory?.none)
                         ForEach(categories, id: \.rawValue) { category in
                             Text(categoryTitle(category)).tag(Optional(category))
@@ -245,20 +260,28 @@ private struct CustomRoleEditorView: View {
                     }
                 }
                 TextField("Allowed filename extensions, comma-separated", text: $role.allowedExtensions)
-                TextField("Allowed inspected audio encodings, comma-separated", text: $role.allowedEncodings)
-                range("Channel count", minimum: $role.channelCountMinimum, maximum: $role.channelCountMaximum)
-                range("Sample rate (Hz)", minimum: $role.sampleRateMinimum, maximum: $role.sampleRateMaximum)
-                range("PCM bit depth", minimum: $role.bitDepthMinimum, maximum: $role.bitDepthMaximum)
+                if role.category == .audio {
+                    TextField("Allowed inspected audio encodings, comma-separated", text: $role.allowedEncodings)
+                    range("Channel count", minimum: $role.channelCountMinimum, maximum: $role.channelCountMaximum)
+                    range("Sample rate (Hz)", minimum: $role.sampleRateMinimum, maximum: $role.sampleRateMaximum)
+                    range("PCM bit depth", minimum: $role.bitDepthMinimum, maximum: $role.bitDepthMaximum)
+                } else {
+                    Text("Inspected encoding, channel count, sample rate, and PCM bit depth apply only to Audio roles.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
                 SeverityPicker(
                     title: "Missing or constrained value severity",
                     selection: $role.requirementSeverity,
                     options: blockingSeverities
                 )
-                SeverityPicker(
-                    title: "Unreadable media severity",
-                    selection: $role.readabilitySeverity,
-                    options: blockingSeverities
-                )
+                if role.category == .audio || role.category == .artwork {
+                    SeverityPicker(
+                        title: "Unreadable media severity",
+                        selection: $role.readabilitySeverity,
+                        options: blockingSeverities
+                    )
+                }
                 SeverityPicker(
                     title: "Multiple matches severity",
                     selection: $role.ambiguitySeverity,
@@ -274,6 +297,27 @@ private struct CustomRoleEditorView: View {
         }
         .padding(.vertical, 3)
         .accessibilityIdentifier("custom-role-\(role.id.uuidString)")
+    }
+
+    private var categoryBinding: Binding<FileCategory?> {
+        Binding(
+            get: { role.category },
+            set: { category in
+                role.category = category
+                if category != .audio {
+                    role.allowedEncodings = ""
+                    role.channelCountMinimum = ""
+                    role.channelCountMaximum = ""
+                    role.sampleRateMinimum = ""
+                    role.sampleRateMaximum = ""
+                    role.bitDepthMinimum = ""
+                    role.bitDepthMaximum = ""
+                }
+                if category != .audio, category != .artwork {
+                    role.readabilitySeverity = .warning
+                }
+            }
+        )
     }
 
     private func range(_ title: String, minimum: Binding<String>, maximum: Binding<String>) -> some View {

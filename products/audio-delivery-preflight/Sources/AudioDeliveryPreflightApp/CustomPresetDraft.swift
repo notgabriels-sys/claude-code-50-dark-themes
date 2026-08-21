@@ -230,29 +230,62 @@ struct CustomRoleDraft: Identifiable {
         guard !trimmedIdentifier.isEmpty, !trimmedName.isEmpty, !trimmedPattern.isEmpty else {
             throw PreflightError.invalidPreset(field: "roles", reason: "Role identity, name, and pattern are required.")
         }
+        let parsedAllowedExtensions = try list(
+            allowedExtensions,
+            lowercased: true,
+            field: "roles.\(trimmedIdentifier).allowedExtensions"
+        )
+        let parsedAllowedEncodings = try list(
+            allowedEncodings,
+            field: "roles.\(trimmedIdentifier).allowedEncodings"
+        )
+        let parsedChannelCount = try CustomPresetDraft.numericConstraint(
+            minimum: channelCountMinimum,
+            maximum: channelCountMaximum,
+            field: "roles.\(trimmedIdentifier).channelCount"
+        )
+        let parsedSampleRate = try CustomPresetDraft.numericConstraint(
+            minimum: sampleRateMinimum,
+            maximum: sampleRateMaximum,
+            field: "roles.\(trimmedIdentifier).sampleRate"
+        )
+        let parsedBitDepth = try CustomPresetDraft.numericConstraint(
+            minimum: bitDepthMinimum,
+            maximum: bitDepthMaximum,
+            field: "roles.\(trimmedIdentifier).bitDepth"
+        )
+        if category != .audio {
+            let audioOnlyFields: [(String, Bool)] = [
+                ("allowedEncodings", parsedAllowedEncodings != nil),
+                ("channelCount", parsedChannelCount != nil),
+                ("sampleRate", parsedSampleRate != nil),
+                ("bitDepth", parsedBitDepth != nil),
+            ]
+            if let invalidField = audioOnlyFields.first(where: { $0.1 })?.0 {
+                throw PreflightError.invalidPreset(
+                    field: "roles.\(trimmedIdentifier).\(invalidField)",
+                    reason: "Audio-only role constraints require the Audio category."
+                )
+            }
+        }
+        if category != .audio, category != .artwork, readabilitySeverity != .warning {
+            throw PreflightError.invalidPreset(
+                field: "roles.\(trimmedIdentifier).readability",
+                reason: "Unreadable-media severity is only applicable to Audio or Artwork roles."
+            )
+        }
+
         return DeliveryRole(
             identifier: trimmedIdentifier,
             name: trimmedName,
             pattern: trimmedPattern,
             required: required,
             category: category,
-            allowedExtensions: try list(allowedExtensions, lowercased: true, field: "roles.\(trimmedIdentifier).allowedExtensions"),
-            allowedEncodings: try list(allowedEncodings, field: "roles.\(trimmedIdentifier).allowedEncodings"),
-            channelCount: try CustomPresetDraft.numericConstraint(
-                minimum: channelCountMinimum,
-                maximum: channelCountMaximum,
-                field: "roles.\(trimmedIdentifier).channelCount"
-            ),
-            sampleRate: try CustomPresetDraft.numericConstraint(
-                minimum: sampleRateMinimum,
-                maximum: sampleRateMaximum,
-                field: "roles.\(trimmedIdentifier).sampleRate"
-            ),
-            bitDepth: try CustomPresetDraft.numericConstraint(
-                minimum: bitDepthMinimum,
-                maximum: bitDepthMaximum,
-                field: "roles.\(trimmedIdentifier).bitDepth"
-            ),
+            allowedExtensions: parsedAllowedExtensions,
+            allowedEncodings: parsedAllowedEncodings,
+            channelCount: parsedChannelCount,
+            sampleRate: parsedSampleRate,
+            bitDepth: parsedBitDepth,
             readability: readabilitySeverity,
             severity: requirementSeverity,
             ambiguitySeverity: ambiguitySeverity

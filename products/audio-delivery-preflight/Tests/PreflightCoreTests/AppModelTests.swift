@@ -276,7 +276,102 @@ final class AppModelTests: XCTestCase {
 
         XCTAssertFalse(model.applyCustomPreset())
         XCTAssertFalse(model.canStartScan)
-        XCTAssertEqual(model.errorMessage, "The Custom preset could not be applied. Review its fields and try again.")
+        XCTAssertEqual(
+            model.errorMessage,
+            "Custom preset error. Filename version pattern: The regular expression is invalid."
+        )
+        XCTAssertEqual(model.customPresetDraft.filenamePattern, "[")
+    }
+
+    func testCustomRoleDraftRejectsAudioOnlyFieldsForAnyCategory() {
+        let draft = CustomRoleDraft(
+            identifier: "main",
+            name: "Main",
+            pattern: ".*",
+            category: nil,
+            allowedEncodings: "Linear PCM",
+            channelCountMinimum: "2"
+        )
+
+        XCTAssertThrowsError(try draft.makeRole()) { error in
+            XCTAssertEqual(
+                error as? PreflightError,
+                .invalidPreset(
+                    field: "roles.main.allowedEncodings",
+                    reason: "Audio-only role constraints require the Audio category."
+                )
+            )
+        }
+    }
+
+    func testCustomPresetValidationIdentifiesTypedFieldAndPreservesDraft() {
+        struct Case {
+            let configure: (AppModel) -> Void
+            let expectedMessage: String
+            let preservedValue: (AppModel) -> String
+            let expectedValue: String
+        }
+
+        let cases = [
+            Case(
+                configure: { model in
+                    model.customPresetDraft.audioSampleRateMinimum = "96000"
+                    model.customPresetDraft.audioSampleRateMaximum = "44100"
+                },
+                expectedMessage: "Custom preset error. Audio sample rate: The minimum cannot exceed the maximum.",
+                preservedValue: { $0.customPresetDraft.audioSampleRateMinimum },
+                expectedValue: "96000"
+            ),
+            Case(
+                configure: { model in
+                    model.customPresetDraft.roles = [CustomRoleDraft(
+                        identifier: "main",
+                        name: "Main",
+                        pattern: ".*",
+                        category: .audio,
+                        allowedExtensions: "wav,"
+                    )]
+                },
+                expectedMessage: "Custom preset error. Role allowed extensions: Comma-separated values cannot be empty.",
+                preservedValue: { $0.customPresetDraft.roles.first?.allowedExtensions ?? "" },
+                expectedValue: "wav,"
+            ),
+            Case(
+                configure: { model in
+                    model.customPresetDraft.roles = [
+                        CustomRoleDraft(identifier: "duplicate", name: "First", pattern: ".*", category: .document),
+                        CustomRoleDraft(identifier: "duplicate", name: "Second", pattern: ".*", category: .document),
+                    ]
+                },
+                expectedMessage: "Custom preset error. Delivery roles: Role identifiers must be unique: duplicate.",
+                preservedValue: { $0.customPresetDraft.roles.map(\.identifier).joined(separator: ",") },
+                expectedValue: "duplicate,duplicate"
+            ),
+        ]
+
+        for testCase in cases {
+            let model = AppModel(environment: environment(scan: ScanCapture(result: nil)))
+            model.choosePreset(BuiltInPresets.custom.identifier)
+            testCase.configure(model)
+
+            XCTAssertFalse(model.applyCustomPreset())
+            XCTAssertEqual(model.errorMessage, testCase.expectedMessage)
+            XCTAssertEqual(testCase.preservedValue(model), testCase.expectedValue)
+            XCTAssertFalse(model.canStartScan)
+        }
+    }
+
+    func testChoosingAnotherPresetClearsCustomValidationSummary() {
+        let model = AppModel(environment: environment(scan: ScanCapture(result: nil)))
+        model.choosePreset(BuiltInPresets.custom.identifier)
+        model.customPresetDraft.filenamePattern = "["
+        XCTAssertFalse(model.applyCustomPreset())
+        XCTAssertNotNil(model.customPresetValidationMessage)
+
+        model.choosePreset(BuiltInPresets.generalAudio.identifier)
+
+        XCTAssertNil(model.customPresetValidationMessage)
+        XCTAssertNil(model.errorMessage)
     }
 
     func testResultFiltersPreserveOriginalFindingIdentityAndDetailSelection() async throws {
@@ -316,6 +411,26 @@ final class AppModelTests: XCTestCase {
 
         XCTAssertEqual(model.selectedFindingRow?.finding.affectedPaths.map(\.value), ["Masters/Alternate Master.wav"])
         XCTAssertEqual(model.findingForDetail?.evidence.first?.value, .string("48000 Hz"))
+    }
+
+    func testResultExposesAuditableRoleAssignmentsToNativeResults() async throws {
+        let assignment = RoleAssignment(
+            roleIdentifier: "main",
+            roleName: "Main master",
+            pattern: "main\\.wav$",
+            matchedPath: try RelativePath("Masters/Main.wav"),
+            category: .audio,
+            acceptedEvidence: [Evidence(label: "encoding", value: .string("Linear PCM"))]
+        )
+        let scan = ScanCapture(result: try result(status: .ready, roleAssignments: [assignment]))
+        let model = AppModel(environment: environment(scan: scan))
+        XCTAssertTrue(model.selectFolder(folderURL()))
+
+        model.startScan()
+        await waitUntil { model.phase == .results }
+
+        XCTAssertEqual(model.roleAssignments, [assignment])
+        XCTAssertEqual(model.roleAssignments.first?.matchedPath.value, "Masters/Main.wav")
     }
 
     func testExportUsesReviewedWritersAndRequiresExplicitDestination() async throws {
@@ -472,7 +587,8 @@ final class AppModelTests: XCTestCase {
 
     private func result(
         status: OverallStatus,
-        findings: [Finding]? = nil
+        findings: [Finding]? = nil,
+        roleAssignments: [RoleAssignment] = []
     ) throws -> ScanResult {
         let resolved = try PresetResolver().resolve(BuiltInPresets.generalAudio)
         let resolvedFindings: [Finding]
@@ -493,6 +609,7 @@ final class AppModelTests: XCTestCase {
             startedAt: Date(timeIntervalSince1970: 0),
             completedAt: status == .incomplete ? nil : Date(timeIntervalSince1970: 1),
             inventory: [],
+            roleAssignments: roleAssignments,
             findings: resolvedFindings,
             overallStatus: status
         )

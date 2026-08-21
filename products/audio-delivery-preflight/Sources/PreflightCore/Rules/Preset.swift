@@ -271,6 +271,7 @@ public struct PresetResolver: PresetResolving {
             try validate(role.bitDepth, field: "roles.\(role.identifier).bitDepth")
             try validateStrings(role.allowedExtensions, field: "roles.\(role.identifier).allowedExtensions")
             try validateStrings(role.allowedEncodings, field: "roles.\(role.identifier).allowedEncodings")
+            try validateCategoryContract(for: role)
             let roleHasBlockingRequirement = role.required
                 || role.allowedEncodings != nil
                 || role.channelCount != nil
@@ -283,8 +284,6 @@ public struct PresetResolver: PresetResolving {
             }
             if role.category == .audio || role.category == .artwork {
                 try validateBlockingSeverity(role.readability, field: "roles.\(role.identifier).readability")
-            } else {
-                try validateIssueSeverity(role.readability, field: "roles.\(role.identifier).readability")
             }
             try validateBlockingSeverity(role.ambiguitySeverity, field: "roles.\(role.identifier).ambiguitySeverity")
             do {
@@ -337,6 +336,30 @@ public struct PresetResolver: PresetResolving {
         }
     }
 
+    private func validateCategoryContract(for role: DeliveryRole) throws {
+        if role.category != .audio {
+            let audioOnlyFields: [(String, Bool)] = [
+                ("allowedEncodings", role.allowedEncodings != nil),
+                ("channelCount", role.channelCount != nil),
+                ("sampleRate", role.sampleRate != nil),
+                ("bitDepth", role.bitDepth != nil),
+            ]
+            if let invalidField = audioOnlyFields.first(where: { $0.1 })?.0 {
+                throw PreflightError.invalidPreset(
+                    field: "roles.\(role.identifier).\(invalidField)",
+                    reason: "Audio-only role constraints require the Audio category."
+                )
+            }
+        }
+
+        if role.category != .audio, role.category != .artwork, role.readability != .warning {
+            throw PreflightError.invalidPreset(
+                field: "roles.\(role.identifier).readability",
+                reason: "Unreadable-media severity is only applicable to Audio or Artwork roles."
+            )
+        }
+    }
+
     private func validateBlockingSeverity(_ severity: FindingSeverity, field: String) throws {
         guard severity == .error || severity == .warning else {
             throw PreflightError.invalidPreset(
@@ -385,7 +408,11 @@ public struct PresetResolver: PresetResolving {
             requirements.append(ResolvedRequirement(identifier: "filename.ambiguous-version", description: "Filename version markers must match the configured naming pattern.", severity: preset.filename.ambiguousVersionSeverity))
         }
         requirements.append(contentsOf: preset.roles.map { role in
-            ResolvedRequirement(identifier: "role.\(role.identifier)", description: "\(role.required ? "Required" : "Optional") role \(role.name) is matched by its configured pattern.", severity: role.severity)
+            ResolvedRequirement(
+                identifier: "role.\(role.identifier)",
+                description: roleDescription(role),
+                severity: role.severity
+            )
         })
         requirements.append(ResolvedRequirement(identifier: "filesystem.service-files", description: "Service files are reported at \(preset.serviceFileSeverity.rawValue) severity.", severity: preset.serviceFileSeverity))
         requirements.append(ResolvedRequirement(identifier: "filesystem.symbolic-links", description: "Symbolic links are reported at \(preset.symbolicLinkSeverity.rawValue) severity.", severity: preset.symbolicLinkSeverity))
@@ -414,5 +441,51 @@ public struct PresetResolver: PresetResolving {
         if let width = artwork.minimumWidth { descriptions.append("width must be at least \(width) px") }
         if let height = artwork.minimumHeight { descriptions.append("height must be at least \(height) px") }
         return descriptions.isEmpty ? "No artwork dimensions are mandated." : descriptions.joined(separator: "; ") + "."
+    }
+
+    private func roleDescription(_ role: DeliveryRole) -> String {
+        var details = [
+            "\(role.required ? "Required" : "Optional") role \(role.name) (identifier: \(role.identifier))",
+            "pattern: \(role.pattern)",
+            "category: \(role.category?.rawValue ?? "any")",
+            "allowed extensions: \(role.allowedExtensions?.joined(separator: ", ") ?? "any")",
+        ]
+        if role.category == .audio {
+            details.append("allowed inspected audio encodings: \(role.allowedEncodings?.joined(separator: ", ") ?? "any")")
+            details.append("channel count: \(role.channelCount.map { roleNumericDescription($0) } ?? "any")")
+            details.append("sample rate: \(role.sampleRate.map { roleNumericDescription($0, unit: "Hz") } ?? "any")")
+            details.append("PCM bit depth: \(role.bitDepth.map { roleNumericDescription($0) } ?? "any")")
+        } else {
+            details.append("audio-only inspected constraints: not applicable")
+        }
+        if role.category == .audio || role.category == .artwork {
+            details.append("unreadable media severity: \(role.readability.rawValue)")
+        } else {
+            details.append("unreadable media severity: not applicable")
+        }
+        details.append("missing or constrained value severity: \(role.severity.rawValue)")
+        details.append("multiple matches severity: \(role.ambiguitySeverity.rawValue)")
+        return details.joined(separator: "; ") + "."
+    }
+
+    private func roleNumericDescription(_ constraint: NumericConstraint, unit: String? = nil) -> String {
+        let suffix = unit.map { " \($0)" } ?? ""
+        switch (constraint.minimum, constraint.maximum) {
+        case let (.some(minimum), .some(maximum)) where minimum == maximum:
+            return "exactly \(displayNumber(minimum))\(suffix)"
+        case let (.some(minimum), .some(maximum)):
+            return "\(displayNumber(minimum)) to \(displayNumber(maximum))\(suffix)"
+        case let (.some(minimum), .none):
+            return "at least \(displayNumber(minimum))\(suffix)"
+        case let (.none, .some(maximum)):
+            return "at most \(displayNumber(maximum))\(suffix)"
+        case (.none, .none):
+            return "any"
+        }
+    }
+
+    private func displayNumber(_ value: Double) -> String {
+        let text = String(value)
+        return text.hasSuffix(".0") ? String(text.dropLast(2)) : text
     }
 }

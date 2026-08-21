@@ -81,8 +81,9 @@ final class JSONReportWriterTests: XCTestCase {
         )
         XCTAssertEqual(Set(object.keys), [
             "schemaVersion", "selectedFolderName", "preset", "applicationVersion", "engineVersion",
-            "startedAt", "completedAt", "inventory", "findings", "overallStatus",
+            "startedAt", "completedAt", "inventory", "findings", "roleAssignments", "overallStatus",
         ])
+        XCTAssertTrue(try arrayOfDictionaries(object["roleAssignments"]).isEmpty)
 
         let preset = try dictionary(object["preset"])
         XCTAssertEqual(Set(preset.keys), ["schemaVersion", "identifier", "name", "requirements", "definition"])
@@ -156,6 +157,30 @@ final class JSONReportWriterTests: XCTestCase {
         XCTAssertEqual(Set(try dictionary(stereoRole["channelCount"]).keys), ["minimum", "maximum"])
     }
 
+    func testJSONV1MapsVersionedRoleAssignmentsAndAcceptedEvidence() throws {
+        let assignment = RoleAssignment(
+            roleIdentifier: "main",
+            roleName: "Main master",
+            pattern: "(?i)main\\.wav$",
+            matchedPath: try RelativePath("Masters/Track.wav"),
+            category: .audio,
+            acceptedEvidence: [Evidence(label: "encoding", value: .string("Linear PCM"))]
+        )
+        let object = try XCTUnwrap(
+            JSONSerialization.jsonObject(
+                with: JSONReportWriter().data(for: try ReportFixture.result(roleAssignments: [assignment]))
+            ) as? [String: Any]
+        )
+
+        let mapped = try firstDictionary(object["roleAssignments"])
+        XCTAssertEqual(Set(mapped.keys), [
+            "schemaVersion", "roleIdentifier", "roleName", "pattern", "matchedPath", "category", "acceptedEvidence",
+        ])
+        XCTAssertEqual(mapped["schemaVersion"] as? String, "1.0")
+        XCTAssertEqual(mapped["matchedPath"] as? String, "Masters/Track.wav")
+        XCTAssertEqual(Set(try firstDictionary(mapped["acceptedEvidence"]).keys), ["label", "value"])
+    }
+
     private func dictionary(_ value: Any?) throws -> [String: Any] {
         try XCTUnwrap(value as? [String: Any])
     }
@@ -174,7 +199,8 @@ enum ReportFixture {
         relativePath: String = "Masters/Track.wav",
         selectedFolderName: String = "private-delivery",
         preset presetDefinition: Preset = BuiltInPresets.generalAudio,
-        audioProperties: AudioProperties = AudioProperties(channelCount: 2, sampleRate: 48_000, isReadable: true)
+        audioProperties: AudioProperties = AudioProperties(channelCount: 2, sampleRate: 48_000, isReadable: true),
+        roleAssignments: [RoleAssignment] = []
     ) throws -> ScanResult {
         let path = try RelativePath(relativePath)
         let preset = try PresetResolver().resolve(presetDefinition)
@@ -233,6 +259,7 @@ enum ReportFixture {
             startedAt: Date(timeIntervalSince1970: 1_700_000_000),
             completedAt: Date(timeIntervalSince1970: 1_700_000_002),
             inventory: [entry, imageEntry],
+            roleAssignments: roleAssignments,
             findings: [finding],
             overallStatus: .needsReview
         )

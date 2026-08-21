@@ -10,6 +10,12 @@ public struct HTMLReportWriter: Sendable {
         let requirements = result.preset.requirements.map { requirement in
             "<li><strong>\(escape(requirement.severity.rawValue.capitalized)):</strong> \(escape(requirement.description))</li>"
         }.joined()
+        let roleAssignments = result.roleAssignments.map { assignment in
+            let evidence = assignment.acceptedEvidence.map {
+                "\(escape($0.label)): \(escape(evidenceText($0.value)))"
+            }.joined(separator: "; ")
+            return "<tr><td>\(escape(assignment.roleIdentifier))</td><td>\(escape(assignment.roleName))</td><td>\(escape(assignment.pattern))</td><td>\(escape(assignment.matchedPath.value))</td><td>\(escape(assignment.category.rawValue))</td><td>\(evidence.isEmpty ? "None" : evidence)</td></tr>"
+        }.joined()
         let inventory = result.inventory.map { entry in
             let measured = Self.measuredProperties(for: entry)
                 .map(escape)
@@ -36,6 +42,7 @@ public struct HTMLReportWriter: Sendable {
         <main>
         <section aria-labelledby="summary"><h2 id="summary">Summary</h2><table><tbody><tr><th scope="row">Overall status</th><td><strong>\(escape(statusText(result.overallStatus)))</strong></td></tr><tr><th scope="row">Preset</th><td>\(escape(result.preset.name))</td></tr><tr><th scope="row">Engine version</th><td>\(escape(result.engineVersion))</td></tr><tr><th scope="row">Scan started</th><td>\(escape(dateText(result.startedAt)))</td></tr><tr><th scope="row">Scan completed</th><td>\(escape(result.completedAt.map { dateText($0) } ?? "Not completed"))</td></tr></tbody></table></section>
         <section aria-labelledby="requirements"><h2 id="requirements">Resolved requirements</h2><ul>\(requirements)</ul></section>
+        <section aria-labelledby="role-assignments"><h2 id="role-assignments">Role assignments</h2>\(roleAssignments.isEmpty ? "<p>No successful role assignments.</p>" : "<table><thead><tr><th>Role identifier</th><th>Role name</th><th>Matched pattern</th><th>Relative path</th><th>Category</th><th>Accepted evidence</th></tr></thead><tbody>\(roleAssignments)</tbody></table>")</section>
         <section aria-labelledby="inventory"><h2 id="inventory">Inventory</h2><table><thead><tr><th>Relative path</th><th>Category</th><th>Kind</th><th>Measured properties</th><th>Checksum status</th><th>SHA-256</th></tr></thead><tbody>\(inventory)</tbody></table></section>
         <section aria-labelledby="findings"><h2 id="findings">Findings</h2>\(findings.isEmpty ? "<p>No findings.</p>" : findings)</section>
         </main>

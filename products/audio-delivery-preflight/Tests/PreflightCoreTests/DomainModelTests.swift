@@ -149,6 +149,38 @@ final class DomainModelTests: XCTestCase {
         XCTAssertEqual(decoded, result)
     }
 
+    func testScanResultDecodesLegacyPayloadWithoutRoleAssignments() throws {
+        let result = ScanResult(
+            selectedFolderName: "Delivery",
+            preset: .fixture,
+            applicationVersion: "0.1.0",
+            engineVersion: "0.1.0",
+            startedAt: Date(timeIntervalSince1970: 0),
+            inventory: [],
+            roleAssignments: [RoleAssignment(
+                roleIdentifier: "main",
+                roleName: "Main",
+                pattern: "main\\.wav$",
+                matchedPath: try RelativePath("Masters/Main.wav"),
+                category: .audio,
+                acceptedEvidence: []
+            )],
+            findings: [],
+            overallStatus: .ready
+        )
+        var object = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(result)) as? [String: Any])
+        object.removeValue(forKey: "roleAssignments")
+
+        let decoded = try JSONDecoder().decode(
+            ScanResult.self,
+            from: JSONSerialization.data(withJSONObject: object)
+        )
+
+        XCTAssertTrue(decoded.roleAssignments.isEmpty)
+        XCTAssertEqual(decoded.selectedFolderName, "Delivery")
+        XCTAssertEqual(decoded.overallStatus, .ready)
+    }
+
     func testPathBearingPreflightErrorsRequireValidatedRelativePaths() throws {
         let path = try RelativePath("Masters/Track.wav")
         let error = PreflightError.inspectionFailed(relativePath: path, reason: "Unreadable")

@@ -485,6 +485,34 @@ public struct ScanRequest: Sendable, Codable, Equatable {
     }
 }
 
+public struct RoleAssignment: Sendable, Codable, Equatable {
+    public let schemaVersion: String
+    public let roleIdentifier: String
+    public let roleName: String
+    public let pattern: String
+    public let matchedPath: RelativePath
+    public let category: FileCategory
+    public let acceptedEvidence: [Evidence]
+
+    public init(
+        schemaVersion: String = "1.0",
+        roleIdentifier: String,
+        roleName: String,
+        pattern: String,
+        matchedPath: RelativePath,
+        category: FileCategory,
+        acceptedEvidence: [Evidence]
+    ) {
+        self.schemaVersion = schemaVersion
+        self.roleIdentifier = roleIdentifier
+        self.roleName = roleName
+        self.pattern = pattern
+        self.matchedPath = matchedPath
+        self.category = category
+        self.acceptedEvidence = acceptedEvidence
+    }
+}
+
 public struct ScanResult: Sendable, Codable, Equatable {
     public let schemaVersion: String
     public let selectedFolderName: String
@@ -494,6 +522,7 @@ public struct ScanResult: Sendable, Codable, Equatable {
     public let startedAt: Date
     public let completedAt: Date?
     public let inventory: [InventoryEntry]
+    public let roleAssignments: [RoleAssignment]
     public let findings: [Finding]
     public let overallStatus: OverallStatus
 
@@ -506,6 +535,7 @@ public struct ScanResult: Sendable, Codable, Equatable {
         startedAt: Date,
         completedAt: Date? = nil,
         inventory: [InventoryEntry],
+        roleAssignments: [RoleAssignment] = [],
         findings: [Finding],
         overallStatus: OverallStatus
     ) {
@@ -517,7 +547,54 @@ public struct ScanResult: Sendable, Codable, Equatable {
         self.startedAt = startedAt
         self.completedAt = completedAt
         self.inventory = inventory
+        self.roleAssignments = roleAssignments
         self.findings = findings
         self.overallStatus = overallStatus
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case schemaVersion
+        case selectedFolderName
+        case preset
+        case applicationVersion
+        case engineVersion
+        case startedAt
+        case completedAt
+        case inventory
+        case roleAssignments
+        case findings
+        case overallStatus
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            schemaVersion: try container.decode(String.self, forKey: .schemaVersion),
+            selectedFolderName: try container.decode(String.self, forKey: .selectedFolderName),
+            preset: try container.decode(ResolvedPreset.self, forKey: .preset),
+            applicationVersion: try container.decode(String.self, forKey: .applicationVersion),
+            engineVersion: try container.decode(String.self, forKey: .engineVersion),
+            startedAt: try container.decode(Date.self, forKey: .startedAt),
+            completedAt: try container.decodeIfPresent(Date.self, forKey: .completedAt),
+            inventory: try container.decode([InventoryEntry].self, forKey: .inventory),
+            roleAssignments: try container.decodeIfPresent([RoleAssignment].self, forKey: .roleAssignments) ?? [],
+            findings: try container.decode([Finding].self, forKey: .findings),
+            overallStatus: try container.decode(OverallStatus.self, forKey: .overallStatus)
+        )
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(schemaVersion, forKey: .schemaVersion)
+        try container.encode(selectedFolderName, forKey: .selectedFolderName)
+        try container.encode(preset, forKey: .preset)
+        try container.encode(applicationVersion, forKey: .applicationVersion)
+        try container.encode(engineVersion, forKey: .engineVersion)
+        try container.encode(startedAt, forKey: .startedAt)
+        try container.encodeIfPresent(completedAt, forKey: .completedAt)
+        try container.encode(inventory, forKey: .inventory)
+        try container.encode(roleAssignments, forKey: .roleAssignments)
+        try container.encode(findings, forKey: .findings)
+        try container.encode(overallStatus, forKey: .overallStatus)
     }
 }

@@ -66,6 +66,8 @@ struct ResultsView: View {
                 TabView {
                     findingsTab
                         .tabItem { Label("Findings", systemImage: "exclamationmark.bubble") }
+                    roleAssignmentsTab(result.roleAssignments)
+                        .tabItem { Label("Role assignments", systemImage: "checklist") }
                     inventoryTab(result.inventory)
                         .tabItem { Label("Inventory", systemImage: "list.bullet.rectangle") }
                 }
@@ -81,6 +83,43 @@ struct ResultsView: View {
                 : .exportConfirmation
         }
         .accessibilityIdentifier("results-view")
+    }
+
+    private func roleAssignmentsTab(_ assignments: [RoleAssignment]) -> some View {
+        Group {
+            if assignments.isEmpty {
+                ContentUnavailableView(
+                    "No successful role assignments",
+                    systemImage: "checklist",
+                    description: Text("A role is assigned only when exactly one matching file passes its configured role constraints.")
+                )
+            } else {
+                List(assignments, id: \.roleIdentifier) { assignment in
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("\(assignment.roleName) (\(assignment.roleIdentifier))")
+                            .fontWeight(.semibold)
+                        Text(assignment.matchedPath.value)
+                            .font(.system(.body, design: .monospaced))
+                        Text("Matched pattern: \(assignment.pattern)")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Text("Category: \(assignment.category.rawValue)")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        ForEach(assignment.acceptedEvidence, id: \.label) { evidence in
+                            Text("\(evidence.label): \(evidenceText(evidence.value))")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel(
+                        "Role \(assignment.roleName), matched \(assignment.matchedPath.value), pattern \(assignment.pattern), category \(assignment.category.rawValue)"
+                    )
+                }
+            }
+        }
+        .accessibilityIdentifier("role-assignments-view")
     }
 
     private var findingsTab: some View {

@@ -94,6 +94,7 @@ final class AppModel {
     var activeSeverities = Set(FindingSeverity.allCases)
     var lastExportedFormat: ExportFormat?
     var errorMessage: String?
+    private(set) var customPresetValidationMessage: String?
 
     @ObservationIgnored private let environment: Environment
     @ObservationIgnored private var selectedFolderURL: URL?
@@ -160,12 +161,16 @@ final class AppModel {
         selectedPresetID == BuiltInPresets.custom.identifier
     }
 
-    var requiredRoles: [DeliveryRole] {
-        resolvedPreset?.definition.roles.filter(\.required) ?? []
+    var deliveryRoles: [DeliveryRole] {
+        resolvedPreset?.definition.roles ?? []
     }
 
     var inventory: [InventoryEntry] {
         result?.inventory ?? []
+    }
+
+    var roleAssignments: [RoleAssignment] {
+        result?.roleAssignments ?? []
     }
 
     var isScanning: Bool {
@@ -216,6 +221,7 @@ final class AppModel {
         selectedFindingID = nil
         lastExportedFormat = nil
         errorMessage = nil
+        customPresetValidationMessage = nil
         resolveSelectedPreset()
         phase = selectedFolderURL == nil ? .start : .requirements
     }
@@ -250,15 +256,29 @@ final class AppModel {
             selectedFindingID = nil
             lastExportedFormat = nil
             errorMessage = nil
+            customPresetValidationMessage = nil
             phase = selectedFolderURL == nil ? .start : .requirements
             return true
+        } catch let PreflightError.invalidPreset(field, reason) {
+            resolvedPreset = nil
+            resolvedRequirements = []
+            result = nil
+            selectedFindingID = nil
+            lastExportedFormat = nil
+            let message = "Custom preset error. \(Self.customPresetFieldLabel(field)): \(Self.safeValidationReason(reason))"
+            errorMessage = message
+            customPresetValidationMessage = message
+            phase = selectedFolderURL == nil ? .start : .requirements
+            return false
         } catch {
             resolvedPreset = nil
             resolvedRequirements = []
             result = nil
             selectedFindingID = nil
             lastExportedFormat = nil
-            errorMessage = "The Custom preset could not be applied. Review its fields and try again."
+            let message = "The Custom preset could not be applied. Review its fields and try again."
+            errorMessage = message
+            customPresetValidationMessage = message
             phase = selectedFolderURL == nil ? .start : .requirements
             return false
         }
@@ -282,6 +302,7 @@ final class AppModel {
         }
 
         errorMessage = nil
+        customPresetValidationMessage = nil
         phase = .scanning
         let generation = selectionGeneration
         let request = ScanRequest(
@@ -383,6 +404,7 @@ final class AppModel {
         errorMessage = nil
         resolvedPreset = nil
         resolvedRequirements = []
+        customPresetValidationMessage = nil
     }
 
     private func resolveSelectedPreset() {
@@ -429,6 +451,41 @@ final class AppModel {
               component.unicodeScalars.allSatisfy({ !CharacterSet.controlCharacters.contains($0) })
         else { return "Selected folder" }
         return component
+    }
+
+    private static func customPresetFieldLabel(_ field: String) -> String {
+        switch field {
+        case "name": return "Preset name"
+        case "roles": return "Delivery roles"
+        case "roles.identifier": return "Role identifier"
+        case "filename.ambiguousVersionPattern": return "Filename version pattern"
+        case "filename.ambiguousVersionSeverity": return "Filename severity"
+        case "audio.allowedExtensions": return "Audio allowed extensions"
+        case "audio.allowedEncodings": return "Audio allowed encodings"
+        case "audio.sampleRate", "audio.sampleRate.minimum", "audio.sampleRate.maximum": return "Audio sample rate"
+        case "audio.bitDepth", "audio.bitDepth.minimum", "audio.bitDepth.maximum": return "Audio bit depth"
+        case "artwork.minimumWidth": return "Artwork minimum width"
+        case "artwork.minimumHeight": return "Artwork minimum height"
+        default:
+            if field.hasSuffix(".allowedExtensions") { return "Role allowed extensions" }
+            if field.hasSuffix(".allowedEncodings") { return "Role allowed encodings" }
+            if field.hasSuffix(".channelCount") || field.hasSuffix(".channelCount.minimum") || field.hasSuffix(".channelCount.maximum") { return "Role channel count" }
+            if field.hasSuffix(".sampleRate") || field.hasSuffix(".sampleRate.minimum") || field.hasSuffix(".sampleRate.maximum") { return "Role sample rate" }
+            if field.hasSuffix(".bitDepth") || field.hasSuffix(".bitDepth.minimum") || field.hasSuffix(".bitDepth.maximum") { return "Role bit depth" }
+            if field.hasSuffix(".pattern") { return "Role pattern" }
+            if field.hasSuffix(".readability") { return "Role unreadable-media severity" }
+            if field.hasSuffix(".severity") { return "Role requirement severity" }
+            if field.hasSuffix(".ambiguitySeverity") { return "Role multiple-match severity" }
+            return "Preset configuration"
+        }
+    }
+
+    private static func safeValidationReason(_ reason: String) -> String {
+        let scalars = reason.unicodeScalars.filter { !CharacterSet.controlCharacters.contains($0) }
+        let clean = String(String.UnicodeScalarView(scalars))
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !clean.isEmpty else { return "The value is invalid." }
+        return String(clean.prefix(240))
     }
 
     private static func cancelledResult(for request: ScanRequest) -> ScanResult {

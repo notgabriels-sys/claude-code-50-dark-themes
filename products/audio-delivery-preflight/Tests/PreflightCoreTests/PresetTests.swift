@@ -136,6 +136,135 @@ final class PresetTests: XCTestCase {
         }
     }
 
+    func testResolverRejectsAudioOnlyConstraintsWithoutAnAudioRoleCategory() {
+        let invalidRoles: [(DeliveryRole, String)] = [
+            (
+                DeliveryRole(
+                    identifier: "any-encoding",
+                    pattern: ".*",
+                    required: true,
+                    allowedEncodings: ["Linear PCM"]
+                ),
+                "roles.any-encoding.allowedEncodings"
+            ),
+            (
+                DeliveryRole(
+                    identifier: "any-channels",
+                    pattern: ".*",
+                    required: true,
+                    channelCount: NumericConstraint(exactly: 2)
+                ),
+                "roles.any-channels.channelCount"
+            ),
+            (
+                DeliveryRole(
+                    identifier: "document-rate",
+                    pattern: ".*",
+                    required: true,
+                    category: .document,
+                    sampleRate: NumericConstraint(exactly: 48_000)
+                ),
+                "roles.document-rate.sampleRate"
+            ),
+            (
+                DeliveryRole(
+                    identifier: "artwork-depth",
+                    pattern: ".*",
+                    required: true,
+                    category: .artwork,
+                    bitDepth: NumericConstraint(exactly: 24)
+                ),
+                "roles.artwork-depth.bitDepth"
+            ),
+        ]
+
+        for (role, expectedField) in invalidRoles {
+            let preset = Preset(identifier: role.identifier, name: role.name, roles: [role])
+            XCTAssertThrowsError(try PresetResolver().resolve(preset), expectedField) { error in
+                XCTAssertEqual(
+                    error as? PreflightError,
+                    .invalidPreset(
+                        field: expectedField,
+                        reason: "Audio-only role constraints require the Audio category."
+                    )
+                )
+            }
+        }
+    }
+
+    func testResolverRejectsActiveReadabilitySeverityForNonMediaRole() {
+        let preset = Preset(
+            identifier: "document-readability",
+            name: "Document readability",
+            roles: [DeliveryRole(
+                identifier: "credits",
+                pattern: "credits\\.txt$",
+                required: true,
+                category: .document,
+                readability: .error
+            )]
+        )
+
+        XCTAssertThrowsError(try PresetResolver().resolve(preset)) { error in
+            XCTAssertEqual(
+                error as? PreflightError,
+                .invalidPreset(
+                    field: "roles.credits.readability",
+                    reason: "Unreadable-media severity is only applicable to Audio or Artwork roles."
+                )
+            )
+        }
+    }
+
+    func testResolvedRoleRequirementDescribesEveryActiveProperty() throws {
+        let preset = Preset(
+            identifier: "transparent-role",
+            name: "Transparent role",
+            roles: [DeliveryRole(
+                identifier: "main",
+                name: "Main master",
+                pattern: "(?i)main\\.wav$",
+                required: true,
+                category: .audio,
+                allowedExtensions: ["wav"],
+                allowedEncodings: ["Linear PCM"],
+                channelCount: NumericConstraint(exactly: 2),
+                sampleRate: NumericConstraint(exactly: 48_000),
+                bitDepth: NumericConstraint(minimum: 24, maximum: 32),
+                readability: .error,
+                severity: .error,
+                ambiguitySeverity: .warning
+            )]
+        )
+
+        let resolved = try PresetResolver().resolve(preset)
+        let requirement = try XCTUnwrap(resolved.requirements.first { $0.identifier == "role.main" })
+
+        XCTAssertEqual(
+            requirement.description,
+            "Required role Main master (identifier: main); pattern: (?i)main\\.wav$; category: audio; allowed extensions: wav; allowed inspected audio encodings: Linear PCM; channel count: exactly 2; sample rate: exactly 48000 Hz; PCM bit depth: 24 to 32; unreadable media severity: error; missing or constrained value severity: error; multiple matches severity: warning."
+        )
+    }
+
+    func testResolvedRoleRequirementSafelyFormatsLargeFiniteIntegerBounds() throws {
+        let preset = Preset(
+            identifier: "large-bound",
+            name: "Large bound",
+            roles: [DeliveryRole(
+                identifier: "main",
+                pattern: ".*",
+                required: true,
+                category: .audio,
+                sampleRate: NumericConstraint(exactly: 1e100)
+            )]
+        )
+
+        let resolved = try PresetResolver().resolve(preset)
+        let requirement = try XCTUnwrap(resolved.requirements.first { $0.identifier == "role.main" })
+
+        XCTAssertTrue(requirement.description.contains("sample rate: exactly 1e+100 Hz"))
+    }
+
     func testResolverRejectsUnsupportedPresetSchemaVersion() {
         let preset = Preset(schemaVersion: "2.0", identifier: "future", name: "Future")
 

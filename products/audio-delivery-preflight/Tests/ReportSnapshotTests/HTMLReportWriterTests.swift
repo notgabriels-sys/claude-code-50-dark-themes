@@ -22,6 +22,8 @@ final class HTMLReportWriterTests: XCTestCase {
         XCTAssertTrue(html.contains("Overall status"))
         XCTAssertTrue(html.contains("Needs review"))
         XCTAssertTrue(html.contains("<h2 id=\"findings\">Findings</h2>"))
+        XCTAssertTrue(html.contains("<h2 id=\"role-assignments\">Role assignments</h2>"))
+        XCTAssertTrue(html.contains("No successful role assignments."))
         XCTAssertTrue(html.contains("<ul"))
         XCTAssertTrue(html.contains("Audio/&lt;script&gt;&amp;&quot;&#39;é.wav"))
         XCTAssertFalse(html.contains("Audio/<script>"))
@@ -38,6 +40,27 @@ final class HTMLReportWriterTests: XCTestCase {
 
     func testHTMLEscapesAllFiveSpecialCharacters() {
         XCTAssertEqual(HTMLReportWriter.escape("<&>\"'"), "&lt;&amp;&gt;&quot;&#39;")
+    }
+
+    func testHTMLDisplaysEscapedAuditableRoleAssignments() throws {
+        let assignment = RoleAssignment(
+            roleIdentifier: "main",
+            roleName: "Main <master>",
+            pattern: "(?i)<main>&\\.wav$",
+            matchedPath: try RelativePath("Masters/Track.wav"),
+            category: .audio,
+            acceptedEvidence: [Evidence(label: "encoding", value: .string("Linear PCM"))]
+        )
+
+        let html = HTMLReportWriter().html(
+            for: try ReportFixture.result(roleAssignments: [assignment])
+        )
+
+        XCTAssertTrue(html.contains("Main &lt;master&gt;"))
+        XCTAssertTrue(html.contains("(?i)&lt;main&gt;&amp;\\.wav$"))
+        XCTAssertTrue(html.contains("Masters/Track.wav"))
+        XCTAssertTrue(html.contains("encoding: Linear PCM"))
+        XCTAssertFalse(html.contains("Main <master>"))
     }
 
     func testHTMLSubstitutesUnsafeSelectedFolderDisplayComponentsWithoutLeakingThem() throws {

@@ -16,6 +16,14 @@ final class CLITests: XCTestCase {
         XCTAssertEqual(showCode, 0)
         XCTAssertTrue(output.stdout.contains("Resolved requirements"))
         XCTAssertTrue(output.stdout.contains("metadata or credits"))
+        XCTAssertTrue(output.stdout.contains("Role main-master: lossless main master"))
+        XCTAssertTrue(output.stdout.contains("Pattern: (?i)"))
+        XCTAssertTrue(output.stdout.contains("Category: audio"))
+        XCTAssertTrue(output.stdout.contains("Allowed extensions: aif, aiff, flac, m4a, wav"))
+        XCTAssertTrue(output.stdout.contains("Allowed inspected audio encodings: ALAC, FLAC, Linear PCM"))
+        XCTAssertTrue(output.stdout.contains("Unreadable media severity: error"))
+        XCTAssertTrue(output.stdout.contains("Missing or constrained value severity: error"))
+        XCTAssertTrue(output.stdout.contains("Multiple matches severity: warning"))
         output.reset()
         let versionCode = await cli.run(arguments: ["version"], environment: environment(output: output))
         XCTAssertEqual(versionCode, 0)
@@ -193,6 +201,39 @@ final class CLITests: XCTestCase {
         XCTAssertFalse(output.stderr.contains(privatePresetPath))
     }
 
+    func testCategoryAgnosticAudioConstraintFailsBeforeFolderInspectionOrScan() async throws {
+        let output = OutputCapture()
+        let calls = CallCapture()
+        let invalidPreset = Preset(
+            identifier: "invalid-any-role",
+            name: "Invalid any role",
+            roles: [DeliveryRole(
+                identifier: "main",
+                pattern: ".*",
+                required: true,
+                allowedEncodings: ["Linear PCM"]
+            )]
+        )
+        let fallbackResult = try scanResult(status: .ready)
+        var testEnvironment = environment(output: output)
+        testEnvironment.loadPresetFile = { _ in invalidPreset }
+        testEnvironment.folderExists = { _ in calls.recordFolderInspection(); return true }
+        testEnvironment.scan = { _ in
+            calls.recordScan()
+            return fallbackResult
+        }
+
+        let exitCode = await CLI().run(
+            arguments: ["scan", "Fixture", "--preset-file", "/private/tmp/invalid-any-role.json"],
+            environment: testEnvironment
+        )
+
+        XCTAssertEqual(exitCode, 3)
+        XCTAssertEqual(calls.folderInspectionCalls, 0)
+        XCTAssertEqual(calls.scanCalls, 0)
+        XCTAssertTrue(output.stderr.contains("Invalid command or configuration"))
+    }
+
     func testUnavailableFolderAndInjectedScanStartFailureExitFourWithoutPathLeakage() async {
         let output = OutputCapture()
         let privatePath = "/Users/example/private-delivery"
@@ -214,9 +255,37 @@ final class CLITests: XCTestCase {
             let text = output.stdout
             XCTAssertLessThan(try XCTUnwrap(text.range(of: "Resolved requirements")?.lowerBound), try XCTUnwrap(text.range(of: "Scan summary")?.lowerBound))
             XCTAssertTrue(text.contains("Status: \(status.rawValue)"))
+            XCTAssertTrue(text.contains("Inventory entries: 1"))
+            XCTAssertFalse(text.contains("Files: 1"))
+            XCTAssertTrue(text.contains("Role assignments: 0"))
             XCTAssertTrue(text.contains("Masters/Main Master.wav"))
             XCTAssertFalse(text.contains("/Users/example/private-delivery"))
         }
+    }
+
+    func testSummaryPrintsAuditableRoleAssignmentUsingOnlyRelativePath() async throws {
+        let output = OutputCapture()
+        let assignment = RoleAssignment(
+            roleIdentifier: "main",
+            roleName: "Main master",
+            pattern: "(?i)main\\.wav$",
+            matchedPath: try RelativePath("Masters/Main Master.wav"),
+            category: .audio,
+            acceptedEvidence: [Evidence(label: "encoding", value: .string("Linear PCM"))]
+        )
+        let result = try scanResult(status: .ready, roleAssignments: [assignment])
+
+        let exitCode = await CLI().run(
+            arguments: ["scan", "Fixture"],
+            environment: environment(output: output, result: result)
+        )
+
+        XCTAssertEqual(exitCode, 0)
+        XCTAssertTrue(output.stdout.contains("Role assignments: 1"))
+        XCTAssertTrue(output.stdout.contains("- main: Masters/Main Master.wav"))
+        XCTAssertTrue(output.stdout.contains("Matched pattern: (?i)main\\.wav$"))
+        XCTAssertTrue(output.stdout.contains("Accepted evidence: encoding=Linear PCM"))
+        XCTAssertFalse(output.stdout.contains("/Users/"))
     }
 
     func testExplicitReportWritesAreInjectedAtomicAndExportFailureDoesNotRewriteScanVerdict() async throws {
@@ -535,7 +604,8 @@ final class CLITests: XCTestCase {
     private func scanResult(
         status: OverallStatus,
         preset: ResolvedPreset? = nil,
-        inventory: [InventoryEntry]? = nil
+        inventory: [InventoryEntry]? = nil,
+        roleAssignments: [RoleAssignment] = []
     ) throws -> ScanResult {
         let resolved = try preset ?? PresetResolver().resolve(BuiltInPresets.generalAudio)
         let findings: [Finding]
@@ -546,7 +616,7 @@ final class CLITests: XCTestCase {
         case .incomplete: findings = []
         }
         let defaultInventory = [InventoryEntry(relativePath: try RelativePath("Masters/Main Master.wav"), normalizedFilename: "main master", normalizedExtension: "wav", category: .audio, byteSize: 4, kind: .regular, sha256: String(repeating: "a", count: 64))]
-        return ScanResult(selectedFolderName: "Fixture", preset: resolved, applicationVersion: "0.1.0", engineVersion: "0.1.0", startedAt: Date(timeIntervalSince1970: 0), completedAt: Date(timeIntervalSince1970: 1), inventory: inventory ?? defaultInventory, findings: findings, overallStatus: status)
+        return ScanResult(selectedFolderName: "Fixture", preset: resolved, applicationVersion: "0.1.0", engineVersion: "0.1.0", startedAt: Date(timeIntervalSince1970: 0), completedAt: Date(timeIntervalSince1970: 1), inventory: inventory ?? defaultInventory, roleAssignments: roleAssignments, findings: findings, overallStatus: status)
     }
 }
 

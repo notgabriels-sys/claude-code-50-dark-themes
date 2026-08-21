@@ -260,6 +260,30 @@ public struct CLI: Sendable {
         for requirement in preset.requirements {
             environment.writeStandardOutput("- [\(requirement.severity.rawValue)] \(requirement.description)")
         }
+        if !preset.definition.roles.isEmpty {
+            environment.writeStandardOutput("Delivery roles:")
+            for role in preset.definition.roles {
+                environment.writeStandardOutput("Role \(role.identifier): \(role.name)")
+                environment.writeStandardOutput("  Required: \(role.required ? "yes" : "no")")
+                environment.writeStandardOutput("  Pattern: \(role.pattern)")
+                environment.writeStandardOutput("  Category: \(role.category?.rawValue ?? "any")")
+                environment.writeStandardOutput("  Allowed extensions: \(role.allowedExtensions?.joined(separator: ", ") ?? "any")")
+                if role.category == .audio {
+                    environment.writeStandardOutput("  Allowed inspected audio encodings: \(role.allowedEncodings?.joined(separator: ", ") ?? "any")")
+                    environment.writeStandardOutput("  Channel count: \(constraintText(role.channelCount))")
+                    environment.writeStandardOutput("  Sample rate: \(constraintText(role.sampleRate, unit: "Hz"))")
+                    environment.writeStandardOutput("  PCM bit depth: \(constraintText(role.bitDepth))")
+                } else {
+                    environment.writeStandardOutput("  Audio-only inspected constraints: not applicable")
+                }
+                let readability = role.category == .audio || role.category == .artwork
+                    ? role.readability.rawValue
+                    : "not applicable"
+                environment.writeStandardOutput("  Unreadable media severity: \(readability)")
+                environment.writeStandardOutput("  Missing or constrained value severity: \(role.severity.rawValue)")
+                environment.writeStandardOutput("  Multiple matches severity: \(role.ambiguitySeverity.rawValue)")
+            }
+        }
     }
 
     private func printSummary(_ result: ScanResult, environment: Environment) {
@@ -267,16 +291,63 @@ public struct CLI: Sendable {
         let warnings = result.findings.filter { $0.severity == .warning }.count
         environment.writeStandardOutput("Scan summary:")
         environment.writeStandardOutput("Status: \(result.overallStatus.rawValue)")
-        environment.writeStandardOutput("Files: \(result.inventory.count)")
+        environment.writeStandardOutput("Inventory entries: \(result.inventory.count)")
         environment.writeStandardOutput("Errors: \(errors)")
         environment.writeStandardOutput("Warnings: \(warnings)")
         for entry in result.inventory {
             environment.writeStandardOutput("- \(entry.relativePath.value)")
         }
+        environment.writeStandardOutput("Role assignments: \(result.roleAssignments.count)")
+        for assignment in result.roleAssignments {
+            environment.writeStandardOutput("- \(assignment.roleIdentifier): \(assignment.matchedPath.value)")
+            environment.writeStandardOutput("  Role name: \(assignment.roleName)")
+            environment.writeStandardOutput("  Matched pattern: \(assignment.pattern)")
+            environment.writeStandardOutput("  Category: \(assignment.category.rawValue)")
+            if assignment.acceptedEvidence.isEmpty {
+                environment.writeStandardOutput("  Accepted evidence: none")
+            } else {
+                let evidence = assignment.acceptedEvidence.map {
+                    "\($0.label)=\(evidenceText($0.value))"
+                }.joined(separator: ", ")
+                environment.writeStandardOutput("  Accepted evidence: \(evidence)")
+            }
+        }
         if result.overallStatus == .incomplete {
             environment.writeStandardOutput("Requirements outcome: not determined.")
         }
         environment.writeStandardOutput("Technical checks only: this is not artistic approval or distributor acceptance.")
+    }
+
+    private func constraintText(_ constraint: NumericConstraint?, unit: String? = nil) -> String {
+        guard let constraint else { return "any" }
+        let suffix = unit.map { " \($0)" } ?? ""
+        switch (constraint.minimum, constraint.maximum) {
+        case let (.some(minimum), .some(maximum)) where minimum == maximum:
+            return "exactly \(displayNumber(minimum))\(suffix)"
+        case let (.some(minimum), .some(maximum)):
+            return "\(displayNumber(minimum)) to \(displayNumber(maximum))\(suffix)"
+        case let (.some(minimum), .none):
+            return "at least \(displayNumber(minimum))\(suffix)"
+        case let (.none, .some(maximum)):
+            return "at most \(displayNumber(maximum))\(suffix)"
+        case (.none, .none):
+            return "any"
+        }
+    }
+
+    private func displayNumber(_ value: Double) -> String {
+        let text = String(value)
+        return text.hasSuffix(".0") ? String(text.dropLast(2)) : text
+    }
+
+    private func evidenceText(_ value: EvidenceValue) -> String {
+        switch value {
+        case .string(let value): value
+        case .number(let value): displayNumber(value)
+        case .integer(let value): String(value)
+        case .boolean(let value): value ? "true" : "false"
+        case .unknown: "unknown"
+        }
     }
 
     private func writeReports(_ reports: Reports, for result: ScanResult, environment: Environment) throws {

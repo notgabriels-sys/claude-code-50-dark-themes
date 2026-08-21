@@ -36,6 +36,7 @@ private struct JSONReportV1: Encodable {
     let startedAt: Date
     let completedAt: Date?
     let inventory: [JSONInventoryEntryV1]
+    let roleAssignments: [JSONRoleAssignmentV1]
     let findings: [JSONFindingV1]
     let overallStatus: String
 
@@ -51,8 +52,29 @@ private struct JSONReportV1: Encodable {
         startedAt = result.startedAt
         completedAt = result.completedAt
         inventory = try result.inventory.map(JSONInventoryEntryV1.init)
+        roleAssignments = result.roleAssignments.map(JSONRoleAssignmentV1.init)
         findings = result.findings.map(JSONFindingV1.init)
         overallStatus = result.overallStatus.rawValue
+    }
+}
+
+private struct JSONRoleAssignmentV1: Encodable {
+    let schemaVersion: String
+    let roleIdentifier: String
+    let roleName: String
+    let pattern: String
+    let matchedPath: String
+    let category: String
+    let acceptedEvidence: [JSONEvidenceV1]
+
+    init(_ value: RoleAssignment) {
+        schemaVersion = value.schemaVersion
+        roleIdentifier = value.roleIdentifier
+        roleName = value.roleName
+        pattern = value.pattern
+        matchedPath = value.matchedPath.value
+        category = value.category.rawValue
+        acceptedEvidence = value.acceptedEvidence.map(JSONEvidenceV1.init)
     }
 }
 

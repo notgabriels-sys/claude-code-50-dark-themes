@@ -360,6 +360,16 @@ final class ScanServiceTests: XCTestCase {
         XCTAssertTrue(result.inventory.allSatisfy { $0.relativePath.value.hasPrefix("/") == false })
         XCTAssertTrue(regularSourceFiles.allSatisfy { $0.sha256 != nil })
         XCTAssertFalse(result.findings.contains { $0.ruleID.hasPrefix("role.missing") || $0.ruleID.hasPrefix("role.ambiguous") })
+        let encoded = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(result)) as? [String: Any])
+        let assignments = try XCTUnwrap(encoded["roleAssignments"] as? [[String: Any]])
+        XCTAssertEqual(assignments.compactMap { $0["roleIdentifier"] as? String }, [
+            "main-master", "artwork", "metadata-or-credits",
+        ])
+        XCTAssertEqual(assignments.compactMap { $0["matchedPath"] as? String }, [
+            "Masters/Main Master.wav", "Artwork/Cover.png", "Credits/credits.md",
+        ])
+        XCTAssertEqual(assignments.compactMap { $0["pattern"] as? String }, preset.definition.roles.map(\.pattern))
+        XCTAssertEqual(assignments.compactMap { $0["schemaVersion"] as? String }, ["1.0", "1.0", "1.0"])
         XCTAssertEqual(after, before)
     }
 
