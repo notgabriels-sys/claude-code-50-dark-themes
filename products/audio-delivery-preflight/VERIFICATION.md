@@ -24,14 +24,20 @@ The script resolves its own product root and, with strict shell error handling:
 
 The generated fixture contains only repository-generated test data: a one-second stereo 48 kHz 24-bit PCM WAV, a 3000 x 3000 RGB PNG, and synthetic credits text.
 
-The isolated committed-candidate run on 2026-08-21 observed:
+The isolated committed-candidate run on 2026-08-21 at implementation commit `97dabfdfa4532bbc9ab1664d46aad9ee438e2e3f` observed:
 
-- 124 tests executed with 0 failures;
+- 161 tests executed with 0 failures;
 - successful release builds of both products;
 - `Audio Delivery Preflight 0.1.0` from the version command;
 - a Digital Release result of `ready` with 6 inventory entries, 0 errors, and 0 warnings;
 - successful HTML, JSON, and checksum-manifest writes outside the fixture; and
 - matching fixture provenance, source SHA-256/size/subsecond-mtime/mode evidence, report privacy checks, and `afinfo`/`sips` measurements.
+
+Additional exact-commit release-binary probes observed:
+
+- the README custom-preset JSON imported through `--preset-file`, resolved before scanning, returned `ready` with exit code 0, did not print its private import path, and retained identical preset-file SHA-256/size/subsecond-mtime/mode evidence;
+- synthetic AAC-LC M4A bytes with documented SHA-256 `f995d9f26e1ea62f9f3a12e6569f870e28b25a0d1ee3da9169076a8137aed089`, renamed to `Masters/Main Master.wav`, returned `requirementsNotMet` with exit code 2, retained inspected `M4A`/`AAC` evidence, emitted both `audio.filename-content-mismatch` and `role.disallowed-encoding.main-master`, emitted no unreadable-audio conflict, and retained identical source SHA-256/size/subsecond-mtime/mode evidence; and
+- the repository verifier passed with 50 themes, 50 gallery cards, 3 PayPal links, and the safe extension-install command. The storefront and payment surfaces were not changed by this product fix wave.
 
 ## Requirement-to-evidence map
 
@@ -40,12 +46,16 @@ The isolated committed-candidate run on 2026-08-21 observed:
 | macOS 14 deployment floor and Swift 6 language mode | `Package.swift`; both release products compile in the deterministic gate. Oldest-supported-host execution remains a separate gate. |
 | Local scan engine with no intended network request | `PreflightCore` and presentation targets contain no networking API; `PRIVACY.md` documents the boundary. Network-observed/offline validation of the final distribution build remains open. |
 | Source files are never intentionally deleted, moved, renamed, converted, normalized, rewritten, or uploaded | Filesystem-boundary unit tests, scan fingerprint tests, report-destination tests, and the generated fixture's before/after SHA-256, size, fractional/subsecond mtime, and mode comparison. |
-| Symbolic links are recorded and never followed; regular-file access remains beneath the selected root | Inventory, checksum, audio, image, scan-race, and report-destination regression suites. |
-| Failed measurements remain unknown | Domain, inspector, checksum, rule, and scan-orchestration tests. |
-| Transparent built-in presets and role matching | Preset and rule-engine tests plus `audio-preflight preset show digital-release`; requirements print before the CLI scan summary. |
+| Symbolic links are recorded and never followed; inventory and regular-file access remain beneath the selected root | Descriptor-anchored inventory, checksum, audio, image, preset-import, scan-race, and report-destination regressions, including deterministic selected-root and ancestor swaps. |
+| Failed or unavailable constrained measurements remain unknown and cannot pass | Domain, inspector, checksum, rule, and scan-orchestration tests cover unknown sample rate, PCM bit depth, channel count, artwork dimensions, and content encoding, including a single readable file under every consistency-enabled built-in. |
+| Lossless roles are proven from inspected content rather than filename alone | Preset, rule-engine, inspector, production-scan, and adversarial release-binary evidence accept intended Linear PCM/FLAC/ALAC values and reject AAC, MP3, and unknown encodings even under a lossless-looking extension. |
+| Transparent built-in and Custom presets, consistency checks, and role matching | Preset and rule-engine tests plus `audio-preflight preset show digital-release`; requirements print before the CLI scan summary. The app provides an in-memory schema-complete Custom editor, while the CLI imports a bounded, no-follow schema-`1.0` preset file. |
+| Checksum state remains independent from media inspection state | Domain, checksum, duplicate-group, scan, manifest, and JSON key-set regressions preserve `.notInspected`, `.succeeded`, and `.failed` inspection while recording an explicit checksum status. |
+| Media staging is bounded, cancellation-aware, and cleaned after cooperative cancellation | Audio and image inspector tests cover chunked copies, source mutation, leaf/ancestor swaps, staging cleanup, and a deterministic mid-copy cancellation that propagates as cancellation rather than unreadable media. |
+| Framework-provided embedded metadata is optional, bounded, and visibly reportable | Audio metadata mapping tests plus app, HTML escaping, and explicit JSON-v1 report mapping. Unsupported or unavailable metadata remains absent rather than guessed. |
 | Deterministic exit codes and interrupted-scan behavior | CLI tests cover ready, warnings, errors, invalid configuration, incomplete scans, and export failures. |
-| Accessible native workflow with explicit selection, scan, results, and export phases | App-model tests and a prior native Start-screen smoke check. Full manual interaction and assistive-technology validation remain open. |
-| Relative, private, stable reports | JSON schema key-set/privacy tests, HTML escaping/accessibility tests, checksum-manifest tests, and exact fixture report inspection. |
+| Accessible native workflow with explicit selection, editable requirements, scan, results, and export phases | App-model tests cover Custom/Digital Release editing state and the existing workflow; a prior native Start-screen smoke check exists. Full manual interaction and assistive-technology validation remain open. |
+| Relative, private, stable reports | Intentional JSON schema-`1.0` key-set/privacy tests, HTML escaping/accessibility tests, checksum-manifest tests, and exact fixture report inspection cover explicit inspection/checksum states and optional measured metadata. |
 | Technical `ready` is not artistic approval or distributor acceptance | App, CLI, HTML report, README, and limitations copy; claim scan checks prohibited marketing language. |
 | Required Digital Release roles can produce a real `ready` result | Generated fixture exact CLI happy path with lossless main master, readable artwork, and credits document. |
 
