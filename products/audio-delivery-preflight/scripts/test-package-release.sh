@@ -38,13 +38,15 @@ snapshot_directory() {
     ) > "$destination"
 }
 
+version=0.1.0
+release_name="Audio Delivery Preflight $version (macOS Universal, Unsigned)"
+archive_name="Audio-Delivery-Preflight-$version-macOS-universal-unsigned.zip"
 output_dir="$test_root/output"
 "$script_dir/package-release.sh" --output "$output_dir" --unsigned
 
-archives=("$output_dir"/Audio-Delivery-Preflight-0.1.0-macOS-*-unsigned.zip(N))
-(( ${#archives[@]} == 1 )) || fail "expected exactly one architecture-labelled ZIP archive"
-archive=${archives[1]}
+archive="$output_dir/$archive_name"
 sidecar="$archive.sha256"
+require_file "$archive"
 require_file "$sidecar"
 
 "$script_dir/verify-release-archive.sh" "$archive"
@@ -56,6 +58,7 @@ top_level_entries=("$extract_dir"/*(N))
 (( ${#top_level_entries[@]} == 1 )) || fail "archive must contain exactly one top-level entry"
 release_root=${top_level_entries[1]}
 [[ -d "$release_root" ]] || fail "archive top-level entry must be a directory"
+[[ "${release_root:t}" == "$release_name" ]] || fail "release root does not disclose Universal unsigned status"
 
 app="$release_root/Audio Delivery Preflight.app"
 app_executable="$app/Contents/MacOS/AudioDeliveryPreflightApp"
@@ -98,29 +101,18 @@ done
 
 app_archs=$(/usr/bin/lipo -archs "$app_executable")
 cli_archs=$(/usr/bin/lipo -archs "$cli")
-[[ "$app_archs" == "$cli_archs" ]] || fail "app and CLI architectures differ"
-case " $app_archs " in
-    *" arm64 "*" x86_64 "*|*" x86_64 "*" arm64 "*)
-        expected_label="Universal"
-        expected_slug="universal"
-        ;;
-    " arm64 ")
-        expected_label="Apple Silicon"
-        expected_slug="apple-silicon"
-        ;;
-    " x86_64 ")
-        expected_label="Intel"
-        expected_slug="intel"
-        ;;
-    *)
-        fail "unsupported or undisclosed architecture set: $app_archs"
-        ;;
-esac
+app_arch_count=$(print -r -- "$app_archs" | /usr/bin/wc -w | /usr/bin/tr -d ' ')
+cli_arch_count=$(print -r -- "$cli_archs" | /usr/bin/wc -w | /usr/bin/tr -d ' ')
+[[ " $app_archs " == *" arm64 "* && " $app_archs " == *" x86_64 "* && "$app_arch_count" == 2 ]] \
+    || fail "app is not exactly arm64 plus x86_64"
+[[ " $cli_archs " == *" arm64 "* && " $cli_archs " == *" x86_64 "* && "$cli_arch_count" == 2 ]] \
+    || fail "CLI is not exactly arm64 plus x86_64"
 
 architecture_label=$(/usr/bin/plutil -extract architectureLabel raw -o - "$package_info")
-[[ "$architecture_label" == "$expected_label" ]] || fail "architecture label does not match the binaries"
-[[ "${archive:t}" == *"-$expected_slug-unsigned.zip" ]] || fail "archive name does not disclose architecture"
-[[ "${release_root:t}" == *"(macOS $expected_label, Unsigned)" ]] || fail "release directory does not disclose architecture and signing state"
+[[ "$architecture_label" == "Universal" ]] || fail "architecture label does not match the Universal binaries"
+[[ "$(/usr/bin/plutil -extract architectureSet raw -o - "$package_info")" == "arm64 x86_64" ]] \
+    || fail "package architecture set is not exactly arm64 x86_64"
+[[ "${archive:t}" == "$archive_name" ]] || fail "archive name does not disclose Universal unsigned status"
 
 [[ "$(/usr/bin/plutil -extract developerIDSigned raw -o - "$package_info")" == "false" ]] \
     || fail "package metadata must not claim Developer ID signing"
@@ -133,6 +125,10 @@ architecture_label=$(/usr/bin/plutil -extract architectureLabel raw -o - "$packa
 source_commit=$(/usr/bin/plutil -extract sourceCommit raw -o - "$package_info")
 print -r -- "$source_commit" | /usr/bin/grep -Eq '^[0-9a-f]{40}$' \
     || fail "source commit is not a full Git object identifier"
+[[ "$(/usr/bin/plutil -extract productVerifierPassed raw -o - "$package_info")" == "true" ]] \
+    || fail "package metadata must record the complete product verifier"
+[[ "$(/usr/bin/plutil -extract productSourceClean raw -o - "$package_info")" == "true" ]] \
+    || fail "package metadata must bind clean Package.swift, Sources, and Resources inputs"
 
 /usr/bin/codesign --verify --deep --strict --verbose=2 "$app" >/dev/null 2>&1 \
     || fail "ad-hoc app signature does not verify"
@@ -197,12 +193,47 @@ set -e
 archive_hash_after=$(/usr/bin/shasum -a 256 "$archive" | /usr/bin/awk '{print $1}')
 [[ "$archive_hash_after" == "$archive_hash_before" ]] || fail "refused overwrite changed the existing archive"
 
-tampered_archive="$test_root/Tampered.zip"
-/bin/cp "$archive" "$tampered_archive"
-/usr/bin/printf '%064d  %s\n' 0 "${tampered_archive:t}" > "$tampered_archive.sha256"
-if "$script_dir/verify-release-archive.sh" "$tampered_archive" \
-    > "$test_root/tampered.stdout" 2> "$test_root/tampered.stderr"; then
+false_sidecar_dir="$test_root/false-sidecar"
+mkdir "$false_sidecar_dir"
+false_sidecar_archive="$false_sidecar_dir/$archive_name"
+/bin/cp "$archive" "$false_sidecar_archive"
+/usr/bin/printf '%064d  %s\n' 0 "$archive_name" > "$false_sidecar_archive.sha256"
+if "$script_dir/verify-release-archive.sh" "$false_sidecar_archive" \
+    > "$test_root/false-sidecar.stdout" 2> "$test_root/false-sidecar.stderr"; then
     fail "archive verifier accepted a false SHA-256 sidecar"
 fi
+/usr/bin/grep -F -q -- 'archive SHA-256 does not match the sidecar' \
+    "$test_root/false-sidecar.stderr" \
+    || fail "false sidecar did not fail at the external-digest gate"
 
-print -- "Release-package contract passed with real release binaries: $architecture_label, unsigned, version 0.1.0."
+content_tamper_dir="$test_root/content-tamper"
+content_tamper_extract="$content_tamper_dir/extracted"
+mkdir -p "$content_tamper_extract"
+/usr/bin/ditto -x -k "$archive" "$content_tamper_extract"
+print -- "tampered after the internal manifest was written" \
+    >> "$content_tamper_extract/$release_name/README.md"
+content_tamper_archive="$content_tamper_dir/$archive_name"
+(
+    cd "$content_tamper_extract"
+    /usr/bin/find "$release_name" -print \
+        | /usr/bin/sort \
+        | /usr/bin/zip -q -X "$content_tamper_archive" -@
+)
+content_tamper_digest=$(/usr/bin/shasum -a 256 "$content_tamper_archive" | /usr/bin/awk '{print $1}')
+/usr/bin/printf '%s  %s\n' "$content_tamper_digest" "$archive_name" \
+    > "$content_tamper_archive.sha256"
+if "$script_dir/verify-release-archive.sh" "$content_tamper_archive" \
+    > "$test_root/content-tamper.stdout" 2> "$test_root/content-tamper.stderr"; then
+    fail "archive verifier accepted changed content behind a correct external sidecar"
+fi
+/usr/bin/grep -F -q -- 'internal SHA-256 manifest does not validate' \
+    "$test_root/content-tamper.stderr" \
+    || fail "content tamper did not fail at the internal-manifest gate"
+
+if /usr/bin/find "$release_root" -maxdepth 2 \
+    \( -iname '*customer*license*' -o -iname '*product*decision*' \) -print -quit \
+    | /usr/bin/grep -q .; then
+    fail "internal decision or unaccepted customer-license draft leaked into the customer archive"
+fi
+
+print -- "Release-package contract passed with real Universal release binaries: arm64 x86_64, selected icon, immutable sample scan, tamper detection, unsigned, version $version."

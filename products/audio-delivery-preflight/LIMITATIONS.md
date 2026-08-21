@@ -57,6 +57,6 @@ The product does not measure or judge:
 - The native app requires macOS 14 or later.
 - There is no Windows, Linux, iOS, or web application in version 0.1.0.
 - There is no DAW-project inspection, repair, renaming, conversion, metadata editing, publishing, cloud history, collaboration, or account system.
-- The repository can assemble and verify an application bundle inside a Developer-ID-unsigned customer-archive candidate. Its ad-hoc signature permits local execution but establishes no publisher identity or Apple trust. The candidate is not notarized, Gatekeeper may block or warn about it, and it has not been verified across the full supported macOS range.
+- The repository can assemble and verify an application bundle and CLI with exact `arm64` and `x86_64` Universal executables inside a Developer-ID-unsigned customer-archive candidate. Their ad-hoc signatures permit local execution but establish no publisher identity or Apple trust. The candidate is not notarized, Gatekeeper may reject, block, or warn about it, and it has not been verified across the full supported macOS range.
 - Version 0.1.0 includes the selected application icon and bundle metadata. Its appearance still requires final Finder, Dock, light-appearance, dark-appearance, and small-size inspection on the packaged build.
 - A manual UI, VoiceOver, keyboard, increased-text, light/dark appearance, offline-network, oldest-supported-macOS, and copied-real-delivery release-candidate pass remains required before commercial distribution.

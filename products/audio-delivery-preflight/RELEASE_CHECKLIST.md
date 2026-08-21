@@ -23,8 +23,9 @@ This checklist separates repository evidence, a local archive, a customer-tested
 
 - [x] Packaging command refuses an existing output path.
 - [x] Package contains the `.app`, selected icon, CLI, sample delivery, README, privacy, limitations, build provenance, internal manifest, and explicit Developer-ID-unsigned disclosure.
-- [x] Archive verifier checks the external and internal SHA-256 evidence, extraction safety, required files, permissions, architecture, ad-hoc signatures, identifier, source-commit format, version, and macOS floor.
-- [x] Package contract runs the packaged CLI against the sample, confirms source immutability, refuses overwrite, and rejects a false sidecar.
+- [x] App and CLI are exact Universal binaries containing only `arm64` and `x86_64`; packaging cannot silently fall back to one architecture.
+- [x] Archive verifier checks the external and internal SHA-256 evidence, ZIP integrity, duplicate and unsafe paths, exact manifest coverage, required files, permissions, exact architecture set, ad-hoc signatures, identifier, source-commit format, version, macOS floor, icon digest, disclosure, and identity/path leakage.
+- [x] Package contract runs the packaged CLI against the sample, confirms source immutability, refuses overwrite, rejects a false external sidecar, and rejects changed content even behind a correctly recomputed external sidecar.
 - [ ] Build the real release archive from the exact intended source commit.
 - [ ] Record the exact source commit and archive SHA-256.
 - [ ] Copy the ZIP and checksum to a separate location and verify them there.
