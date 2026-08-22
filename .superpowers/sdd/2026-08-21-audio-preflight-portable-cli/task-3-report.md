@@ -139,6 +139,13 @@ Fresh normal tests, race tests, vet, formatting, and diff checks passed. The
 race run included `internal/release` in 112.471 seconds. Three independently
 verified private candidates were generated:
 
+> **Superseded.** The hashes in the table below are the historical Task 3
+> record for commit `dc49778` and are correct for that revision. They are not
+> the current candidate hashes: `269671f` (test portability) and `c04f227` (CI
+> output location) changed the source tree afterwards, so every candidate was
+> rebuilt. The current hashes live in `private-artifact-manifest.md`. Do not
+> quote the table below as current.
+
 | Platform | Archive SHA-256 | Sidecar-file SHA-256 |
 | --- | --- | --- |
 | `darwin-arm64` | `8a66ff2f132d5a7958665e18442349fa4794cae4ba602fd103cd054982fc9bea` | `70808cba06838ad142cec25c33e948a67edc0d41b286a6c42cec3280721bf9f8` |
