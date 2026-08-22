@@ -47,10 +47,16 @@ reproducibility build:
     release packaging failed: release packaging requires a clean source tree
 
 The workflow created `private-candidates`, `repro-a` and `repro-b` inside the
-checked-out source tree, so the first build left untracked directories behind and
-the tree was no longer clean for the second. The packager was correct and was not
-weakened; `requireCleanSourceTree` is untouched and no generated directory was
-added to `.gitignore`. Commit `c04f227` moves every candidate and reproducibility
+checked-out source tree. `requireCleanSourceTree` runs
+`git status --porcelain=v1 --untracked-files=all`, which honours `.gitignore`, so
+the precise culprit was narrower than "all three": `private-candidates/` is
+already listed in `.gitignore` and never dirtied the tree, while `repro-a` and
+`repro-b` are not ignored. Once `repro-a` had been populated, the build into
+`repro-b` saw it as untracked content and refused — which is why the failure
+appeared only at the second reproducibility build. Verified directly: creating
+`private-candidates/` leaves `git status` empty, and creating `repro-a/` does
+not. The packager was correct and was not weakened; `requireCleanSourceTree` is
+untouched and no further generated directory was added to `.gitignore`. Commit `c04f227` moves every candidate and reproducibility
 directory under `${RUNNER_TEMP}` and quotes the absolute paths through
 `package.sh`, `verify-archive.sh` and `cmp`. Both scripts `cd` to the module root
 before running, so absolute paths are unambiguous where the previous relative
