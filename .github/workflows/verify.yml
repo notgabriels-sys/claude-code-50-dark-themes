@@ -38,19 +38,24 @@ jobs:
         run: go vet ./...
       - name: Build and verify every private candidate
         run: |
-          mkdir private-candidates
+          # Outputs must live outside the Git checkout: the packager requires a
+          # clean source tree, and untracked build directories inside the
+          # working tree would make the second build fail.
+          candidate_dir="${RUNNER_TEMP}/audio-preflight-private-candidates"
+          repro_a="${RUNNER_TEMP}/audio-preflight-repro-a"
+          repro_b="${RUNNER_TEMP}/audio-preflight-repro-b"
+          mkdir -p "$candidate_dir" "$repro_a" "$repro_b"
           for platform in darwin-arm64 darwin-amd64 linux-amd64; do
-            ./scripts/package.sh -platform "$platform" -output-dir private-candidates
+            ./scripts/package.sh -platform "$platform" -output-dir "$candidate_dir"
             ./scripts/verify-archive.sh \
-              -archive "private-candidates/audio-preflight-cli-private-candidate_1.0.0_${platform}.tar.gz" \
+              -archive "${candidate_dir}/audio-preflight-cli-private-candidate_1.0.0_${platform}.tar.gz" \
               -platform "$platform" \
               -source-revision "$(git rev-parse HEAD)"
           done
-          mkdir repro-a repro-b
-          ./scripts/package.sh -platform darwin-arm64 -output-dir repro-a
-          ./scripts/package.sh -platform darwin-arm64 -output-dir repro-b
-          cmp repro-a/audio-preflight-cli-private-candidate_1.0.0_darwin-arm64.tar.gz repro-b/audio-preflight-cli-private-candidate_1.0.0_darwin-arm64.tar.gz
-          cmp repro-a/audio-preflight-cli-private-candidate_1.0.0_darwin-arm64.tar.gz.sha256 repro-b/audio-preflight-cli-private-candidate_1.0.0_darwin-arm64.tar.gz.sha256
+          ./scripts/package.sh -platform darwin-arm64 -output-dir "$repro_a"
+          ./scripts/package.sh -platform darwin-arm64 -output-dir "$repro_b"
+          cmp "${repro_a}/audio-preflight-cli-private-candidate_1.0.0_darwin-arm64.tar.gz" "${repro_b}/audio-preflight-cli-private-candidate_1.0.0_darwin-arm64.tar.gz"
+          cmp "${repro_a}/audio-preflight-cli-private-candidate_1.0.0_darwin-arm64.tar.gz.sha256" "${repro_b}/audio-preflight-cli-private-candidate_1.0.0_darwin-arm64.tar.gz.sha256"
 
       # The job intentionally does not upload, release, tag, or publish these
       # private candidates. They disappear with the ephemeral CI workspace.
