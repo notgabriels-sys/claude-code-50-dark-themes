@@ -37,18 +37,18 @@ Tax-inclusive. No VAT added on top. Currency EUR.
 
 ## Accounts
 
-**Verified 2026-08-18** by reading the PayPal business account in a
+The PayPal business account was verified 2026-08-18 by reading it in a
 signed-in browser session (Kontoeinstellungen → Informationen zum
-Kontoinhaber):
+Kontoinhaber): business account, Berlin-registered, currency EUR, and the
+sign-in landed on a merchant dashboard with Händler-Tools and a Business
+Debit Card.
 
-- Account holder: Gabriel Garcia Alonso, business account, Berlin, EUR.
-- Email: `hologrampeoplemusic@gmail.com`. Confirmed directly 2026-08-18 —
-  PayPal's own sign-in page printed the address unmasked, and
-  authenticating it landed on the business dashboard headed "Gabriel
-  Garcia Alonso" (Händler-Tools, Business Debit Card). This supersedes
-  the earlier inference from a `ho•••…@gmail.com` mask.
-- `notgabriels@gmail.com` as the personal account remains Gabriel's
-  statement; not independently verified.
+**The account-holder name and the two email addresses are deliberately
+not recorded here — this repository is public.** They are Gabriel's to
+keep or share. What matters operationally is only that the *business*
+account (not the personal one) holds the payment links below; if a future
+session needs the addresses, ask rather than guess, and do not write them
+into a tracked file.
 
 ## Payment links — live, verified 2026-08-18
 
