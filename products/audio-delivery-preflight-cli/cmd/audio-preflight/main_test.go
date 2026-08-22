@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -73,11 +74,7 @@ func TestRunMapsCompletedScanStatusesToDocumentedExitCodes(t *testing.T) {
 func TestRunExportsOnlyNewDistinctDestinations(t *testing.T) {
 	root := t.TempDir()
 	writeCLIFile(t, filepath.Join(root, "main.wav"), cliWAV())
-	exports, err := os.MkdirTemp("/private/tmp", "audio-preflight-cli-reports-")
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = os.RemoveAll(exports) })
+	exports := physicalCLITempDir(t, "audio-preflight-cli-reports-")
 	jsonPath := filepath.Join(exports, "report.json")
 	htmlPath := filepath.Join(exports, "report.html")
 	checksumPath := filepath.Join(exports, "SHA256SUMS.txt")
@@ -131,6 +128,9 @@ func TestRunValidatesConfigurationBeforeRootAccess(t *testing.T) {
 }
 
 func TestRunRejectsPhysicalAliasDestinationInsideSelectedSource(t *testing.T) {
+	if runtime.GOOS != "darwin" {
+		t.Skip("/tmp and /private/tmp alias is specific to macOS")
+	}
 	physicalRoot, err := os.MkdirTemp("/private/tmp", "audio-preflight-source-alias-")
 	if err != nil {
 		t.Fatal(err)
@@ -160,13 +160,9 @@ func TestRunRejectsPhysicalAliasDestinationInsideSelectedSource(t *testing.T) {
 }
 
 func TestRunMapsUnreadableExistingRootToScanStartFailure(t *testing.T) {
-	root, err := os.MkdirTemp("/private/tmp", "audio-preflight-unreadable-")
-	if err != nil {
-		t.Fatal(err)
-	}
+	root := physicalCLITempDir(t, "audio-preflight-unreadable-")
 	t.Cleanup(func() {
 		_ = os.Chmod(root, 0o700)
-		_ = os.RemoveAll(root)
 	})
 	if err := os.Chmod(root, 0o000); err != nil {
 		t.Fatal(err)
@@ -185,6 +181,20 @@ func writeCLIFile(t *testing.T, path string, body []byte) {
 	if err := os.WriteFile(path, body, 0o644); err != nil {
 		t.Fatal(err)
 	}
+}
+
+func physicalCLITempDir(t *testing.T, pattern string) string {
+	t.Helper()
+	base, err := filepath.EvalSymlinks(os.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	path, err := os.MkdirTemp(base, pattern)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(path) })
+	return path
 }
 
 func cliWAV() []byte {

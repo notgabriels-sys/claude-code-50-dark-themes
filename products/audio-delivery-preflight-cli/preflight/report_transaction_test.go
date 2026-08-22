@@ -134,7 +134,11 @@ func transactionReport(t *testing.T) Report {
 
 func physicalTempDir(t *testing.T) string {
 	t.Helper()
-	path, err := os.MkdirTemp("/private/tmp", "audio-preflight-transaction-")
+	base, err := filepath.EvalSymlinks(os.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	path, err := os.MkdirTemp(base, "audio-preflight-transaction-")
 	if err != nil {
 		t.Fatal(err)
 	}
