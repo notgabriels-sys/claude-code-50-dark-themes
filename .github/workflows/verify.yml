@@ -17,3 +17,45 @@ jobs:
         with:
           node-version: 22
       - run: node scripts/verify.mjs
+
+  audio-preflight-cli-private-candidates:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: products/audio-delivery-preflight-cli
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26.3'
+      - name: Format check
+        run: test -z "$(gofmt -l $(find . -name '*.go' -type f))"
+      - name: Linux tests
+        run: go test ./...
+      - name: Linux race detector
+        run: go test -race ./...
+      - name: Static analysis
+        run: go vet ./...
+      - name: Build and verify every private candidate
+        run: |
+          # Outputs must live outside the Git checkout: the packager requires a
+          # clean source tree, and untracked build directories inside the
+          # working tree would make the second build fail.
+          candidate_dir="${RUNNER_TEMP}/audio-preflight-private-candidates"
+          repro_a="${RUNNER_TEMP}/audio-preflight-repro-a"
+          repro_b="${RUNNER_TEMP}/audio-preflight-repro-b"
+          mkdir -p "$candidate_dir" "$repro_a" "$repro_b"
+          for platform in darwin-arm64 darwin-amd64 linux-amd64; do
+            ./scripts/package.sh -platform "$platform" -output-dir "$candidate_dir"
+            ./scripts/verify-archive.sh \
+              -archive "${candidate_dir}/audio-preflight-cli-private-candidate_1.0.0_${platform}.tar.gz" \
+              -platform "$platform" \
+              -source-revision "$(git rev-parse HEAD)"
+          done
+          ./scripts/package.sh -platform darwin-arm64 -output-dir "$repro_a"
+          ./scripts/package.sh -platform darwin-arm64 -output-dir "$repro_b"
+          cmp "${repro_a}/audio-preflight-cli-private-candidate_1.0.0_darwin-arm64.tar.gz" "${repro_b}/audio-preflight-cli-private-candidate_1.0.0_darwin-arm64.tar.gz"
+          cmp "${repro_a}/audio-preflight-cli-private-candidate_1.0.0_darwin-arm64.tar.gz.sha256" "${repro_b}/audio-preflight-cli-private-candidate_1.0.0_darwin-arm64.tar.gz.sha256"
+
+      # The job intentionally does not upload, release, tag, or publish these
+      # private candidates. They disappear with the ephemeral CI workspace.
