@@ -101,6 +101,11 @@ failures under false positives. MIT.
 python3 theme_contrast.py themes/
 ```
 
+### How these are built
+
+**[Every one of my 50 themes failed a contrast check](https://notgabriels-sys.github.io/dark-templates-demo/writing/contrast-floors.html)**
+— what the floors are, why a naive check is worse than none, and the fix.
+
 ### See them running first
 
 **[Live demos →](https://notgabriels-sys.github.io/dark-templates-demo/)** — business documents,
