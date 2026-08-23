@@ -39,9 +39,9 @@ colour picker and enter the hex.
 
 | Level | Theme key | Deep Field | Contrast on Mail's dark body |
 |---|---|---|---|
-| One | `claude` | `#7A8CFF` | 5.5:1 |
+| One | `claude` | `#7A8CFF` | 5.6:1 |
 | Two | `permission` | `#B7C1FF` | 9.6:1 |
-| Three | `inactive` | `#9DA0AF` | 6.3:1 |
+| Three | `inactive` | `#9DA0AF` | 6.4:1 |
 
 Level one carries the theme accent, so the message you are actually answering
 reads as Deep Field. Deeper levels drain toward neutral as the quote gets older.
@@ -119,17 +119,72 @@ Every value above comes from the theme's own JSON. Take the keys, not the hexes:
 | Highlight colour | `claude` |
 | Signature rule | `claude` |
 
-`claudeShimmer` and `text` have no home here — Mail owns its foreground colour.
-`bg`, `subtle` and `userMessageBackground` have nowhere to go at all, which is
-the whole limitation restated in table form.
+`text` has no home here — Mail owns its foreground colour. `bg`, `subtle` and
+`userMessageBackground` have nowhere to go at all, which is the whole limitation
+restated in table form. `claudeShimmer` earns its place below.
 
-Before committing to a palette, check the three quote levels against `#1E1E1E`
-rather than against the theme's `bg`. Several of the fifty have an `inactive`
-that is comfortable on their own background and marginal on Apple's:
+### Fourteen of them need a substitute first
+
+The quote levels are drawn on Apple's `#1E1E1E`, which is *lighter* than most of
+the fifty backgrounds — Deep Field's own `bg` is `#141724`. An accent tuned
+against the theme's darker ground loses margin on Apple's, and fourteen palettes
+drop a level under the 4.5:1 body-text floor because of it.
+
+It is never level three: `inactive` clears the floor on all fifty, worst case
+Iris at 6.25:1. The failures are level one (`claude`, six themes) and level two
+(`permission`, nine — Oxide fails both).
+
+**The fix is `claudeShimmer`**, the theme's own lighter partner to the accent. It
+clears 4.5:1 on all fifty, weakest Nightshade at 6.42:1, so a failing level can
+always be swapped for it without stepping outside the palette.
+
+| Theme | Level | Is | Swap to (`claudeShimmer`) |
+|---|---|---|---|
+| Acid | two | `#8A38D8` 2.89:1 | `#DBEF77` 13.20:1 |
+| Amber Room | two | `#8A6E3C` 3.47:1 | `#EBC782` 10.34:1 |
+| Cobalt Hour | one | `#4D7CFE` 4.47:1 | `#9EB8FE` 8.53:1 |
+| Coral | two | `#C05840` 3.74:1 | `#F7BCAB` 10.11:1 |
+| Hearth | two | `#75706A` 3.40:1 | `#EBAA86` 8.44:1 |
+| Mulberry | one | `#D05880` 4.28:1 | `#E298B0` 7.42:1 |
+| Nightshade | one | `#8656C6` 3.30:1 | `#B293DB` 6.42:1 |
+| Off Air | one | `#D35147` 4.00:1 | `#E38F89` 6.79:1 |
+| Oxide | one | `#C16044` 3.99:1 | `#D59481` 6.65:1 |
+| Oxide | two | `#8C7A6E` 4.07:1 | `#D59481` 6.65:1 |
+| Plasma | two | `#7A58E8` 3.48:1 | `#F2A0E0` 8.64:1 |
+| Signal Red | one | `#E5484D` 4.26:1 | `#EF8F92` 7.16:1 |
+| Sonar | two | `#1E6E5E` 2.74:1 | `#86EBD7` 11.81:1 |
+| Undertow | two | `#3E7A9E` 3.56:1 | `#E9F5F9` 15.00:1 |
+| VU Meter | two | `#E5484D` 4.26:1 | `#87E198` 10.52:1 |
+
+One wrinkle: **Oxide** fails both levels one and two, and the rule sends both to
+the same `#D59481`. Its palette cannot fully absorb this — the only other colour
+it has that clears the floor is `inactive` `#AFA09D` at 6.62:1, a near neighbour
+of the shimmer in both ratio and hue, so borrowing it just moves the collision to
+levels two and three. Oxide is warm-monochrome by design and Apple's lighter
+ground costs it the third step. Set level one to `#D59481` and let levels two and
+three share `#AFA09D`: two visible depths instead of three, which is what the
+palette actually supports here. Anything else means picking a hex from outside
+it.
+
+## Checking it yourself
+
+```bash
+node mail/quote-contrast.mjs             # all fifty, with ratios
+node mail/quote-contrast.mjs --failing   # just the fourteen and their swaps
+```
+
+The script self-tests its contrast maths against the WCAG reference values before
+printing anything and exits non-zero if a substitution still fails. That guard is
+not decoration: the first version of it linearised two of the three sRGB channels
+and left blue raw, which reported Deep Field's level one as 8.39:1 instead of
+5.58:1 — wrong, and wrong in the flattering direction.
+
+For the themes themselves, rather than their behaviour in Mail, the general tool
+still applies:
 
 ```bash
 python3 theme_contrast.py themes/
 ```
 
-([theme-contrast](https://github.com/notgabriels-sys/theme-contrast) — same tool
-the themes themselves are checked with.)
+([theme-contrast](https://github.com/notgabriels-sys/theme-contrast) — one Python
+file, no dependencies, same floors.)
