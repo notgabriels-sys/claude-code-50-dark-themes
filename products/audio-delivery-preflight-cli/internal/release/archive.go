@@ -1,0 +1,697 @@
+// Package release builds and verifies private, platform-specific CLI archives.
+package release
+
+import (
+	"archive/tar"
+	"bufio"
+	"bytes"
+	"compress/gzip"
+	"crypto/sha256"
+	"debug/buildinfo"
+	"debug/elf"
+	"debug/macho"
+	"encoding/hex"
+	"encoding/json"
+	"fmt"
+	"io"
+	"os"
+	"path"
+	"path/filepath"
+	"sort"
+	"strings"
+	"time"
+
+	"github.com/gabrielgarciaalonso/audio-delivery-preflight-cli/internal/version"
+)
+
+const executableName = "audio-preflight"
+
+type Mode string
+
+const (
+	PrivateCandidate Mode = "private-candidate"
+	CustomerRelease  Mode = "customer-release"
+)
+
+var baseDocuments = []string{
+	"README.md",
+	"PRIVACY.md",
+	"LIMITATIONS.md",
+	"VERIFY_SHA256.md",
+	"examples/README.md",
+}
+
+// ArchiveInput is the complete, already-built content of one private candidate.
+type ArchiveInput struct {
+	Version    string
+	Platform   string
+	Mode       Mode
+	Executable []byte
+	Documents  map[string][]byte
+	Provenance Provenance
+}
+
+// Verification identifies the archive version and platform the verifier must
+// establish without extracting any archive member to disk.
+type Verification struct {
+	Version    string
+	Platform   string
+	Mode       Mode
+	Provenance Provenance
+}
+
+type Provenance struct {
+	SourceRevision    string
+	Toolchain         string
+	RuntimeVersion    string
+	syntheticForTests bool
+}
+
+// LoadDocuments reads the exact private-candidate documentation set from a
+// CLI source directory. A final customer license is intentionally not an
+// accepted input until the seller completes the owner-controlled legal gate.
+func LoadDocuments(source string, mode Mode, acceptedLicensePath string) (map[string][]byte, error) {
+	mode, err := normalizeMode(mode)
+	if err != nil {
+		return nil, err
+	}
+	documents := make(map[string][]byte, len(requiredDocuments(mode)))
+	for _, name := range baseDocuments {
+		contents, err := os.ReadFile(filepath.Join(source, filepath.FromSlash(name)))
+		if err != nil {
+			return nil, fmt.Errorf("read private candidate document %q: %w", name, err)
+		}
+		if len(contents) == 0 {
+			return nil, fmt.Errorf("private candidate document %q is empty", name)
+		}
+		documents[name] = contents
+	}
+	if mode == PrivateCandidate {
+		if acceptedLicensePath != "" {
+			return nil, fmt.Errorf("private candidate must not accept a final license path")
+		}
+		contents, err := os.ReadFile(filepath.Join(source, "CUSTOMER_LICENSE_DRAFT.md"))
+		if err != nil || len(contents) == 0 {
+			return nil, fmt.Errorf("read private candidate draft license: %w", err)
+		}
+		documents["CUSTOMER_LICENSE_DRAFT.md"] = contents
+		return documents, nil
+	}
+	if acceptedLicensePath == "" || filepath.Base(acceptedLicensePath) == "CUSTOMER_LICENSE_DRAFT.md" {
+		return nil, fmt.Errorf("customer release requires an explicit accepted license path")
+	}
+	contents, err := os.ReadFile(acceptedLicensePath)
+	if err != nil || len(contents) == 0 || strings.Contains(strings.ToUpper(string(contents)), "DRAFT") {
+		return nil, fmt.Errorf("accepted license is missing, empty, or marked as a draft")
+	}
+	documents["LICENSE.txt"] = contents
+	return documents, nil
+}
+
+type manifest struct {
+	FormatVersion  string `json:"format_version"`
+	ReleaseStatus  string `json:"release_status"`
+	Version        string `json:"version"`
+	Platform       string `json:"platform"`
+	Executable     string `json:"executable"`
+	SourceRevision string `json:"source_revision"`
+	GoToolchain    string `json:"go_toolchain"`
+	BuildMode      string `json:"build_mode"`
+	CGOEnabled     string `json:"cgo_enabled"`
+	Trimpath       bool   `json:"trimpath"`
+	CommandPackage string `json:"command_package"`
+	RuntimeVersion string `json:"runtime_version"`
+}
+
+func archiveRoot(version, platform string) string {
+	return fmt.Sprintf("audio-preflight-cli-%s-%s", version, platform)
+}
+
+func candidateFilename(version, platform string) string {
+	return fmt.Sprintf("audio-preflight-cli-private-candidate_%s_%s.tar.gz", version, platform)
+}
+
+func releaseFilename(version, platform string, mode Mode) string {
+	if mode == CustomerRelease {
+		return fmt.Sprintf("audio-preflight-cli-customer-release_%s_%s.tar.gz", version, platform)
+	}
+	return candidateFilename(version, platform)
+}
+
+// CandidateFilename returns the required, deliberately non-public archive name.
+func CandidateFilename(version, platform string) string {
+	return candidateFilename(version, platform)
+}
+
+func ArchiveFilename(version, platform string, mode Mode) string {
+	return releaseFilename(version, platform, mode)
+}
+
+func requiredDocuments(mode Mode) []string {
+	docs := append([]string{}, baseDocuments...)
+	if mode == CustomerRelease {
+		return append(docs, "LICENSE.txt")
+	}
+	return append(docs, "CUSTOMER_LICENSE_DRAFT.md")
+}
+
+func normalizeMode(mode Mode) (Mode, error) {
+	if mode == "" {
+		return PrivateCandidate, nil
+	}
+	if mode != PrivateCandidate && mode != CustomerRelease {
+		return "", fmt.Errorf("invalid archive mode %q", mode)
+	}
+	return mode, nil
+}
+
+// BuildArchive writes a deterministic private candidate and refuses to replace
+// an existing output. Its gzip and tar timestamps, ownership, ordering, and
+// permissions are fixed so repeated builds from identical bytes are identical.
+func BuildArchive(output string, input ArchiveInput) error {
+	mode, err := normalizeMode(input.Mode)
+	if err != nil {
+		return err
+	}
+	input.Mode = mode
+	if err := validateInput(output, input); err != nil {
+		return err
+	}
+	files := map[string][]byte{executableName: input.Executable}
+	for name, contents := range input.Documents {
+		files[name] = contents
+	}
+	files["README.md"] = renderArchiveReadme(files["README.md"], input)
+	files["VERIFY_SHA256.md"] = renderArchiveVerification(input)
+	manifestBytes, err := json.MarshalIndent(manifest{
+		FormatVersion:  "1",
+		ReleaseStatus:  string(input.Mode),
+		Version:        input.Version,
+		Platform:       input.Platform,
+		Executable:     executableName,
+		SourceRevision: input.Provenance.SourceRevision,
+		GoToolchain:    input.Provenance.Toolchain,
+		BuildMode:      "exe", CGOEnabled: "0", Trimpath: true,
+		CommandPackage: "github.com/gabrielgarciaalonso/audio-delivery-preflight-cli/cmd/audio-preflight",
+		RuntimeVersion: input.Provenance.RuntimeVersion,
+	}, "", "  ")
+	if err != nil {
+		return fmt.Errorf("encode release manifest: %w", err)
+	}
+	files["RELEASE_MANIFEST.json"] = append(manifestBytes, '\n')
+	files["SHA256SUMS.txt"] = checksumFile(files)
+
+	file, err := os.OpenFile(output, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
+	if err != nil {
+		return fmt.Errorf("create private candidate archive: %w", err)
+	}
+	completed := false
+	defer func() {
+		if !completed {
+			_ = file.Close()
+			_ = os.Remove(output)
+		}
+	}()
+	gzipWriter := gzip.NewWriter(file)
+	gzipWriter.Name = ""
+	gzipWriter.Comment = ""
+	gzipWriter.ModTime = time.Unix(0, 0).UTC()
+	gzipWriter.OS = 255
+	tarWriter := tar.NewWriter(gzipWriter)
+	root := archiveRoot(input.Version, input.Platform)
+	if err := writeHeader(tarWriter, root+"/", tar.TypeDir, 0o755, nil); err != nil {
+		return err
+	}
+	for _, name := range sortedFileNames(files) {
+		mode := int64(0o644)
+		if name == executableName {
+			mode = 0o755
+		}
+		if err := writeHeader(tarWriter, root+"/"+name, tar.TypeReg, mode, files[name]); err != nil {
+			return err
+		}
+		if _, err := tarWriter.Write(files[name]); err != nil {
+			return fmt.Errorf("write %s: %w", name, err)
+		}
+	}
+	if err := tarWriter.Close(); err != nil {
+		return fmt.Errorf("finalize tar: %w", err)
+	}
+	if err := gzipWriter.Close(); err != nil {
+		return fmt.Errorf("finalize gzip: %w", err)
+	}
+	if err := file.Close(); err != nil {
+		return fmt.Errorf("close archive: %w", err)
+	}
+	completed = true
+	return nil
+}
+
+func renderArchiveReadme(source []byte, input ArchiveInput) []byte {
+	const packagingHeading = "\n## Release archive packaging"
+	base := strings.TrimSpace(string(source))
+	if index := strings.Index(base, packagingHeading); index >= 0 {
+		base = strings.TrimSpace(base[:index])
+	}
+	license := "CUSTOMER_LICENSE_DRAFT.md"
+	description := "This private-candidate archive is for controlled review only. It is not a customer-ready release."
+	if input.Mode == CustomerRelease {
+		license = "LICENSE.txt"
+		description = "This customer-release archive contains the owner-supplied accepted license file. Its status does not prove provider delivery, payment, signing, notarization, or publication."
+	}
+	return []byte(fmt.Sprintf("%s\n\n## This release archive\n\n- Archive filename: `%s`\n- Release status: `%s`\n- Platform: `%s`\n- Source revision: `%s`\n- License file: `%s`\n\n%s\n\nSee `VERIFY_SHA256.md` before extraction.\n", base, releaseFilename(input.Version, input.Platform, input.Mode), input.Mode, input.Platform, input.Provenance.SourceRevision, license, description))
+}
+
+func renderArchiveVerification(input ArchiveInput) []byte {
+	filename := releaseFilename(input.Version, input.Platform, input.Mode)
+	license := "CUSTOMER_LICENSE_DRAFT.md"
+	title := "private-candidate"
+	if input.Mode == CustomerRelease {
+		license = "LICENSE.txt"
+		title = "customer-release"
+	}
+	return []byte(fmt.Sprintf("# Verify this %s archive\n\nArchive filename: `%s`\n\nRelease status: `%s`\n\nPlatform: `%s`\n\nSource revision: `%s`\n\nLicense file: `%s`\n\nKeep the archive and its separately supplied `.sha256` sidecar in the same directory, then verify the outer digest before extraction:\n\n```sh\nshasum -a 256 -c %s.sha256\n# Linux alternative: sha256sum -c %s.sha256\n```\n\nFrom a verified source checkout at the recorded revision, validate the archive stream without extracting it:\n\n```sh\n./scripts/verify-archive.sh \\\n  -archive %s \\\n  -platform %s \\\n  -mode %s \\\n  -source-revision '%s'\n```\n\nAfter the outer digest and stream verifier pass, extract and validate every included regular file except `SHA256SUMS.txt` itself:\n\n```sh\ntar -xzf %s\ncd %s\nshasum -a 256 -c SHA256SUMS.txt\n# Linux alternative: sha256sum -c SHA256SUMS.txt\n```\n", title, filename, input.Mode, input.Platform, input.Provenance.SourceRevision, license, filename, filename, filename, input.Platform, input.Mode, input.Provenance.SourceRevision, filename, archiveRoot(input.Version, input.Platform)))
+}
+
+func validateInput(output string, input ArchiveInput) error {
+	mode, err := normalizeMode(input.Mode)
+	if err != nil {
+		return err
+	}
+	input.Mode = mode
+	if !validVersion(input.Version) || !validPlatform(input.Platform) {
+		return fmt.Errorf("invalid candidate version or platform")
+	}
+	if filepath.Base(output) != releaseFilename(input.Version, input.Platform, mode) {
+		return fmt.Errorf("archive must be named %q", releaseFilename(input.Version, input.Platform, mode))
+	}
+	if len(input.Executable) == 0 {
+		return fmt.Errorf("candidate executable is empty")
+	}
+	if input.Provenance.SourceRevision == "" || input.Provenance.Toolchain != version.Toolchain || input.Provenance.RuntimeVersion == "" {
+		return fmt.Errorf("release provenance is incomplete")
+	}
+	if len(input.Documents) != len(requiredDocuments(mode)) {
+		return fmt.Errorf("candidate document set is incomplete or contains an unexpected file")
+	}
+	for _, name := range requiredDocuments(mode) {
+		contents, ok := input.Documents[name]
+		if !ok || len(contents) == 0 {
+			return fmt.Errorf("candidate document %q is missing or empty", name)
+		}
+	}
+	return nil
+}
+
+func validVersion(version string) bool {
+	return version != "" && !strings.ContainsAny(version, "/\\") && !strings.Contains(version, "..")
+}
+
+func validPlatform(platform string) bool {
+	return platform == "darwin-arm64" || platform == "darwin-amd64" || platform == "linux-amd64"
+}
+
+func writeHeader(writer *tar.Writer, name string, typeflag byte, mode int64, body []byte) error {
+	header := &tar.Header{
+		Name:       name,
+		Mode:       mode,
+		Size:       int64(len(body)),
+		Typeflag:   typeflag,
+		ModTime:    time.Unix(0, 0).UTC(),
+		AccessTime: time.Time{},
+		ChangeTime: time.Time{},
+		Uid:        0,
+		Gid:        0,
+		Uname:      "",
+		Gname:      "",
+		Format:     tar.FormatUSTAR,
+	}
+	if typeflag == tar.TypeDir {
+		header.Size = 0
+	}
+	if err := writer.WriteHeader(header); err != nil {
+		return fmt.Errorf("write archive header %q: %w", name, err)
+	}
+	return nil
+}
+
+func sortedFileNames(files map[string][]byte) []string {
+	names := make([]string, 0, len(files))
+	for name := range files {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
+}
+
+func checksumFile(files map[string][]byte) []byte {
+	var lines []string
+	for _, name := range sortedFileNames(files) {
+		digest := sha256.Sum256(files[name])
+		lines = append(lines, hex.EncodeToString(digest[:])+"  "+name)
+	}
+	return []byte(strings.Join(lines, "\n") + "\n")
+}
+
+// VerifyArchive validates the compressed stream in place. It never follows or
+// creates paths from the archive, and rejects unsafe member types before any
+// caller could extract them.
+func VerifyArchive(archive string, expected Verification) error {
+	mode, err := normalizeMode(expected.Mode)
+	if err != nil || !validVersion(expected.Version) || !validPlatform(expected.Platform) {
+		return fmt.Errorf("invalid expected version or platform")
+	}
+	expected.Mode = mode
+	if expected.Provenance.SourceRevision == "" || expected.Provenance.Toolchain != version.Toolchain || expected.Provenance.RuntimeVersion == "" {
+		return fmt.Errorf("invalid expected provenance")
+	}
+	if filepath.Base(archive) != releaseFilename(expected.Version, expected.Platform, mode) {
+		return fmt.Errorf("archive filename does not identify the expected release mode")
+	}
+	file, err := os.Open(archive)
+	if err != nil {
+		return fmt.Errorf("open archive: %w", err)
+	}
+	defer file.Close()
+	buffered := bufio.NewReader(file)
+	gzipReader, err := gzip.NewReader(buffered)
+	if err != nil {
+		return fmt.Errorf("open gzip archive: %w", err)
+	}
+	gzipReader.Multistream(false)
+
+	root := archiveRoot(expected.Version, expected.Platform)
+	seen := make(map[string]fileRecord)
+	seenRoot := false
+	expectedNames := expectedMemberNames(mode)
+	memberCount := 0
+	var expandedSize int64
+	tarReader := tar.NewReader(gzipReader)
+	for {
+		header, err := tarReader.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return fmt.Errorf("read archive: %w", err)
+		}
+		memberCount++
+		if memberCount > len(expectedNames)+1 {
+			return fmt.Errorf("archive has too many members")
+		}
+		name, err := safeMemberName(header.Name, root)
+		if err != nil {
+			return err
+		}
+		if header.Typeflag == tar.TypeDir {
+			if name != "" || seenRoot || !canonicalHeader(header, 0o755) {
+				return fmt.Errorf("invalid archive root directory")
+			}
+			seenRoot = true
+			continue
+		}
+		if header.Typeflag != tar.TypeReg || header.Linkname != "" {
+			return fmt.Errorf("archive member %q is not a regular file", header.Name)
+		}
+		if !seenRoot || name == "" {
+			return fmt.Errorf("archive member %q appears before the root directory", header.Name)
+		}
+		if _, duplicate := seen[name]; duplicate {
+			return fmt.Errorf("archive has duplicate member %q", name)
+		}
+		if _, allowed := expectedNames[name]; !allowed {
+			return fmt.Errorf("archive has unexpected member %q", name)
+		}
+		if !canonicalHeader(header, expectedMode(name)) {
+			return fmt.Errorf("archive member %q has non-canonical metadata", name)
+		}
+		if header.Size < 0 || header.Size > memberLimit(name) || expandedSize > maxExpandedSize-header.Size {
+			return fmt.Errorf("archive member %q exceeds expanded-size limit", name)
+		}
+		expandedSize += header.Size
+		if err := allowedMode(name, header.Mode); err != nil {
+			return err
+		}
+		digest, contents, prefix, err := readAndHash(tarReader, header.Size, name)
+		if err != nil {
+			return err
+		}
+		seen[name] = fileRecord{digest: digest, contents: contents, prefix: prefix}
+	}
+	if !seenRoot {
+		return fmt.Errorf("archive root directory is missing")
+	}
+	if err := gzipReader.Close(); err != nil {
+		return fmt.Errorf("close gzip archive: %w", err)
+	}
+	if _, err := buffered.ReadByte(); err != io.EOF {
+		return fmt.Errorf("archive has trailing gzip or tar payload")
+	}
+	if err := validateRequiredFiles(seen, mode); err != nil {
+		return err
+	}
+	if err := validateManifest(seen["RELEASE_MANIFEST.json"].contents, expected); err != nil {
+		return err
+	}
+	if err := validateExecutable(seen[executableName].contents, expected.Platform, expected.Version, expected.Provenance.SourceRevision, expected.Provenance.syntheticForTests); err != nil {
+		return err
+	}
+	if err := validateChecksums(seen, seen["SHA256SUMS.txt"].contents); err != nil {
+		return err
+	}
+	return nil
+}
+
+type fileRecord struct {
+	digest   string
+	contents []byte
+	prefix   []byte
+}
+
+func safeMemberName(member, root string) (string, error) {
+	if member == "" || strings.HasPrefix(member, "/") || strings.Contains(member, "\\") {
+		return "", fmt.Errorf("unsafe archive member path %q", member)
+	}
+	clean := path.Clean(member)
+	if clean != strings.TrimSuffix(member, "/") || clean == "." || strings.HasPrefix(clean, "../") || strings.Contains(clean, "/../") {
+		return "", fmt.Errorf("unsafe archive member path %q", member)
+	}
+	if clean == root {
+		return "", nil
+	}
+	prefix := root + "/"
+	if !strings.HasPrefix(clean, prefix) {
+		return "", fmt.Errorf("archive member %q is outside expected root", member)
+	}
+	return strings.TrimPrefix(clean, prefix), nil
+}
+
+func allowedMode(name string, mode int64) error {
+	if name == executableName {
+		if mode != 0o755 {
+			return fmt.Errorf("executable %q must have mode 0755", name)
+		}
+		return nil
+	}
+	if mode != 0o644 {
+		return fmt.Errorf("archive file %q must have mode 0644", name)
+	}
+	return nil
+}
+
+const (
+	maxExecutableSize = 64 << 20
+	maxDocumentSize   = 2 << 20
+	maxControlSize    = 1 << 20
+	maxExpandedSize   = 72 << 20
+)
+
+func expectedMemberNames(mode Mode) map[string]struct{} {
+	names := map[string]struct{}{executableName: {}, "RELEASE_MANIFEST.json": {}, "SHA256SUMS.txt": {}}
+	for _, name := range requiredDocuments(mode) {
+		names[name] = struct{}{}
+	}
+	return names
+}
+
+func expectedMode(name string) int64 {
+	if name == executableName {
+		return 0o755
+	}
+	return 0o644
+}
+
+func memberLimit(name string) int64 {
+	if name == executableName {
+		return maxExecutableSize
+	}
+	if name == "RELEASE_MANIFEST.json" || name == "SHA256SUMS.txt" {
+		return maxControlSize
+	}
+	return maxDocumentSize
+}
+
+func canonicalHeader(header *tar.Header, wantMode int64) bool {
+	epoch := time.Unix(0, 0).UTC()
+	return header.Mode == wantMode && header.Uid == 0 && header.Gid == 0 && header.Uname == "" && header.Gname == "" && header.ModTime.Equal(epoch) && header.AccessTime.IsZero() && header.ChangeTime.IsZero() && header.Format == tar.FormatUSTAR && len(header.PAXRecords) == 0 && len(header.Xattrs) == 0
+}
+
+func readAndHash(reader io.Reader, size int64, name string) (string, []byte, []byte, error) {
+	if size < 0 || size > memberLimit(name) {
+		return "", nil, nil, fmt.Errorf("archive member %q has an unsafe size", name)
+	}
+	hash := sha256.New()
+	prefix := &prefixCapture{limit: 32}
+	stream := io.TeeReader(reader, io.MultiWriter(hash, prefix))
+	var contents []byte
+	if name == executableName || name == "RELEASE_MANIFEST.json" || name == "SHA256SUMS.txt" {
+		if name != executableName && size > maxControlSize {
+			return "", nil, nil, fmt.Errorf("archive control file %q is too large", name)
+		}
+		contents = make([]byte, size)
+		if _, err := io.ReadFull(stream, contents); err != nil {
+			return "", nil, nil, fmt.Errorf("read archive member %q: %w", name, err)
+		}
+	} else if _, err := io.Copy(io.Discard, stream); err != nil {
+		return "", nil, nil, fmt.Errorf("read archive member %q: %w", name, err)
+	}
+	return hex.EncodeToString(hash.Sum(nil)), contents, prefix.bytes, nil
+}
+
+type prefixCapture struct {
+	limit int
+	bytes []byte
+}
+
+func (capture *prefixCapture) Write(value []byte) (int, error) {
+	remaining := capture.limit - len(capture.bytes)
+	if remaining > 0 {
+		if remaining > len(value) {
+			remaining = len(value)
+		}
+		capture.bytes = append(capture.bytes, value[:remaining]...)
+	}
+	return len(value), nil
+}
+
+func validateRequiredFiles(seen map[string]fileRecord, mode Mode) error {
+	required := append([]string{executableName, "RELEASE_MANIFEST.json", "SHA256SUMS.txt"}, requiredDocuments(mode)...)
+	if len(seen) != len(required) {
+		return fmt.Errorf("archive has missing or unexpected files")
+	}
+	for _, name := range required {
+		if _, ok := seen[name]; !ok {
+			return fmt.Errorf("archive required file %q is missing", name)
+		}
+	}
+	return nil
+}
+
+func validateManifest(contents []byte, expected Verification) error {
+	var got manifest
+	if err := json.Unmarshal(contents, &got); err != nil {
+		return fmt.Errorf("read release manifest: %w", err)
+	}
+	if got.FormatVersion != "1" || got.ReleaseStatus != string(expected.Mode) || got.Version != expected.Version || got.Platform != expected.Platform || got.Executable != executableName || got.SourceRevision != expected.Provenance.SourceRevision || got.GoToolchain != expected.Provenance.Toolchain || got.BuildMode != "exe" || got.CGOEnabled != "0" || !got.Trimpath || got.CommandPackage != "github.com/gabrielgarciaalonso/audio-delivery-preflight-cli/cmd/audio-preflight" || got.RuntimeVersion != expected.Provenance.RuntimeVersion {
+		return fmt.Errorf("release manifest does not match the expected private candidate")
+	}
+	return nil
+}
+
+func validateExecutable(executable []byte, platform, wantVersion, sourceRevision string, syntheticForTests bool) error {
+	if len(executable) == 0 {
+		return fmt.Errorf("archive executable is empty")
+	}
+	reader := bytes.NewReader(executable)
+	switch platform {
+	case "darwin-arm64":
+		file, err := macho.NewFile(reader)
+		if err != nil {
+			return fmt.Errorf("parse macOS executable: %w", err)
+		}
+		defer file.Close()
+		if file.Type != macho.TypeExec || file.Cpu != macho.CpuArm64 {
+			return fmt.Errorf("macOS executable has unexpected type or architecture")
+		}
+	case "darwin-amd64":
+		file, err := macho.NewFile(reader)
+		if err != nil {
+			return fmt.Errorf("parse macOS executable: %w", err)
+		}
+		defer file.Close()
+		if file.Type != macho.TypeExec || file.Cpu != macho.CpuAmd64 {
+			return fmt.Errorf("macOS executable has unexpected type or architecture")
+		}
+	case "linux-amd64":
+		file, err := elf.NewFile(reader)
+		if err != nil {
+			return fmt.Errorf("parse Linux executable: %w", err)
+		}
+		defer file.Close()
+		if (file.Type != elf.ET_EXEC && file.Type != elf.ET_DYN) || file.Machine != elf.EM_X86_64 {
+			return fmt.Errorf("Linux executable has unexpected type or architecture")
+		}
+	default:
+		return fmt.Errorf("unsupported executable platform %q", platform)
+	}
+	info, err := buildinfo.Read(bytes.NewReader(executable))
+	if err != nil {
+		return fmt.Errorf("read Go build metadata: %w", err)
+	}
+	if info.GoVersion != version.Toolchain || info.Path != "github.com/gabrielgarciaalonso/audio-delivery-preflight-cli/cmd/audio-preflight" {
+		return fmt.Errorf("Go build metadata does not identify the expected CLI")
+	}
+	settings := make(map[string]string, len(info.Settings))
+	for _, setting := range info.Settings {
+		settings[setting.Key] = setting.Value
+	}
+	goos, goarch, _ := strings.Cut(platform, "-")
+	if settings["GOOS"] != goos || settings["GOARCH"] != goarch || settings["CGO_ENABLED"] != "0" || settings["-buildmode"] != "exe" || settings["-trimpath"] != "true" {
+		return fmt.Errorf("Go build settings do not match the release contract")
+	}
+	if settings["-tags"] != "audio_preflight_v"+strings.ReplaceAll(wantVersion, ".", "_") {
+		return fmt.Errorf("Go build metadata does not bind executable version %q", wantVersion)
+	}
+	provenanceMarker := []byte("audio-preflight:v=" + wantVersion + ";rev=" + sourceRevision)
+	if !syntheticForTests && !bytes.Contains(executable, provenanceMarker) {
+		return fmt.Errorf("executable does not bind linked version %q and clean source revision", wantVersion)
+	}
+	return nil
+}
+
+func validateChecksums(seen map[string]fileRecord, contents []byte) error {
+	lines := strings.Split(strings.TrimSuffix(string(contents), "\n"), "\n")
+	if len(lines) != len(seen)-1 || len(lines) == 0 {
+		return fmt.Errorf("checksum manifest does not cover every archive file")
+	}
+	declared := make(map[string]string, len(lines))
+	for _, line := range lines {
+		parts := strings.SplitN(line, "  ", 2)
+		if len(parts) != 2 || len(parts[0]) != sha256.Size*2 || !validChecksumPath(parts[1]) {
+			return fmt.Errorf("invalid checksum manifest entry %q", line)
+		}
+		if _, err := hex.DecodeString(parts[0]); err != nil {
+			return fmt.Errorf("invalid checksum digest for %q", parts[1])
+		}
+		if _, duplicate := declared[parts[1]]; duplicate || parts[1] == "SHA256SUMS.txt" {
+			return fmt.Errorf("duplicate or self-referential checksum entry %q", parts[1])
+		}
+		declared[parts[1]] = parts[0]
+	}
+	for name, record := range seen {
+		if name == "SHA256SUMS.txt" {
+			continue
+		}
+		if declared[name] != record.digest {
+			return fmt.Errorf("checksum mismatch for %q", name)
+		}
+	}
+	return nil
+}
+
+func validChecksumPath(name string) bool {
+	if name == "" || strings.Contains(name, "\\") || strings.HasPrefix(name, "/") || path.Clean(name) != name || strings.HasPrefix(name, "../") {
+		return false
+	}
+	return true
+}
