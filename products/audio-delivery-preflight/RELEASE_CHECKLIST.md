@@ -8,7 +8,7 @@ This checklist separates repository evidence, a local archive, a customer-tested
 ## Pre-package
 
 - [x] Repository history includes PR #1; the later hardening wave was independently reviewed and merged locally.
-- [x] Exact merged implementation passes 238 tests and both release builds.
+- [x] Exact replacement implementation passes 240 tests and both release builds.
 - [x] Repository shop verifier passes without payment-surface changes.
 - [x] Bundle identifier fixed as `com.gabrielgarciaalonso.AudioDeliveryPreflight`.
 - [x] Marketing version fixed as `0.1.0`; build version fixed as `1`.
@@ -26,10 +26,11 @@ This checklist separates repository evidence, a local archive, a customer-tested
 - [x] App and CLI are exact Universal binaries containing only `arm64` and `x86_64`; packaging cannot silently fall back to one architecture.
 - [x] Archive verifier checks the external and internal SHA-256 evidence, ZIP integrity, duplicate and unsafe paths, exact manifest coverage, required files, permissions, exact architecture set, ad-hoc signatures, identifier, source-commit format, version, macOS floor, icon digest, disclosure, and identity/path leakage.
 - [x] Package contract runs the packaged CLI against the sample, confirms source immutability, refuses overwrite, rejects a false external sidecar, and rejects changed content even behind a correctly recomputed external sidecar.
-- [x] Build the selected unsigned release archive from clean source commit `60b963804983c5b6d121761687899981e89d46f9`. The product tree has no diff from that commit to branch tip `c4c9bff`; the later tip changes only the storefront index.
-- [x] Record archive SHA-256 `be7a195bbbb3f57a47be4af792b5c214416181f3c95f657d1d3649199fed6d04` for the 2026-08-23 no-Apple-payment candidate.
-- [x] Copy the ZIP and checksum to `Audio Delivery Preflight 0.1.0 Universal Unsigned 60b9638` outside temporary storage, verify the external sidecar there, and pass ZIP integrity testing.
-- [x] Independently extract and normally launch the exact durable `60b9638` archive rather than relying on an earlier candidate or build-tree executable. The exact process path was read back, the native chooser selected the included sample, and the app reached Review requirements without a Gatekeeper bypass.
+- [x] Build the replacement unsigned release archive from clean source commit `41beb7477bce4dd16f60d4a089c8a3c6f924f83a`, including dedicated low-temporary-disk findings for audio and artwork staging failures.
+- [x] Record archive SHA-256 `cb175ec7a22413ae8d2a024f31471766da4dd98bac84718cfbb28184a3bc9ebf` for the 2026-08-23 no-Apple-payment replacement candidate.
+- [x] Copy the ZIP and checksum to `Audio Delivery Preflight 0.1.0 Universal Unsigned 41beb74` outside temporary storage, verify the external sidecar and ZIP structure there, and retain the earlier durable pair for rollback until provider readback succeeds.
+- [x] Independently extract the exact durable `41beb74` archive, verify provenance, architecture, signatures, internal and external manifests, run its packaged CLI against the included sample, export all reports, require `ready`, and prove source immutability.
+- [ ] Normally launch and complete the GUI workflow in the exact replacement `41beb74` app. Review-requirements evidence from the superseded `60b9638` app remains historical only.
 
 ## Selected unsigned distribution route
 
@@ -37,17 +38,19 @@ Apple Developer Program payment, Developer ID certificate creation, notarization
 
 - [x] Confirm the Keychain contains no valid Developer ID signing identity; packaging fails closed rather than selecting an unintended identity.
 - [x] Apply coherent ad-hoc signatures and verify them with `codesign --verify --deep --strict`.
-- [x] Record the packaging-time literal Gatekeeper result as rejected rather than accepted or notarized. A 2026-08-23 recheck on macOS 27.0 beta returned `internal error in Code Signing subsystem` for this app, TextEdit, and `/usr/bin/true`; treat current Gatekeeper reassessment as host-unavailable, not as package acceptance or mutation.
+- [x] Record the packaging-time and durable-copy Gatekeeper result as `rejected (exit 3)` rather than accepted or notarized. The earlier host-wide `spctl` internal error cleared without a restart or security-setting change; the complete verifier and independent archive verifier now both return the expected rejection.
 - [x] Include an unavoidable unsigned disclosure and Apple-documented manual opening path in the customer archive.
 - [x] Put the same unsigned, not-notarized, Gatekeeper, checksum, and manual-opening disclosure on the Gumroad product page before purchase.
-- [x] Upload the exact approved `60b9638` archive and checksum to Gumroad product `vddnq`, download the saved folder back, and verify SHA-256 `be7a195b...6d04` from that download.
+- [x] Preserve the previously verified `60b9638` archive and checksum on Gumroad product `vddnq` while the replacement is being prepared; its downloaded provider copy verified as SHA-256 `be7a195b...6d04`.
+- [ ] Replace the unpublished Gumroad attachment with the exact `41beb74` ZIP and sidecar, download the saved folder, verify SHA-256 `cb175ec7...9ebf`, and only then remove the superseded provider files.
 - [ ] Exercise the browser-quarantined customer copy: extract, launch, complete the core workflow, and confirm the selected source folder remains unchanged.
 
 Do not describe the unsigned archive as Apple-verified, notarized, or a normal one-click installation.
 
 ## Manual product validation
 
-- [x] Choose the included deterministic sample using the native chooser in the exact durable `60b9638` app and reach Review requirements.
+- [x] Historical smoke: choose the included deterministic sample using the native chooser in the durable `60b9638` app and reach Review requirements.
+- [ ] Repeat chooser, Review requirements, scan, results, and exports in the exact durable replacement `41beb74` app.
 - [ ] Drop a Finder folder into the application.
 - [ ] Review every built-in preset and a Custom preset.
 - [ ] Start and cancel a scan; confirm the result cannot be reported as ready.
