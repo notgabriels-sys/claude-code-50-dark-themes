@@ -105,7 +105,11 @@ Tidepool · Tungsten · Ultraviolet · Undergrowth · Undertow · VU Meter · Ve
 
 ## More dark tools
 
-Same palettes and the same care, applied elsewhere. All one-time purchases, no subscriptions.
+Same palettes and the same care, applied elsewhere. All one-time purchases, no
+subscriptions, and none of it needed to use the themes above.
+
+<details>
+<summary>Ten packs — UI kit, HTML templates, app screens, email, social, cheatsheets, keycaps, wallpapers, palettes</summary>
 
 | | |
 |---|---|
@@ -119,6 +123,8 @@ Same palettes and the same care, applied elsewhere. All one-time purchases, no s
 | **[Keyboard Shortcuts](https://notgabriel.gumroad.com/l/wgtbkq)** — keycap reference cards | VS Code, macOS, Vim, tmux · €7 |
 | **[Dark Wallpapers](https://notgabriel.gumroad.com/l/bqgfv)** + **[Vol. 2 · Aurora](https://notgabriel.gumroad.com/l/jqrdfy)** | 4K, desktop & mobile · from €6 |
 | **[50 Dark Palettes](https://notgabriel.gumroad.com/l/xcxeb)** — for designers & devs | CSS, SCSS, Tailwind, .ase, .gpl · $9 |
+
+</details>
 
 **[Everything Dark — the complete kit →](https://notgabriel.gumroad.com/l/wuhehk)** (all of the above, $39)
 
