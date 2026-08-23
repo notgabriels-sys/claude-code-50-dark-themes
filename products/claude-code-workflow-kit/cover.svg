@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#17181a"/>
+      <stop offset="1" stop-color="#0b0c0d"/>
+    </linearGradient>
+  </defs>
+  <rect width="1280" height="720" fill="url(#bg)"/>
+  <circle cx="1040" cy="100" r="260" fill="#7c5cff" opacity="0.10"/>
+  <circle cx="120" cy="610" r="300" fill="#36d399" opacity="0.08"/>
+  <text x="84" y="104" fill="#36d399" font-family="Menlo, Consolas, monospace" font-size="22" letter-spacing="7">CLAUDE CODE · WORKFLOW</text>
+  <text x="84" y="218" fill="#f2f4f8" font-family="Menlo, Consolas, monospace" font-size="72" font-weight="700">Workflow Kit</text>
+  <text x="88" y="278" fill="#a5acb8" font-family="Menlo, Consolas, monospace" font-size="30">Templates for cleaner agent sessions</text>
+  <g transform="translate(86 350)">
+    <rect width="1108" height="230" rx="24" fill="#0a0b0c" stroke="#2e3138"/>
+    <text x="42" y="66" fill="#f2f4f8" font-family="Menlo, Consolas, monospace" font-size="26">✓ repo audits</text>
+    <text x="42" y="118" fill="#f2f4f8" font-family="Menlo, Consolas, monospace" font-size="26">✓ bug investigations</text>
+    <text x="42" y="170" fill="#f2f4f8" font-family="Menlo, Consolas, monospace" font-size="26">✓ PR reviews</text>
+    <text x="458" y="66" fill="#f2f4f8" font-family="Menlo, Consolas, monospace" font-size="26">✓ release preflights</text>
+    <text x="458" y="118" fill="#f2f4f8" font-family="Menlo, Consolas, monospace" font-size="26">✓ handoffs</text>
+    <text x="458" y="170" fill="#f2f4f8" font-family="Menlo, Consolas, monospace" font-size="26">✓ project instructions</text>
+  </g>
+  <text x="84" y="650" fill="#a5acb8" font-family="Menlo, Consolas, monospace" font-size="22">NotGabriels · practical templates for AI-assisted development</text>
+</svg>
