@@ -81,6 +81,8 @@ public struct AudioInspector: AudioInspecting {
             return try await Self.inspect(asset: asset, container: candidate?.container)
         } catch is CancellationError {
             throw CancellationError()
+        } catch TrustedFileAccessError.insufficientStagingCapacity {
+            return Self.insufficientStagingCapacityOutcome(path: source.relativePath)
         } catch {
             return Self.unreadableOutcome(path: source.relativePath)
         }
@@ -188,6 +190,33 @@ public struct AudioInspector: AudioInspecting {
                     evidence: [.init(label: "isReadable", value: .boolean(false))],
                     expected: "A readable regular audio file inside the selected root.",
                     suggestedAction: "Replace or re-export the audio file.",
+                    origin: .engine,
+                    engineVersion: "0.1.0"
+                ),
+            ]
+        )
+    }
+
+    private static func insufficientStagingCapacityOutcome(path: RelativePath) -> InspectionOutcome<AudioProperties> {
+        InspectionOutcome(
+            status: .failed,
+            value: AudioProperties(isReadable: false),
+            findings: [
+                Finding(
+                    ruleID: "inspection.audio-staging-capacity",
+                    severity: .error,
+                    title: "Not enough temporary-disk space",
+                    explanation: "The audio file was not inspected because the resolved macOS temporary volume could not preserve the required free-space reserve.",
+                    affectedPaths: [path],
+                    evidence: [
+                        .init(label: "isReadable", value: .boolean(false)),
+                        .init(
+                            label: "minimumReserveBytes",
+                            value: .integer(Int(TrustedFileAccess.minimumStagingReserveByteCount))
+                        ),
+                    ],
+                    expected: "Enough temporary-disk space to stage the audio file while preserving the documented reserve.",
+                    suggestedAction: "Free local disk space, then run the preflight again. The audio file does not need to be replaced based on this finding alone.",
                     origin: .engine,
                     engineVersion: "0.1.0"
                 ),

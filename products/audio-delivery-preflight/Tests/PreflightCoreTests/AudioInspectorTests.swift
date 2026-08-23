@@ -91,6 +91,33 @@ final class AudioInspectorTests: XCTestCase {
         )
     }
 
+    func testInsufficientStagingCapacityExplainsTemporaryDiskSpaceForAudio() async throws {
+        let fixture = try InspectionFixture.make()
+        defer { fixture.remove() }
+        let path = try fixture.write(
+            FixtureFactory.wavData(channels: 2, sampleRate: 48_000, bitDepth: 24, frameCount: 1),
+            to: "Masters/Main Master.wav"
+        )
+        let inspector = AudioInspector(
+            stagingDirectory: fixture.stagingDirectory,
+            availableByteCountProvider: { _ in
+                TrustedFileAccess.minimumStagingReserveByteCount - 1
+            }
+        )
+
+        let outcome = try await inspector.inspect(source: fixture.source(path))
+        let finding = try XCTUnwrap(outcome.findings.first)
+
+        XCTAssertEqual(outcome.status, .failed)
+        XCTAssertEqual(outcome.value?.isReadable, false)
+        XCTAssertEqual(outcome.findings.count, 1)
+        XCTAssertEqual(finding.ruleID, "inspection.audio-staging-capacity")
+        XCTAssertTrue(finding.suggestedAction.contains("Free local disk space"))
+        XCTAssertTrue(finding.suggestedAction.contains("does not need to be replaced"))
+        XCTAssertFalse(outcome.findings.contains { $0.ruleID == "inspection.audio-unreadable" })
+        XCTAssertEqual(try fixture.stagingFiles(), [])
+    }
+
     func testPCMMonoWAVReportsMeasuredPropertiesFromTrustedSource() async throws {
         let fixture = try InspectionFixture.make()
         defer { fixture.remove() }
