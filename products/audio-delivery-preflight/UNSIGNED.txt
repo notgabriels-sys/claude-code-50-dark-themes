@@ -1,11 +1,28 @@
-DEVELOPER-ID-UNSIGNED DEVELOPMENT CANDIDATE
+DEVELOPER-ID-UNSIGNED MACOS BUILD — READ BEFORE OPENING
 
-The application and CLI carry only ad-hoc signatures so macOS can execute the
-binaries. An ad-hoc signature provides no verified publisher identity. This
-archive has not been signed with an Apple Developer ID certificate and has not
-been notarized by Apple. macOS Gatekeeper may block or warn about the
-application. Do not describe this archive as a normal one-click installation.
+The application and CLI carry only ad-hoc signatures. An ad-hoc signature
+provides local code-integrity structure but no verified publisher identity.
+This archive has not been signed with an Apple Developer ID certificate and
+has not been notarized by Apple. Apple therefore has not checked this build for
+malicious software, and macOS Gatekeeper may block or warn about the app.
+This is not a normal one-click installation.
 
-The archive is provided only for controlled release validation. Before a paid
-public launch, either sign and notarize the app or disclose this limitation
-prominently on the product page before purchase.
+Before opening the app:
+
+1. Download both the ZIP and its `.sha256` file from the seller.
+2. In Terminal, run `shasum -a 256 -c <checksum-file>` and continue only if it
+   reports `OK` for the ZIP.
+3. Move the app to Applications and try to open it once.
+4. If macOS says the developer cannot be verified, continue only if you trust
+   the source and the checksum matched. Open System Settings > Privacy &
+   Security, scroll to Security, and use Open Anyway. macOS may require your
+   login password. Apple documents this temporary exception at
+   https://support.apple.com/102445.
+
+Do not override a warning that the app "will damage your computer" or that the
+app is damaged. Delete that copy and obtain a fresh download or contact the
+seller through the Gumroad receipt.
+
+This unsigned limitation must also be shown on the product page before
+purchase. The archive must not be represented as Apple-verified, notarized, or
+a normal one-click installation.

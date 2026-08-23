@@ -26,22 +26,23 @@ This checklist separates repository evidence, a local archive, a customer-tested
 - [x] App and CLI are exact Universal binaries containing only `arm64` and `x86_64`; packaging cannot silently fall back to one architecture.
 - [x] Archive verifier checks the external and internal SHA-256 evidence, ZIP integrity, duplicate and unsafe paths, exact manifest coverage, required files, permissions, exact architecture set, ad-hoc signatures, identifier, source-commit format, version, macOS floor, icon digest, disclosure, and identity/path leakage.
 - [x] Package contract runs the packaged CLI against the sample, confirms source immutability, refuses overwrite, rejects a false external sidecar, and rejects changed content even behind a correctly recomputed external sidecar.
-- [ ] Build the real release archive from the exact intended source commit.
-- [ ] Record the exact source commit and archive SHA-256.
+- [x] Build a durable unsigned release archive from clean source commit `bad90f9418316a48428c0e29d8c523ef92f536dd`.
+- [x] Record archive SHA-256 `77965a4e616d7c6ad880fe3e281c8df426728508eb910783847a3c0c929bce27` for the 2026-08-23 durable candidate.
 - [ ] Copy the ZIP and checksum to a separate location and verify them there.
 - [ ] Extract and launch the copied archive rather than the build-tree executable.
 
-## Apple distribution
+## Selected unsigned distribution route
 
-- [ ] Install or select the correct Apple Developer ID Application certificate.
-- [ ] Sign nested executable content and the final `.app` with hardened runtime.
-- [ ] Verify the signature with `codesign --verify --deep --strict --verbose=2`.
-- [ ] Assess with `spctl --assess --type execute --verbose=4`.
-- [ ] Submit to Apple notarization and wait for an accepted result.
-- [ ] Staple the notarization ticket and reassess the stapled application.
-- [ ] Rebuild the customer archive from the final stapled application.
+Apple Developer Program payment, Developer ID certificate creation, notarization, and stapling are **not applicable** to the route selected by Gabriel on 2026-08-23. Re-open those steps only if Gabriel explicitly changes that decision.
 
-If signing and notarization are deliberately deferred, the product page, checkout description, and included documentation must explain the unsigned Gatekeeper limitation before purchase. Do not describe an unsigned archive as a normal one-click installation.
+- [x] Confirm the Keychain contains no valid Developer ID signing identity; packaging fails closed rather than selecting an unintended identity.
+- [x] Apply coherent ad-hoc signatures and verify them with `codesign --verify --deep --strict`.
+- [x] Record the literal Gatekeeper result as rejected rather than accepted or notarized.
+- [x] Include an unavoidable unsigned disclosure and Apple-documented manual opening path in the customer archive.
+- [ ] Put the same unsigned, not-notarized, Gatekeeper, and manual-opening disclosure on the product page and checkout before purchase.
+- [ ] Upload the exact approved archive and checksum, download them through the customer path, verify the checksum, and exercise the quarantined copy.
+
+Do not describe the unsigned archive as Apple-verified, notarized, or a normal one-click installation.
 
 ## Manual product validation
 

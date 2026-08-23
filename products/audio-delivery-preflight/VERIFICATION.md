@@ -26,6 +26,14 @@ The script resolves its own product root and, with strict shell error handling:
 
 The generated fixture contains only repository-generated test data: a one-second stereo 48 kHz 24-bit PCM WAV, a 3000 x 3000 RGB PNG, and synthetic credits text.
 
+### 2026-08-23 no-Apple-payment reconciliation
+
+The complete verifier was rerun against clean commit `bad90f9418316a48428c0e29d8c523ef92f536dd`: 238 tests passed with zero failures, both optimized products built, the deterministic sample returned `ready`, source evidence remained unchanged, adversarial probes passed, and the Universal archive contract passed. A durable candidate was created with SHA-256 `77965a4e616d7c6ad880fe3e281c8df426728508eb910783847a3c0c929bce27`. It contains exact `arm64` and `x86_64` executables with coherent ad-hoc signatures. Its Gatekeeper assessment is rejected, as expected for the explicitly Developer-ID-unsigned and not-notarized route.
+
+The exact packaged app launched and exposed the local-processing statement, chooser, drop zone, and all four preset choices. Selecting Digital Release updated the visible preset value. The native chooser opened on the packaged sample delivery. On chooser confirmation, the computer-control service disconnected while the application process remained alive and no new application crash report appeared. Folder-selection completion, requirements display, scanning, cancellation, results, exports, keyboard, VoiceOver, appearance, and quarantined-download behavior remain unverified; the disconnect is not counted as product success or product failure.
+
+The signed-in Gumroad catalog was read back on 2026-08-23. `Audio Delivery Preflight` remains **Unpublished** at €24. Its attached ZIP and sidecar still identify the older archive SHA-256 `82350f0b881480e7bc2d2794a1d9002c185676fe9a1f1d509164ff2c963929a4`, not the durable `bad90f9` candidate. No provider file, copy, price, refund policy, or publication state was changed during this reconciliation.
+
 The deterministic candidate run on 2026-08-21 against correction implementation commit `905e5daec9d8107e4bd91f11e19ed06d8573afb7` observed the following:
 
 - 238 tests executed with 0 failures;
@@ -97,7 +105,7 @@ Therefore the copied-real-delivery immutability check, offline-network scan, mul
 - Compare supported properties with trusted local tools for more than one audio and artwork format.
 - Observe or deny network access while scanning the final distribution build.
 - Run on an independent Mac or virtual machine at the declared macOS 14 floor.
-- Build a distributable `.app`, then code-sign and notarize it or disclose the unsigned-installation limitation before purchase.
+- For the selected no-Apple-payment route, disclose the unsigned/not-notarized status, expected Gatekeeper limitation, checksum verification, and manual opening path before purchase.
 - Assemble, checksum, and independently open the customer archive.
 - Create and read back the provider product, price, currency, tax presentation, delivery attachment, and live checkout only under separate authorization.
 - Conduct a zero-charge test purchase only after the account owner explicitly authorizes that live action at that time, then independently open the customer download.
@@ -108,7 +116,7 @@ Until those gates are complete, this repository contains a local candidate, not 
 
 The release-packaging branch adds a repeatable assembly and independent-verification path for a Developer-ID-unsigned version 0.1.0 candidate. The packager first runs the complete product verifier, builds separate `arm64` and `x86_64` app and CLI executables, and combines each pair into an exact Universal binary without a single-architecture fallback. The package uses ad-hoc signatures only, which permit execution but establish no publisher identity or Apple trust. The real-binary packaging contract requires an explicitly named Universal ZIP and release root, `.app` structure, selected icon and bundle metadata, CLI, deterministic sample delivery, documentation, unsigned disclosure, source/build provenance, exact internal-manifest coverage, bundle identifier, version, macOS 14 floor, safe and unique archive paths, and matching external SHA-256 sidecar. It compares the packaged icon with the selected source asset and recorded provenance, verifies the signatures and Gatekeeper result, runs the packaged CLI against the included sample, confirms sample immutability, refuses overwrite, rejects a false external sidecar, and rejects changed archive content even behind a correctly recomputed external sidecar. The complete product verifier runs this packaging contract.
 
-This closes only the repeatable Universal bundle/archive-assembly portion of the release gate. A durable archive built from the exact intended clean commit must still be copied to an independent location, reverified, launched, exercised manually, and tested on an independent macOS 14 installation. Developer ID signing, notarization, packaged-icon visual inspection, accessibility testing, legal acceptance, and commerce-provider verification remain open.
+This closes the repeatable Universal bundle/archive-assembly portion of the release gate and records a durable candidate from clean commit `bad90f9`. The archive must still be copied to an independent location, reverified, launched, exercised manually, and tested on an independent macOS 14 installation. Developer ID signing and notarization are intentionally not applicable to the selected no-Apple-payment route; prominent unsigned-installation disclosure and customer-path quarantine testing are required instead. Packaged-icon visual inspection, accessibility testing, legal acceptance, and commerce-provider verification remain open.
 
 ## Historical packaged-app smoke evidence
 
