@@ -43,6 +43,32 @@ final class ImageInspectorTests: XCTestCase {
         XCTAssertEqual(try fixture.stagingFiles(), [])
     }
 
+    func testInsufficientStagingCapacityExplainsTemporaryDiskSpaceForImage() async throws {
+        let fixture = try InspectionFixture.make()
+        defer { fixture.remove() }
+        let imageURL = try FixtureFactory.png(width: 32, height: 32, alpha: false)
+        defer { try? FileManager.default.removeItem(at: imageURL) }
+        let path = try fixture.write(Data(contentsOf: imageURL), to: "Artwork/Cover.png")
+        let inspector = ImageInspector(
+            stagingDirectory: fixture.stagingDirectory,
+            availableByteCountProvider: { _ in
+                TrustedFileAccess.minimumStagingReserveByteCount - 1
+            }
+        )
+
+        let outcome = try await inspector.inspect(source: fixture.source(path))
+        let finding = try XCTUnwrap(outcome.findings.first)
+
+        XCTAssertEqual(outcome.status, .failed)
+        XCTAssertEqual(outcome.value?.isReadable, false)
+        XCTAssertEqual(outcome.findings.count, 1)
+        XCTAssertEqual(finding.ruleID, "inspection.image-staging-capacity")
+        XCTAssertTrue(finding.suggestedAction.contains("Free local disk space"))
+        XCTAssertTrue(finding.suggestedAction.contains("does not need to be replaced"))
+        XCTAssertFalse(outcome.findings.contains { $0.ruleID == "inspection.image-unreadable" })
+        XCTAssertEqual(try fixture.stagingFiles(), [])
+    }
+
     func testPixelLimitAcceptsExactlyOneHundredMillionAndRejectsTheNextPixel() throws {
         XCTAssertEqual(
             try ImageInspector.validatedPixelCount(width: 10_000, height: 10_000),
