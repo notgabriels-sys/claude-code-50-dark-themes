@@ -86,6 +86,30 @@ for required in \
     require_file "$required"
 done
 
+customer_readme="$release_root/README.md"
+if /usr/bin/grep -E -i -q -- \
+    'merged local release candidate|not currently published for sale|private candidate' \
+    "$customer_readme"; then
+    fail "customer README contains prelaunch-only lifecycle copy"
+fi
+
+markdown_targets=$(
+    /usr/bin/grep -E -o -- '\]\([^)]+\)' "$customer_readme" \
+        | /usr/bin/sed -E 's/^\]\(//; s/\)$//' \
+        || true
+)
+while IFS= read -r markdown_target; do
+    [[ -n "$markdown_target" ]] || continue
+    case "$markdown_target" in
+        http://*|https://*|mailto:*|\#*)
+            continue
+            ;;
+    esac
+    local_target=${markdown_target%%\#*}
+    [[ -e "$release_root/$local_target" ]] \
+        || fail "customer README links to a file absent from the archive: $local_target"
+done <<< "$markdown_targets"
+
 [[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$plist")" == "com.gabrielgarciaalonso.AudioDeliveryPreflight" ]] \
     || fail "unexpected bundle identifier"
 [[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$plist")" == "0.1.0" ]] \

@@ -52,7 +52,7 @@ for required in \
     "$product_dir/Package.swift" \
     "$product_dir/Resources/Info.plist" \
     "$product_dir/Resources/AppIcon.icns" \
-    "$product_dir/README.md" \
+    "$product_dir/CUSTOMER_README.md" \
     "$product_dir/PRIVACY.md" \
     "$product_dir/LIMITATIONS.md" \
     "$product_dir/UNSIGNED.txt" \
@@ -172,7 +172,7 @@ mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
 /usr/bin/install -m 644 "$product_dir/Resources/Info.plist" "$app/Contents/Info.plist"
 /usr/bin/install -m 644 "$product_dir/Resources/AppIcon.icns" "$app/Contents/Resources/AppIcon.icns"
 /usr/bin/install -m 755 "$universal_cli" "$cli"
-/usr/bin/install -m 644 "$product_dir/README.md" "$release_root/README.md"
+/usr/bin/install -m 644 "$product_dir/CUSTOMER_README.md" "$release_root/README.md"
 /usr/bin/install -m 644 "$product_dir/PRIVACY.md" "$release_root/PRIVACY.md"
 /usr/bin/install -m 644 "$product_dir/LIMITATIONS.md" "$release_root/LIMITATIONS.md"
 /usr/bin/install -m 644 "$product_dir/UNSIGNED.txt" "$release_root/UNSIGNED.txt"
