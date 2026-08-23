@@ -2,7 +2,11 @@
 
 Decision date: 2026-08-21
 
-These decisions define the intended launch offer. They do not create a live provider product or override owner-controlled identity, tax, payout, Apple enrollment, or legal-acceptance gates.
+Distribution decision updated: 2026-08-23
+
+These decisions define the intended launch offer. They do not create a live provider product or override owner-controlled identity, tax, payout, or legal-acceptance gates.
+
+Gabriel will not purchase an Apple Developer Program membership for this release. The selected version `0.1.0` route is therefore direct Developer-ID-unsigned distribution with coherent ad-hoc signatures and prominent pre-purchase Gatekeeper disclosure. The product must never claim Apple publisher verification, notarization, or normal one-click installation. No Apple payment or enrollment step is part of this route.
 
 ## Positioning
 
@@ -32,8 +36,9 @@ The product is not an audio editor, mastering processor, artistic approval servi
 
 - Direct digital delivery through Gumroad.
 - Gumroad is currently documented as merchant of record for sales and as handling applicable sales-tax collection and remittance. The real product and checkout must still be read back before launch.
-- The customer receives a ZIP containing the notarized `.app`, CLI, README, privacy notice, limitations, customer license, and checksum instructions.
-- Do not launch with the current ad-hoc-signed candidate. Public version 1.0.0 requires Developer ID signing, Apple notarization, stapling, and independent Gatekeeper validation.
+- The customer receives a ZIP containing the ad-hoc-signed Developer-ID-unsigned `.app`, CLI, README, privacy notice, limitations, accepted customer license, unsigned-installation disclosure, and checksum instructions.
+- The product page and checkout must state before purchase that the app is not signed with an Apple Developer ID certificate, is not notarized, may be blocked or warned about by Gatekeeper, and can require a manual **Privacy & Security > Open Anyway** exception. Do not describe it as a normal one-click installation.
+- A customer download must be independently checksum-verified and exercised through the real downloaded/quarantined path before publication. A locally built archive is not a substitute.
 - Do not add a shop button until the exact delivered archive and checkout have passed an independent zero-charge purchase.
 
 ## Support and refunds
@@ -58,7 +63,8 @@ Required product-page disclosures:
 - technical checks only;
 - local processing with no intended upload;
 - supported formats and documented limitations;
-- Developer ID signed and notarized status, verified literally at launch;
+- Developer ID and notarization status, reported literally as unsigned and not notarized for the selected `0.1.0` route;
+- expected Gatekeeper warning and the manual opening path;
 - GUI and CLI included;
 - one user, up to three personally controlled Macs;
 - €24 one-time purchase;
@@ -67,8 +73,9 @@ Required product-page disclosures:
 
 ## Version policy
 
-- `0.1.x`: private release candidates only.
-- `1.0.0`: first paid release after every mandatory release gate passes.
+- `0.1.0`: intended first paid Developer-ID-unsigned release after every applicable non-Apple release and commercial gate passes.
+- `0.1.x`: backward-compatible defect, security, documentation, or installation correction within the explicitly unsigned distribution line.
+- `1.0.0`: a future stable milestone only; no Apple-signing or upgrade promise is implied.
 - Patch: backward-compatible defect or security correction.
 - Minor: backward-compatible feature or preset addition.
 - Major: potentially paid upgrade or materially changed behavior; announced separately.

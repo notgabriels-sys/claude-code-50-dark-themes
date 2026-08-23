@@ -104,6 +104,7 @@ public struct CLI: Sendable {
     public init() {}
 
     public func run(arguments: [String], environment: Environment = Environment()) async -> Int32 {
+        let environment = Self.terminalSafeEnvironment(environment)
         do {
             switch try parse(arguments) {
             case .version:
@@ -127,6 +128,39 @@ public struct CLI: Sendable {
         } catch {
             return invalidConfiguration(environment)
         }
+    }
+
+    private static func terminalSafeEnvironment(_ environment: Environment) -> Environment {
+        var safeEnvironment = environment
+        let writeStandardOutput = environment.writeStandardOutput
+        let writeStandardError = environment.writeStandardError
+        safeEnvironment.writeStandardOutput = { message in
+            writeStandardOutput(Self.escapingTerminalControlScalars(in: message))
+        }
+        safeEnvironment.writeStandardError = { message in
+            writeStandardError(Self.escapingTerminalControlScalars(in: message))
+        }
+        return safeEnvironment
+    }
+
+    private static func escapingTerminalControlScalars(in text: String) -> String {
+        var escaped = ""
+        escaped.reserveCapacity(text.utf8.count)
+        for scalar in text.unicodeScalars {
+            guard isTerminalControlScalar(scalar) else {
+                escaped.unicodeScalars.append(scalar)
+                continue
+            }
+            let hex = String(scalar.value, radix: 16, uppercase: true)
+            escaped += "\\u{\(String(repeating: "0", count: max(0, 4 - hex.count)))\(hex)}"
+        }
+        return escaped
+    }
+
+    private static func isTerminalControlScalar(_ scalar: Unicode.Scalar) -> Bool {
+        (0x00...0x1F).contains(scalar.value)
+            || scalar.value == 0x7F
+            || (0x80...0x9F).contains(scalar.value)
     }
 
     private func runScan(folder: String, presetSource: PresetSource, reports: Reports, environment: Environment) async -> Int32 {
@@ -360,7 +394,7 @@ public struct CLI: Sendable {
             environment.writeStandardOutput("JSON report written.")
         }
         if let destination = reports.checksums {
-            try environment.writeAtomically(Data(ChecksumManifestWriter().text(for: result).utf8), destination)
+            try environment.writeAtomically(Data(try ChecksumManifestWriter().text(for: result).utf8), destination)
             environment.writeStandardOutput("Checksum manifest written.")
         }
     }

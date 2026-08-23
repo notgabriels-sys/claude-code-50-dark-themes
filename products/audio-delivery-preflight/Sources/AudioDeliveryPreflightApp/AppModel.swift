@@ -89,7 +89,7 @@ final class AppModel {
     private(set) var result: ScanResult?
     private(set) var availablePresets: [Preset]
     private(set) var selectedPresetID: String
-    var customPresetDraft: CustomPresetDraft
+    private(set) var customPresetDraft: CustomPresetDraft
     var selectedFindingID: FindingPresentationRow.ID?
     var activeSeverities = Set(FindingSeverity.allCases)
     var lastExportedFormat: ExportFormat?
@@ -109,10 +109,12 @@ final class AppModel {
     ) {
         self.environment = environment
         self.availablePresets = presets
-        self.customPresetDraft = CustomPresetDraft(
-            preset: presets.first(where: { $0.identifier == BuiltInPresets.custom.identifier })
-                ?? BuiltInPresets.custom
-        )
+        let customCandidate = presets.first(where: {
+            $0.identifier == BuiltInPresets.custom.identifier
+        }) ?? BuiltInPresets.custom
+        let validatedCustomDefinition = (try? PresetResolver().resolve(customCandidate).definition)
+            ?? BuiltInPresets.custom
+        self.customPresetDraft = CustomPresetDraft(preset: validatedCustomDefinition)
         self.selectedPresetID = presets.contains(where: { $0.identifier == initialPresetID })
             ? initialPresetID
             : presets.first?.identifier ?? initialPresetID
@@ -122,6 +124,7 @@ final class AppModel {
         phase == .requirements
             && selectedFolderURL != nil
             && resolvedPreset != nil
+            && customPresetValidationMessage == nil
     }
 
     var findingRows: [FindingPresentationRow] {
@@ -228,9 +231,16 @@ final class AppModel {
 
     func editSelectedPresetAsCustom() {
         guard phase != .scanning else { return }
-        let selectedDefinition = resolvedPreset?.definition
-            ?? availablePresets.first(where: { $0.identifier == selectedPresetID })
-            ?? BuiltInPresets.custom
+        let selectedDefinition: Preset
+        if let resolvedPreset {
+            selectedDefinition = resolvedPreset.definition
+        } else if let selected = availablePresets.first(where: {
+            $0.identifier == selectedPresetID
+        }), let validated = try? PresetResolver().resolve(selected) {
+            selectedDefinition = validated.definition
+        } else {
+            selectedDefinition = BuiltInPresets.custom
+        }
         customPresetDraft = CustomPresetDraft(preset: selectedDefinition)
         if !availablePresets.contains(where: { $0.identifier == BuiltInPresets.custom.identifier }) {
             availablePresets.append(BuiltInPresets.custom)
@@ -260,34 +270,35 @@ final class AppModel {
             phase = selectedFolderURL == nil ? .start : .requirements
             return true
         } catch let PreflightError.invalidPreset(field, reason) {
-            resolvedPreset = nil
-            resolvedRequirements = []
-            result = nil
-            selectedFindingID = nil
-            lastExportedFormat = nil
-            let message = "Custom preset error. \(Self.customPresetFieldLabel(field)): \(Self.safeValidationReason(reason))"
-            errorMessage = message
-            customPresetValidationMessage = message
-            phase = selectedFolderURL == nil ? .start : .requirements
+            rejectCustomPreset(field: field, reason: reason)
             return false
         } catch {
-            resolvedPreset = nil
-            resolvedRequirements = []
-            result = nil
-            selectedFindingID = nil
-            lastExportedFormat = nil
-            let message = "The Custom preset could not be applied. Review its fields and try again."
-            errorMessage = message
-            customPresetValidationMessage = message
-            phase = selectedFolderURL == nil ? .start : .requirements
+            rejectCustomPresetWithoutDetails()
             return false
         }
     }
 
-    func replaceCustomPresetDraft(_ draft: CustomPresetDraft) {
-        guard phase != .scanning, isCustomPresetSelected else { return }
-        customPresetDraft = draft
-        _ = applyCustomPreset()
+    @discardableResult
+    func replaceCustomPresetDraft(_ draft: CustomPresetDraft) -> Bool {
+        guard phase != .scanning, isCustomPresetSelected else { return false }
+        do {
+            try draft.validateRawInputBounds()
+            customPresetDraft = draft
+            return applyCustomPreset()
+        } catch let PreflightError.invalidPreset(field, reason) {
+            rejectCustomPreset(field: field, reason: reason)
+            return false
+        } catch {
+            rejectCustomPresetWithoutDetails()
+            return false
+        }
+    }
+
+    @discardableResult
+    func updateCustomPresetDraft(_ update: (inout CustomPresetDraft) -> Void) -> Bool {
+        var draft = customPresetDraft
+        update(&draft)
+        return replaceCustomPresetDraft(draft)
     }
 
     func startScan() {
@@ -430,6 +441,30 @@ final class AppModel {
         }
     }
 
+    private func rejectCustomPreset(field: String, reason: String) {
+        resolvedPreset = nil
+        resolvedRequirements = []
+        result = nil
+        selectedFindingID = nil
+        lastExportedFormat = nil
+        let message = "Custom preset error. \(Self.customPresetFieldLabel(field)): \(Self.safeValidationReason(reason))"
+        errorMessage = message
+        customPresetValidationMessage = message
+        phase = selectedFolderURL == nil ? .start : .requirements
+    }
+
+    private func rejectCustomPresetWithoutDetails() {
+        resolvedPreset = nil
+        resolvedRequirements = []
+        result = nil
+        selectedFindingID = nil
+        lastExportedFormat = nil
+        let message = "The Custom preset could not be applied. Review its fields and try again."
+        errorMessage = message
+        customPresetValidationMessage = message
+        phase = selectedFolderURL == nil ? .start : .requirements
+    }
+
     private func reportData(_ format: ExportFormat, result: ScanResult) throws -> Data {
         switch format {
         case .html:
@@ -437,7 +472,7 @@ final class AppModel {
         case .json:
             try JSONReportWriter().data(for: result)
         case .checksums:
-            Data(ChecksumManifestWriter().text(for: result).utf8)
+            Data(try ChecksumManifestWriter().text(for: result).utf8)
         }
     }
 

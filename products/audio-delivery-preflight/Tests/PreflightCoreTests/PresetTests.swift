@@ -3,6 +3,117 @@ import XCTest
 @testable import PreflightCore
 
 final class PresetTests: XCTestCase {
+    func testPresetInputLimitsExposeExactSharedBoundaries() {
+        XCTAssertEqual(PresetInputLimits.maximumRoles, 32)
+        XCTAssertEqual(PresetInputLimits.maximumRegularExpressionByteCount, 512)
+        XCTAssertEqual(PresetInputLimits.maximumCollectionValueCount, 4_096)
+        XCTAssertEqual(PresetInputLimits.maximumStringByteCount, 4_096)
+        XCTAssertEqual(PresetInputLimits.maximumAggregateStringByteCount, 1_048_576)
+    }
+
+    func testPresetInputParserParsesTrimmedValuesAndOptionalBlankInput() throws {
+        XCTAssertEqual(
+            try PresetInputParser.commaSeparatedValues(
+                " WAV, aIfF, flac ",
+                lowercased: true,
+                field: "audio.allowedExtensions"
+            ),
+            ["wav", "aiff", "flac"]
+        )
+        XCTAssertNil(
+            try PresetInputParser.commaSeparatedValues(
+                "   ",
+                field: "audio.allowedEncodings"
+            )
+        )
+        XCTAssertThrowsError(
+            try PresetInputParser.commaSeparatedValues(
+                "wav, ,aiff",
+                field: "audio.allowedExtensions"
+            )
+        ) { error in
+            XCTAssertEqual(
+                error as? PreflightError,
+                .invalidPreset(
+                    field: "audio.allowedExtensions",
+                    reason: "Comma-separated values cannot be empty."
+                )
+            )
+        }
+    }
+
+    func testPresetInputParserChecksRawUTF8BoundaryBeforeTransformingValues() throws {
+        let boundary = String(repeating: "É", count: PresetInputLimits.maximumStringByteCount / 2)
+        let parsed = try PresetInputParser.commaSeparatedValues(
+            boundary,
+            lowercased: true,
+            field: "audio.allowedExtensions"
+        )
+
+        XCTAssertEqual(parsed, [String(repeating: "é", count: 2_048)])
+
+        let exceededWithTrailingEmptyValue = boundary + ","
+        XCTAssertThrowsError(
+            try PresetInputParser.commaSeparatedValues(
+                exceededWithTrailingEmptyValue,
+                lowercased: true,
+                field: "audio.allowedExtensions"
+            )
+        ) { error in
+            XCTAssertEqual(
+                error as? PreflightError,
+                .invalidPreset(
+                    field: "audio.allowedExtensions",
+                    reason: "A configured string cannot exceed 4096 UTF-8 bytes."
+                )
+            )
+        }
+    }
+
+    func testPresetInputParserEnforcesCallerOwnedAggregateValueBoundaryAtomically() throws {
+        var aggregateValueCount = PresetInputLimits.maximumCollectionValueCount - 1
+        XCTAssertEqual(
+            try PresetInputParser.commaSeparatedValues(
+                " WAV ",
+                lowercased: true,
+                field: "audio.allowedExtensions",
+                aggregateValueCount: &aggregateValueCount
+            ),
+            ["wav"]
+        )
+        XCTAssertEqual(aggregateValueCount, PresetInputLimits.maximumCollectionValueCount)
+
+        XCTAssertThrowsError(
+            try PresetInputParser.commaSeparatedValues(
+                "aiff",
+                field: "roles.main.allowedExtensions",
+                aggregateValueCount: &aggregateValueCount
+            )
+        ) { error in
+            XCTAssertEqual(
+                error as? PreflightError,
+                .invalidPreset(
+                    field: "roles.main.allowedExtensions",
+                    reason: "Preset collections can contain at most 4096 configured values in aggregate."
+                )
+            )
+        }
+        XCTAssertEqual(aggregateValueCount, PresetInputLimits.maximumCollectionValueCount)
+
+        var partiallyAvailableCount = PresetInputLimits.maximumCollectionValueCount - 1
+        XCTAssertThrowsError(
+            try PresetInputParser.commaSeparatedValues(
+                "wav,aiff",
+                field: "roles.main.allowedExtensions",
+                aggregateValueCount: &partiallyAvailableCount
+            )
+        )
+        XCTAssertEqual(
+            partiallyAvailableCount,
+            PresetInputLimits.maximumCollectionValueCount - 1
+        )
+    }
+
     func testBuiltInPresetsResolveWithExactIdentifiersAndSerializableRequirements() throws {
         let presets = BuiltInPresets.all
 
@@ -14,6 +125,22 @@ final class PresetTests: XCTestCase {
 
         XCTAssertEqual(decoded, resolved)
         XCTAssertTrue(resolved.allSatisfy { !$0.requirements.isEmpty })
+    }
+
+    func testBuiltInRegexCorpusExactlyMatchesReviewedLiterals() {
+        let reviewedPatterns: Set<String> = [
+            "(?i)(?:^|[ _.-])(final|master|version|v)\\s*\\d+",
+            "(?i)(^|/).+\\.(aif|aiff|flac|m4a|wav)$",
+            "(?i)(^|/)(?:[^/]*[ _.-])?(?:main[ _.-]*master|premaster|master)(?:[ _.-](?:v(?:ersion)?[ _.-]?\\d+|\\d+|final))?\\.(aif|aiff|flac|m4a|wav)$",
+            "(?i)(^|/).+\\.(heic|jpe?g|png|tiff?|webp)$",
+            "(?i)(^|/).*(metadata|credits).*\\.(csv|doc|docx|md|pdf|rtf|txt)$",
+        ]
+        let builtInPatterns = Set(BuiltInPresets.all.flatMap { preset in
+            preset.roles.map(\.pattern) + [preset.filename.ambiguousVersionPattern].compactMap { $0 }
+        })
+
+        XCTAssertEqual(builtInPatterns, reviewedPatterns)
+        XCTAssertEqual(SafeRegularExpressionPolicy.reviewedBuiltInPatterns, reviewedPatterns)
     }
 
     func testGeneralAudioDoesNotMandateSampleRateOrBitDepth() throws {
@@ -397,6 +524,345 @@ final class PresetTests: XCTestCase {
         let data = Data("{\"minimumWidth\":100.5,\"minimumHeight\":null,\"requiresSquare\":false,\"severity\":\"warning\"}".utf8)
 
         XCTAssertThrowsError(try JSONDecoder().decode(ArtworkRequirement.self, from: data))
+    }
+
+    func testPresetValidationBudgetsMatchTheRequiredLimits() {
+        XCTAssertEqual(PresetValidationLimits.maximumRoles, 32)
+        XCTAssertEqual(PresetValidationLimits.maximumRegularExpressionByteCount, 512)
+        XCTAssertEqual(PresetValidationLimits.maximumCollectionValueCount, 4_096)
+        XCTAssertEqual(PresetValidationLimits.maximumStringByteCount, 4_096)
+        XCTAssertEqual(PresetValidationLimits.maximumAggregateStringByteCount, 1_048_576)
+    }
+
+    func testRoleCountBudgetAllowsThirtyTwoAndRejectsThirtyThree() throws {
+        let roles = (0..<33).map {
+            DeliveryRole(identifier: "role-\($0)", name: "Role \($0)", pattern: ".*", required: false)
+        }
+
+        XCTAssertNoThrow(
+            try PresetResolver().resolve(
+                Preset(identifier: "role-boundary", name: "Role boundary", roles: Array(roles.prefix(32)))
+            )
+        )
+        XCTAssertThrowsError(
+            try PresetResolver().resolve(
+                Preset(identifier: "role-exceeded", name: "Role exceeded", roles: roles)
+            )
+        ) { error in
+            XCTAssertEqual(
+                error as? PreflightError,
+                .invalidPreset(field: "roles", reason: "A preset can define at most 32 roles.")
+            )
+        }
+    }
+
+    func testRoleRegexByteBudgetAllowsFiveHundredTwelveAndRejectsTheNextUTF8Character() throws {
+        let boundaryPattern = String(repeating: "é", count: 256)
+        let exceededPattern = boundaryPattern + "é"
+
+        XCTAssertEqual(boundaryPattern.utf8.count, 512)
+        XCTAssertNoThrow(
+            try PresetResolver().resolve(
+                Preset(
+                    identifier: "role-regex-boundary",
+                    name: "Role regex boundary",
+                    roles: [DeliveryRole(identifier: "main", pattern: boundaryPattern, required: false)]
+                )
+            )
+        )
+        XCTAssertThrowsError(
+            try PresetResolver().resolve(
+                Preset(
+                    identifier: "role-regex-exceeded",
+                    name: "Role regex exceeded",
+                    roles: [DeliveryRole(identifier: "main", pattern: exceededPattern, required: false)]
+                )
+            )
+        ) { error in
+            XCTAssertEqual(
+                error as? PreflightError,
+                .invalidPreset(field: "roles.main.pattern", reason: "The regular expression cannot exceed 512 UTF-8 bytes.")
+            )
+        }
+    }
+
+    func testFilenameRegexByteBudgetAllowsFiveHundredTwelveAndRejectsTheNextUTF8Character() throws {
+        let boundaryPattern = String(repeating: "é", count: 256)
+        let exceededPattern = boundaryPattern + "é"
+
+        XCTAssertNoThrow(
+            try PresetResolver().resolve(
+                Preset(
+                    identifier: "filename-regex-boundary",
+                    name: "Filename regex boundary",
+                    filename: FilenameRequirement(ambiguousVersionPattern: boundaryPattern)
+                )
+            )
+        )
+        XCTAssertThrowsError(
+            try PresetResolver().resolve(
+                Preset(
+                    identifier: "filename-regex-exceeded",
+                    name: "Filename regex exceeded",
+                    filename: FilenameRequirement(ambiguousVersionPattern: exceededPattern)
+                )
+            )
+        ) { error in
+            XCTAssertEqual(
+                error as? PreflightError,
+                .invalidPreset(field: "filename.ambiguousVersionPattern", reason: "The regular expression cannot exceed 512 UTF-8 bytes.")
+            )
+        }
+    }
+
+    func testSafeRegexPolicyAcceptsBuiltInsAndOrdinaryCustomPatterns() throws {
+        for preset in BuiltInPresets.all {
+            XCTAssertNoThrow(try PresetResolver().resolve(preset), preset.identifier)
+        }
+        for (index, pattern) in [
+            ".*",
+            ".*\\.wav$",
+            "(?i)main\\.(m4a|mp3|wav)$",
+            "(?i)final\\s*\\d+",
+            "(?i)(final|version)\\s*\\d+",
+            "a{256}",
+        ].enumerated() {
+            let preset = Preset(
+                identifier: "ordinary-pattern-\(index)",
+                name: "Ordinary pattern \(index)",
+                filename: FilenameRequirement(ambiguousVersionPattern: pattern),
+                roles: [DeliveryRole(identifier: "role-\(index)", pattern: pattern, required: false)]
+            )
+            XCTAssertNoThrow(try PresetResolver().resolve(preset), pattern)
+        }
+    }
+
+    func testSafeRegexPolicyRejectsDangerousConstructsAtResolution() {
+        let dangerousPatterns = [
+            "((a+)+$)",
+            "(a)\\1",
+            "(?=a).*",
+            "(?!a).*",
+            "(?<=a)b",
+            "(?<!a)b",
+            "(a|aa)+$",
+            "(a?)+$",
+            "((a+))+$",
+            "((a|aa))+$",
+            "a{1000000000}",
+            "a*a*b",
+            "a{0,256}a{0,256}",
+            "(a+){2}",
+            "(a|b){2}",
+            "a{257}",
+        ]
+
+        for (index, pattern) in dangerousPatterns.enumerated() {
+            let preset = Preset(
+                identifier: "dangerous-pattern-\(index)",
+                name: "Dangerous pattern \(index)",
+                roles: [DeliveryRole(identifier: "role-\(index)", pattern: pattern, required: false)]
+            )
+            XCTAssertThrowsError(try PresetResolver().resolve(preset), pattern) { error in
+                XCTAssertEqual(
+                    error as? PreflightError,
+                    .invalidPreset(
+                        field: "roles.role-\(index).pattern",
+                        reason: "The regular expression uses an unsafe construct."
+                    )
+                )
+            }
+        }
+    }
+
+    func testSafeRegexPolicyRejectsSpoofedTwoVariableExceptionForRolesAndFilenames() {
+        let spoofedPatterns = [
+            #"[\s*\d+]a*a*b"#,
+            #"\\s*\d+"#,
+            #"(?x)\s*\d+"#,
+            #"(?ix:\s*\d+)"#,
+        ]
+
+        for (index, pattern) in spoofedPatterns.enumerated() {
+            let rolePreset = Preset(
+                identifier: "spoofed-role-\(index)",
+                name: "Spoofed role \(index)",
+                roles: [DeliveryRole(identifier: "main", pattern: pattern, required: false)]
+            )
+            XCTAssertThrowsError(try PresetResolver().resolve(rolePreset), pattern) { error in
+                XCTAssertEqual(
+                    error as? PreflightError,
+                    .invalidPreset(
+                        field: "roles.main.pattern",
+                        reason: "The regular expression uses an unsafe construct."
+                    )
+                )
+            }
+
+            let filenamePreset = Preset(
+                identifier: "spoofed-filename-\(index)",
+                name: "Spoofed filename \(index)",
+                filename: FilenameRequirement(ambiguousVersionPattern: pattern)
+            )
+            XCTAssertThrowsError(try PresetResolver().resolve(filenamePreset), pattern) { error in
+                XCTAssertEqual(
+                    error as? PreflightError,
+                    .invalidPreset(
+                        field: "filename.ambiguousVersionPattern",
+                        reason: "The regular expression uses an unsafe construct."
+                    )
+                )
+            }
+        }
+    }
+
+    func testResolverRequiresTrimmedPresetAndRoleNames() {
+        let invalidNames = [
+            Preset(identifier: "blank-preset", name: "   "),
+            Preset(
+                identifier: "padded-preset",
+                name: " Padded",
+                roles: [DeliveryRole(identifier: "main", name: "Main", pattern: ".*", required: false)]
+            ),
+            Preset(
+                identifier: "blank-role",
+                name: "Blank role",
+                roles: [DeliveryRole(identifier: "main", name: "  ", pattern: ".*", required: false)]
+            ),
+            Preset(
+                identifier: "padded-role",
+                name: "Padded role",
+                roles: [DeliveryRole(identifier: "main", name: "Main ", pattern: ".*", required: false)]
+            ),
+        ]
+
+        for preset in invalidNames {
+            XCTAssertThrowsError(try PresetResolver().resolve(preset), preset.identifier)
+        }
+    }
+
+    func testResolverEnforcesSafeIdentifiersAndNormalizedRoleUniqueness() {
+        let unsafePreset = Preset(identifier: "unsafe/id", name: "Unsafe identifier")
+        let unnormalizedPreset = Preset(identifier: "Uppercase", name: "Unnormalized identifier")
+        let unsafeRole = Preset(
+            identifier: "unsafe-role",
+            name: "Unsafe role",
+            roles: [DeliveryRole(identifier: "../main", pattern: ".*", required: false)]
+        )
+        let invalidIdentifierBeforeDuplicate = Preset(
+            identifier: "invalid-before-duplicate",
+            name: "Invalid before duplicate",
+            roles: [
+                DeliveryRole(identifier: "Main", name: "Primary", pattern: ".*", required: false),
+                DeliveryRole(identifier: "main", name: "Secondary", pattern: ".*", required: false),
+            ]
+        )
+        let exactDuplicate = Preset(
+            identifier: "exact-duplicate",
+            name: "Exact duplicate",
+            roles: [
+                DeliveryRole(identifier: "main", name: "Primary", pattern: ".*", required: false),
+                DeliveryRole(identifier: "main", name: "Secondary", pattern: ".*", required: false),
+            ]
+        )
+
+        XCTAssertThrowsError(try PresetResolver().resolve(unsafePreset))
+        XCTAssertThrowsError(try PresetResolver().resolve(unnormalizedPreset))
+        XCTAssertThrowsError(try PresetResolver().resolve(unsafeRole))
+        XCTAssertThrowsError(try PresetResolver().resolve(invalidIdentifierBeforeDuplicate)) { error in
+            XCTAssertEqual(
+                error as? PreflightError,
+                .invalidPreset(
+                    field: "roles.identifier",
+                    reason: "Identifiers must use their normalized lowercase form."
+                )
+            )
+        }
+        XCTAssertThrowsError(try PresetResolver().resolve(exactDuplicate)) { error in
+            XCTAssertEqual(
+                error as? PreflightError,
+                .invalidPreset(
+                    field: "roles",
+                    reason: "Role identifiers must be unique after normalization: main."
+                )
+            )
+        }
+    }
+
+    func testResolverRejectsActualControlCharactersAcrossDisplayedPresetStrings() {
+        let invalidPresets: [(Preset, String)] = [
+            (Preset(identifier: "control-name", name: "Control\nName"), "name"),
+            (Preset(identifier: "control\u{0007}identifier", name: "Control identifier"), "identifier"),
+            (
+                Preset(
+                    identifier: "control-role-name",
+                    name: "Control role name",
+                    roles: [DeliveryRole(identifier: "main", name: "Main\trole", pattern: ".*", required: false)]
+                ),
+                "roles.main.name"
+            ),
+            (
+                Preset(
+                    identifier: "control-pattern",
+                    name: "Control pattern",
+                    roles: [DeliveryRole(identifier: "main", pattern: "main\n.*", required: false)]
+                ),
+                "roles.main.pattern"
+            ),
+            (
+                Preset(
+                    identifier: "control-list",
+                    name: "Control list",
+                    audio: AudioRequirement(allowedExtensions: ["wav\r"])
+                ),
+                "audio.allowedExtensions"
+            ),
+        ]
+
+        for (preset, expectedField) in invalidPresets {
+            XCTAssertThrowsError(try PresetResolver().resolve(preset), expectedField) { error in
+                guard case .invalidPreset(let field, _) = error as? PreflightError else {
+                    return XCTFail("Expected a typed invalid-preset error.")
+                }
+                XCTAssertEqual(field, expectedField)
+            }
+        }
+    }
+
+    func testCollectionAndAggregateStringBudgetsBoundAppAuthoredPresets() throws {
+        let boundaryValues = Array(repeating: "wav", count: PresetValidationLimits.maximumCollectionValueCount)
+        XCTAssertNoThrow(
+            try PresetResolver().resolve(
+                Preset(
+                    identifier: "collection-boundary",
+                    name: "Collection boundary",
+                    audio: AudioRequirement(allowedExtensions: boundaryValues)
+                )
+            )
+        )
+
+        let tooManyValues = boundaryValues + ["aiff"]
+        XCTAssertThrowsError(
+            try PresetResolver().resolve(
+                Preset(
+                    identifier: "collection-exceeded",
+                    name: "Collection exceeded",
+                    audio: AudioRequirement(allowedExtensions: tooManyValues)
+                )
+            )
+        )
+
+        let largeValue = String(repeating: "a", count: PresetValidationLimits.maximumStringByteCount)
+        let aggregateExceeded = Array(repeating: largeValue, count: 257)
+        XCTAssertThrowsError(
+            try PresetResolver().resolve(
+                Preset(
+                    identifier: "aggregate-exceeded",
+                    name: "Aggregate exceeded",
+                    audio: AudioRequirement(allowedExtensions: aggregateExceeded)
+                )
+            )
+        )
     }
 
     private func encodedObject(_ preset: ResolvedPreset) throws -> [String: Any] {

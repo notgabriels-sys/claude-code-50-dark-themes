@@ -6,7 +6,9 @@ It performs technical checks only. A `ready` result is not an artistic judgment,
 
 ## Current status
 
-Version `0.1.0` is a merged development candidate. The repository can build and independently verify an explicitly unsigned customer-archive candidate. No valid Apple code-signing identity was available during the packaging audit, so the app is not Developer ID signed or notarized and is not published for sale.
+Version `0.1.0` is a merged local release candidate. The repository can build and independently verify a Developer-ID-unsigned customer-archive candidate whose app and CLI are exact Universal binaries containing `arm64` and `x86_64`. The executables use only ad-hoc signatures, are not notarized, and are not Apple-trusted distribution software. The selected distribution route does not require a paid Apple Developer Program membership: any release must instead disclose the Gatekeeper limitation and manual opening path prominently before purchase. The product is not currently published for sale.
+
+The intended launch offer is recorded in [PRODUCT_DECISIONS.md](PRODUCT_DECISIONS.md). [CUSTOMER_LICENSE_DRAFT.md](CUSTOMER_LICENSE_DRAFT.md) is not an accepted license and is deliberately excluded from customer archives until the seller completes legal review, inserts verified seller information, and explicitly accepts it.
 
 ## Requirements
 
@@ -18,13 +20,15 @@ Readable compressed formats can vary with the media frameworks installed on the 
 
 ## What it checks
 
-- Recursively inventories normal directories beneath the selected folder.
+- Recursively inventories normal directories beneath the selected folder, up to 50,000 entries, 32 path components, 20,000 names in one directory, 4096 UTF-8 bytes per relative path, and 16 MiB of relative-path text in aggregate.
+- Stops with an explicit `incomplete` result if an inventory budget is exceeded; it never truncates a folder and continues toward `ready`.
 - Records symbolic links without following them.
-- Rejects paths that cannot be opened safely beneath the selected root.
+- Rejects paths that cannot be opened safely beneath the selected root or represented without control characters.
 - Classifies `.DS_Store` and AppleDouble `._*` files as service files.
 - Calculates SHA-256 for regular delivery files and reports exact duplicates.
-- Measures supported audio container, encoding, duration, channel count, sample rate, PCM bit depth, and bounded common text metadata when those values are exposed reliably by AVFoundation.
-- Measures supported artwork dimensions, aspect ratio, format, color model, alpha presence, byte size, and readability when available.
+- Measures supported audio container, encoding, duration, channel count, sample rate, and PCM bit depth when those values are exposed reliably by AVFoundation.
+- Deliberately does not request embedded metadata from AVFoundation in version 0.1.0 because that API materializes complete metadata collections and strings before this application can enforce a resource limit.
+- Measures supported artwork dimensions, aspect ratio, format, color model, alpha presence, byte size, and readability when available from bounded ImageIO properties. It does not decode a full image merely to infer missing alpha state.
 - Reports unreadable media, filename ambiguity, case-insensitive filename collisions, preset role failures, service files, symbolic links, and exact duplicates.
 - Compares source fingerprints before and after a scan and refuses to call a changed or incomplete source `ready`.
 
@@ -51,6 +55,8 @@ Requires one readable lossless main-master candidate with a proven Linear PCM, F
 ### Custom (`custom`)
 
 The native app exposes an in-memory Custom editor for audio filename formats and inspected encodings, numeric bounds and consistency, artwork, filename patterns, arbitrary delivery roles, and finding severities. Any built-in preset can be copied into Custom, so Digital Release artwork expectations remain visible and editable. Custom edits are not persisted automatically; the resolved definition is included in a completed JSON report.
+
+Version `0.1.0` accepts at most 32 roles, 512 UTF-8 bytes per filename regular expression, 4096 UTF-8 bytes per other configured string, 4096 collection values across the complete preset, and 1,048,576 configured-string bytes in aggregate. Custom patterns use a conservative regular-expression subset: exact reviewed built-in patterns and ordinary literal, character-class, alternation, anchor, and simple repetition patterns are supported; bounded repetition endpoints cannot exceed 256. Backreferences, lookarounds, repeated quantifiers, quantified alternations, nested repetition, and multiple variable repetitions are rejected before matching. The sole two-variable exception is the parser-observed adjacent structural sequence `\s*\d+`; matching trigger text inside a character class, escaped literal, comment, or extended-mode construct does not authorize it. Preset and role identifiers use normalized lowercase letters, digits, and single hyphens. Display names must be nonempty and trimmed. Actual control characters are rejected from displayed preset strings. The native editor checks role count and raw byte budgets before retaining, trimming, lowercasing, or parsing an edit, and parses comma-separated fields incrementally under the same aggregate collection limit.
 
 ## Native app
 
@@ -82,7 +88,7 @@ audio-preflight version
 
 The default scan preset is `general-audio`.
 
-`--preset` and `--preset-file` are mutually exclusive. A preset file must be a regular JSON file no larger than 1 MiB, must not be reached through a symbolic-link file or ancestor, must use schema version `1.0`, and must resolve successfully before folder access or scanning begins. Invalid imports are rejected without printing the private preset path.
+`--preset` and `--preset-file` are mutually exclusive. A preset file must be a regular JSON file no larger than 1 MiB, must not be reached through a symbolic-link file or ancestor, must use schema version `1.0`, and must resolve successfully before folder access or scanning begins. Imported and app-authored presets share the same role, string, collection, identifier, name, and safe-pattern limits. Invalid imports are rejected without printing the private preset path.
 
 Examples:
 
@@ -159,11 +165,13 @@ Report destinations must be distinct, must not already exist, and must not trave
 
 ## Reports
 
-- **HTML:** A self-contained, accessible report with visible status, resolved requirements, relative inventory paths, measured media properties and optional metadata, checksum state, findings, role assignments, evidence, and limitations.
-- **JSON:** Stable schema `1.0`, pretty-printed with sorted keys and ISO-8601 dates. It includes the resolved preset definition, explicit inspection and checksum states, inventory, measured evidence, role assignments, findings, versions, and scan status.
-- **SHA-256 manifest:** Lowercase SHA-256 values and relative paths for regular non-service files whose checksum state is explicitly successful.
+- **HTML:** A self-contained, accessible report with visible status, resolved requirements, relative inventory paths, measured media properties, checksum state, findings, successful role assignments, evidence, and limitations.
+- **JSON:** Stable schema `1.0`, pretty-printed with sorted keys and ISO-8601 dates. It includes the resolved preset definition, explicit inspection and checksum states, inventory, measured evidence, successful role assignments, findings, versions, and scan status. The versioned media model retains a metadata field for compatibility, but production scans leave it empty in version 0.1.0.
+- **SHA-256 manifest:** Lowercase SHA-256 values and relative paths for regular non-service files whose checksum state is explicitly successful. Generation is all-or-error: malformed successful-checksum evidence or a path that cannot be represented safely fails the export instead of silently omitting an eligible file.
 
 Reports use relative source paths and the selected folder's final name, not its absolute source path. Checksums and filenames can still be sensitive, so review a report before sharing it.
+
+Media inspection uses temporary stable snapshots. Audio sources larger than 4 GiB and image sources larger than 256 MiB are refused. Before each copy, the temporary volume must be able to retain at least the greater of 2 GiB or 10 percent of its then-available capacity after the copy. Artwork dimensions must be positive and no greater than 100,000,000 pixels in total. Resource refusals remain non-ready evidence.
 
 ## Build and verify
 
@@ -185,7 +193,7 @@ The verifier cleans SwiftPM state, runs the full test suite, builds both release
 
 See [PRIVACY.md](PRIVACY.md) for local-processing and report details. See [LIMITATIONS.md](LIMITATIONS.md) for the exact boundaries of version 0.1.0. See [VERIFICATION.md](VERIFICATION.md) for the evidence map and remaining release gates.
 
-## Build an unsigned release candidate
+## Build a Universal Developer-ID-unsigned release candidate
 
 From the repository root:
 
@@ -195,9 +203,9 @@ products/audio-delivery-preflight/scripts/package-release.sh \
   --unsigned
 ```
 
-The command first runs the product verifier, then builds separate arm64 and x86_64 release executables and combines each pair into an exact Universal binary. The output contains `Audio Delivery Preflight.app`, the `audio-preflight` CLI, product documentation, an unavoidable `UNSIGNED.txt` disclosure, machine-readable `PACKAGE-INFO.json`, human-readable `BUILD-EVIDENCE.txt`, an internal `SHA256SUMS.txt`, a ZIP archive, and an external SHA-256 sidecar. The evidence binds the source commit, source-tree state, processor set, signature state, Gatekeeper result, icon digest, and packaging/verifier script digests.
+The command first runs the complete product verifier, then builds separate `arm64` and `x86_64` release executables and combines each pair into an exact Universal binary. The output contains `Audio Delivery Preflight.app` with the selected application icon, the `audio-preflight` CLI, a deterministic sample delivery, product documentation, machine-readable `PACKAGE-INFO.json`, human-readable `BUILD-EVIDENCE.txt`, an internal `SHA256SUMS.txt`, an unavoidable `UNSIGNED.txt` disclosure, an explicitly named Universal ZIP archive, and an external SHA-256 sidecar. The evidence binds the source commit and source-tree state, exact processor set, signature state, Gatekeeper result, icon digest, and packaging/verifier script digests.
 
-The executables are ad-hoc signed for local integrity and launch compatibility, but ad-hoc signing is not Developer ID signing and does not establish publisher identity. The command refuses uncommitted `Package.swift` or `Sources` changes, refuses to overwrite an existing output path, and does not fall back to a single-processor build.
+The app and CLI receive coherent ad-hoc signatures for local integrity and launch compatibility. Ad-hoc signing is not Developer ID signing and establishes no verified publisher identity or Apple trust. The command refuses uncommitted `Package.swift`, `Sources`, or `Resources` changes, refuses to overwrite an existing output path, and does not fall back to a single-architecture build.
 
 Verify an archive after moving or downloading both files:
 
@@ -206,6 +214,6 @@ products/audio-delivery-preflight/scripts/verify-release-archive.sh \
   "/absolute/path/to/Audio-Delivery-Preflight-0.1.0-macOS-universal-unsigned.zip"
 ```
 
-After a fresh extraction, the verifier checks the external sidecar, ZIP integrity, duplicate and unsafe paths, the exact top-level directory, required files, complete internal manifest coverage, every internal digest, executable permissions, exact Universal architecture, bundle identity and version, macOS floor, icon format, ad-hoc signatures, Gatekeeper result, CLI version output, unsigned disclosures, and private-path or artist-identity leakage. The packaging contract also proves that a changed file is rejected even when an attacker recomputes the external archive sidecar.
+After a fresh extraction, the verifier checks the external sidecar, ZIP integrity, duplicate and unsafe paths, the exact top-level directory, required files, complete internal-manifest coverage, every internal digest, executable permissions, exact `arm64` plus `x86_64` architecture, bundle identity and version, macOS floor, selected icon format and digest, ad-hoc signatures, Gatekeeper result, CLI version output, unsigned disclosures, and private-path or artist-identity leakage. It also scans the included sample with the packaged CLI and proves that the sample is unchanged. The package contract additionally refuses overwrite attempts, rejects a false external sidecar, and rejects changed archive content even when the external sidecar is recomputed correctly.
 
-This creates a local unsigned candidate only. It does not replace Developer ID signing, Apple notarization, manual workflow and accessibility validation, independent macOS 14 testing, legal review, provider readback, or a verified customer download. See [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) before any public listing.
+This creates a local unsigned candidate only. For the selected no-Apple-payment route, Developer ID signing and notarization are intentionally not claimed; prominent unsigned-installation disclosure and a real downloaded/quarantined-artifact test take their place as distribution gates. Manual workflow and accessibility validation, packaged-icon visual review, independent macOS 14 testing, legal review, provider readback, and a verified customer download remain required. See [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) before any public listing.

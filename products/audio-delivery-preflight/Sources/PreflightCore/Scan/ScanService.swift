@@ -87,6 +87,21 @@ public struct ScanService: ScanServicing, Sendable {
                 postInventory = try await inventory.inventory(root: root)
             } catch is CancellationError {
                 throw CancellationError()
+            } catch let error as PreflightError {
+                if case .inventoryLimitExceeded = error {
+                    return incompleteResult(
+                        request: request,
+                        root: root,
+                        startedAt: startedAt,
+                        finding: failureFinding(for: error, engineVersion: request.engineVersion)
+                    )
+                }
+                return incompleteResult(
+                    request: request,
+                    root: root,
+                    startedAt: startedAt,
+                    finding: rootAccessFinding(engineVersion: request.engineVersion)
+                )
             } catch {
                 return incompleteResult(
                     request: request,
@@ -295,6 +310,12 @@ public struct ScanService: ScanServicing, Sendable {
         let title: String
         let explanation: String
         switch error {
+        case PreflightError.inventoryLimitExceeded(let resource, let limit):
+            return inventoryLimitFinding(
+                resource: resource,
+                limit: limit,
+                engineVersion: engineVersion
+            )
         case PreflightError.invalidPreset:
             ruleID = "preset.resolution-failed"
             title = "Preset could not be resolved"
@@ -321,6 +342,47 @@ public struct ScanService: ScanServicing, Sendable {
             evidence: [],
             expected: "A completed scan of a valid selected source and preset.",
             suggestedAction: "Review the selected source and preset, then run the scan again.",
+            origin: .engine,
+            engineVersion: engineVersion
+        )
+    }
+
+    private func inventoryLimitFinding(
+        resource: InventoryLimitResource,
+        limit: Int,
+        engineVersion: String
+    ) -> Finding {
+        let slug: String
+        let title: String
+        switch resource {
+        case .totalEntries:
+            slug = "total-entries"
+            title = "Inventory total-entry budget exceeded"
+        case .depth:
+            slug = "depth"
+            title = "Inventory depth budget exceeded"
+        case .namesPerDirectory:
+            slug = "names-per-directory"
+            title = "Inventory directory-name budget exceeded"
+        case .relativePathBytes:
+            slug = "relative-path-bytes"
+            title = "Inventory relative-path budget exceeded"
+        case .aggregateRelativePathBytes:
+            slug = "aggregate-relative-path-bytes"
+            title = "Inventory aggregate-path budget exceeded"
+        }
+        return Finding(
+            ruleID: "filesystem.inventory-limit.\(slug)",
+            severity: .error,
+            title: title,
+            explanation: "The selected source exceeds a bounded inventory resource limit, so the scan stopped without truncating its result.",
+            affectedPaths: [],
+            evidence: [
+                Evidence(label: "resource", value: .string(resource.rawValue)),
+                Evidence(label: "limit", value: .integer(limit)),
+            ],
+            expected: "A selected source within all bounded inventory limits.",
+            suggestedAction: "Reduce the source inventory or split the delivery, then run the scan again.",
             origin: .engine,
             engineVersion: engineVersion
         )

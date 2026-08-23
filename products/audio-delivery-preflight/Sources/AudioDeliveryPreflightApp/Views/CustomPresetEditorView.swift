@@ -147,6 +147,8 @@ struct CustomPresetEditorView: View {
                 } label: {
                     Label("Add delivery role", systemImage: "plus")
                 }
+                .disabled(model.customPresetDraft.roles.count >= PresetInputLimits.maximumRoles)
+                .accessibilityHint("A Custom preset can contain at most 32 delivery roles.")
                 .accessibilityIdentifier("add-custom-role-button")
             }
         }
@@ -195,9 +197,9 @@ struct CustomPresetEditorView: View {
         Binding(
             get: { model.customPresetDraft[keyPath: keyPath] },
             set: { value in
-                var draft = model.customPresetDraft
-                draft[keyPath: keyPath] = value
-                model.replaceCustomPresetDraft(draft)
+                model.updateCustomPresetDraft { draft in
+                    draft[keyPath: keyPath] = value
+                }
             }
         )
     }
@@ -209,30 +211,31 @@ struct CustomPresetEditorView: View {
                     ?? CustomRoleDraft(id: id)
             },
             set: { role in
-                var draft = model.customPresetDraft
-                guard let index = draft.roles.firstIndex(where: { $0.id == id }) else { return }
-                draft.roles[index] = role
-                model.replaceCustomPresetDraft(draft)
+                model.updateCustomPresetDraft { draft in
+                    guard let index = draft.roles.firstIndex(where: { $0.id == id }) else { return }
+                    draft.roles[index] = role
+                }
             }
         )
     }
 
     private func addRole() {
-        var draft = model.customPresetDraft
-        var suffix = draft.roles.count + 1
-        var identifier = "new-role-\(suffix)"
-        while draft.roles.contains(where: { $0.identifier == identifier }) {
-            suffix += 1
-            identifier = "new-role-\(suffix)"
+        model.updateCustomPresetDraft { draft in
+            guard draft.roles.count < PresetInputLimits.maximumRoles else { return }
+            var suffix = draft.roles.count + 1
+            var identifier = "new-role-\(suffix)"
+            while draft.roles.contains(where: { $0.identifier == identifier }) {
+                suffix += 1
+                identifier = "new-role-\(suffix)"
+            }
+            draft.roles.append(CustomRoleDraft(identifier: identifier, name: "New role \(suffix)"))
         }
-        draft.roles.append(CustomRoleDraft(identifier: identifier, name: "New role \(suffix)"))
-        model.replaceCustomPresetDraft(draft)
     }
 
     private func removeRole(id: UUID) {
-        var draft = model.customPresetDraft
-        draft.roles.removeAll { $0.id == id }
-        model.replaceCustomPresetDraft(draft)
+        model.updateCustomPresetDraft { draft in
+            draft.roles.removeAll { $0.id == id }
+        }
     }
 }
 

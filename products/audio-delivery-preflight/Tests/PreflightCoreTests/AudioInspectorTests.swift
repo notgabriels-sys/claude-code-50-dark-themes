@@ -5,12 +5,98 @@ import XCTest
 @testable import PreflightCore
 
 final class AudioInspectorTests: XCTestCase {
+    func testAudioSourceSizeGateAcceptsExactlyFourGiBAndRejectsTheNextByte() throws {
+        XCTAssertNoThrow(
+            try TrustedFileAccess.validateSourceByteSize(
+                AudioInspector.maximumStagingByteCount,
+                maximumByteCount: AudioInspector.maximumStagingByteCount
+            )
+        )
+        XCTAssertThrowsError(
+            try TrustedFileAccess.validateSourceByteSize(
+                AudioInspector.maximumStagingByteCount + 1,
+                maximumByteCount: AudioInspector.maximumStagingByteCount
+            )
+        )
+    }
+
+    func testOversizedSparseAudioIsRefusedBeforeCopyAndLeavesNoStagingFile() async throws {
+        let fixture = try InspectionFixture.make()
+        defer { fixture.remove() }
+        let path = try fixture.writeSparseFile(
+            byteSize: UInt64(AudioInspector.maximumStagingByteCount) + 1,
+            to: "Masters/oversized.wav"
+        )
+        let progress = InvocationRecorder()
+        let inspector = fixture.audioInspector(
+            onAfterCopyingChunk: { _, _ in progress.record() }
+        )
+
+        let outcome = try await inspector.inspect(source: fixture.source(path))
+
+        XCTAssertEqual(progress.invocationCount, 0)
+        XCTAssertEqual(outcome.status, InspectionStatus.failed)
+        XCTAssertEqual(outcome.value?.isReadable, false)
+        XCTAssertEqual(
+            outcome.findings.first?.evidence,
+            [Evidence(label: "isReadable", value: .boolean(false))]
+        )
+        XCTAssertEqual(try fixture.stagingFiles(), [])
+    }
+
+    func testStagingCapacityPreservesMinimumAndTenPercentReserve() throws {
+        let oneGiB = UInt64(1_024 * 1_024 * 1_024)
+        let threeGiB = 3 * oneGiB
+        XCTAssertTrue(
+            try TrustedFileAccess.hasSufficientStagingCapacity(
+                byteSize: oneGiB,
+                availableBytes: threeGiB
+            )
+        )
+        XCTAssertFalse(
+            try TrustedFileAccess.hasSufficientStagingCapacity(
+                byteSize: oneGiB,
+                availableBytes: threeGiB - 1
+            )
+        )
+
+        let thirtyGiB = 30 * oneGiB
+        let twentySevenGiB = 27 * oneGiB
+        XCTAssertTrue(
+            try TrustedFileAccess.hasSufficientStagingCapacity(
+                byteSize: twentySevenGiB,
+                availableBytes: thirtyGiB
+            )
+        )
+        XCTAssertFalse(
+            try TrustedFileAccess.hasSufficientStagingCapacity(
+                byteSize: twentySevenGiB + 1,
+                availableBytes: thirtyGiB
+            )
+        )
+    }
+
+    func testStagingCapacityArithmeticOverflowFailsClosed() {
+        XCTAssertThrowsError(
+            try TrustedFileAccess.availableByteCount(
+                blocksAvailable: UInt64.max,
+                blockSize: 2
+            )
+        )
+        XCTAssertThrowsError(
+            try TrustedFileAccess.hasSufficientStagingCapacity(
+                byteSize: UInt64.max,
+                availableBytes: UInt64.max
+            )
+        )
+    }
+
     func testPCMMonoWAVReportsMeasuredPropertiesFromTrustedSource() async throws {
         let fixture = try InspectionFixture.make()
         defer { fixture.remove() }
         let path = try fixture.write(FixtureFactory.wavData(channels: 1, sampleRate: 44_100, bitDepth: 16, frameCount: 44_100), to: "Masters/Track.wav")
 
-        let outcome = try await AudioInspector().inspect(source: fixture.source(path))
+        let outcome = try await fixture.audioInspector().inspect(source: fixture.source(path))
         let properties = try XCTUnwrap(outcome.value)
 
         XCTAssertEqual(outcome.status, .succeeded)
@@ -27,7 +113,7 @@ final class AudioInspectorTests: XCTestCase {
         defer { fixture.remove() }
         let path = try fixture.write(FixtureFactory.wavData(channels: 2, sampleRate: 48_000, bitDepth: 24, frameCount: 48_000), to: "Masters/Track.wav")
 
-        let outcome = try await AudioInspector().inspect(source: fixture.source(path))
+        let outcome = try await fixture.audioInspector().inspect(source: fixture.source(path))
 
         XCTAssertEqual(outcome.status, .succeeded)
         XCTAssertEqual(outcome.value?.channelCount, 2)
@@ -42,7 +128,7 @@ final class AudioInspectorTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: mediaURL) }
         let path = try fixture.write(Data(contentsOf: mediaURL), to: "Masters/Track.m4a")
 
-        let outcome = try await AudioInspector().inspect(source: fixture.source(path))
+        let outcome = try await fixture.audioInspector().inspect(source: fixture.source(path))
 
         XCTAssertEqual(outcome.status, .succeeded)
         XCTAssertEqual(outcome.value?.container, "M4A")
@@ -52,7 +138,7 @@ final class AudioInspectorTests: XCTestCase {
         XCTAssertNil(outcome.value?.pcmBitDepth)
     }
 
-    func testEmbeddedMetadataSurvivesTrustedStagingWithCoreAudioMeasurements() async throws {
+    func testEmbeddedMetadataIsOmittedWithoutChangingCoreAudioMeasurements() async throws {
         let fixture = try InspectionFixture.make()
         defer { fixture.remove() }
         let path = try fixture.write(
@@ -64,12 +150,11 @@ final class AudioInspectorTests: XCTestCase {
 
         XCTAssertFalse(embeddedMetadata.isEmpty, "The fixture must contain framework-readable metadata.")
 
-        let outcome = try await AudioInspector().inspect(source: fixture.source(path))
+        let outcome = try await fixture.audioInspector().inspect(source: fixture.source(path))
         let properties = try XCTUnwrap(outcome.value)
 
         XCTAssertEqual(outcome.status, .succeeded)
-        XCTAssertEqual(properties.metadata["title"], "Fixture Title")
-        XCTAssertEqual(properties.metadata["artist"], "Fixture Artist")
+        XCTAssertEqual(properties.metadata, [:])
         XCTAssertEqual(properties.container, "M4A")
         XCTAssertEqual(properties.channelCount, 1)
         XCTAssertEqual(properties.sampleRate, 44_100)
@@ -86,117 +171,12 @@ final class AudioInspectorTests: XCTestCase {
         XCTAssertNil(AudioInspector.encodingName(for: 0x3F3F3F3F))
     }
 
-    func testCommonEmbeddedMetadataMapsToStableTextFields() async throws {
-        let title = AVMutableMetadataItem()
-        title.identifier = .commonIdentifierTitle
-        title.value = "Fixture Title" as NSString
-        let artist = AVMutableMetadataItem()
-        artist.identifier = .commonIdentifierArtist
-        artist.value = "Fixture Artist" as NSString
-
-        let metadata = try await AudioInspector.metadataDictionary(from: [artist, title])
-
-        XCTAssertEqual(metadata, ["artist": "Fixture Artist", "title": "Fixture Title"])
-    }
-
-    func testMetadataKeyAndCombiningValueAreBoundedByUTF8Bytes() async throws {
-        let key = "K" + String(repeating: "\u{0301}", count: 100)
-        let value = "A" + String(repeating: "\u{0301}", count: 5_000)
-
-        let metadata = try await AudioInspector.metadataDictionary(from: [
-            metadataItem(key: key, value: value),
-        ])
-        let boundedKey = try XCTUnwrap(metadata.keys.first)
-        let boundedValue = try XCTUnwrap(metadata[boundedKey])
-
-        XCTAssertEqual(boundedKey.utf8.count, 127)
-        XCTAssertEqual(boundedKey.unicodeScalars.count, 64)
-        XCTAssertEqual(boundedValue.utf8.count, 4_095)
-        XCTAssertEqual(boundedValue.unicodeScalars.count, 2_048)
-    }
-
-    func testMetadataFourByteScalarsAreNotSplitAtValueBudget() async throws {
-        let metadata = try await AudioInspector.metadataDictionary(from: [
-            metadataItem(key: "title", value: String(repeating: "😀", count: 2_000)),
-        ])
-        let value = try XCTUnwrap(metadata["title"])
-
-        XCTAssertEqual(value.utf8.count, 4_096)
-        XCTAssertEqual(value.unicodeScalars.count, 1_024)
-        XCTAssertEqual(value.last, "😀")
-    }
-
-    func testMetadataDuplicateKeysResolveDeterministicallyAfterKeyTruncation() async throws {
-        let commonPrefix = String(repeating: "a", count: 128)
-        let alpha = metadataItem(key: commonPrefix + "-alpha", value: "Alpha")
-        let zulu = metadataItem(key: commonPrefix + "-zulu", value: "Zulu")
-
-        let forward = try await AudioInspector.metadataDictionary(from: [zulu, alpha])
-        let reversed = try await AudioInspector.metadataDictionary(from: [alpha, zulu])
-
-        XCTAssertEqual(forward, [commonPrefix: "Alpha"])
-        XCTAssertEqual(reversed, forward)
-    }
-
-    func testMetadataAggregateBudgetBoundsJSONReadyDictionaryDeterministically() async throws {
-        let largeValue = String(repeating: "\"", count: 4_096)
-        let items = (0..<64).map { index in
-            metadataItem(key: String(format: "field-%02d", index), value: largeValue)
-        }
-
-        let forward = try await AudioInspector.metadataDictionary(from: items)
-        let reversed = try await AudioInspector.metadataDictionary(from: items.reversed())
-        let encoded = try JSONSerialization.data(withJSONObject: forward, options: [.sortedKeys])
-
-        XCTAssertEqual(forward, reversed)
-        XCTAssertEqual(Set(forward.keys), ["field-00", "field-01", "field-02"])
-        XCTAssertLessThanOrEqual(encoded.count, 32_768)
-    }
-
-    func testMetadataSelectionIsDeterministicAcrossMoreThanSixtyFourDistinctItems() async throws {
-        let items = (0...64).map { index in
-            metadataItem(
-                key: String(format: "field-%02d", index),
-                value: String(format: "value-%02d", index)
-            )
-        }
-
-        let forward = try await AudioInspector.metadataDictionary(from: items)
-        let reversed = try await AudioInspector.metadataDictionary(from: items.reversed())
-
-        XCTAssertEqual(forward, reversed)
-        XCTAssertEqual(forward.count, 64)
-        XCTAssertEqual(forward["field-00"], "value-00")
-        XCTAssertEqual(forward["field-63"], "value-63")
-        XCTAssertNil(forward["field-64"])
-    }
-
-    func testMetadataDuplicateResolutionIsDeterministicAcrossOldSelectionBoundary() async throws {
-        let fillers = (0..<63).map { index in
-            metadataItem(
-                key: String(format: "field-%02d", index),
-                value: String(format: "value-%02d", index)
-            )
-        }
-        let items = [metadataItem(key: "album", value: "Zulu")] + fillers + [
-            metadataItem(key: "album", value: "Alpha"),
-        ]
-
-        let forward = try await AudioInspector.metadataDictionary(from: items)
-        let reversed = try await AudioInspector.metadataDictionary(from: items.reversed())
-
-        XCTAssertEqual(forward, reversed)
-        XCTAssertEqual(forward["album"], "Alpha")
-        XCTAssertEqual(forward.count, 63)
-        XCTAssertNil(forward["field-62"])
-    }
-
     func testWAVBytesNamedMP3ReportValidatedWAVContainer() async throws {
         let fixture = try InspectionFixture.make()
         defer { fixture.remove() }
         let path = try fixture.write(FixtureFactory.wavData(channels: 1, sampleRate: 44_100, bitDepth: 16, frameCount: 44_100), to: "Masters/Track.mp3")
 
-        let outcome = try await AudioInspector().inspect(source: fixture.source(path))
+        let outcome = try await fixture.audioInspector().inspect(source: fixture.source(path))
 
         XCTAssertEqual(outcome.status, .succeeded)
         XCTAssertEqual(outcome.value?.container, "WAV")
@@ -207,7 +187,7 @@ final class AudioInspectorTests: XCTestCase {
         defer { fixture.remove() }
         let path = try fixture.write(Data("RIFF\u{00}\u{00}\u{00}\u{00}WAVE".utf8), to: "Masters/Track.wav")
 
-        let outcome = try await AudioInspector().inspect(source: fixture.source(path))
+        let outcome = try await fixture.audioInspector().inspect(source: fixture.source(path))
 
         XCTAssertEqual(outcome.status, .failed)
         XCTAssertEqual(outcome.value?.isReadable, false)
@@ -232,7 +212,7 @@ final class AudioInspectorTests: XCTestCase {
         defer { fixture.remove() }
         let path = try fixture.write(FixtureFactory.wavData(channels: 1, sampleRate: 44_100, bitDepth: 16, frameCount: 44_100), to: "Masters/Track.wav")
         let externalURL = try fixture.writeExternal(FixtureFactory.wavData(channels: 2, sampleRate: 48_000, bitDepth: 24, frameCount: 48_000), to: "sentinel.wav")
-        let inspector = AudioInspector(onBeforeOpeningPathComponent: { relativePath, componentIndex in
+        let inspector = fixture.audioInspector(onBeforeOpeningPathComponent: { relativePath, componentIndex in
             guard relativePath == path, componentIndex == 1 else { return }
             try? fixture.replaceLeaf(path, with: externalURL)
         })
@@ -249,7 +229,7 @@ final class AudioInspectorTests: XCTestCase {
         defer { fixture.remove() }
         let path = try fixture.write(FixtureFactory.wavData(channels: 1, sampleRate: 44_100, bitDepth: 16, frameCount: 44_100), to: "Masters/Track.wav")
         _ = try fixture.writeExternal(FixtureFactory.wavData(channels: 2, sampleRate: 48_000, bitDepth: 24, frameCount: 48_000), to: "Track.wav")
-        let inspector = AudioInspector(onBeforeOpeningPathComponent: { relativePath, componentIndex in
+        let inspector = fixture.audioInspector(onBeforeOpeningPathComponent: { relativePath, componentIndex in
             guard relativePath == path, componentIndex == 0 else { return }
             try? fixture.replaceFirstAncestor(with: fixture.externalRoot)
         })
@@ -266,7 +246,7 @@ final class AudioInspectorTests: XCTestCase {
         defer { fixture.remove() }
         let validPath = try fixture.write(FixtureFactory.wavData(channels: 1, sampleRate: 44_100, bitDepth: 16, frameCount: 44_100), to: "Masters/valid.wav")
         let invalidPath = try fixture.write(Data("not audio".utf8), to: "Masters/invalid.wav")
-        let inspector = AudioInspector(stagingDirectory: fixture.stagingDirectory)
+        let inspector = fixture.audioInspector()
         let successOutcome = try await inspector.inspect(source: fixture.source(validPath))
         let failureOutcome = try await inspector.inspect(source: fixture.source(invalidPath))
 
@@ -289,8 +269,7 @@ final class AudioInspectorTests: XCTestCase {
         let mutation = OneShotMutation()
         let progress = CopyProgressRecorder()
         let appendedData = Data(repeating: 0xA5, count: 32 * 1_024)
-        let inspector = AudioInspector(
-            stagingDirectory: fixture.stagingDirectory,
+        let inspector = fixture.audioInspector(
             onAfterCopyingChunk: { relativePath, copiedByteCount in
                 guard relativePath == path else { return }
                 progress.record(copiedByteCount)
@@ -322,8 +301,7 @@ final class AudioInspectorTests: XCTestCase {
         )
         let path = try fixture.write(originalData, to: "Masters/mutating.wav")
         let mutation = OneShotMutation()
-        let inspector = AudioInspector(
-            stagingDirectory: fixture.stagingDirectory,
+        let inspector = fixture.audioInspector(
             onAfterCopyingChunk: { relativePath, _ in
                 guard relativePath == path else { return }
                 mutation.perform {
@@ -350,8 +328,7 @@ final class AudioInspectorTests: XCTestCase {
             to: "Masters/cancellable.wav"
         )
         let gate = InspectionCopyGate()
-        let inspector = AudioInspector(
-            stagingDirectory: fixture.stagingDirectory,
+        let inspector = fixture.audioInspector(
             onAfterCopyingChunk: { relativePath, _ in
                 guard relativePath == path else { return }
                 gate.blockOnceUntilReleased()
@@ -377,13 +354,6 @@ final class AudioInspectorTests: XCTestCase {
         XCTAssertEqual(try fixture.stagingFiles(), [])
     }
 
-    private func metadataItem(key: String, value: String) -> AVMetadataItem {
-        let item = AVMutableMetadataItem()
-        item.keySpace = .common
-        item.key = key as NSString
-        item.value = value as NSString
-        return item
-    }
     private func m4aDataWithCommonMetadata(title: String, artist: String) async throws -> Data {
         let sourceURL = try FixtureFactory.aacM4A(
             sampleRate: 44_100,
@@ -412,6 +382,7 @@ final class AudioInspectorTests: XCTestCase {
         return try Data(contentsOf: outputURL)
     }
 }
+
 private final class InspectionCopyGate: @unchecked Sendable {
     let copyStarted = XCTestExpectation(description: "staging copy started")
     private let lock = NSLock()

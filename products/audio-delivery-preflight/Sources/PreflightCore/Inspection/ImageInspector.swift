@@ -7,13 +7,18 @@ public protocol ImageInspecting: Sendable {
 }
 
 public struct ImageInspector: ImageInspecting {
+    static let maximumStagingByteCount: Int64 = 256 * 1_024 * 1_024
+    static let maximumPixelCount = 100_000_000
+
     private let stagingDirectory: URL
+    private let availableByteCountProvider: TrustedFileAccess.AvailableByteCountProvider?
     private let onBeforeOpeningPathComponent: TrustedFileAccess.OpenPathComponentHook?
     private let onAfterCopyingChunk: TrustedFileAccess.CopyProgressHook?
     private let onAfterStaging: (@Sendable () -> Void)?
 
     public init() {
         self.stagingDirectory = FileManager.default.temporaryDirectory.resolvingSymlinksInPath()
+        self.availableByteCountProvider = nil
         self.onBeforeOpeningPathComponent = nil
         self.onAfterCopyingChunk = nil
         self.onAfterStaging = nil
@@ -21,6 +26,7 @@ public struct ImageInspector: ImageInspecting {
 
     init(onBeforeOpeningPathComponent: TrustedFileAccess.OpenPathComponentHook?) {
         self.stagingDirectory = FileManager.default.temporaryDirectory.resolvingSymlinksInPath()
+        self.availableByteCountProvider = nil
         self.onBeforeOpeningPathComponent = onBeforeOpeningPathComponent
         self.onAfterCopyingChunk = nil
         self.onAfterStaging = nil
@@ -28,11 +34,13 @@ public struct ImageInspector: ImageInspecting {
 
     init(
         stagingDirectory: URL,
+        availableByteCountProvider: TrustedFileAccess.AvailableByteCountProvider? = nil,
         onBeforeOpeningPathComponent: TrustedFileAccess.OpenPathComponentHook? = nil,
         onAfterCopyingChunk: TrustedFileAccess.CopyProgressHook? = nil,
         onAfterStaging: (@Sendable () -> Void)? = nil
     ) {
         self.stagingDirectory = stagingDirectory
+        self.availableByteCountProvider = availableByteCountProvider
         self.onBeforeOpeningPathComponent = onBeforeOpeningPathComponent
         self.onAfterCopyingChunk = onAfterCopyingChunk
         self.onAfterStaging = onAfterStaging
@@ -45,6 +53,8 @@ public struct ImageInspector: ImageInspecting {
             snapshot = try TrustedFileAccess.stageRegularFile(
                 source: source,
                 in: stagingDirectory,
+                maximumByteCount: Self.maximumStagingByteCount,
+                availableByteCountProvider: availableByteCountProvider,
                 onBeforeOpeningPathComponent: onBeforeOpeningPathComponent,
                 onAfterCopyingChunk: onAfterCopyingChunk
             )
@@ -57,7 +67,11 @@ public struct ImageInspector: ImageInspecting {
 
         onAfterStaging?()
         try Task.checkCancellation()
-        guard let imageSource = CGImageSourceCreateWithURL(snapshot.stagingURL as CFURL, nil) else {
+        let imageSourceOptions = [kCGImageSourceShouldCache: false] as CFDictionary
+        guard let imageSource = CGImageSourceCreateWithURL(
+            snapshot.stagingURL as CFURL,
+            imageSourceOptions
+        ) else {
             return Self.unreadableOutcome(path: source.relativePath)
         }
         try Task.checkCancellation()
@@ -65,45 +79,82 @@ public struct ImageInspector: ImageInspecting {
             return Self.unreadableOutcome(path: source.relativePath)
         }
         try Task.checkCancellation()
-        guard let properties = CGImageSourceCopyPropertiesAtIndex(imageSource, 0, nil) as? [CFString: Any] else {
+        guard let properties = CGImageSourceCopyPropertiesAtIndex(
+            imageSource,
+            0,
+            imageSourceOptions
+        ) as? [CFString: Any] else {
             return Self.unreadableOutcome(path: source.relativePath)
         }
         try Task.checkCancellation()
 
-        let width = (properties[kCGImagePropertyPixelWidth] as? NSNumber)?.intValue
-        let height = (properties[kCGImagePropertyPixelHeight] as? NSNumber)?.intValue
-        let aspectRatio = width.flatMap { width in
-            height.flatMap { height in height > 0 ? Double(width) / Double(height) : nil }
+        let boundedProperties: ImageProperties
+        do {
+            boundedProperties = try Self.boundedProperties(
+                from: properties,
+                sourceType: sourceType as String,
+                byteSize: snapshot.byteSize
+            )
+        } catch {
+            return Self.unreadableOutcome(path: source.relativePath)
         }
-        let hasAlpha = (properties[kCGImagePropertyHasAlpha] as? NSNumber)?.boolValue
-            ?? CGImageSourceCreateImageAtIndex(imageSource, 0, nil).flatMap(Self.hasAlpha(in:))
         try Task.checkCancellation()
 
         return InspectionOutcome(
             status: .succeeded,
-            value: ImageProperties(
-                pixelWidth: width,
-                pixelHeight: height,
-                aspectRatio: aspectRatio,
-                format: sourceType as String,
-                colorModel: properties[kCGImagePropertyColorModel] as? String,
-                hasAlpha: hasAlpha,
-                byteSize: snapshot.byteSize,
-                isReadable: true
-            ),
+            value: boundedProperties,
             findings: []
         )
     }
 
-    private static func hasAlpha(in image: CGImage) -> Bool? {
-        switch image.alphaInfo {
-        case .none, .noneSkipFirst, .noneSkipLast:
-            false
-        case .alphaOnly, .first, .last, .premultipliedFirst, .premultipliedLast:
-            true
-        @unknown default:
-            nil
+    static func validatedPixelCount(width: Int, height: Int) throws -> Int {
+        guard width > 0, height > 0 else {
+            throw ImageInspectionError.invalidDimensions
         }
+        let (pixelCount, overflow) = width.multipliedReportingOverflow(by: height)
+        guard !overflow else {
+            throw ImageInspectionError.pixelCountOverflow
+        }
+        guard pixelCount <= maximumPixelCount else {
+            throw ImageInspectionError.pixelLimitExceeded
+        }
+        return pixelCount
+    }
+
+    static func boundedProperties(
+        from properties: [CFString: Any],
+        sourceType: String,
+        byteSize: Int64
+    ) throws -> ImageProperties {
+        let width = try positiveDimension(from: properties[kCGImagePropertyPixelWidth])
+        let height = try positiveDimension(from: properties[kCGImagePropertyPixelHeight])
+        _ = try validatedPixelCount(width: width, height: height)
+
+        return ImageProperties(
+            pixelWidth: width,
+            pixelHeight: height,
+            aspectRatio: Double(width) / Double(height),
+            format: sourceType,
+            colorModel: properties[kCGImagePropertyColorModel] as? String,
+            hasAlpha: (properties[kCGImagePropertyHasAlpha] as? NSNumber)?.boolValue,
+            byteSize: byteSize,
+            isReadable: true
+        )
+    }
+
+    private static func positiveDimension(from value: Any?) throws -> Int {
+        guard let number = value as? NSNumber else {
+            throw ImageInspectionError.invalidDimensions
+        }
+        let int64Value = number.int64Value
+        guard int64Value > 0,
+              number.doubleValue.isFinite,
+              number.doubleValue == Double(int64Value),
+              let dimension = Int(exactly: int64Value)
+        else {
+            throw ImageInspectionError.invalidDimensions
+        }
+        return dimension
     }
 
     private static func unreadableOutcome(path: RelativePath) -> InspectionOutcome<ImageProperties> {
@@ -125,5 +176,11 @@ public struct ImageInspector: ImageInspecting {
                 ),
             ]
         )
+    }
+
+    private enum ImageInspectionError: Error {
+        case invalidDimensions
+        case pixelCountOverflow
+        case pixelLimitExceeded
     }
 }

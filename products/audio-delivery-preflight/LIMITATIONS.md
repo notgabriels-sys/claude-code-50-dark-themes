@@ -24,7 +24,9 @@ The product does not measure or judge:
 - A filename extension is not trusted as proof of content. Unreadable or mismatched media can fail inspection.
 - PCM bit depth is reported only when the inspected stream proves linear PCM and exposes a meaningful value.
 - Missing framework measurements remain unknown.
-- Document contents are not parsed. Version 0.1.0 optionally reads AVFoundation common text metadata when the framework exposes it reliably. The application retains at most 64 selected metadata-key groups and performs at most 64 string-value loads; keys are limited to 128 UTF-8 bytes, values to 4096 UTF-8 bytes, and the deterministic sorted-key JSON aggregate to 32768 UTF-8 bytes. AVFoundation may still provide no common metadata, may fail to load it, or may materialize its collection before the application's selection limits apply; those cases produce no metadata rather than a guessed value. The optional bounded metadata can appear in the app and HTML/JSON reports, but it is not parsed for correctness and is not a replacement for delivery metadata documents.
+- Audio files larger than 4 GiB and image files larger than 256 MiB are not staged for inspection. The temporary volume must also retain at least the greater of 2 GiB or 10 percent of its currently available capacity after each staging copy.
+- Artwork dimensions must be positive and at most 100,000,000 pixels in total. Alpha remains unknown when bounded ImageIO properties do not expose it; version 0.1.0 does not decode a full image only to infer alpha.
+- Document contents are not parsed. Version 0.1.0 also does not request embedded metadata from AVFoundation because that API materializes complete metadata collections and strings before the application can enforce a resource limit. The versioned media model retains an empty metadata field for report compatibility.
 - Duration, channel count, sample rate, encoding, and PCM bit depth are container/framework observations, not listening judgments.
 - Exact duplicates use SHA-256. Near-duplicates, alternate encodes, perceptually similar audio, and visually similar artwork are not detected.
 
@@ -32,17 +34,21 @@ The product does not measure or judge:
 
 - Version 0.1.0 exposes four presets: General Audio, Stereo Premaster, Digital Release, and Custom.
 - The app Custom editor is in-memory only and does not save or restore preset files. The CLI can import one bounded, no-follow JSON schema-`1.0` preset with `--preset-file`; it does not export or migrate preset files.
-- Delivery roles are matched from visible relative-filename regular expressions and file categories. The scanner does not infer intent from sound or document contents.
+- A preset can contain at most 32 roles. Each filename regular expression is limited to 512 UTF-8 bytes; every other configured string is limited to 4096 UTF-8 bytes; all configured strings together are limited to 1,048,576 bytes; and all configured collections together are limited to 4096 values. The native editor applies the same raw-input ceilings before retaining or preprocessing an edit. Identifiers use normalized lowercase letters/digits/single hyphens, and names must be nonempty and trimmed.
+- Delivery roles are matched from visible relative-filename regular expressions and file categories. Custom expressions use a conservative subset that rejects backreferences, lookarounds, repeated quantifiers, quantified alternations, nested repetition, bounded repetition above 256, and multiple variable repetitions. The sole two-variable exception is an adjacent parser-observed `\s*\d+` sequence outside character classes, escaped literals, comments, and extended-mode syntax. Only an explicit reviewed set of exact built-in expressions bypasses the Custom subset. The scanner does not infer intent from sound or document contents.
 - Ambiguous matches are reported rather than resolved automatically.
 - The Digital Release preset checks package consistency. It is not tailored to every distributor's changing requirements.
 
 ## Filesystem and reports
 
 - The scanner does not follow symbolic links.
+- Inventory is limited to 50,000 entries, depth 32, 20,000 names per directory, 4096 UTF-8 bytes per relative path, and 16 MiB of aggregate relative-path text. Exceeding a boundary returns `incomplete`; it does not return a truncated result.
+- Relative paths containing C0, DEL, or C1 control characters cannot become normal inventory entries or portable report paths. CLI terminal output escapes those controls defensively.
 - A selected root or imported preset reached through any symbolic-link path component is rejected rather than followed. On macOS, use the real path instead of a compatibility alias such as `/tmp` when invoking the CLI directly.
 - Permission failures, disappearing files, changing files, unsupported special entries, or incomplete post-scan evidence can prevent a reliable result.
 - Source-change detection proves only that the compared evidence matched at the implemented checkpoints.
 - Report destinations must be new files. Existing files are not overwritten.
+- SHA-256 manifest generation fails visibly and atomically if a supposedly successful eligible checksum lacks a valid digest or safe portable path; it never silently drops that entry.
 - Reports use relative source paths by default, but filenames and SHA-256 values may still be sensitive.
 - Checksumming large deliveries requires reading every eligible regular file and can take time.
 
@@ -51,6 +57,6 @@ The product does not measure or judge:
 - The native app requires macOS 14 or later.
 - There is no Windows, Linux, iOS, or web application in version 0.1.0.
 - There is no DAW-project inspection, repair, renaming, conversion, metadata editing, publishing, cloud history, collaboration, or account system.
-- The repository can assemble and verify an application bundle and CLI with exact arm64 and x86_64 Universal executables inside an explicitly unsigned customer-archive candidate. Its executables are ad-hoc signed for local integrity and launch compatibility, but ad-hoc signing does not establish publisher identity. No valid Apple Developer ID identity was available during the release audit, so the candidate is not Developer ID signed or notarized, Gatekeeper rejects the observed package-contract candidate, and it has not been verified across the full supported macOS range.
-- Version 0.1.0 includes the selected application icon and bundle metadata. Visual appearance still requires final Finder, Dock, light-appearance, dark-appearance, and small-size inspection on the packaged build.
+- The repository can assemble and verify an application bundle and CLI with exact `arm64` and `x86_64` Universal executables inside a Developer-ID-unsigned customer-archive candidate. Their ad-hoc signatures permit local execution but establish no publisher identity or Apple trust. The candidate is not notarized, Gatekeeper may reject, block, or warn about it, and it has not been verified across the full supported macOS range.
+- Version 0.1.0 includes the selected application icon and bundle metadata. Its appearance still requires final Finder, Dock, light-appearance, dark-appearance, and small-size inspection on the packaged build.
 - A manual UI, VoiceOver, keyboard, increased-text, light/dark appearance, offline-network, oldest-supported-macOS, and copied-real-delivery release-candidate pass remains required before commercial distribution.

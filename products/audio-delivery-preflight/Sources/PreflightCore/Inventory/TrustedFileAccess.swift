@@ -20,14 +20,19 @@ struct TrustedFileSnapshot: Sendable {
 enum TrustedFileAccess {
     private static let copyChunkSize = 64 * 1_024
     private static let headerByteCount = 12
+    static let minimumStagingReserveByteCount: UInt64 = 2 * 1_024 * 1_024 * 1_024
+    private static let stagingReserveDivisor: UInt64 = 10
 
     typealias OpenPathComponentHook = @Sendable (RelativePath, Int) -> Void
     typealias OpenRootPathComponentHook = @Sendable (String, Int) -> Void
     typealias CopyProgressHook = @Sendable (RelativePath, Int64) -> Void
+    typealias AvailableByteCountProvider = @Sendable (Int32) throws -> UInt64
 
     static func stageRegularFile(
         source: TrustedMediaSource,
         in stagingDirectory: URL,
+        maximumByteCount: Int64,
+        availableByteCountProvider: AvailableByteCountProvider? = nil,
         onBeforeOpeningPathComponent: OpenPathComponentHook? = nil,
         onAfterCopyingChunk: CopyProgressHook? = nil
     ) throws -> TrustedFileSnapshot {
@@ -44,9 +49,8 @@ enum TrustedFileAccess {
         try Task.checkCancellation()
 
         let initialStatus = try status(of: sourceDescriptor)
-        guard initialStatus.st_size >= 0 else {
-            throw TrustedFileAccessError.invalidFileSize
-        }
+        let byteSize = Int64(initialStatus.st_size)
+        try validateSourceByteSize(byteSize, maximumByteCount: maximumByteCount)
 
         let stagingFile = try createStagingFile(in: stagingDirectory)
         var completed = false
@@ -59,11 +63,12 @@ enum TrustedFileAccess {
 
         try Task.checkCancellation()
         try requireSufficientCapacity(
-            for: Int64(initialStatus.st_size),
-            onFileSystemContaining: stagingFile.descriptor
+            for: byteSize,
+            onFileSystemContaining: stagingFile.descriptor,
+            availableByteCountProvider: availableByteCountProvider
         )
         let header = try copyExactly(
-            Int64(initialStatus.st_size),
+            byteSize,
             from: sourceDescriptor,
             to: stagingFile.descriptor,
             relativePath: source.relativePath,
@@ -86,9 +91,21 @@ enum TrustedFileAccess {
         completed = true
         return TrustedFileSnapshot(
             stagingURL: stagingFile.url,
-            byteSize: Int64(initialStatus.st_size),
+            byteSize: byteSize,
             header: header
         )
+    }
+
+    static func validateSourceByteSize(
+        _ observedByteSize: Int64,
+        maximumByteCount: Int64
+    ) throws {
+        guard observedByteSize >= 0, maximumByteCount >= 0 else {
+            throw TrustedFileAccessError.invalidFileSize
+        }
+        guard observedByteSize <= maximumByteCount else {
+            throw TrustedFileAccessError.fileTooLarge
+        }
     }
 
     static func openTrustedRoot(
@@ -337,20 +354,56 @@ enum TrustedFileAccess {
 
     private static func requireSufficientCapacity(
         for byteSize: Int64,
-        onFileSystemContaining descriptor: Int32
+        onFileSystemContaining descriptor: Int32,
+        availableByteCountProvider: AvailableByteCountProvider?
     ) throws {
         guard byteSize >= 0 else {
             throw TrustedFileAccessError.invalidFileSize
         }
-        var fileSystemStatus = statfs()
-        guard Darwin.fstatfs(descriptor, &fileSystemStatus) == 0 else {
-            throw TrustedFileAccessError.capacityCheckFailed
+        let availableBytes: UInt64
+        if let availableByteCountProvider {
+            availableBytes = try availableByteCountProvider(descriptor)
+        } else {
+            var fileSystemStatus = statfs()
+            guard Darwin.fstatfs(descriptor, &fileSystemStatus) == 0 else {
+                throw TrustedFileAccessError.capacityCheckFailed
+            }
+            availableBytes = try availableByteCount(
+                blocksAvailable: UInt64(fileSystemStatus.f_bavail),
+                blockSize: UInt64(fileSystemStatus.f_bsize)
+            )
         }
-        let (availableBytes, overflow) = UInt64(fileSystemStatus.f_bavail)
-            .multipliedReportingOverflow(by: UInt64(fileSystemStatus.f_bsize))
-        guard overflow || UInt64(byteSize) <= availableBytes else {
+        guard try hasSufficientStagingCapacity(
+            byteSize: UInt64(byteSize),
+            availableBytes: availableBytes
+        ) else {
             throw TrustedFileAccessError.insufficientStagingCapacity
         }
+    }
+
+    static func availableByteCount(
+        blocksAvailable: UInt64,
+        blockSize: UInt64
+    ) throws -> UInt64 {
+        let (availableBytes, overflow) = blocksAvailable.multipliedReportingOverflow(by: blockSize)
+        guard !overflow else {
+            throw TrustedFileAccessError.capacityCheckFailed
+        }
+        return availableBytes
+    }
+
+    static func hasSufficientStagingCapacity(
+        byteSize: UInt64,
+        availableBytes: UInt64
+    ) throws -> Bool {
+        let tenPercentReserve = availableBytes / stagingReserveDivisor
+            + (availableBytes % stagingReserveDivisor == 0 ? 0 : 1)
+        let reserve = max(minimumStagingReserveByteCount, tenPercentReserve)
+        let (requiredBytes, overflow) = byteSize.addingReportingOverflow(reserve)
+        guard !overflow else {
+            throw TrustedFileAccessError.capacityCheckFailed
+        }
+        return requiredBytes <= availableBytes
     }
 
     private static func copyExactly(

@@ -146,6 +146,8 @@ enum FixtureFactory {
 }
 
 final class InspectionFixture: @unchecked Sendable {
+    private static let simulatedAvailableByteCount: UInt64 = 64 * 1_024 * 1_024 * 1_024
+
     let root: URL
     let externalRoot: URL
     let stagingDirectory: URL
@@ -172,6 +174,19 @@ final class InspectionFixture: @unchecked Sendable {
         let url = root.appendingPathComponent(relativePath.value)
         try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
         try data.write(to: url)
+        return relativePath
+    }
+
+    func writeSparseFile(byteSize: UInt64, to relativePath: String) throws -> RelativePath {
+        let relativePath = try RelativePath(relativePath)
+        let url = root.appendingPathComponent(relativePath.value)
+        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        guard FileManager.default.createFile(atPath: url.path, contents: nil) else {
+            throw InspectionFixtureError.fileCreationFailed
+        }
+        let handle = try FileHandle(forWritingTo: url)
+        defer { try? handle.close() }
+        try handle.truncate(atOffset: byteSize)
         return relativePath
     }
 
@@ -218,6 +233,32 @@ final class InspectionFixture: @unchecked Sendable {
         TrustedMediaSource(root: root, relativePath: relativePath)
     }
 
+    func audioInspector(
+        onBeforeOpeningPathComponent: TrustedFileAccess.OpenPathComponentHook? = nil,
+        onAfterCopyingChunk: TrustedFileAccess.CopyProgressHook? = nil
+    ) -> AudioInspector {
+        AudioInspector(
+            stagingDirectory: stagingDirectory,
+            availableByteCountProvider: { _ in Self.simulatedAvailableByteCount },
+            onBeforeOpeningPathComponent: onBeforeOpeningPathComponent,
+            onAfterCopyingChunk: onAfterCopyingChunk
+        )
+    }
+
+    func imageInspector(
+        onBeforeOpeningPathComponent: TrustedFileAccess.OpenPathComponentHook? = nil,
+        onAfterCopyingChunk: TrustedFileAccess.CopyProgressHook? = nil,
+        onAfterStaging: (@Sendable () -> Void)? = nil
+    ) -> ImageInspector {
+        ImageInspector(
+            stagingDirectory: stagingDirectory,
+            availableByteCountProvider: { _ in Self.simulatedAvailableByteCount },
+            onBeforeOpeningPathComponent: onBeforeOpeningPathComponent,
+            onAfterCopyingChunk: onAfterCopyingChunk,
+            onAfterStaging: onAfterStaging
+        )
+    }
+
     func replaceLeaf(_ relativePath: RelativePath, with externalURL: URL) throws {
         let destination = root.appendingPathComponent(relativePath.value)
         try FileManager.default.removeItem(at: destination)
@@ -243,6 +284,7 @@ final class InspectionFixture: @unchecked Sendable {
 
 private enum InspectionFixtureError: Error {
     case emptyFile
+    case fileCreationFailed
     case missingFileSize
 }
 

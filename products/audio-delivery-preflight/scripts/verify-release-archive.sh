@@ -17,6 +17,21 @@ fail() {
     exit ${2:-1}
 }
 
+snapshot_directory() {
+    local source_directory=$1
+    local destination=$2
+    (
+        cd "$source_directory"
+        /usr/bin/find . -type f -print0 \
+            | /usr/bin/sort -z \
+            | while IFS= read -r -d '' relative_file; do
+                digest=$(/usr/bin/shasum -a 256 "$relative_file" | /usr/bin/awk '{print $1}')
+                /usr/bin/stat -f '%N\t%z\t%Fm\t%Lp' "$relative_file" \
+                    | /usr/bin/sed "s#^$relative_file#$digest\t${relative_file#./}#"
+            done
+    ) > "$destination"
+}
+
 (( $# == 1 )) || { usage; exit 64; }
 archive=${1:A}
 sidecar="$archive.sha256"
@@ -89,6 +104,7 @@ plist="$app/Contents/Info.plist"
 icon="$app/Contents/Resources/AppIcon.icns"
 package_info="$release_root/PACKAGE-INFO.json"
 manifest="$release_root/SHA256SUMS.txt"
+sample="$release_root/Sample Delivery Package"
 
 [[ -x "$app_executable" ]] || fail "app executable is missing or not executable"
 [[ -x "$cli" ]] || fail "CLI is missing or not executable"
@@ -101,7 +117,10 @@ for required in \
     "$release_root/UNSIGNED.txt" \
     "$release_root/BUILD-EVIDENCE.txt" \
     "$package_info" \
-    "$manifest"; do
+    "$manifest" \
+    "$sample/Masters/Main Master.wav" \
+    "$sample/Artwork/Cover.png" \
+    "$sample/Credits/credits.md"; do
     [[ -f "$required" ]] || fail "required package file is missing: ${required:t}"
 done
 
@@ -113,20 +132,30 @@ plutil -convert xml1 -o - "$package_info" >/dev/null || fail "PACKAGE-INFO.json 
     || fail "package product name mismatch"
 [[ "$(plutil -extract version raw -o - "$package_info")" == "$version" ]] \
     || fail "package version mismatch"
+[[ "$(plutil -extract productVersion raw -o - "$package_info")" == "$version" ]] \
+    || fail "package product-version compatibility field mismatch"
 [[ "$(plutil -extract buildNumber raw -o - "$package_info")" == "$build_number" ]] \
     || fail "package build number mismatch"
+[[ "$(plutil -extract buildVersion raw -o - "$package_info")" == "$build_number" ]] \
+    || fail "package build-version compatibility field mismatch"
 [[ "$(plutil -extract bundleIdentifier raw -o - "$package_info")" == "$bundle_identifier" ]] \
     || fail "package bundle identifier mismatch"
 [[ "$(plutil -extract minimumMacOS raw -o - "$package_info")" == "$minimum_macos" ]] \
     || fail "package platform floor mismatch"
+[[ "$(plutil -extract minimumMacOSVersion raw -o - "$package_info")" == "$minimum_macos" ]] \
+    || fail "package minimum-macOS compatibility field mismatch"
 [[ "$(plutil -extract architectureLabel raw -o - "$package_info")" == "Universal" ]] \
     || fail "package architecture label mismatch"
 [[ "$(plutil -extract architectureSet raw -o - "$package_info")" == "arm64 x86_64" ]] \
     || fail "package architecture set mismatch"
+[[ "$(plutil -extract architectures raw -o - "$package_info")" == "arm64 x86_64" ]] \
+    || fail "package architectures compatibility field mismatch"
 [[ "$(plutil -extract packagingMode raw -o - "$package_info")" == "local-unsigned-candidate" ]] \
     || fail "package mode mismatch"
 [[ "$(plutil -extract developerIDSigned raw -o - "$package_info")" == "false" ]] \
     || fail "unsigned candidate claims Developer ID signing"
+[[ "$(plutil -extract adHocSigned raw -o - "$package_info")" == "true" ]] \
+    || fail "unsigned candidate does not disclose its ad-hoc execution signatures"
 [[ "$(plutil -extract notarized raw -o - "$package_info")" == "false" ]] \
     || fail "unsigned candidate claims Apple notarization"
 [[ "$(plutil -extract commerciallyPublished raw -o - "$package_info")" == "false" ]] \
@@ -146,6 +175,9 @@ for digest_field in packagingScriptSHA256 archiveVerifierScriptSHA256; do
     print -r -- "$digest_value" | /usr/bin/grep -Eq '^[0-9a-f]{64}$' \
         || fail "package metadata contains an invalid script digest: $digest_field"
 done
+icon_digest=$(/usr/bin/shasum -a 256 "$icon" | /usr/bin/awk '{print $1}')
+[[ "$icon_digest" == "$(plutil -extract appIconSHA256 raw -o - "$package_info")" ]] \
+    || fail "packaged icon digest does not match package provenance"
 
 [[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$plist")" == "$bundle_identifier" ]] \
     || fail "bundle identifier mismatch"
@@ -245,17 +277,41 @@ spctl_exit=$?
 set -e
 if (( spctl_exit == 0 )); then
     gatekeeper_assessment=accepted
-else
+elif /usr/bin/grep -E -i -q -- 'rejected|not accepted|unnotarized' "$extract_root/spctl.stderr"; then
     gatekeeper_assessment=rejected
+else
+    gatekeeper_assessment=unavailable
 fi
 [[ "$gatekeeper_assessment" == "$(plutil -extract gatekeeperAssessment raw -o - "$package_info")" ]] \
     || fail "Gatekeeper assessment changed after archive extraction"
+recorded_gatekeeper_exit=$(plutil -extract gatekeeperExitCode raw -o - "$package_info")
+print -r -- "$recorded_gatekeeper_exit" | /usr/bin/grep -Eq '^[0-9]+$' \
+    || fail "recorded Gatekeeper exit code is invalid"
 
 [[ "$($cli version)" == "Audio Delivery Preflight $version" ]] \
     || fail "packaged CLI version command failed"
-/usr/bin/grep -F -q -- 'not been signed with an Apple Developer ID certificate' "$release_root/UNSIGNED.txt" \
+sample_before="$extract_root/sample-before.tsv"
+sample_after="$extract_root/sample-after.tsv"
+reports="$extract_root/reports"
+snapshot_directory "$sample" "$sample_before"
+mkdir "$reports"
+"$cli" scan "$sample" \
+    --preset digital-release \
+    --report-html "$reports/report.html" \
+    --report-json "$reports/report.json" \
+    --checksums "$reports/SHA256SUMS.txt" >/dev/null \
+    || fail "packaged CLI did not accept the deterministic sample"
+snapshot_directory "$sample" "$sample_after"
+/usr/bin/cmp "$sample_before" "$sample_after" >/dev/null \
+    || fail "packaged CLI modified the deterministic sample"
+/usr/bin/grep -E -q -- '"overallStatus" : "ready"' "$reports/report.json" \
+    || fail "packaged CLI did not produce a ready sample report"
+[[ -f "$reports/report.html" && -f "$reports/SHA256SUMS.txt" ]] \
+    || fail "packaged CLI did not create every requested sample report"
+unsigned_disclosure=$(/usr/bin/tr '\n\t' '  ' < "$release_root/UNSIGNED.txt")
+[[ "$unsigned_disclosure" == *'not been signed with an Apple Developer ID certificate'* ]] \
     || fail "unsigned disclosure is incomplete"
-/usr/bin/grep -F -q -- 'not been notarized by Apple' "$release_root/UNSIGNED.txt" \
+[[ "$unsigned_disclosure" == *'not been notarized by Apple'* ]] \
     || fail "notarization disclosure is incomplete"
 
 if /usr/bin/grep -R -a -E -i -q -- 'Lack of Fate|Fate Through|Hologram People' "$release_root"; then

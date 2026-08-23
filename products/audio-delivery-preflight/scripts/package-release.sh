@@ -52,7 +52,7 @@ for required in \
     "$product_dir/Package.swift" \
     "$product_dir/Resources/Info.plist" \
     "$product_dir/Resources/AppIcon.icns" \
-    "$product_dir/README.md" \
+    "$product_dir/CUSTOMER_README.md" \
     "$product_dir/PRIVACY.md" \
     "$product_dir/LIMITATIONS.md" \
     "$product_dir/UNSIGNED.txt" \
@@ -60,6 +60,8 @@ for required in \
     "$script_dir/verify-release-archive.sh"; do
     [[ -f "$required" ]] || fail "missing packaging input: $required" 66
 done
+[[ -d "$product_dir/Tests/Fixtures/valid-digital-release" ]] \
+    || fail "missing deterministic sample delivery fixture" 66
 
 plutil -lint "$product_dir/Resources/Info.plist" >/dev/null
 [[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$product_dir/Resources/Info.plist")" == "$bundle_identifier" ]] \
@@ -73,9 +75,10 @@ plutil -lint "$product_dir/Resources/Info.plist" >/dev/null
 
 source_changes=$(git -C "$repo_root" status --porcelain -- \
     products/audio-delivery-preflight/Package.swift \
-    products/audio-delivery-preflight/Sources)
+    products/audio-delivery-preflight/Sources \
+    products/audio-delivery-preflight/Resources)
 [[ -z "$source_changes" ]] \
-    || fail "refusing to package uncommitted Package.swift or Sources changes" 65
+    || fail "refusing to package uncommitted Package.swift, Sources, or Resources changes" 65
 
 print -- "Running the complete product verifier before packaging..."
 AUDIO_PREFLIGHT_SKIP_PACKAGE_TEST=1 "$script_dir/verify.sh"
@@ -169,10 +172,12 @@ mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
 /usr/bin/install -m 644 "$product_dir/Resources/Info.plist" "$app/Contents/Info.plist"
 /usr/bin/install -m 644 "$product_dir/Resources/AppIcon.icns" "$app/Contents/Resources/AppIcon.icns"
 /usr/bin/install -m 755 "$universal_cli" "$cli"
-/usr/bin/install -m 644 "$product_dir/README.md" "$release_root/README.md"
+/usr/bin/install -m 644 "$product_dir/CUSTOMER_README.md" "$release_root/README.md"
 /usr/bin/install -m 644 "$product_dir/PRIVACY.md" "$release_root/PRIVACY.md"
 /usr/bin/install -m 644 "$product_dir/LIMITATIONS.md" "$release_root/LIMITATIONS.md"
 /usr/bin/install -m 644 "$product_dir/UNSIGNED.txt" "$release_root/UNSIGNED.txt"
+/usr/bin/ditto "$product_dir/Tests/Fixtures/valid-digital-release" \
+    "$release_root/Sample Delivery Package"
 
 [[ -z "$(find "$release_root" -type l -print -quit)" ]] \
     || fail "release tree contains a symbolic link" 65
@@ -212,8 +217,10 @@ spctl_exit=$?
 set -e
 if (( spctl_exit == 0 )); then
     gatekeeper_assessment=accepted
-else
+elif /usr/bin/grep -E -i -q -- 'rejected|not accepted|unnotarized' "$build_root/spctl.stderr"; then
     gatekeeper_assessment=rejected
+else
+    gatekeeper_assessment=unavailable
 fi
 
 package_info="$release_root/PACKAGE-INFO.json"
@@ -221,13 +228,18 @@ plutil -create xml1 "$package_info"
 plutil -insert schemaVersion -string "1.0" "$package_info"
 plutil -insert productName -string "Audio Delivery Preflight" "$package_info"
 plutil -insert version -string "$version" "$package_info"
+plutil -insert productVersion -string "$version" "$package_info"
 plutil -insert buildNumber -integer "$build_number" "$package_info"
+plutil -insert buildVersion -string "$build_number" "$package_info"
 plutil -insert bundleIdentifier -string "$bundle_identifier" "$package_info"
 plutil -insert minimumMacOS -string "$minimum_macos" "$package_info"
+plutil -insert minimumMacOSVersion -string "$minimum_macos" "$package_info"
 plutil -insert architectureLabel -string "$architecture_label" "$package_info"
 plutil -insert architectureSet -string "$architecture_set" "$package_info"
+plutil -insert architectures -string "$architecture_set" "$package_info"
 plutil -insert packagingMode -string "local-unsigned-candidate" "$package_info"
 plutil -insert developerIDSigned -bool false "$package_info"
+plutil -insert adHocSigned -bool true "$package_info"
 plutil -insert notarized -bool false "$package_info"
 plutil -insert commerciallyPublished -bool false "$package_info"
 plutil -insert productVerifierPassed -bool true "$package_info"
@@ -241,6 +253,8 @@ plutil -insert appBundleSignature -string "$app_bundle_signature" "$package_info
 plutil -insert appExecutableSignature -string "$app_executable_signature" "$package_info"
 plutil -insert cliSignature -string "$cli_signature" "$package_info"
 plutil -insert gatekeeperAssessment -string "$gatekeeper_assessment" "$package_info"
+plutil -insert gatekeeperExitCode -integer "$spctl_exit" "$package_info"
+plutil -insert appIconSHA256 -string "$icon_digest" "$package_info"
 plutil -convert json -r "$package_info"
 
 {
@@ -249,7 +263,7 @@ plutil -convert json -r "$package_info"
     print -- "Source commit: $source_commit"
     print -- "Source branch: $source_branch"
     print -- "Entire source tree clean: $source_tree_clean"
-    print -- "Package.swift and Sources clean: true"
+    print -- "Package.swift, Sources, and Resources clean: true"
     print -- "Product verifier passed: true"
     print -- "Minimum macOS: $minimum_macos"
     print -- "Architecture label: $architecture_label"

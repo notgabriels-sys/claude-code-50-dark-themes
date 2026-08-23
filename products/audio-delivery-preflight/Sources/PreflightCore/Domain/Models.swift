@@ -82,6 +82,12 @@ public struct RelativePath: Sendable, Codable, Equatable, Hashable {
             throw PreflightError.invalidRelativePath(reason: "A serialized relative path must use forward slashes only.")
         }
 
+        guard value.unicodeScalars.allSatisfy({ scalar in
+            !Self.isControlScalar(scalar)
+        }) else {
+            throw PreflightError.invalidRelativePath(reason: "A relative path cannot contain control characters.")
+        }
+
         let components = value.split(separator: "/", omittingEmptySubsequences: false)
         guard components.allSatisfy({ component in
             !component.isEmpty && component != "." && component != ".."
@@ -99,6 +105,12 @@ public struct RelativePath: Sendable, Codable, Equatable, Hashable {
     public func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()
         try container.encode(value)
+    }
+
+    private static func isControlScalar(_ scalar: Unicode.Scalar) -> Bool {
+        (0x00...0x1F).contains(scalar.value)
+            || scalar.value == 0x7F
+            || (0x80...0x9F).contains(scalar.value)
     }
 }
 

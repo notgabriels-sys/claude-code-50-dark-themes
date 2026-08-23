@@ -30,6 +30,51 @@ final class CLITests: XCTestCase {
         XCTAssertTrue(output.stdout.contains("Audio Delivery Preflight 0.1.0"))
     }
 
+    func testHumanReadableOutputEscapesEveryC0DELAndC1ScalarFromInjectedPresetData() async {
+        let output = OutputCapture()
+        let controlValues = Array(0x00...0x1F) + [0x7F] + Array(0x80...0x9F)
+        let controls = String(String.UnicodeScalarView(controlValues.compactMap(UnicodeScalar.init)))
+        var testEnvironment = environment(output: output)
+        testEnvironment.presets = [Preset(identifier: "preset\(controls)", name: "name\(controls)")]
+
+        let exitCode = await CLI().run(arguments: ["presets"], environment: testEnvironment)
+
+        XCTAssertEqual(exitCode, 0)
+        XCTAssertEqual(output.standardOutputWrites.count, 1)
+        XCTAssertTrue(output.stdout.contains("\\u{0009}"))
+        XCTAssertTrue(output.stdout.contains("\\u{000A}"))
+        XCTAssertTrue(output.stdout.contains("\\u{001B}"))
+        XCTAssertTrue(output.stdout.contains("\\u{007F}"))
+        XCTAssertTrue(output.stdout.contains("\\u{0085}"))
+        XCTAssertFalse(output.standardOutputWrites.contains(where: containsTerminalControlScalar))
+        XCTAssertFalse(output.standardErrorWrites.contains(where: containsTerminalControlScalar))
+    }
+
+    func testScanSummaryEscapesControlsInInjectedRoleAndEvidenceDataWithoutAddingWrites() async throws {
+        let output = OutputCapture()
+        let assignment = RoleAssignment(
+            roleIdentifier: "main\nrole",
+            roleName: "Main\tmaster",
+            pattern: "main\u{001B}\\.wav$",
+            matchedPath: try RelativePath("Masters/Main.wav"),
+            category: .audio,
+            acceptedEvidence: [Evidence(label: "encoding\rlabel", value: .string("Linear\u{0085}PCM"))]
+        )
+        let result = try scanResult(status: .ready, roleAssignments: [assignment])
+
+        let exitCode = await CLI().run(
+            arguments: ["scan", "Fixture"],
+            environment: environment(output: output, result: result)
+        )
+
+        XCTAssertEqual(exitCode, 0)
+        XCTAssertTrue(output.stdout.contains("main\\u{000A}role"))
+        XCTAssertTrue(output.stdout.contains("Main\\u{0009}master"))
+        XCTAssertTrue(output.stdout.contains("main\\u{001B}\\.wav$"))
+        XCTAssertTrue(output.stdout.contains("encoding\\u{000D}label=Linear\\u{0085}PCM"))
+        XCTAssertFalse(output.standardOutputWrites.contains(where: containsTerminalControlScalar))
+    }
+
     func testInvalidCommandsMissingFolderDuplicateFlagAndUnknownOptionExitThree() async {
         let output = OutputCapture()
         let invalidArguments = [["scan"], ["unknown"], ["scan", "Fixture", "--unknown", "value"], ["scan", "Fixture", "--preset", "general-audio", "--preset", "digital-release"]]
@@ -234,6 +279,43 @@ final class CLITests: XCTestCase {
         XCTAssertTrue(output.stderr.contains("Invalid command or configuration"))
     }
 
+    func testUnsafeImportedRegexFailsExactlyAsInvalidConfigurationBeforeOutputOrScan() async throws {
+        let output = OutputCapture()
+        let calls = CallCapture()
+        let unsafePreset = Preset(
+            identifier: "unsafe-imported-regex",
+            name: "Unsafe imported regex",
+            roles: [
+                DeliveryRole(
+                    identifier: "main",
+                    pattern: #"[\s*\d+]a*a*b"#,
+                    required: false
+                ),
+            ]
+        )
+        let fallbackResult = try scanResult(status: .ready)
+        var testEnvironment = environment(output: output)
+        testEnvironment.loadPresetFile = { _ in unsafePreset }
+        testEnvironment.folderExists = { _ in calls.recordFolderInspection(); return true }
+        testEnvironment.scan = { _ in
+            calls.recordScan()
+            return fallbackResult
+        }
+
+        let exitCode = await CLI().run(
+            arguments: ["scan", "Fixture", "--preset-file", "/private/tmp/unsafe-regex.json"],
+            environment: testEnvironment
+        )
+
+        XCTAssertEqual(exitCode, 3)
+        XCTAssertEqual(calls.folderInspectionCalls, 0)
+        XCTAssertEqual(calls.scanCalls, 0)
+        XCTAssertTrue(output.stderr.contains("Invalid command or configuration."))
+        XCTAssertFalse(output.stdout.contains("Resolved requirements"))
+        XCTAssertFalse(output.stdout.contains("Scan summary:"))
+        XCTAssertFalse(output.stdout.contains("Status:"))
+    }
+
     func testUnavailableFolderAndInjectedScanStartFailureExitFourWithoutPathLeakage() async {
         let output = OutputCapture()
         let privatePath = "/Users/example/private-delivery"
@@ -307,6 +389,33 @@ final class CLITests: XCTestCase {
         XCTAssertEqual(blockedExportCode, 5)
         XCTAssertTrue(output.stdout.contains("Status: ready"))
         XCTAssertTrue(output.stderr.contains("completed scan result is unchanged"))
+    }
+
+    func testChecksumGenerationFailureDoesNotWriteOrPrintSuccess() async throws {
+        let output = OutputCapture()
+        let writes = AtomicWriteCapture()
+        let invalid = InventoryEntry(
+            relativePath: try RelativePath("Masters/Missing Digest.wav"),
+            normalizedFilename: "missing digest.wav",
+            normalizedExtension: "wav",
+            category: .audio,
+            kind: .regular,
+            checksumStatus: .succeeded
+        )
+        let result = try scanResult(status: .ready, inventory: [invalid])
+        var testEnvironment = environment(output: output, result: result, writer: writes.write)
+        testEnvironment.inspectReportDestination = { _ in .absent }
+
+        let exitCode = await CLI().run(
+            arguments: ["scan", "Fixture", "--checksums", "/tmp/SHA256SUMS.txt"],
+            environment: testEnvironment
+        )
+
+        XCTAssertEqual(exitCode, 5)
+        XCTAssertTrue(writes.destinations.isEmpty)
+        XCTAssertTrue(writes.data.isEmpty)
+        XCTAssertTrue(output.stderr.contains("Report export failed"))
+        XCTAssertFalse(output.stdout.contains("Checksum manifest written"))
     }
 
     func testUnexpectedInjectedFailureExitsFive() async {
@@ -624,12 +733,25 @@ private final class OutputCapture: @unchecked Sendable {
     private let lock = NSLock()
     private var capturedStandardOutput = ""
     private var capturedStandardError = ""
+    private var capturedStandardOutputWrites: [String] = []
+    private var capturedStandardErrorWrites: [String] = []
     var stdout: String { value(standardOutput: true) }
     var stderr: String { value(standardOutput: false) }
-    func reset() { lock.lock(); capturedStandardOutput = ""; capturedStandardError = ""; lock.unlock() }
-    func writeStandardOutput(_ value: String) { lock.lock(); capturedStandardOutput += value + "\n"; lock.unlock() }
-    func writeStandardError(_ value: String) { lock.lock(); capturedStandardError += value + "\n"; lock.unlock() }
+    var standardOutputWrites: [String] { values(standardOutput: true) }
+    var standardErrorWrites: [String] { values(standardOutput: false) }
+    func reset() { lock.lock(); capturedStandardOutput = ""; capturedStandardError = ""; capturedStandardOutputWrites = []; capturedStandardErrorWrites = []; lock.unlock() }
+    func writeStandardOutput(_ value: String) { lock.lock(); capturedStandardOutput += value + "\n"; capturedStandardOutputWrites.append(value); lock.unlock() }
+    func writeStandardError(_ value: String) { lock.lock(); capturedStandardError += value + "\n"; capturedStandardErrorWrites.append(value); lock.unlock() }
     private func value(standardOutput: Bool) -> String { lock.lock(); defer { lock.unlock() }; return standardOutput ? capturedStandardOutput : capturedStandardError }
+    private func values(standardOutput: Bool) -> [String] { lock.lock(); defer { lock.unlock() }; return standardOutput ? capturedStandardOutputWrites : capturedStandardErrorWrites }
+}
+
+private func containsTerminalControlScalar(_ text: String) -> Bool {
+    text.unicodeScalars.contains { scalar in
+        (0x00...0x1F).contains(scalar.value)
+            || scalar.value == 0x7F
+            || (0x80...0x9F).contains(scalar.value)
+    }
 }
 
 private final class AtomicWriteCapture: @unchecked Sendable {

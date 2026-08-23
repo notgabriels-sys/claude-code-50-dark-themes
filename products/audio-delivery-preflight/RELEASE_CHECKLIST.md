@@ -7,43 +7,42 @@ This checklist separates repository evidence, a local archive, a customer-tested
 
 ## Pre-package
 
-- [x] Source merged through pull request review boundary.
-- [x] Exact merged commit passes 189 tests and both release builds.
+- [x] Repository history includes PR #1; the later hardening wave was independently reviewed and merged locally.
+- [x] Exact merged implementation passes 238 tests and both release builds.
 - [x] Repository shop verifier passes without payment-surface changes.
 - [x] Bundle identifier fixed as `com.gabrielgarciaalonso.AudioDeliveryPreflight`.
 - [x] Marketing version fixed as `0.1.0`; build version fixed as `1`.
 - [x] Minimum deployment target fixed as macOS 14.0.
 - [x] Privacy and limitations documents included.
-- [x] Final application icon selected and included.
-- [ ] Customer license terms selected in `CUSTOMER_LICENSE_DRAFT.md`; seller legal identity, governing terms, review, acceptance, rename, and customer-archive inclusion remain open.
+- [x] Selected icon master, provenance, `.icns`, bundle metadata, and package-contract checks are present.
+- [ ] Inspect the packaged icon in Finder, Dock, light appearance, dark appearance, and small sizes.
+- [ ] Customer license terms are drafted in `CUSTOMER_LICENSE_DRAFT.md`; seller legal review, verified identity, acceptance, rename to `LICENSE.txt`, and customer-archive inclusion remain open. “All rights reserved” metadata is not a substitute.
 - [ ] Known critical bugs reviewed immediately before release.
 
 ## Package
 
 - [x] Packaging command refuses an existing output path.
-- [x] Package contains the `.app`, CLI, README, privacy, limitations, and explicit unsigned disclosure.
-- [x] Packaging command requires clean product source, runs the product verifier, and builds exact arm64 plus x86_64 Universal executables without a host-only fallback.
-- [x] Package records the source commit, source-tree state, script digests, architecture, signature state, Gatekeeper result, and commercial-publication state in machine-readable and human-readable evidence.
-- [x] Archive verifier checks external and internal SHA-256 evidence, exact manifest coverage, duplicate and unsafe paths, required files, permissions, identifier, version, macOS floor, Universal architecture, disclosures, and coherent ad-hoc signatures.
-- [x] Packaging contract rejects overwrite attempts, a false external sidecar, and changed package content hidden behind a recomputed external sidecar.
-- [ ] Build the real release archive from the exact intended source commit.
-- [ ] Record the exact source commit and archive SHA-256.
-- [ ] Copy the ZIP and checksum to a separate location and verify them there.
-- [ ] Extract and launch the copied archive rather than the build-tree executable.
+- [x] Package contains the `.app`, selected icon, CLI, sample delivery, README, privacy, limitations, build provenance, internal manifest, and explicit Developer-ID-unsigned disclosure.
+- [x] App and CLI are exact Universal binaries containing only `arm64` and `x86_64`; packaging cannot silently fall back to one architecture.
+- [x] Archive verifier checks the external and internal SHA-256 evidence, ZIP integrity, duplicate and unsafe paths, exact manifest coverage, required files, permissions, exact architecture set, ad-hoc signatures, identifier, source-commit format, version, macOS floor, icon digest, disclosure, and identity/path leakage.
+- [x] Package contract runs the packaged CLI against the sample, confirms source immutability, refuses overwrite, rejects a false external sidecar, and rejects changed content even behind a correctly recomputed external sidecar.
+- [x] Build a durable unsigned release archive from clean source commit `3b491319aebffc0661c3a510eaa0bf58cbb37b03`.
+- [x] Record archive SHA-256 `9e96ef8c0f7b4be9f85e177a7f244ea91276100a92e03657e9dea97d2b8f4c64` for the 2026-08-23 no-Apple-payment candidate.
+- [x] Copy the ZIP and checksum to a separate location and verify them there.
+- [x] Extract and launch the copied archive rather than the build-tree executable.
 
-Observed on local package-contract candidates: all 189 tests passed, both Universal slices built, strict archive verification succeeded, Gatekeeper rejected the ad-hoc candidate as recorded, and tampering was rejected. A prior packaged `.app` launch also succeeded. A durable final archive from the intended clean commit, independent-location copying, and independent-host launch remain open.
+## Selected unsigned distribution route
 
-## Apple distribution
+Apple Developer Program payment, Developer ID certificate creation, notarization, and stapling are **not applicable** to the route selected by Gabriel on 2026-08-23. Re-open those steps only if Gabriel explicitly changes that decision.
 
-- [ ] Install or select the correct Apple Developer ID Application certificate.
-- [ ] Sign nested executable content and the final `.app` with hardened runtime.
-- [ ] Verify the signature with `codesign --verify --deep --strict --verbose=2`.
-- [ ] Assess with `spctl --assess --type execute --verbose=4`.
-- [ ] Submit to Apple notarization and wait for an accepted result.
-- [ ] Staple the notarization ticket and reassess the stapled application.
-- [ ] Rebuild the customer archive from the final stapled application.
+- [x] Confirm the Keychain contains no valid Developer ID signing identity; packaging fails closed rather than selecting an unintended identity.
+- [x] Apply coherent ad-hoc signatures and verify them with `codesign --verify --deep --strict`.
+- [x] Record the literal Gatekeeper result as rejected rather than accepted or notarized.
+- [x] Include an unavoidable unsigned disclosure and Apple-documented manual opening path in the customer archive.
+- [ ] Put the same unsigned, not-notarized, Gatekeeper, and manual-opening disclosure on the product page and checkout before purchase.
+- [ ] Upload the exact approved archive and checksum, download them through the customer path, verify the checksum, and exercise the quarantined copy.
 
-If signing and notarization are deliberately deferred, the product page, checkout description, and included documentation must explain the unsigned Gatekeeper limitation before purchase. Do not describe an unsigned archive as a normal one-click installation.
+Do not describe the unsigned archive as Apple-verified, notarized, or a normal one-click installation.
 
 ## Manual product validation
 
@@ -57,16 +56,15 @@ If signing and notarization are deliberately deferred, the product page, checkou
 - [ ] Verify keyboard-only operation.
 - [ ] Verify VoiceOver labels, order, status announcements, and controls.
 - [ ] Verify increased text size and both light and dark appearances.
+- [ ] Inspect the selected packaged icon in Finder and Dock at normal and small sizes in both appearances.
 - [ ] Observe or deny network access while scanning the final packaged build.
 - [ ] Test on an independent installation at the macOS 14 floor.
 - [ ] Compare multiple audio and artwork formats with trusted tools.
 
-Partial local smoke evidence: the packaged start screen, accessibility labels, preset menu, Digital Release selection, and native chooser navigation to the generated fixture were observed. The automation connection ended on chooser confirmation, so the unchecked workflow items above remain deliberately open.
-
 ## Commercial release
 
-- [x] Commercial defaults selected: €24 one-time, GUI plus CLI, one user on up to three personally controlled Macs, version-1 updates, receipt-reply support, and 14-day refund policy.
-- [ ] Seller reviews and accepts the customer license and legally required seller/consumer information.
+- [x] Intended defaults recorded: €24 one-time purchase, one user on up to three personally controlled Macs, version-1 updates, receipt-reply support, and a 14-day refund policy.
+- [ ] Seller reviews and accepts the customer license and all legally required seller and consumer information.
 - [ ] Create the provider product only in the intended seller account.
 - [ ] Read back the real product name, amount, currency, tax treatment, attached archive, and customer-delivery settings.
 - [ ] Confirm the product page accurately states signing/notarization and supported-macOS status.
