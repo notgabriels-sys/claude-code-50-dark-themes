@@ -90,6 +90,17 @@ Same palettes and the same care, applied elsewhere. All one-time purchases, no s
 
 **[Everything Dark — the complete kit →](https://notgabriel.gumroad.com/l/wuhehk)** (all of the above, $39)
 
+### The contrast tool, free
+
+**[theme-contrast](https://github.com/notgabriels-sys/theme-contrast)** — one Python file, no
+dependencies, checks any theme against WCAG floors and exits non-zero in CI. It knows the
+difference between body text, accents, UI marks and surfaces, so it does not bury the real
+failures under false positives. MIT.
+
+```bash
+python3 theme_contrast.py themes/
+```
+
 ### See them running first
 
 **[Live demos →](https://notgabriels-sys.github.io/dark-templates-demo/)** — business documents,
