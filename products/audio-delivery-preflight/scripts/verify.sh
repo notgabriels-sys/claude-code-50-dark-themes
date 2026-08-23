@@ -31,6 +31,7 @@ snapshot_directory() {
 
 cd "$PRODUCT_DIR"
 
+"$SCRIPT_DIR/test-select-developer-id-identity.sh"
 swift package clean
 swift test
 swift build -c release --product audio-preflight
