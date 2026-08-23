@@ -22,6 +22,25 @@ cp claude-code-50-dark-themes/*.json ~/.claude/themes/
 
 Then run `/theme` in Claude Code and pick one.
 
+## Install with one command
+
+```bash
+git clone https://github.com/notgabriels-sys/claude-code-50-dark-themes
+cd claude-code-50-dark-themes && ./install.sh
+```
+
+Then run `/theme` in Claude Code and pick one.
+
+```bash
+./install.sh --list            # show the 50 names
+./install.sh acid deep-field   # install only those
+./install.sh --uninstall       # remove them again
+```
+
+It copies into `~/.claude/themes/`, and if a file of the same name is already there with
+different contents it is backed up once as `<name>.json.bak` before being replaced.
+`--uninstall` removes the themes and leaves the backups alone.
+
 ## Install (step by step)
 
 1. Update Claude Code to v2.1.118 or later
