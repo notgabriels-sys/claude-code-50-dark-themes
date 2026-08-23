@@ -1,0 +1,19 @@
+{
+  "name": "Greenhouse",
+  "base": "dark",
+  "overrides": {
+    "claude": "#58C89A",
+    "claudeShimmer": "#95DCBF",
+    "text": "#E8EDEC",
+    "inactive": "#9DAFA9",
+    "subtle": "#293833",
+    "suggestion": "#58C89A",
+    "permission": "#86D7B6",
+    "promptBorder": "#58C89A",
+    "promptBorderShimmer": "#95DCBF",
+    "planMode": "#86D7B6",
+    "userMessageBackground": "#232F2B",
+    "userMessageBackgroundHover": "#2C3B36",
+    "rate_limit_fill": "#58C89A"
+  }
+}

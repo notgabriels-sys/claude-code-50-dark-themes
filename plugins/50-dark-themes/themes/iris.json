@@ -1,0 +1,19 @@
+{
+  "name": "Iris",
+  "base": "dark",
+  "overrides": {
+    "claude": "#8C8CE8",
+    "claudeShimmer": "#D0D0F6",
+    "text": "#E8E8ED",
+    "inactive": "#9D9DAF",
+    "subtle": "#282839",
+    "suggestion": "#8C8CE8",
+    "permission": "#BFBFF2",
+    "promptBorder": "#8C8CE8",
+    "promptBorderShimmer": "#D0D0F6",
+    "planMode": "#BFBFF2",
+    "userMessageBackground": "#202031",
+    "userMessageBackgroundHover": "#28283D",
+    "rate_limit_fill": "#8C8CE8"
+  }
+}

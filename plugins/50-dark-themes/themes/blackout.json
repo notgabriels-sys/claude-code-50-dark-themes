@@ -1,0 +1,19 @@
+{
+  "name": "Blackout",
+  "base": "dark",
+  "overrides": {
+    "claude": "#E0A83C",
+    "claudeShimmer": "#EBC782",
+    "text": "#EAEAEB",
+    "inactive": "#A2A2A9",
+    "subtle": "#252528",
+    "suggestion": "#E0A83C",
+    "permission": "#E8C071",
+    "promptBorder": "#E0A83C",
+    "promptBorderShimmer": "#EBC782",
+    "planMode": "#E8C071",
+    "userMessageBackground": "#1E1E1F",
+    "userMessageBackgroundHover": "#282829",
+    "rate_limit_fill": "#E0A83C"
+  }
+}

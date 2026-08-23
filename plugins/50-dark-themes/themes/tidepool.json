@@ -1,0 +1,19 @@
+{
+  "name": "Tidepool",
+  "base": "dark",
+  "overrides": {
+    "claude": "#3FC8B0",
+    "claudeShimmer": "#7EDACA",
+    "text": "#E8EDED",
+    "inactive": "#9DAFAF",
+    "subtle": "#263636",
+    "suggestion": "#3FC8B0",
+    "permission": "#88E0D0",
+    "promptBorder": "#3FC8B0",
+    "promptBorderShimmer": "#7EDACA",
+    "planMode": "#88E0D0",
+    "userMessageBackground": "#1E2E2E",
+    "userMessageBackgroundHover": "#263A3A",
+    "rate_limit_fill": "#3FC8B0"
+  }
+}

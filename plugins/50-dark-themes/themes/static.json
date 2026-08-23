@@ -1,0 +1,19 @@
+{
+  "name": "Static",
+  "base": "dark",
+  "overrides": {
+    "claude": "#E4E6E8",
+    "claudeShimmer": "#FFFFFF",
+    "text": "#EBEBEB",
+    "inactive": "#A6A6A6",
+    "subtle": "#333333",
+    "suggestion": "#E4E6E8",
+    "permission": "#58C7BC",
+    "promptBorder": "#E4E6E8",
+    "promptBorderShimmer": "#FFFFFF",
+    "planMode": "#58C7BC",
+    "userMessageBackground": "#2B2B2B",
+    "userMessageBackgroundHover": "#353535",
+    "rate_limit_fill": "#E4E6E8"
+  }
+}

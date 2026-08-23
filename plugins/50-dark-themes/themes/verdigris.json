@@ -1,0 +1,19 @@
+{
+  "name": "Verdigris",
+  "base": "dark",
+  "overrides": {
+    "claude": "#6FC4A8",
+    "claudeShimmer": "#A9DCCB",
+    "text": "#E8EDED",
+    "inactive": "#9DAFAC",
+    "subtle": "#2B3B38",
+    "suggestion": "#6FC4A8",
+    "permission": "#A87E5A",
+    "promptBorder": "#6FC4A8",
+    "promptBorderShimmer": "#A9DCCB",
+    "planMode": "#A87E5A",
+    "userMessageBackground": "#253230",
+    "userMessageBackgroundHover": "#2E3E3B",
+    "rate_limit_fill": "#6FC4A8"
+  }
+}

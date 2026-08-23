@@ -1,0 +1,19 @@
+{
+  "name": "Furnace",
+  "base": "dark",
+  "overrides": {
+    "claude": "#FF5A36",
+    "claudeShimmer": "#FF9D88",
+    "text": "#EDE8E8",
+    "inactive": "#AF9D9E",
+    "subtle": "#332425",
+    "suggestion": "#FF5A36",
+    "permission": "#FFB84A",
+    "promptBorder": "#FF5A36",
+    "promptBorderShimmer": "#FF9D88",
+    "planMode": "#FFB84A",
+    "userMessageBackground": "#2A1D1F",
+    "userMessageBackgroundHover": "#362528",
+    "rate_limit_fill": "#FF5A36"
+  }
+}

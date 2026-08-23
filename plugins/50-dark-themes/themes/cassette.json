@@ -1,0 +1,19 @@
+{
+  "name": "Cassette",
+  "base": "dark",
+  "overrides": {
+    "claude": "#E8853C",
+    "claudeShimmer": "#F1B385",
+    "text": "#EFE4D2",
+    "inactive": "#AFA69D",
+    "subtle": "#383029",
+    "suggestion": "#E8853C",
+    "permission": "#4AA8A0",
+    "promptBorder": "#E8853C",
+    "promptBorderShimmer": "#F1B385",
+    "planMode": "#4AA8A0",
+    "userMessageBackground": "#2F2923",
+    "userMessageBackgroundHover": "#3B332C",
+    "rate_limit_fill": "#E8853C"
+  }
+}

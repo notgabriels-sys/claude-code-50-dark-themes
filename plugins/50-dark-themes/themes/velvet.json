@@ -1,0 +1,19 @@
+{
+  "name": "Velvet",
+  "base": "dark",
+  "overrides": {
+    "claude": "#C0A8E8",
+    "claudeShimmer": "#EFE9F9",
+    "text": "#ECE8ED",
+    "inactive": "#A99DAF",
+    "subtle": "#362B3B",
+    "suggestion": "#C0A8E8",
+    "permission": "#E3D8F5",
+    "promptBorder": "#C0A8E8",
+    "promptBorderShimmer": "#EFE9F9",
+    "planMode": "#E3D8F5",
+    "userMessageBackground": "#2E2532",
+    "userMessageBackgroundHover": "#392E3E",
+    "rate_limit_fill": "#C0A8E8"
+  }
+}

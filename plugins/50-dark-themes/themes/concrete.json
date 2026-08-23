@@ -1,0 +1,19 @@
+{
+  "name": "Concrete",
+  "base": "dark",
+  "overrides": {
+    "claude": "#7FA6B8",
+    "claudeShimmer": "#B3CAD5",
+    "text": "#EAEBEB",
+    "inactive": "#A2A6A9",
+    "subtle": "#333638",
+    "suggestion": "#7FA6B8",
+    "permission": "#A6C1CE",
+    "promptBorder": "#7FA6B8",
+    "promptBorderShimmer": "#B3CAD5",
+    "planMode": "#A6C1CE",
+    "userMessageBackground": "#2C2E30",
+    "userMessageBackgroundHover": "#36383B",
+    "rate_limit_fill": "#7FA6B8"
+  }
+}

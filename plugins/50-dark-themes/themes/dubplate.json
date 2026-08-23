@@ -1,0 +1,19 @@
+{
+  "name": "Dubplate",
+  "base": "dark",
+  "overrides": {
+    "claude": "#E8D44A",
+    "claudeShimmer": "#F1E592",
+    "text": "#ECEBE9",
+    "inactive": "#ABA8A0",
+    "subtle": "#2E2C29",
+    "suggestion": "#E8D44A",
+    "permission": "#B0B4B8",
+    "promptBorder": "#E8D44A",
+    "promptBorderShimmer": "#F1E592",
+    "planMode": "#B0B4B8",
+    "userMessageBackground": "#262422",
+    "userMessageBackgroundHover": "#312E2C",
+    "rate_limit_fill": "#E8D44A"
+  }
+}

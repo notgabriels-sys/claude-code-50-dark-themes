@@ -1,0 +1,19 @@
+{
+  "name": "Crossfade",
+  "base": "dark",
+  "overrides": {
+    "claude": "#3EC8E8",
+    "claudeShimmer": "#87DDF1",
+    "text": "#E9E9EC",
+    "inactive": "#9F9FAD",
+    "subtle": "#2A2A32",
+    "suggestion": "#3EC8E8",
+    "permission": "#E84A98",
+    "promptBorder": "#3EC8E8",
+    "promptBorderShimmer": "#87DDF1",
+    "planMode": "#E84A98",
+    "userMessageBackground": "#232329",
+    "userMessageBackgroundHover": "#2C2C34",
+    "rate_limit_fill": "#3EC8E8"
+  }
+}

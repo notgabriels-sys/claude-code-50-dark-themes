@@ -1,0 +1,19 @@
+{
+  "name": "VU Meter",
+  "base": "dark",
+  "overrides": {
+    "claude": "#46D160",
+    "claudeShimmer": "#87E198",
+    "text": "#EAEAEB",
+    "inactive": "#A4A4A8",
+    "subtle": "#28282A",
+    "suggestion": "#46D160",
+    "permission": "#E5484D",
+    "promptBorder": "#46D160",
+    "promptBorderShimmer": "#87E198",
+    "planMode": "#E5484D",
+    "userMessageBackground": "#202021",
+    "userMessageBackgroundHover": "#2A2A2B",
+    "rate_limit_fill": "#46D160"
+  }
+}

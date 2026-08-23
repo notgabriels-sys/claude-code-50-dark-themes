@@ -1,0 +1,19 @@
+{
+  "name": "Coral",
+  "base": "dark",
+  "overrides": {
+    "claude": "#F08060",
+    "claudeShimmer": "#F7BCAB",
+    "text": "#EDE9E9",
+    "inactive": "#AFA09D",
+    "subtle": "#352D2C",
+    "suggestion": "#F08060",
+    "permission": "#C05840",
+    "promptBorder": "#F08060",
+    "promptBorderShimmer": "#F7BCAB",
+    "planMode": "#C05840",
+    "userMessageBackground": "#2D2725",
+    "userMessageBackgroundHover": "#38312E",
+    "rate_limit_fill": "#F08060"
+  }
+}

@@ -59,7 +59,9 @@ its interface colours; the terminal application still owns the terminal backgrou
 ## Test locally
 
 ```bash
+node scripts/sync-plugin-themes.mjs
 node scripts/verify.mjs
+claude plugin validate .
 ```
 
 The command checks:
@@ -68,6 +70,8 @@ The command checks:
 - valid JSON, unique names and the shared override-key contract;
 - six-digit hex colours;
 - parity between theme files and gallery cards;
+- byte-for-byte parity between root themes and the installable plugin;
+- the marketplace and plugin manifests used by Claude Code;
 - a fresh-machine-safe installation command;
 - the verified shop payment surfaces.
 

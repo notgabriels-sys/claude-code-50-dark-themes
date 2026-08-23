@@ -1,0 +1,19 @@
+{
+  "name": "Clay",
+  "base": "dark",
+  "overrides": {
+    "claude": "#C97B5A",
+    "claudeShimmer": "#DDAC97",
+    "text": "#EDEAE9",
+    "inactive": "#AFA39D",
+    "subtle": "#38312E",
+    "suggestion": "#C97B5A",
+    "permission": "#D8A088",
+    "promptBorder": "#C97B5A",
+    "promptBorderShimmer": "#DDAC97",
+    "planMode": "#D8A088",
+    "userMessageBackground": "#2F2A27",
+    "userMessageBackgroundHover": "#3A3430",
+    "rate_limit_fill": "#C97B5A"
+  }
+}

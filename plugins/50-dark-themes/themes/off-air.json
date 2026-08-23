@@ -1,0 +1,19 @@
+{
+  "name": "Off Air",
+  "base": "dark",
+  "overrides": {
+    "claude": "#D35147",
+    "claudeShimmer": "#E38F89",
+    "text": "#ECEAEA",
+    "inactive": "#AAA4A1",
+    "subtle": "#33302E",
+    "suggestion": "#D35147",
+    "permission": "#8A8F94",
+    "promptBorder": "#D35147",
+    "promptBorderShimmer": "#E38F89",
+    "planMode": "#8A8F94",
+    "userMessageBackground": "#2B2827",
+    "userMessageBackgroundHover": "#363231",
+    "rate_limit_fill": "#D35147"
+  }
+}

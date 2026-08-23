@@ -1,0 +1,19 @@
+{
+  "name": "Fathom",
+  "base": "dark",
+  "overrides": {
+    "claude": "#38A8C8",
+    "claudeShimmer": "#78C4DA",
+    "text": "#E8EBED",
+    "inactive": "#9DA7AF",
+    "subtle": "#242D33",
+    "suggestion": "#38A8C8",
+    "permission": "#68BDD5",
+    "promptBorder": "#38A8C8",
+    "promptBorderShimmer": "#78C4DA",
+    "planMode": "#68BDD5",
+    "userMessageBackground": "#19262E",
+    "userMessageBackgroundHover": "#20313B",
+    "rate_limit_fill": "#38A8C8"
+  }
+}

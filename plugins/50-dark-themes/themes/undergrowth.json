@@ -1,0 +1,19 @@
+{
+  "name": "Undergrowth",
+  "base": "dark",
+  "overrides": {
+    "claude": "#4FA872",
+    "claudeShimmer": "#84C59D",
+    "text": "#E8EDEB",
+    "inactive": "#9DAFA6",
+    "subtle": "#27342E",
+    "suggestion": "#4FA872",
+    "permission": "#A8C89A",
+    "promptBorder": "#4FA872",
+    "promptBorderShimmer": "#84C59D",
+    "planMode": "#A8C89A",
+    "userMessageBackground": "#212C26",
+    "userMessageBackgroundHover": "#2A3830",
+    "rate_limit_fill": "#4FA872"
+  }
+}

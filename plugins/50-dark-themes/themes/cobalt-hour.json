@@ -1,0 +1,19 @@
+{
+  "name": "Cobalt Hour",
+  "base": "dark",
+  "overrides": {
+    "claude": "#4D7CFE",
+    "claudeShimmer": "#9EB8FE",
+    "text": "#E8E9ED",
+    "inactive": "#9DA2AF",
+    "subtle": "#2C323F",
+    "suggestion": "#4D7CFE",
+    "permission": "#8AA9FE",
+    "promptBorder": "#4D7CFE",
+    "promptBorderShimmer": "#9EB8FE",
+    "planMode": "#8AA9FE",
+    "userMessageBackground": "#1F283D",
+    "userMessageBackgroundHover": "#26314B",
+    "rate_limit_fill": "#4D7CFE"
+  }
+}

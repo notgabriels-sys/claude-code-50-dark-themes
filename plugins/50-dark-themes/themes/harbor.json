@@ -1,0 +1,19 @@
+{
+  "name": "Harbor",
+  "base": "dark",
+  "overrides": {
+    "claude": "#62A8D8",
+    "claudeShimmer": "#A3CCE8",
+    "text": "#E8EBED",
+    "inactive": "#9DA6AF",
+    "subtle": "#2C363F",
+    "suggestion": "#62A8D8",
+    "permission": "#93C3E4",
+    "promptBorder": "#62A8D8",
+    "promptBorderShimmer": "#A3CCE8",
+    "planMode": "#93C3E4",
+    "userMessageBackground": "#252E36",
+    "userMessageBackgroundHover": "#2D3842",
+    "rate_limit_fill": "#62A8D8"
+  }
+}

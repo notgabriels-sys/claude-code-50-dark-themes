@@ -1,0 +1,19 @@
+{
+  "name": "Graphite",
+  "base": "dark",
+  "overrides": {
+    "claude": "#C9CFD6",
+    "claudeShimmer": "#F7F8F9",
+    "text": "#E9EAEC",
+    "inactive": "#A0A4AB",
+    "subtle": "#2E2F33",
+    "suggestion": "#C9CFD6",
+    "permission": "#ECEEF0",
+    "promptBorder": "#C9CFD6",
+    "promptBorderShimmer": "#F7F8F9",
+    "planMode": "#ECEEF0",
+    "userMessageBackground": "#27282B",
+    "userMessageBackgroundHover": "#313236",
+    "rate_limit_fill": "#C9CFD6"
+  }
+}

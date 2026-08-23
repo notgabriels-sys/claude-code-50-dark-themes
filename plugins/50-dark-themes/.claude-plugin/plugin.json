@@ -1,0 +1,17 @@
+{
+  "name": "50-dark-themes",
+  "version": "1.0.0",
+  "displayName": "50 Dark Themes for Claude Code",
+  "description": "Fifty hand-tuned dark Claude Code themes with semantic status colors.",
+  "author": {
+    "name": "NotGabriels",
+    "url": "https://github.com/notgabriels-sys"
+  },
+  "homepage": "https://notgabriels-sys.github.io/claude-code-50-dark-themes/",
+  "repository": "https://github.com/notgabriels-sys/claude-code-50-dark-themes",
+  "license": "MIT",
+  "keywords": ["claude-code", "themes", "dark-theme", "terminal"],
+  "experimental": {
+    "themes": "./themes/"
+  }
+}

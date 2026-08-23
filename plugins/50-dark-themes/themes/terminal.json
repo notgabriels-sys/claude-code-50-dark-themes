@@ -1,0 +1,19 @@
+{
+  "name": "Terminal",
+  "base": "dark",
+  "overrides": {
+    "claude": "#33D17A",
+    "claudeShimmer": "#76E0A5",
+    "text": "#E9EDE9",
+    "inactive": "#9DAF9D",
+    "subtle": "#273027",
+    "suggestion": "#33D17A",
+    "permission": "#8FA98F",
+    "promptBorder": "#33D17A",
+    "promptBorderShimmer": "#76E0A5",
+    "planMode": "#8FA98F",
+    "userMessageBackground": "#202720",
+    "userMessageBackgroundHover": "#293229",
+    "rate_limit_fill": "#33D17A"
+  }
+}

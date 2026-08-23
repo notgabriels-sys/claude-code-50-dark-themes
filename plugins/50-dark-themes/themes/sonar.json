@@ -1,0 +1,19 @@
+{
+  "name": "Sonar",
+  "base": "dark",
+  "overrides": {
+    "claude": "#40E0C0",
+    "claudeShimmer": "#86EBD7",
+    "text": "#E8EBED",
+    "inactive": "#9DA6AF",
+    "subtle": "#242B33",
+    "suggestion": "#40E0C0",
+    "permission": "#1E6E5E",
+    "promptBorder": "#40E0C0",
+    "promptBorderShimmer": "#86EBD7",
+    "planMode": "#1E6E5E",
+    "userMessageBackground": "#19232E",
+    "userMessageBackgroundHover": "#202D3B",
+    "rate_limit_fill": "#40E0C0"
+  }
+}

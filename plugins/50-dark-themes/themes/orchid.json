@@ -1,0 +1,19 @@
+{
+  "name": "Orchid",
+  "base": "dark",
+  "overrides": {
+    "claude": "#C86AD8",
+    "claudeShimmer": "#E0ABE9",
+    "text": "#EDE8ED",
+    "inactive": "#AC9DAF",
+    "subtle": "#322734",
+    "suggestion": "#C86AD8",
+    "permission": "#DA9BE5",
+    "promptBorder": "#C86AD8",
+    "promptBorderShimmer": "#E0ABE9",
+    "planMode": "#DA9BE5",
+    "userMessageBackground": "#2A212C",
+    "userMessageBackgroundHover": "#352A38",
+    "rate_limit_fill": "#C86AD8"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "name": "Nightshade",
+  "base": "dark",
+  "overrides": {
+    "claude": "#8656C6",
+    "claudeShimmer": "#B293DB",
+    "text": "#EBE8ED",
+    "inactive": "#A69DAF",
+    "subtle": "#2B2531",
+    "suggestion": "#8656C6",
+    "permission": "#B090D8",
+    "promptBorder": "#8656C6",
+    "promptBorderShimmer": "#B293DB",
+    "planMode": "#B090D8",
+    "userMessageBackground": "#231F29",
+    "userMessageBackgroundHover": "#2D2835",
+    "rate_limit_fill": "#8656C6"
+  }
+}

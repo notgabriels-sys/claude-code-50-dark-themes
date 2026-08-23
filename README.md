@@ -12,7 +12,20 @@ Requires **Claude Code v2.1.118 or later**, the release that introduced named cu
 Prefer a zip to a `git clone`? The same 50 themes are a **free download** here:
 **[get the pack →](https://notgabriel.gumroad.com/l/slhbym)** (name your price, $0 is fine).
 
-## Quick install
+## Quick install — Claude Code plugin
+
+Run these in your terminal:
+
+```bash
+claude plugin marketplace add notgabriels-sys/claude-code-50-dark-themes
+claude plugin install 50-dark-themes@notgabriels-themes
+```
+
+Then run `/theme` in Claude Code and pick one. The plugin keeps the pack together and makes updates
+available through the marketplace. Press `Ctrl+E` on a plugin theme if you want an editable copy in
+`~/.claude/themes/`.
+
+## Manual install
 
 ```bash
 git clone https://github.com/notgabriels-sys/claude-code-50-dark-themes

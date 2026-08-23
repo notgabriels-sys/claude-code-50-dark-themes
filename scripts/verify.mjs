@@ -1,6 +1,8 @@
 import { readdir, readFile } from "node:fs/promises";
 
 const root = new URL("../", import.meta.url);
+const pluginRoot = new URL("../plugins/50-dark-themes/", import.meta.url);
+const pluginThemesRoot = new URL("../plugins/50-dark-themes/themes/", import.meta.url);
 const requiredOverrideKeys = [
   "claude",
   "claudeShimmer",
@@ -66,7 +68,31 @@ for (const file of files) {
   }
 }
 
+const pluginFiles = (await readdir(pluginThemesRoot))
+  .filter((file) => file.endsWith(".json"))
+  .sort();
+if (pluginFiles.join(",") !== files.join(",")) {
+  fail("The installable plugin theme list is not identical to the root theme list. Run node scripts/sync-plugin-themes.mjs.");
+}
+for (const file of files) {
+  const source = await readFile(new URL(file, root), "utf8");
+  const packaged = await readFile(new URL(file, pluginThemesRoot), "utf8");
+  if (source !== packaged) {
+    fail(`${file} differs from its plugin copy. Run node scripts/sync-plugin-themes.mjs.`);
+  }
+}
+
+const marketplace = JSON.parse(await readFile(new URL(".claude-plugin/marketplace.json", root), "utf8"));
+const pluginManifest = JSON.parse(await readFile(new URL(".claude-plugin/plugin.json", pluginRoot), "utf8"));
+if (marketplace.name !== "notgabriels-themes") fail("Unexpected marketplace name.");
+if (marketplace.plugins?.length !== 1) fail("The marketplace must expose exactly one plugin.");
+if (marketplace.plugins[0].name !== "50-dark-themes") fail("Unexpected marketplace plugin name.");
+if (marketplace.plugins[0].source !== "./plugins/50-dark-themes") fail("Unexpected plugin source path.");
+if (pluginManifest.name !== "50-dark-themes") fail("Unexpected plugin manifest name.");
+if (pluginManifest.experimental?.themes !== "./themes/") fail("Plugin manifest must expose ./themes/.");
+
 const html = await readFile(new URL("index.html", root), "utf8");
+const readme = await readFile(new URL("README.md", root), "utf8");
 const match = html.match(/const THEMES = (\[[\s\S]*?\n\]);/);
 if (!match) fail("Could not find the THEMES array in index.html.");
 
@@ -84,8 +110,11 @@ for (const name of names) {
   if (!galleryNames.has(name)) fail(`Gallery is missing the ${name} theme.`);
 }
 
-if (!html.includes("mkdir -p ~/.claude/themes")) {
-  fail("The install command must create ~/.claude/themes before copying files.");
+if (!readme.includes("mkdir -p ~/.claude/themes")) {
+  fail("The manual install command must create ~/.claude/themes before copying files.");
+}
+if (!html.includes("claude plugin marketplace add notgabriels-sys/claude-code-50-dark-themes")) {
+  fail("The gallery must expose the native Claude Code marketplace install command.");
 }
 if (html.includes("notgabriel.gumroad.com/l/wmlrk")) {
   fail("Do not restore the résumé checkout until its download is verified.");
@@ -100,6 +129,6 @@ for (const id of verifiedPayPalIds) {
 }
 
 console.log(
-  `Verified ${files.length} themes, ${galleryThemes.length} gallery cards, ` +
+  `Verified ${files.length} themes, ${pluginFiles.length} plugin themes, ${galleryThemes.length} gallery cards, ` +
     `${verifiedPayPalIds.length} PayPal links, and the safe install command.`,
 );

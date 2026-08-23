@@ -1,0 +1,19 @@
+{
+  "name": "Blueprint",
+  "base": "dark",
+  "overrides": {
+    "claude": "#52C2F0",
+    "claudeShimmer": "#9DDCF7",
+    "text": "#E8EAED",
+    "inactive": "#9DA5AF",
+    "subtle": "#2A323C",
+    "suggestion": "#52C2F0",
+    "permission": "#8AD6F5",
+    "promptBorder": "#52C2F0",
+    "promptBorderShimmer": "#9DDCF7",
+    "planMode": "#8AD6F5",
+    "userMessageBackground": "#1B2A3C",
+    "userMessageBackgroundHover": "#21344A",
+    "rate_limit_fill": "#52C2F0"
+  }
+}

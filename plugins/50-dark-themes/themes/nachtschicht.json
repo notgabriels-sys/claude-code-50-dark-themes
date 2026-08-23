@@ -1,0 +1,19 @@
+{
+  "name": "Nachtschicht",
+  "base": "dark",
+  "overrides": {
+    "claude": "#E3B341",
+    "claudeShimmer": "#EDCF88",
+    "text": "#E8EAED",
+    "inactive": "#9DA4AF",
+    "subtle": "#2B2F36",
+    "suggestion": "#E3B341",
+    "permission": "#7A8CA0",
+    "promptBorder": "#E3B341",
+    "promptBorderShimmer": "#EDCF88",
+    "planMode": "#7A8CA0",
+    "userMessageBackground": "#24282D",
+    "userMessageBackgroundHover": "#2D3238",
+    "rate_limit_fill": "#E3B341"
+  }
+}

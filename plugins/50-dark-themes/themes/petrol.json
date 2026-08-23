@@ -1,0 +1,19 @@
+{
+  "name": "Petrol",
+  "base": "dark",
+  "overrides": {
+    "claude": "#2FB8C6",
+    "claudeShimmer": "#6BD1DC",
+    "text": "#E8EDED",
+    "inactive": "#9DACAF",
+    "subtle": "#283639",
+    "suggestion": "#2FB8C6",
+    "permission": "#5ACCD8",
+    "promptBorder": "#2FB8C6",
+    "promptBorderShimmer": "#6BD1DC",
+    "planMode": "#5ACCD8",
+    "userMessageBackground": "#1C3135",
+    "userMessageBackgroundHover": "#233D42",
+    "rate_limit_fill": "#2FB8C6"
+  }
+}
