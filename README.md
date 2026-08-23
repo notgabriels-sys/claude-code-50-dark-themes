@@ -109,6 +109,11 @@ Same palettes and the same care, applied elsewhere. All one-time purchases, no s
 
 **[Everything Dark — the complete kit →](https://notgabriel.gumroad.com/l/wuhehk)** (all of the above, $39)
 
+### More free things
+
+- **[Lowlight — 70 VS Code themes](https://github.com/notgabriels-sys/lowlight-themes)** — fifty dark, twenty light, same contrast discipline. MIT.
+- **[Deep Field for Obsidian](https://github.com/notgabriels-sys/obsidian-deep-field)** — one of the fifty, free and standalone. MIT.
+
 ### The contrast tool, free
 
 **[theme-contrast](https://github.com/notgabriels-sys/theme-contrast)** — one Python file, no
