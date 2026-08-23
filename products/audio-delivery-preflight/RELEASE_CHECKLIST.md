@@ -26,10 +26,10 @@ This checklist separates repository evidence, a local archive, a customer-tested
 - [x] App and CLI are exact Universal binaries containing only `arm64` and `x86_64`; packaging cannot silently fall back to one architecture.
 - [x] Archive verifier checks the external and internal SHA-256 evidence, ZIP integrity, duplicate and unsafe paths, exact manifest coverage, required files, permissions, exact architecture set, ad-hoc signatures, identifier, source-commit format, version, macOS floor, icon digest, disclosure, and identity/path leakage.
 - [x] Package contract runs the packaged CLI against the sample, confirms source immutability, refuses overwrite, rejects a false external sidecar, and rejects changed content even behind a correctly recomputed external sidecar.
-- [x] Build a durable unsigned release archive from clean source commit `bad90f9418316a48428c0e29d8c523ef92f536dd`.
-- [x] Record archive SHA-256 `77965a4e616d7c6ad880fe3e281c8df426728508eb910783847a3c0c929bce27` for the 2026-08-23 durable candidate.
-- [ ] Copy the ZIP and checksum to a separate location and verify them there.
-- [ ] Extract and launch the copied archive rather than the build-tree executable.
+- [x] Build a durable unsigned release archive from clean source commit `3b491319aebffc0661c3a510eaa0bf58cbb37b03`.
+- [x] Record archive SHA-256 `9e96ef8c0f7b4be9f85e177a7f244ea91276100a92e03657e9dea97d2b8f4c64` for the 2026-08-23 no-Apple-payment candidate.
+- [x] Copy the ZIP and checksum to a separate location and verify them there.
+- [x] Extract and launch the copied archive rather than the build-tree executable.
 
 ## Selected unsigned distribution route
 
