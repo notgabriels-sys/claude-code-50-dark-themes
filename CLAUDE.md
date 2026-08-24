@@ -60,10 +60,12 @@ commits later, because fixing it once felt like finishing. Assume the same
 defect class exists everywhere you have not checked.
 
 **Say exactly how strong a claim is.** `verifiedPayPalLinks` asserts a human
-read the price back from the provider. `knownGumroadSlugs` asserts only that a
-slug is known and intentional. Both are useful; treating the second as the
-first is how an unverified price ships. Label the weaker one as weaker, in the
-code and in this file.
+read the price back from the provider. `verifiedGumroadSlugs` asserts only that
+a human loaded the product page and it is published — existence, not price.
+`recordedGumroadPrices` asserts only what `index.html` itself said on the day it
+was recorded. All three are useful; treating a weaker one as the strongest is
+how an unverified price ships. Label the weaker one as weaker, in the code and
+in this file.
 
 **Do not record facts that rot.** Line numbers in this file went stale twice in
 one day and were removed. Prefer counts, slugs, ids and commands that
@@ -88,13 +90,18 @@ sat on the shop through two review rounds and was a live €1,200 charge
 for the wrong service.
 
 Current state of `index.html` (re-counted 2026-08-24, after `main` retired two
-audio products):
+audio products, then restyled the storefront and retired `zvbti`):
 
-- **16 Gumroad links**, all `notgabriel.gumroad.com/l/<slug>`, no duplicates:
-  one free zip, twelve product cards, the complete-kit bundle, and two audio
-  products. Two retired audio products and their directories were removed from
-  the shop. The CI guard caught the disappearance; the slugs were then dropped
-  from `knownGumroadSlugs` deliberately.
+- **15 distinct Gumroad products** across **18 link occurrences**, all on
+  `notgabriel.gumroad.com/l/<slug>`: one free zip, ten product cards, the
+  complete-kit bundle, two audio products, and a developer-picks row that
+  repeats three of the products with `?utm_source=...` parameters. Each
+  retirement was caught by the CI guard before the slug was dropped from the
+  tables, deliberately rather than to silence a red build.
+- **Prices are stated in three places** and the guard checks all three: an `<i>`
+  on the grid cards, a `<span>` on the developer-picks cards, and words in those
+  cards' `aria-label` ("for 12 euros"). A screen-reader label that disagrees
+  with the visible price is a wrong price for the buyer who cannot see it.
 - **3 PayPal NCP links** in "Mixing & mastering".
 - **No Stripe link anywhere.** `git log -S stripe` across all branches still
   returns nothing beyond this file and the CI guard itself, so the bad €1,200
@@ -150,37 +157,61 @@ wrong price in that table would sail through. Adding a link to
 `verifiedPayPalLinks` is an assertion that you personally read it back from
 `paypal.com/ncp/links/<ID>` — never do it to make the build pass.
 
-**(added 2026-08-24) Gumroad structural guards.** `verify` now also fails on:
-any Gumroad link whose host is not exactly `notgabriel.gumroad.com` (a
-lookalike or a typo), a duplicate slug, a slug not in `knownGumroadSlugs`, or
-a known slug that has vanished from the page. All four were tested by breaking
-`index.html` and confirming the build fails.
+**(added 2026-08-24) Gumroad structural guards.** `verify` fails on any Gumroad
+link whose host is not exactly `notgabriel.gumroad.com` (a lookalike or a typo),
+a slug not in `verifiedGumroadSlugs` — checked across `index.html`, every other
+public page, and `README.md` — or a recorded slug that has vanished from the
+page.
 
-**(added 2026-08-24) Gumroad page-price drift.** `recordedGumroadPrices` now
-records the price each card prints, and `verify` fails if any of them changes,
-if a priced card loses its `<i>`, if the free zip or the bundle card grows one,
-or if the bundle's copy stops saying `$39`. The card is matched quote-exact on
-the slug for the same reason the PayPal checks are — a pattern stopping at a
-character class would read the card for `bqgfvX` as the card for `bqgfv` and
-check the wrong product's price. All five failure modes were proven by breaking
-`index.html` and confirming the build goes red.
+**(added 2026-08-24) Gumroad page-price drift.** `recordedGumroadPrices` records
+what each product states, and `verify` fails if any stated amount changes, if a
+priced product states nothing, if the free zip grows a price, or if an
+`aria-label` reads out a number or a currency that disagrees with the visible
+one. It matches on the *number*, not the markup: main restyled the cards to
+"View product · €12" the same day, and a check pinned to `<i>€12</i>` would have
+gone red for a wording change while still passing a card that showed a second,
+wrong number elsewhere in the same anchor. The same change was made to the
+PayPal card check for the same reason.
 
-**`recordedGumroadPrices` is deliberately weaker than `verifiedPayPalLinks`,
-and the difference is the whole point.** `verifiedPayPalLinks` means *a human
-opened `paypal.com/ncp/links/<ID>` and read that price back off the provider's
-own object*. `recordedGumroadPrices` means only *this is what `index.html` said
-on 2026-08-24* — it asserts nothing whatsoever about Gumroad. No Gumroad
-product object has ever been read by anyone working in this repo, so a price
-that was already wrong on the day it was recorded is copied faithfully into the
-table and the build stays green. Adding or changing a row silences the guard;
-it verifies nothing.
+**Slugs are taken to a delimiter and then split on `?`/`#`.** The
+developer-picks row legitimately carries `?utm_source=...`, and `?` genuinely
+ends a URL path, so stripping it resolves the link to the product it names. That
+is not the same as stopping at a permitted-character class, which would read
+`bqgfvX` as `bqgfv` — the bypass this file already paid for. `bqgfvX?utm=x` is
+still `bqgfvX` and still fails.
 
-What the Gumroad guards do buy is drift detection: a slug cannot silently
-change, appear, disappear or point at another host, and a price cannot be
-edited on the page without the edit being deliberate. That catches a stray
-keystroke or a bad merge, which is worth having on its own. It is not
-verification, and it must never be described as verification. The verified half
-stays unbuilt until someone reads the 16 products in a signed-in browser.
+**A Gumroad URL outside an `<a>` fails the build too.** The price checks read
+anchors, so a URL printed as plain text would slip past them; `verify` counts
+raw Gumroad URLs against anchors found and fails on a mismatch.
+
+**Sixteen failure cases were proven** by breaking `index.html`, `README.md` and
+`impressum.html` in turn and confirming the build goes red, then restoring:
+grid price, developer-picks price, `aria-label` number, `aria-label` currency,
+free zip gaining a price, bundle price, PayPal price, a €1,200 lookalike NCP id
+added beside the real one, a lookalike Gumroad slug, the same slug hidden behind
+a UTM query, a lookalike host, a card deleted, a bare URL outside an anchor, and
+an unverified slug in the README and in another public page.
+
+**Three assertions live in `verify.mjs` and they are not equally strong. Do not
+promote one by reading it as another.**
+
+| Table | Means | Does not mean |
+|---|---|---|
+| `verifiedPayPalLinks` | a human opened `paypal.com/ncp/links/<ID>` and read the price off PayPal's own object | — |
+| `verifiedGumroadSlugs` | a human loaded the product page and it is a published product | anything about its price, currency or contents |
+| `recordedGumroadPrices` | this is what `index.html` said on 2026-08-24 | anything at all about Gumroad |
+
+No Gumroad product's **price** has ever been read back by anyone working in this
+repo. A price that was already wrong on the day it was recorded is copied
+faithfully into the table and the build stays green forever. Adding or changing
+a row silences the guard; it verifies nothing.
+
+What the Gumroad guards do buy is real but bounded: a slug cannot silently
+change, appear, disappear or point at another host, and no stated price can be
+edited — in any of the three places the page states it — without the edit being
+deliberate. That catches a stray keystroke or a bad merge. It is not
+verification, and it must never be described as verification. The priced half
+stays unbuilt until someone reads the 15 products in a signed-in browser.
 
 `verify` also guards the plugin marketplace: it asserts both plugins are
 registered with the right source paths, that every skill in `.claude/skills/`
@@ -190,31 +221,32 @@ frontmatter with a name and description. Drift means an installer silently gets
 a different skill than a contributor reads, so it fails the build — the same
 contract the themes already had.
 
-The Gumroad half now has structural and drift guards but still no *verified*
-table, because no one has ever read a Gumroad product object. See below.
+The Gumroad half now has structural guards, an existence-verified slug list and
+a price-drift table — but no verified *price* for any product. See below.
 
 ## Gumroad — the unverified half of the shop
 
 The PayPal links below were each read back from their own detail page before
-going on the shop. **The 16 Gumroad links have never had that treatment.** They
-are the larger half of the shop by product count and carry the ordinary sales
-income, and nothing in this repo records a single one being checked against its
-real Gumroad product.
+going on the shop. **No Gumroad product's price has ever had that treatment.**
+The 15 products are the larger half of the shop by count and carry the ordinary
+sales income. `main` did confirm on 2026-08-24 that each product page loads a
+published product — real, and worth having — but existence is not price, and
+nothing in this repo records a single price being read off a Gumroad product.
 
 Two things found by static read on 2026-08-24, both needing Gabriel:
 
-**1. The page mixes currencies.** Twelve products are priced in €; two are
-priced in $ — `cfcvmy` "Dark HTML Templates" at **$19** and `xcxeb` "50 Dark
-Palettes" at **$9** — and the bundle `wuhehk` reads **"$39"** in its own line of
-copy. Everything else on the page, including the entire mixing and mastering
-rate card, is EUR. Either the Gumroad products really are priced in USD, in
+**1. The page mixes currencies.** Eleven products are priced in €; three are
+priced in $ — `cfcvmy` "Dark HTML Templates" at **$19**, `xcxeb` "50 Dark
+Palettes" at **$9**, and the bundle `wuhehk` at **$39**. Everything else on the
+page, including the entire mixing and mastering rate card, is EUR. Either the Gumroad products really are priced in USD, in
 which case the page is honest and inconsistent, or the page is misquoting
 them, in which case a buyer is shown the wrong number. **Do not resolve this by
 editing the page.** Read the products first.
 
-**2. The bundle makes a claim about its own contents.** It says "all of the
-above" for $39 against roughly 119 of listed value. Whether it actually
-contains all twelve is a fact about a Gumroad product, not about this file.
+**2. The bundle's contents are unverified.** The card once said "all of the
+above"; main's restyle now reads "view bundle · $39" and makes no explicit
+contents claim on the page. What the bundle actually contains is still a fact
+about a Gumroad product, not about this file, and nobody here has read it.
 
 **Verification route, same discipline as PayPal:** sign in at `gumroad.com`,
 open the products list, and read each product's own page — price, currency, and

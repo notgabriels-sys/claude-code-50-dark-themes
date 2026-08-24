@@ -207,19 +207,24 @@ The limit is worth stating: CI checks the page against a table a human verified
 through a browser. A wrong price *in the table* would pass. Adding an entry is
 an assertion that you read it back from `paypal.com/ncp/links/<ID>` yourself.
 
-The Gumroad half got the structural guards on the same day (canonical host,
-no duplicate slug, no unknown slug, no slug silently vanishing) and, later,
-a page-price drift guard: `recordedGumroadPrices` in `scripts/verify.mjs`
-records what each card prints and CI fails if any of it changes.
+The Gumroad half got structural guards on the same day (canonical host, no
+unknown slug, no slug silently vanishing) and then a page-price drift guard:
+`recordedGumroadPrices` in `scripts/verify.mjs` records what each product
+states and CI fails if any stated amount changes — including in the
+`aria-label`, so a screen-reader price cannot quietly disagree with the visible
+one. Slugs are taken to a delimiter and then split on `?`/`#`, because the
+storefront's developer-picks row carries UTM parameters; `bqgfvX?utm=x` still
+reads as `bqgfvX` and still fails.
 
-**That table is not a verified table and must not be read as one.**
-`verifiedPayPalLinks` means a human read the price off PayPal's own object;
-`recordedGumroadPrices` means only "this is what `index.html` said on
-2026-08-24". A price that was already wrong when recorded passes CI forever.
-What it buys is that nothing drifts by accident — a stray keystroke or a bad
-merge is caught. The verified half still needs a signed-in browser pass over
-the 16 products, and until that happens no price on the Gumroad side of the
-shop has been checked against anything but itself.
+**Three assertions now live in that file and they are not equally strong.**
+`verifiedPayPalLinks` means a human read the price off PayPal's own object.
+`verifiedGumroadSlugs` (added by main) means a human loaded the product page
+and it is published — existence, not price. `recordedGumroadPrices` means only
+"this is what `index.html` said on 2026-08-24"; a price that was already wrong
+when recorded passes CI forever. What it buys is that nothing drifts by
+accident. The priced half still needs a signed-in browser pass over the 15
+products, and until that happens no price on the Gumroad side of the shop has
+been checked against anything but itself.
 
 ## 7. Execution checklist — **reopened 2026-08-24**
 

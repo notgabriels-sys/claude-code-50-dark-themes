@@ -30,58 +30,101 @@ const verifiedPayPalLinks = [
 ];
 const verifiedPayPalIds = verifiedPayPalLinks.map((link) => link.id);
 
-// The Gumroad products currently on the shop, and the price each one prints on
-// this page. Recorded 2026-08-24; 18 slugs at first count, 16 after two audio
-// products were retired the same day.
+// Buyer-side read-back on 2026-08-24 confirmed these product pages return a
+// published Gumroad product. A plausible URL or HTTP 200 is not enough:
+// unpublished Gumroad products can still render a 200-status product shell.
 //
-// READ THIS BEFORE ADDING OR CHANGING A ROW. Unlike verifiedPayPalLinks above,
-// this table is deliberately WEAKER, and the difference is the whole point:
+// Note what this does and does not assert: the product EXISTS and is
+// published. It says nothing about its price, currency or bundle contents.
+// See recordedGumroadPrices below for that half, and read its warning.
+const verifiedGumroadSlugs = new Set([
+  "bqgfv",
+  "bunkhy",
+  "cfcvmy",
+  "ckthsb",
+  "dark-app-screens",
+  "industrial-tension-fx",
+  "jqrdfy",
+  "kxsfa",
+  "kykega",
+  "raw-techno-kick-architecture",
+  "slhbym",
+  "wgtbkq",
+  "wuhehk",
+  "xcxeb",
+  "xjcbji",
+]);
+
+// The price each product prints on the shop. Recorded 2026-08-24 against the
+// page as it then stood, and re-recorded the same day after `main` restyled the
+// cards ("View product · EUR12"), added a developer-picks row that repeats
+// three products with UTM parameters, and retired `zvbti`.
 //
-//   verifiedPayPalLinks  = "a human opened paypal.com/ncp/links/<ID> and read
-//                           this price back off the provider's own object."
+// READ THIS BEFORE ADDING OR CHANGING A ROW. Three assertions live in this
+// file and they are NOT equally strong:
+//
+//   verifiedPayPalLinks   = "a human opened paypal.com/ncp/links/<ID> and read
+//                            this price back off the provider's own object."
+//   verifiedGumroadSlugs  = "a human loaded this product page and it is a
+//                            published product."  (existence, not price.)
 //   recordedGumroadPrices = "this is what index.html said on 2026-08-24."
 //
-// The second asserts NOTHING about Gumroad. No Gumroad product object has ever
-// been read by anyone working in this repo -- see CLAUDE.md, "Gumroad -- the
-// unverified half of the shop". A wrong price on the page is copied faithfully
-// into this table and the build stays green.
+// The third asserts NOTHING about Gumroad. No Gumroad product's price has ever
+// been read back by anyone working in this repo -- see CLAUDE.md, "Gumroad --
+// the unverified half of the shop". A price that was already wrong on the day
+// it was recorded is copied faithfully into this table and the build stays
+// green forever.
 //
-// What it does buy is drift detection: a slug cannot silently change, appear or
-// disappear, no link can point at a lookalike host, and a price cannot be
-// edited on the page without the edit being deliberate. That is worth having on
-// its own -- it is how a stray keystroke or a bad merge gets caught -- but it is
-// not verification, and it must never be described as verification.
+// What it does buy is drift detection: a price cannot be edited on the page,
+// in any of the three places the page now states it, without the edit being
+// deliberate. That catches a stray keystroke or a bad merge, which is worth
+// having. It is not verification and must never be described as verification.
 //
-// pagePrice null means the card prints no <i> price element: `slhbym` is the
-// free zip, and `wuhehk` is the bundle, whose price lives in its own line of
-// copy and is checked there instead.
+// price null means the product states no price: `slhbym` is the name-your-price
+// zip. `wuhehk` is the bundle, whose price is inline copy rather than a price
+// element, so it is recorded here like any other.
 //
 // Two rows are in USD on an otherwise-EUR page (`cfcvmy` $19, `xcxeb` $9, and
-// the bundle's copy reads $39). That inconsistency is recorded here on purpose
-// rather than smoothed over. Do NOT resolve it by editing index.html; it is
-// resolved by reading the real products in a signed-in browser.
+// the bundle at $39). That inconsistency is recorded on purpose rather than
+// smoothed over. Do NOT resolve it by editing index.html; it is resolved by
+// reading the real products in a signed-in browser.
 const recordedGumroadPrices = [
-  { slug: "slhbym", pagePrice: null },
-  { slug: "ckthsb", pagePrice: "€12" },
-  { slug: "cfcvmy", pagePrice: "$19" },
-  { slug: "dark-app-screens", pagePrice: "€14" },
-  { slug: "xjcbji", pagePrice: "€9" },
-  { slug: "bunkhy", pagePrice: "€9" },
-  { slug: "zvbti", pagePrice: "€12" },
-  { slug: "kxsfa", pagePrice: "€7" },
-  { slug: "kykega", pagePrice: "€7" },
-  { slug: "wgtbkq", pagePrice: "€7" },
-  { slug: "bqgfv", pagePrice: "€8" },
-  { slug: "jqrdfy", pagePrice: "€6" },
-  { slug: "xcxeb", pagePrice: "$9" },
-  { slug: "wuhehk", pagePrice: null, copyPrice: "$39" },
+  { slug: "slhbym", price: null },
+  { slug: "ckthsb", price: "€12" },
+  { slug: "cfcvmy", price: "$19" },
+  { slug: "dark-app-screens", price: "€14" },
+  { slug: "xjcbji", price: "€9" },
+  { slug: "bunkhy", price: "€9" },
+  { slug: "kxsfa", price: "€7" },
+  { slug: "kykega", price: "€7" },
+  { slug: "wgtbkq", price: "€7" },
+  { slug: "bqgfv", price: "€8" },
+  { slug: "jqrdfy", price: "€6" },
+  { slug: "xcxeb", price: "$9" },
+  { slug: "wuhehk", price: "$39" },
   // Two retired audio products were removed from the shop on 2026-08-24
-  // together with their whole product directories; the guard caught their
-  // disappearance and they are dropped here deliberately, not to silence it.
-  { slug: "raw-techno-kick-architecture", pagePrice: "€15" },
-  { slug: "industrial-tension-fx", pagePrice: "€15" },
+  // together with their whole product directories, and `zvbti` followed when
+  // main refocused the storefront; the guard caught each disappearance and the
+  // slugs are dropped deliberately, not to silence it.
+  { slug: "raw-techno-kick-architecture", price: "€15" },
+  { slug: "industrial-tension-fx", price: "€15" },
 ];
-const knownGumroadSlugs = recordedGumroadPrices.map((entry) => entry.slug);
+const recordedGumroadPriceBySlug = new Map(
+  recordedGumroadPrices.map((entry) => [entry.slug, entry.price]),
+);
+
+// The two lists above are maintained by hand and describe the same shop, so a
+// slug added to one and forgotten in the other is a silent gap in coverage.
+for (const slug of verifiedGumroadSlugs) {
+  if (!recordedGumroadPriceBySlug.has(slug)) {
+    fail(`Gumroad slug "${slug}" is verified but has no row in recordedGumroadPrices.`);
+  }
+}
+for (const { slug } of recordedGumroadPrices) {
+  if (!verifiedGumroadSlugs.has(slug)) {
+    fail(`Gumroad slug "${slug}" has a recorded price but is not in verifiedGumroadSlugs.`);
+  }
+}
 
 const GUMROAD_HOST = "notgabriel.gumroad.com";
 
@@ -164,6 +207,10 @@ for (const [index, expected] of expectedPlugins.entries()) {
 }
 if (pluginManifest.name !== "50-dark-themes") fail("Unexpected plugin manifest name.");
 if (pluginManifest.experimental?.themes !== "./themes/") fail("Plugin manifest must expose ./themes/.");
+if (!/^\d+\.\d+\.\d+$/.test(pluginManifest.version)) fail("Plugin version must use semantic versioning.");
+if (marketplace.plugins[0].version !== pluginManifest.version) {
+  fail("Marketplace and plugin manifest versions must match.");
+}
 
 // The five skills live in .claude/skills/ (source of truth) and are mirrored
 // into the plugin so they can be installed outside this repo. Drift between the
@@ -207,6 +254,53 @@ for (const name of sourceSkills) {
 
 const html = await readFile(new URL("index.html", root), "utf8");
 const readme = await readFile(new URL("README.md", root), "utf8");
+const publicHtmlFiles = (await readdir(root))
+  .filter((file) => file.endsWith(".html"))
+  .sort();
+const storefrontContracts = [
+  [/<a class="skip-link" href="#main-content">/, "keyboard skip link"],
+  [/<main id="main-content">/, "main landmark"],
+  [/<h3 class="tname">\$\{esc\(name\)\}<\/h3>/, "gallery-card headings"],
+  [/<span class="sr-only" id="copyStatus" aria-live="polite"><\/span>/, "copy-status live region"],
+  [/<meta property="og:image:alt" content="[^"]+">/, "Open Graph image alternative"],
+  [/<meta name="twitter:image:alt" content="[^"]+">/, "X image alternative"],
+];
+const missingStorefrontContracts = storefrontContracts
+  .filter(([pattern]) => !pattern.test(html))
+  .map(([, label]) => label);
+if (missingStorefrontContracts.length) {
+  fail(`Storefront accessibility contract is missing: ${missingStorefrontContracts.join(", ")}.`);
+}
+const mainLandmarks = html.match(/<main(?:\s|>)/g) ?? [];
+if (mainLandmarks.length !== 1) {
+  fail(`The storefront must contain exactly one main landmark; found ${mainLandmarks.length}.`);
+}
+const structuredDataMatch = html.match(
+  /<script type="application\/ld\+json">\s*([\s\S]*?)\s*<\/script>/,
+);
+if (!structuredDataMatch) fail("The storefront must expose JSON-LD software metadata.");
+let structuredData;
+try {
+  structuredData = JSON.parse(structuredDataMatch[1]);
+} catch (error) {
+  fail(`The storefront JSON-LD is invalid: ${error.message}`);
+}
+const structuredSoftware = structuredData["@graph"]?.find(
+  (entry) => entry["@type"] === "SoftwareApplication",
+);
+if (!structuredSoftware) fail("The storefront JSON-LD must describe the theme plugin.");
+if (structuredSoftware.softwareVersion !== pluginManifest.version) {
+  fail(
+    `Storefront softwareVersion ${structuredSoftware.softwareVersion} does not match plugin version ${pluginManifest.version}.`,
+  );
+}
+const currentDownloadUrls = new Set([
+  `https://github.com/notgabriels-sys/claude-code-50-dark-themes/releases/tag/themes-plugin-v${pluginManifest.version}`,
+  "https://github.com/notgabriels-sys/claude-code-50-dark-themes/archive/refs/heads/main.zip",
+]);
+if (!currentDownloadUrls.has(structuredSoftware.downloadUrl)) {
+  fail(`Storefront downloadUrl is stale or unrelated: ${structuredSoftware.downloadUrl}.`);
+}
 const match = html.match(/const THEMES = (\[[\s\S]*?\n\]);/);
 if (!match) fail("Could not find the THEMES array in index.html.");
 
@@ -230,12 +324,102 @@ if (!readme.includes("mkdir -p ~/.claude/themes")) {
 if (!html.includes("claude plugin marketplace add notgabriels-sys/claude-code-50-dark-themes")) {
   fail("The gallery must expose the native Claude Code marketplace install command.");
 }
+if (!html.includes("utm_campaign=50-dark-themes-launch")) {
+  fail("The storefront must expose the tracked Product Hunt launch link.");
+}
+
+const featuredProducts = [...html.matchAll(/<article class="featured-product">([\s\S]*?)<\/article>/g)];
+if (featuredProducts.length !== 3) {
+  fail(`Expected 3 curated developer picks; found ${featuredProducts.length}.`);
+}
+
+const expectedFeaturedSlugs = new Set(["cfcvmy", "ckthsb", "dark-app-screens"]);
+const actualFeaturedSlugs = new Set();
+for (const [, productHtml] of featuredProducts) {
+  const image = productHtml.match(/<img\s+[^>]*src="([^"]+)"[^>]*alt="([^"]+)"[^>]*>/);
+  if (!image) {
+    fail("Every curated developer pick must include a local cover image with non-empty alt text.");
+  }
+  const [, imagePath, imageAlt] = image;
+  if (!imagePath.startsWith("assets/products/") || !imageAlt.trim()) {
+    fail("Curated developer pick covers must use local product assets and meaningful alt text.");
+  }
+  try {
+    await readFile(new URL(imagePath, root));
+  } catch {
+    fail(`Curated developer pick cover is missing: ${imagePath}.`);
+  }
+
+  const gumroadLink = productHtml.match(/https:\/\/notgabriel\.gumroad\.com\/l\/([a-z0-9-]+)/);
+  if (!gumroadLink) {
+    fail("Every curated developer pick must link to its verified Gumroad product page.");
+  }
+  const slug = gumroadLink[1];
+  const trackedCheckout = productHtml.match(
+    /href="(https:\/\/notgabriel\.gumroad\.com\/l\/[a-z0-9-]+\?[^\"]+)"/,
+  );
+  if (!trackedCheckout) {
+    fail(`Curated developer pick ${slug} must include campaign tracking.`);
+  }
+  const trackedUrl = new URL(trackedCheckout[1].replaceAll("&amp;", "&"));
+  const expectedTracking = {
+    utm_source: "gabs-utilities.com",
+    utm_medium: "storefront",
+    utm_campaign: "developer-picks",
+    utm_content: slug,
+  };
+  for (const [key, value] of Object.entries(expectedTracking)) {
+    if (trackedUrl.searchParams.get(key) !== value) {
+      fail(`Curated developer pick ${slug} has incorrect ${key} tracking.`);
+    }
+  }
+  actualFeaturedSlugs.add(slug);
+}
+if ([...expectedFeaturedSlugs].some((slug) => !actualFeaturedSlugs.has(slug))) {
+  fail("The curated developer picks must feature the UI kit, HTML templates, and app screens.");
+}
+
+if (html.includes("api.producthunt.com/widgets/embed-image")) {
+  fail("Do not restore the remote Product Hunt badge; it sets a third-party cookie.");
+}
 if (html.includes("notgabriel.gumroad.com/l/wmlrk")) {
   fail("Do not restore the résumé checkout until its download is verified.");
 }
 if (/stripe/i.test(html)) {
   fail("No Stripe link is verified for this site.");
 }
+// Every Gumroad link on every public page and in the README must point at a
+// product someone has actually loaded.
+//
+// Capture to a DELIMITER ([^"'\s<>]+), then strip the query string. `?` and `#`
+// genuinely end a URL path -- the developer-picks row legitimately carries
+// `?utm_source=...` -- but a permitted-character class such as ([a-z0-9-]+)
+// stops at the first character it does not permit, so `bqgfvX` would read as
+// the verified slug `bqgfv` and a lookalike link would sail through. That is
+// the same defect that let a EUR1,200 PayPal lookalike pass this file's own
+// guard. Do not narrow this back to a character class.
+const gumroadSlugOf = (raw) => raw.split(/[?#]/, 1)[0];
+const gumroadLinkPattern = /https:\/\/notgabriel\.gumroad\.com\/l\/([^"'\s<>)]+)/g;
+
+for (const file of publicHtmlFiles) {
+  const source = await readFile(new URL(file, root), "utf8");
+  if (!source.includes('rel="icon" type="image/svg+xml" href="favicon.svg"')) {
+    fail(`${file} must expose the first-party SVG favicon.`);
+  }
+  for (const match of source.matchAll(gumroadLinkPattern)) {
+    const slug = gumroadSlugOf(match[1]);
+    if (!verifiedGumroadSlugs.has(slug)) {
+      fail(`${file} contains an unverified or unavailable Gumroad product link: ${slug}.`);
+    }
+  }
+}
+for (const match of readme.matchAll(gumroadLinkPattern)) {
+  const slug = gumroadSlugOf(match[1]);
+  if (!verifiedGumroadSlugs.has(slug)) {
+    fail(`README.md contains an unverified or unavailable Gumroad product link: ${slug}.`);
+  }
+}
+
 for (const { id, price } of verifiedPayPalLinks) {
   const href = `https://www.paypal.com/ncp/payment/${id}`;
   // Quote-exact: a bare substring check would also be satisfied by a longer
@@ -248,11 +432,26 @@ for (const { id, price } of verifiedPayPalLinks) {
   );
   if (!card) {
     fail(`Could not read the card wrapping PayPal link ${id}.`);
-  } else if (!card[1].includes(`<i>${price}</i>`)) {
-    fail(
-      `PayPal link ${id} must charge ${price} per the verified rate card; ` +
-        `its card on the page does not say so.`,
-    );
+    continue;
+  }
+  // Every currency amount inside the card must be the verified one, rather than
+  // one exact price element. Main restyled these cards to "View checkout · EUR45"
+  // on 2026-08-24; a check pinned to `<i>EUR45</i>` would have gone red for a
+  // wording change while still passing a card that showed a second, wrong number
+  // somewhere else in the same anchor. This fails on the number, not the markup.
+  const stated = [...card[1].matchAll(/[€$]\s?\d[\d.,]*/g)].map((match) =>
+    match[0].replace(/\s+/g, ""),
+  );
+  if (stated.length === 0) {
+    fail(`PayPal link ${id} must charge ${price}; its card states no price at all.`);
+  }
+  for (const amount of stated) {
+    if (amount !== price) {
+      fail(
+        `PayPal link ${id} must charge ${price} per the verified rate card; ` +
+          `its card on the page states ${amount}.`,
+      );
+    }
   }
 }
 
@@ -289,81 +488,105 @@ for (const host of new Set(gumroadHosts)) {
   }
 }
 
-const presentGumroadSlugs = [
-  ...html.matchAll(/notgabriel\.gumroad\.com\/l\/([^"'\s<>]+)/g),
-].map((match) => match[1]);
+// Every Gumroad anchor on the shop page, with the slug it points at and the
+// text it wraps. Slugs go through gumroadSlugOf, so the developer-picks row's
+// `?utm_source=...` resolves to the product it names while `bqgfvX` stays
+// `bqgfvX` and fails the allowlist.
+const gumroadCards = [
+  ...html.matchAll(
+    /<a\b([^>]*)href="https:\/\/notgabriel\.gumroad\.com\/l\/([^"'\s<>]+)"([^>]*)>([\s\S]*?)<\/a>/g,
+  ),
+].map((match) => ({
+  slug: gumroadSlugOf(match[2]),
+  attrs: `${match[1]} ${match[3]}`,
+  inner: match[4],
+}));
 
-const duplicateSlugs = presentGumroadSlugs.filter(
-  (slug, index) => presentGumroadSlugs.indexOf(slug) !== index,
-);
-if (duplicateSlugs.length > 0) {
-  fail(`Duplicate Gumroad slug on the page: ${[...new Set(duplicateSlugs)].join(", ")}.`);
+// A Gumroad URL printed outside an anchor would escape every price check below
+// without this. The two counts must agree.
+const rawGumroadLinks = [...html.matchAll(gumroadLinkPattern)];
+if (rawGumroadLinks.length !== gumroadCards.length) {
+  fail(
+    `index.html has ${rawGumroadLinks.length} Gumroad URLs but only ` +
+      `${gumroadCards.length} of them are inside an <a> the price guard can read.`,
+  );
 }
 
+const presentGumroadSlugs = new Set(gumroadCards.map((card) => card.slug));
 for (const slug of presentGumroadSlugs) {
-  if (!knownGumroadSlugs.includes(slug)) {
+  if (!recordedGumroadPriceBySlug.has(slug)) {
     fail(
       `Unknown Gumroad slug "${slug}" is on the page. Confirm it is the product ` +
-        `you mean at gumroad.com, then add it to knownGumroadSlugs.`,
-    );
-  }
-}
-for (const slug of knownGumroadSlugs) {
-  if (!presentGumroadSlugs.includes(slug)) {
-    fail(
-      `Gumroad slug "${slug}" has disappeared from the page. Remove it from ` +
-        `knownGumroadSlugs if that was deliberate.`,
-    );
-  }
-}
-
-// Page-price drift. This checks index.html against recordedGumroadPrices above
-// and NOTHING ELSE -- read that table's comment before trusting a green build
-// here. It catches an unintended edit; it cannot catch a price that was wrong
-// on the day it was recorded.
-//
-// Quote-exact on the closing quote, for the same reason the PayPal checks are:
-// a pattern that stopped at a character class would read the card for `bqgfvX`
-// as the card for `bqgfv` and check the wrong product's price.
-for (const { slug, pagePrice, copyPrice } of recordedGumroadPrices) {
-  const card = html.match(
-    new RegExp(`<a[^>]*href="https://${GUMROAD_HOST}/l/${slug}"[^>]*>([\\s\\S]*?)</a>`),
-  );
-  if (!card) {
-    fail(`Could not read the card wrapping Gumroad link ${slug}.`);
-    continue;
-  }
-  const priceTag = card[1].match(/<i>([^<]*)<\/i>/);
-  const shown = priceTag ? priceTag[1] : null;
-
-  if (pagePrice === null && shown !== null) {
-    fail(
-      `Gumroad card ${slug} now prints a price element <i>${shown}</i> and did ` +
-        `not before. Read the real product at gumroad.com, then record it in ` +
+        `you mean at gumroad.com, then add it to verifiedGumroadSlugs and ` +
         `recordedGumroadPrices.`,
     );
-  } else if (pagePrice !== null && shown === null) {
-    fail(`Gumroad card ${slug} has lost its <i>${pagePrice}</i> price element.`);
-  } else if (pagePrice !== null && shown !== pagePrice) {
-    fail(
-      `Gumroad card ${slug} shows ${shown}; recordedGumroadPrices says ` +
-        `${pagePrice}. If the change is deliberate, read the real product back ` +
-        `from gumroad.com first, then update the table.`,
-    );
   }
-
-  // The bundle states its price in its own line of copy rather than an <i>.
-  if (copyPrice && !card[1].includes(copyPrice)) {
+}
+for (const { slug } of recordedGumroadPrices) {
+  if (!presentGumroadSlugs.has(slug)) {
     fail(
-      `Gumroad card ${slug} no longer states ${copyPrice} in its copy; ` +
-        `recordedGumroadPrices still expects it.`,
+      `Gumroad slug "${slug}" has disappeared from the page. Remove it from ` +
+        `recordedGumroadPrices and verifiedGumroadSlugs if that was deliberate.`,
     );
   }
 }
+
+// Page-price drift. This checks index.html against recordedGumroadPrices and
+// NOTHING ELSE -- read that table's comment before trusting a green build here.
+// It catches an unintended edit; it cannot catch a price that was already wrong
+// on the day it was recorded.
+//
+// The page now states a price in three ways: an <i> on the grid cards, a <span>
+// on the developer-picks cards, and words in those cards' aria-label. Rather
+// than pin the markup, every currency amount inside the anchor must equal the
+// recorded one -- so a restyle is free but a changed number is not, and a
+// screen-reader label cannot quietly disagree with what sighted buyers see.
+const currencyWords = { "€": "euros", $: "dollars" };
+for (const { slug, attrs, inner } of gumroadCards) {
+  const price = recordedGumroadPriceBySlug.get(slug);
+  const shown = [...inner.matchAll(/[€$]\s?\d[\d.,]*/g)].map((match) =>
+    match[0].replace(/\s+/g, ""),
+  );
+
+  if (price === null) {
+    if (shown.length > 0) {
+      fail(
+        `Gumroad card ${slug} now states ${shown.join(", ")} and recordedGumroadPrices ` +
+          `says it states no price. Read the real product at gumroad.com, then record it.`,
+      );
+    }
+  } else if (shown.length === 0) {
+    fail(`Gumroad card ${slug} no longer states its ${price} price.`);
+  } else {
+    for (const amount of shown) {
+      if (amount !== price) {
+        fail(
+          `Gumroad card ${slug} states ${amount}; recordedGumroadPrices says ${price}. ` +
+            `If the change is deliberate, read the real product back from gumroad.com ` +
+            `first, then update the table.`,
+        );
+      }
+    }
+  }
+
+  const spoken = attrs.match(/aria-label="[^"]*?for (\d[\d.,]*) (euros|dollars)"/);
+  if (spoken) {
+    const expected = price && `${price[0]}${spoken[1]}`;
+    if (!price) {
+      fail(`Gumroad card ${slug} speaks a price in its aria-label but records none.`);
+    } else if (expected !== price || currencyWords[price[0]] !== spoken[2]) {
+      fail(
+        `Gumroad card ${slug} reads out "${spoken[1]} ${spoken[2]}" to screen readers ` +
+          `but is priced ${price}.`,
+      );
+    }
+  }
+}
+
+await import("./verify-contrast.mjs");
 
 console.log(
   `Verified ${files.length} themes, ${pluginFiles.length} plugin themes, ${galleryThemes.length} gallery cards, ` +
-    `${verifiedPayPalIds.length} PayPal links, ${knownGumroadSlugs.length} Gumroad slugs ` +
-    `(prices checked against the recorded page, NOT against Gumroad), ` +
-    `${sourceSkills.length} skills, and the safe install command.`,
+    `${verifiedGumroadSlugs.size} Gumroad products (prices checked against the recorded page, NOT against Gumroad), ` +
+    `${verifiedPayPalIds.length} PayPal links, ${sourceSkills.length} skills, and the safe install command.`,
 );
