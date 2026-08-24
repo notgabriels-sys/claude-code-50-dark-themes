@@ -62,6 +62,13 @@ Free WAV Delivery Checklist — a public handoff checklist for producers, engine
 https://gabs-utilities.com/audio-delivery-checklist.html
 ```
 
+Audio-specific evergreen guide:
+
+```text
+WAV Delivery Handoff Guide — a practical article explaining how to check bounced folders before client, label, archive or release delivery:
+https://gabs-utilities.com/audio-delivery-handoff-guide.html
+```
+
 Audio-specific press / launch kit:
 
 ```text

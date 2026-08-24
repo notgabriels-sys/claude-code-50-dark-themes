@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WAV delivery handoff guide — check audio packages before sending</title>
+<meta name="description" content="A practical guide for checking bounced WAV delivery folders before client, label, archive or release handoff. Includes a free checklist and local CLI option.">
+<meta name="robots" content="index,follow,max-image-preview:large">
+<link rel="canonical" href="https://gabs-utilities.com/audio-delivery-handoff-guide.html">
+<meta property="og:title" content="WAV delivery handoff guide">
+<meta property="og:description" content="Check bounced WAV packages before client, label, archive or release handoff. Practical workflow, free checklist and local CLI option.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://gabs-utilities.com/audio-delivery-handoff-guide.html">
+<meta property="og:image" content="https://gabs-utilities.com/assets/product-hunt/audio-preflight-01-check-the-bounce.png">
+<meta property="og:image:width" content="1270">
+<meta property="og:image:height" content="760">
+<meta property="og:image:alt" content="Audio Delivery Preflight launch card reading check the bounce before it leaves.">
+<meta property="og:site_name" content="Gabs Utilities">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="WAV delivery handoff guide">
+<meta name="twitter:description" content="A practical guide for checking bounced WAV delivery folders before sending them.">
+<meta name="twitter:image" content="https://gabs-utilities.com/assets/product-hunt/audio-preflight-01-check-the-bounce.png">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": "WAV delivery handoff guide",
+  "description": "A practical guide for checking bounced WAV delivery folders before client, label, archive or release handoff.",
+  "url": "https://gabs-utilities.com/audio-delivery-handoff-guide.html",
+  "image": "https://gabs-utilities.com/assets/product-hunt/audio-preflight-01-check-the-bounce.png",
+  "author": {
+    "@type": "Person",
+    "name": "Gabriel García Alonso"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Gabs Utilities"
+  },
+  "about": [
+    "audio delivery",
+    "WAV handoff",
+    "mix delivery",
+    "mastering handoff",
+    "release QA"
+  ],
+  "isAccessibleForFree": true
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Is there one universal WAV delivery format?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No. The right delivery format depends on the client, label, distributor, archive or mastering brief. If no brief exists, document the assumption instead of pretending it is a universal rule."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Can technical checks replace listening?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No. Technical checks can catch mechanical handoff problems, but they do not replace listening to starts, endings, transitions, tails and risky edits."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What should be inside a clean audio delivery package?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "A clean package should contain the intended audio files, clear filenames, any required notes or credits, and a checked archive or transfer folder. For important handoffs, a checksum manifest helps verify integrity."
+      }
+    }
+  ]
+}
+</script>
+<style>
+:root{
+  color-scheme:dark;
+  --bg:#090a0d;--panel:#11141a;--panel2:#151922;--hair:#2a303a;--ink:#f2f4f8;--muted:#a9b0bd;
+  --accent:#93f5cf;--blue:#9db6ff;--warn:#ffd89a;--bad:#ff9b9b;
+  font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:
+  radial-gradient(circle at 14% 0,rgba(147,245,207,.13),transparent 34rem),
+  radial-gradient(circle at 90% 6%,rgba(157,182,255,.11),transparent 30rem),
+  linear-gradient(180deg,#090a0d,#0b0d12 58%,#08090c);
+  color:var(--ink);line-height:1.62}
+a{color:inherit}
+.wrap{max-width:1120px;margin:0 auto;padding:28px 20px 54px}
+header,footer{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;color:var(--muted);font-size:13px}
+header{margin-bottom:44px}.brand{font-size:12px;letter-spacing:.18em;text-transform:uppercase;text-decoration:none;color:var(--muted)}
+.nav{display:flex;gap:14px;flex-wrap:wrap}.nav a{text-decoration:none}.nav a:hover{color:var(--ink)}
+.hero,.panel,.callout,.step,.note{border:1px solid var(--hair);background:linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.025));border-radius:24px;box-shadow:0 24px 80px rgba(0,0,0,.28)}
+.hero{padding:34px;margin-bottom:18px}
+.eyebrow{font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--accent);margin:0 0 18px}
+h1{font-size:clamp(42px,7vw,80px);letter-spacing:-.07em;line-height:.88;margin:0 0 18px}
+.lead{font-size:clamp(18px,2vw,23px);color:#dce3ed;max-width:900px;margin:0 0 22px}
+.ctas{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
+.button{display:inline-flex;text-decoration:none;border-radius:999px;padding:12px 16px;font-weight:760;background:var(--accent);color:#07100d}
+.secondary{background:rgba(255,255,255,.04);border:1px solid var(--hair);color:var(--ink)}
+.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:18px 0}
+.panel,.note{padding:18px}.panel b,.note b{display:block;margin-bottom:5px}.muted{color:var(--muted)}
+.section{margin-top:28px}.section h2{font-size:32px;letter-spacing:-.045em;margin:0 0 12px}.section h3{font-size:22px;letter-spacing:-.025em;margin:0 0 8px}
+.steps{display:grid;gap:12px}.step{display:grid;grid-template-columns:48px 1fr;gap:14px;padding:18px}
+.num{width:38px;height:38px;border-radius:999px;display:grid;place-items:center;background:rgba(147,245,207,.12);border:1px solid rgba(147,245,207,.32);color:var(--accent);font-weight:820}
+ul{margin:8px 0 0;padding-left:20px;color:var(--muted)}li{margin:5px 0}
+.callout{padding:22px;background:linear-gradient(180deg,rgba(157,182,255,.08),rgba(255,255,255,.025))}
+.warning{border-color:rgba(255,155,155,.36);background:rgba(255,155,155,.045)}
+.warning h2,.warning b{color:var(--bad)}
+pre{white-space:pre-wrap;border:1px solid var(--hair);border-radius:18px;padding:16px;background:#07080b;color:#d7fee9;font:13px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;overflow:auto}
+.copy{border-left:3px solid var(--accent);padding-left:16px;color:#dce3ed}
+.split{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+footer{margin-top:34px;padding-top:22px;border-top:1px solid var(--hair)}
+@media(max-width:820px){.grid,.split{grid-template-columns:1fr}.step{grid-template-columns:1fr}h1{font-size:46px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <a class="brand" href="./">Gabs Utilities</a>
+    <nav class="nav" aria-label="Guide navigation">
+      <a href="audio-delivery-checklist.html">Free checklist</a>
+      <a href="audio-delivery-preflight-cli.html">Paid CLI</a>
+      <a href="audio-delivery-preflight-sample-report.html">Sample report</a>
+      <a href="audio-delivery-preflight-press-kit.html">Press kit</a>
+      <a href="impressum.html">Impressum</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <p class="eyebrow">Guide / audio delivery QA</p>
+      <h1>How to check a WAV delivery package before sending it.</h1>
+      <p class="lead">A bounced folder can fail before anyone judges the music: wrong version, unclear format, missing alternate, broken archive, stale notes, or filenames that make the recipient guess. This guide is a practical preflight workflow for producers, engineers, labels and technical collaborators.</p>
+      <div class="ctas">
+        <a class="button" href="audio-delivery-checklist.html">Use the free checklist</a>
+        <a class="button secondary" href="#workflow">Read the workflow</a>
+        <a class="button secondary" href="audio-delivery-preflight-cli.html">Automate parts with the CLI</a>
+      </div>
+    </section>
+
+    <section class="grid" aria-label="Guide summary">
+      <div class="panel"><b>Purpose</b><span class="muted">Reduce avoidable handoff mistakes before a client, label, collaborator, archive or release workflow receives the files.</span></div>
+      <div class="panel"><b>Boundary</b><span class="muted">This is delivery QA, not mastering, mix critique, AI judgement, distributor approval or a universal loudness rule.</span></div>
+      <div class="panel"><b>Best use</b><span class="muted">Run the checklist after export, before upload, and again after creating the final ZIP or transfer folder.</span></div>
+    </section>
+
+    <section class="section callout">
+      <h2>The boring failure is the expensive one.</h2>
+      <p class="muted">A good mix can still arrive as a bad delivery. The recipient may not know which file is final, whether a stem starts at the same bar as the master, whether the archive contains the right revision, or whether the format was chosen from the actual brief. These are not glamorous problems, but they cost attention, trust and time.</p>
+      <p class="muted">The solution is not a bigger claim. It is a repeatable handoff ritual: confirm the brief, export intentionally, inspect the folder, listen in targeted places, package carefully, then send a short note that makes the delivery easy to understand.</p>
+    </section>
+
+    <section class="section" id="workflow">
+      <h2>Practical preflight workflow</h2>
+      <div class="steps">
+        <article class="step">
+          <span class="num">01</span>
+          <div>
+            <h3>Confirm the destination, not a mythical default.</h3>
+            <p class="muted">There is no single correct WAV target for every situation. A mastering engineer, label archive, distributor upload, client approval and stem handoff can all need different things.</p>
+            <ul>
+              <li>Name the recipient and purpose of the delivery.</li>
+              <li>Check the requested sample rate, bit depth, channel layout and file roles.</li>
+              <li>If the target is unknown, write the assumption clearly instead of hiding it.</li>
+            </ul>
+          </div>
+        </article>
+
+        <article class="step">
+          <span class="num">02</span>
+          <div>
+            <h3>Export from the approved session state.</h3>
+            <p class="muted">Before exporting, make sure the session matches the decision you intend to send.</p>
+            <ul>
+              <li>Confirm the approved mix, master, stem print or alternate version.</li>
+              <li>Check that muted tracks, automation, external effects and hardware returns are intentional.</li>
+              <li>Print from the correct start/end range, including intentional silence and tails.</li>
+            </ul>
+          </div>
+        </article>
+
+        <article class="step">
+          <span class="num">03</span>
+          <div>
+            <h3>Inspect the files as received objects.</h3>
+            <p class="muted">Do not trust memory. Inspect the exported files, not the plan in your head.</p>
+            <ul>
+              <li>Check file count, roles, names, duration, sample rate and bit depth.</li>
+              <li>Look for duplicate “final” versions, empty folders, temporary files and ambiguous names.</li>
+              <li>For stems, verify shared starts and naming patterns so reconstruction is not a puzzle.</li>
+            </ul>
+          </div>
+        </article>
+
+        <article class="step">
+          <span class="num">04</span>
+          <div>
+            <h3>Listen where technical checks are blind.</h3>
+            <p class="muted">Preflight does not replace listening. It helps you aim attention at the places where export mistakes hide.</p>
+            <ul>
+              <li>Listen to starts, endings, transitions, breakdowns, loudest moments, quiet sections and final tails.</li>
+              <li>Recheck risky edits, mutes, printed effects, fades and render boundaries.</li>
+              <li>If a stem package matters, rebuild the mix from the stems in a clean session when practical.</li>
+            </ul>
+          </div>
+        </article>
+
+        <article class="step">
+          <span class="num">05</span>
+          <div>
+            <h3>Package the delivery as the recipient will see it.</h3>
+            <p class="muted">The final transfer is the real deliverable. A clean local folder is not enough if the ZIP or upload is wrong.</p>
+            <ul>
+              <li>Create the final archive or transfer folder after cleaning the delivery contents.</li>
+              <li>Reopen the archive and check that it contains only the intended files.</li>
+              <li>Add a short delivery note and checksums when the package is important, large, repeated or archival.</li>
+            </ul>
+          </div>
+        </article>
+
+        <article class="step">
+          <span class="num">06</span>
+          <div>
+            <h3>Send context, not just files.</h3>
+            <p class="muted">A concise note prevents the recipient from guessing what they received.</p>
+            <ul>
+              <li>Name the artist/title/version/date.</li>
+              <li>List included assets and any known deviations from the brief.</li>
+              <li>Ask for receipt confirmation before anyone treats the package as the final source of truth.</li>
+            </ul>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="section split">
+      <div class="note warning">
+        <h2>Stop and clarify if...</h2>
+        <ul>
+          <li>there are several files claiming to be final,</li>
+          <li>the expected format was never actually specified,</li>
+          <li>the archive was never reopened after creation,</li>
+          <li>stems do not share a clear start point or role naming,</li>
+          <li>nobody listened to risky boundaries after export.</li>
+        </ul>
+      </div>
+      <div class="note">
+        <h2>Useful delivery note</h2>
+        <p class="copy">Hi — attached is the delivery package for [artist/title], version [version/date]. It contains [asset list]. Format is [sample rate / bit depth / channel layout] according to [brief or provisional assumption]. Known notes/deviations: [none / list]. Please confirm receipt before using this as the final delivery source.</p>
+      </div>
+    </section>
+
+    <section class="section callout">
+      <h2>Free checklist first, paid automation second.</h2>
+      <p class="muted">The free checklist is enough to run the process manually. Audio Delivery Preflight CLI exists for repeated work: local folder inventory, technical evidence, delivery hygiene, reports and checksum workflow. It does not upload audio, rename files, master music, judge artistic quality or guarantee acceptance by a distributor or label.</p>
+<pre>audio-preflight scan /path/to/delivery --preset digital-release \
+  --report-html /path/outside/delivery/preflight-report.html \
+  --checksums /path/outside/delivery/SHA256SUMS.txt</pre>
+      <div class="ctas">
+        <a class="button" href="audio-delivery-checklist.html">Use the free checklist</a>
+        <a class="button secondary" href="audio-delivery-preflight-sample-report.html">Inspect a sample report</a>
+        <a class="button secondary" href="audio-delivery-preflight-cli.html">See the CLI</a>
+        <a class="button secondary" href="https://github.com/notgabriels-sys/claude-code-50-dark-themes/issues/21">Give feedback</a>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <span>WAV delivery handoff guide by Gabriel García Alonso.</span>
+    <span><a href="./">Shop</a> · <a href="audio-delivery-preflight-cli.html">Audio Delivery Preflight CLI</a> · <a href="impressum.html">Impressum</a></span>
+  </footer>
+</div>
+</body>
+</html>

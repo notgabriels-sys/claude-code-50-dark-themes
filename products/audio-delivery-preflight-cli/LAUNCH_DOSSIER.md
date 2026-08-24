@@ -12,6 +12,7 @@ for human listening.
 
 - Landing page: <https://gabs-utilities.com/audio-delivery-preflight-cli.html>
 - Free checklist: <https://gabs-utilities.com/audio-delivery-checklist.html>
+- Practical guide: <https://gabs-utilities.com/audio-delivery-handoff-guide.html>
 - Press / launch kit: <https://gabs-utilities.com/audio-delivery-preflight-press-kit.html>
 - Sample report: <https://gabs-utilities.com/audio-delivery-preflight-sample-report.html>
 - Public feedback thread: <https://github.com/notgabriels-sys/claude-code-50-dark-themes/issues/21>
@@ -40,6 +41,9 @@ Public critique thread opened 2026-08-24:
 Free checklist added 2026-08-24 so audio-community posts can lead with a
 useful public resource before mentioning the paid CLI:
 <https://gabs-utilities.com/audio-delivery-checklist.html>.
+Practical handoff guide added 2026-08-24 so communities can be pointed to a
+useful evergreen explanation rather than only a product page:
+<https://gabs-utilities.com/audio-delivery-handoff-guide.html>.
 Press kit and Product Hunt gallery assets added 2026-08-24:
 <https://gabs-utilities.com/audio-delivery-preflight-press-kit.html>.
 

@@ -25,6 +25,7 @@ Unsafe launch framing:
 
 - Product page: <https://gabs-utilities.com/audio-delivery-preflight-cli.html>
 - Free checklist: <https://gabs-utilities.com/audio-delivery-checklist.html>
+- Practical guide: <https://gabs-utilities.com/audio-delivery-handoff-guide.html>
 - Press / launch kit: <https://gabs-utilities.com/audio-delivery-preflight-press-kit.html>
 - Sample report: <https://gabs-utilities.com/audio-delivery-preflight-sample-report.html>
 - Public feedback thread: <https://github.com/notgabriels-sys/claude-code-50-dark-themes/issues/21>
@@ -107,6 +108,10 @@ First comment:
 > before client, label, archive or release delivery:
 >
 > https://gabs-utilities.com/audio-delivery-checklist.html
+>
+> I also wrote a fuller practical guide:
+>
+> https://gabs-utilities.com/audio-delivery-handoff-guide.html
 >
 > It covers boring-but-real mistakes: unclear brief, ambiguous versions, missing
 > credits/metadata, unchecked archives, undocumented format assumptions and
