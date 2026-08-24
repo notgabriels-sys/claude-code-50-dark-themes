@@ -1,7 +1,9 @@
 # DEV Community article draft
 
 Status: ready to paste into DEV Community once Gabriel is signed in. Do not
-auto-publish without checking the preview and account identity first.
+auto-publish without checking the preview and account identity first. The
+canonical URL points to the owned article, and the post links both the public
+gallery and the install guide.
 
 ## DEV fields
 
@@ -38,9 +40,13 @@ I made a set of 50 free dark themes for Claude Code:
 
 https://gabs-utilities.com/
 
-The source and install guide are here:
+The source is here:
 
 https://github.com/notgabriels-sys/claude-code-50-dark-themes
+
+And I wrote the practical install guide here:
+
+https://gabs-utilities.com/claude-code-theme-install-guide.html
 
 This started as a small personal thing. I wanted Claude Code to feel more comfortable during long sessions, but I did not want a theme that only looked good in screenshots and then failed the moment real terminal UI appeared.
 
@@ -116,7 +122,7 @@ transparency.
 
 For a visual project, the temptation is to spend all the effort on the gallery. But the install flow matters more.
 
-The project now supports the native Claude Code plugin marketplace flow, and the README keeps the manual install path visible too. That matters because a theme pack is only useful if someone can install it without guessing.
+The project now supports the native Claude Code plugin marketplace flow, and the README and install guide keep the manual install path visible too. That matters because a theme pack is only useful if someone can install it without guessing.
 
 The basic lesson: if the thing is free and practical, the path to use it should be practical too.
 
@@ -142,6 +148,10 @@ https://gabs-utilities.com/
 The full original article:
 
 https://gabs-utilities.com/semantic-terminal-colors.html
+
+The install guide:
+
+https://gabs-utilities.com/claude-code-theme-install-guide.html
 
 And the repo:
 
