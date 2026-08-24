@@ -55,6 +55,20 @@ Maker note:
 Built by Gabriel / NotGabriels under the neutral Gabs Utilities developer-product identity.
 ```
 
+Developer-specific supporting asset:
+
+```text
+Claude Code Theme Install Guide — native plugin install, manual JSON fallback, terminal background setup and troubleshooting:
+https://gabs-utilities.com/claude-code-theme-install-guide.html
+```
+
+Developer-specific evergreen article:
+
+```text
+Semantic Terminal Colors — design notes from building 50 free Claude Code themes while preserving status meaning:
+https://gabs-utilities.com/semantic-terminal-colors.html
+```
+
 Audio-specific supporting asset:
 
 ```text
@@ -233,6 +247,7 @@ Use this order. It favors relevance and avoids low-quality spam-directory energy
    - Use the prepared article draft and include real screenshots or a concise
      theme JSON example before publishing.
    - Draft is saved in `DEV_COMMUNITY_ARTICLE_DRAFT.md`.
+   - Support link: `https://gabs-utilities.com/claude-code-theme-install-guide.html`.
 
 2. Product Hunt
    - Higher reach, but only after the personal account's normal one-week gate
