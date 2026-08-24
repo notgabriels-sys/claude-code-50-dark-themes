@@ -93,18 +93,44 @@ Gabriel's to make, not Claude's. Add them when he decides them.
 
 ## Reading the account
 
-The claude.ai PayPal MCP connector does not work and cannot be used to
-verify anything. It authenticates fine but the tool-schema fetch fails:
+**Superseded 2026-08-24.** The PayPal MCP connector now loads. The old
+tool-schema failure is gone:
 
     claude.ai PayPal: https://mcp.paypal.com/mcp - ! Connected ·
     tools fetch failed — Invalid regular expression: invalid escaped
     character for Unicode pattern
 
-A `pattern` in PayPal's published tool definitions will not compile as a
-Unicode-mode regex, so the client rejects the whole manifest and zero
-PayPal tools load. Re-authorizing does not help; this needs a fix from
-PayPal. Check with `claude mcp list` — it is fixed when the line reads
-`Connected` with no `tools fetch failed` suffix.
+That regex-manifest bug has been fixed on PayPal's side; the tools load
+and calls return data. **This does not make the connector usable for
+verifying anything on this shop, and the reason is worse than the old
+one.**
+
+Read back 2026-08-24 from the connector, both calls read-only:
+
+- `list_payment_links` → **empty**. Zero links, one page. The three live
+  NCP links in the table above were browser-verified and are on the
+  shop right now.
+- `list_transactions` (31 days) → 65 transactions, but they are *outgoing*
+  EUR debits against a PayPal Wallet via billing agreements (−4.99,
+  −48.73). Subscription charges, not mixing and mastering income.
+
+The most likely reading is that the OAuth token is bound to the
+**personal** account, not the Berlin **business** account that holds the
+links — the two-account split this file already warns about. A second
+possibility is that `list_payment_links` simply does not enumerate NCP
+no-code links. Both are unresolved, and either way:
+
+**Never treat an empty or unfamiliar connector result as evidence about
+the shop's payment links.** The connector answering confidently about the
+wrong account is precisely the failure mode that produced the €1,200
+charge. It reads plausible and it is not the same account. Do not create,
+edit, or confirm a payment link through this connector, and do not use it
+to decide that a link is missing, changed, or dead.
+
+Before this connector could ever be trusted here, someone must confirm
+*which account the token belongs to* by comparing a known business
+transaction against what it returns. Until then it is an unverified
+surface, not a source of truth.
 
 **Use the browser instead.** The working route, and the one every
 verification above was done through:
