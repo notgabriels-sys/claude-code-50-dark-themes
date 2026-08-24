@@ -166,3 +166,5 @@ Use the result to improve positioning before posting again elsewhere.
 | 2026-08-24 | Hacker News / Show HN | Blocked by HN `showlim` notice | Do not retry immediately; participate normally on HN first, then submit later when the account is less restricted |
 | 2026-08-24 | Product Hunt | Prelaunch URL returned 404 / sign-in state in controlled browser | Reopen while signed in; verify the product page before posting or launching |
 | 2026-08-24 | GitHub topics | Updated toward Claude Code / themes / dev tools discovery | Keep audio/sample-pack promotion on audio-specific repos/pages, not this theme repo |
+| 2026-08-24 | TheDevToolsDir | Form prefilled but not submitted | Free listing requires adding their badge; wait for explicit approval before adding badge/submitting |
+| 2026-08-24 | DevHunt | Submit route requires sign-in | Log in before submission; use developer-tool framing, not shop framing |
