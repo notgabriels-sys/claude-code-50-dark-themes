@@ -2,18 +2,18 @@
   "name": "Mulberry",
   "base": "dark",
   "overrides": {
-    "claude": "#D05880",
+    "claude": "#D25E85",
     "claudeShimmer": "#E298B0",
     "text": "#EDE8EB",
     "inactive": "#AF9DA6",
     "subtle": "#392830",
-    "suggestion": "#D05880",
+    "suggestion": "#D25E85",
     "permission": "#DD88A4",
-    "promptBorder": "#D05880",
+    "promptBorder": "#D25E85",
     "promptBorderShimmer": "#E298B0",
     "planMode": "#DD88A4",
     "userMessageBackground": "#302129",
     "userMessageBackgroundHover": "#3C2933",
-    "rate_limit_fill": "#D05880"
+    "rate_limit_fill": "#D25E85"
   }
 }
