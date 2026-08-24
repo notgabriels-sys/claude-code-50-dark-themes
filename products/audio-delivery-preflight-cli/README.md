@@ -8,6 +8,9 @@ Free WAV delivery checklist: <https://gabs-utilities.com/audio-delivery-checklis
 
 Gumroad listing: <https://notgabriel.gumroad.com/l/audio-delivery-preflight-cli>
 
+Launch/community reply guide:
+[`COMMUNITY_RESPONSE_PLAYBOOK.md`](COMMUNITY_RESPONSE_PLAYBOOK.md)
+
 ## Commands
 
 ```text

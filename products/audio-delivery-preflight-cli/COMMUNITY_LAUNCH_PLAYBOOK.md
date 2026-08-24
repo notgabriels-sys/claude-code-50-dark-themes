@@ -33,6 +33,9 @@ Unsafe launch framing:
 - Thumbnail: <https://gabs-utilities.com/assets/audio-delivery-preflight-cli-thumbnail.png>
 - Gumroad: <https://notgabriel.gumroad.com/l/audio-delivery-preflight-cli>
 
+Internal reply guide for launch comments and criticism:
+[`COMMUNITY_RESPONSE_PLAYBOOK.md`](COMMUNITY_RESPONSE_PLAYBOOK.md)
+
 ## Channel decisions
 
 ### Do first

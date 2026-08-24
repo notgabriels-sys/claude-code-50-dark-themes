@@ -23,6 +23,9 @@ for human listening.
 - LLM discovery file: <https://gabs-utilities.com/llms.txt>
 - IndexNow verification key: <https://gabs-utilities.com/79F35EFA-F66B-4757-848A-FB1A9029E1BA.txt>
 
+Internal reply guide for public comments and criticism:
+[`COMMUNITY_RESPONSE_PLAYBOOK.md`](COMMUNITY_RESPONSE_PLAYBOOK.md)
+
 Use `https://gabs-utilities.com/audio-delivery-preflight-cli.html` for
 submissions. Normal HTTPS returned `HTTP/2 200` for the root site and the Audio
 Delivery Preflight CLI landing page on 2026-08-24 03:01 CEST.
