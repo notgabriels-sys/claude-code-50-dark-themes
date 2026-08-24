@@ -77,9 +77,9 @@ Left at the base `dark` preset on purpose: `success`, `error`, `warning`, diff c
 so status colors stay semantically green/red/yellow in every theme.
 
 The repository verifier checks each palette against its recommended terminal background:
-AAA contrast for primary text, AA for foreground accents, a project floor of 3.5:1 for readable
-secondary text, and the WCAG non-text floor for functional borders and indicators. `subtle` is
-reserved for decorative hairlines; it is never used as the readable secondary-text color.
+AAA contrast for primary text, AA for foreground accents and readable secondary text, and the
+WCAG non-text floor for functional borders and indicators. `subtle` is reserved for decorative
+hairlines; it is never used as the readable secondary-text color.
 
 ## Note on backgrounds
 

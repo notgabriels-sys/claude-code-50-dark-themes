@@ -46,8 +46,8 @@ const checks = [
   // Primary copy is held to WCAG AAA. It can appear on the terminal canvas or
   // the opaque fullscreen user-message surface.
   { token: "text", floor: 7, surfaces: ["terminal", "userMessageBackground"] },
-  // Secondary copy follows the pack's deliberately lower readable-muted floor.
-  { token: "inactive", floor: 3.5, surfaces: ["terminal", "userMessageBackground"] },
+  // Readable secondary copy meets WCAG AA for normal text on every surface.
+  { token: "inactive", floor: 4.5, surfaces: ["terminal", "userMessageBackground"] },
   // Claude's label and autocomplete suggestions are foreground content.
   { token: "claude", floor: 4.5, surfaces: ["terminal"] },
   { token: "claudeShimmer", floor: 4.5, surfaces: ["terminal"] },
@@ -64,6 +64,26 @@ const checks = [
 
 const failures = [];
 let comparisons = 0;
+
+function cssColour(variable) {
+  const variableMatch = html.match(
+    new RegExp(`--${variable}\\s*:\\s*(#[0-9a-f]{6})\\s*;`, "i"),
+  );
+  if (!variableMatch) throw new Error(`Could not find --${variable} in index.html.`);
+  return variableMatch[1];
+}
+
+const storefrontFaint = cssColour("faint");
+for (const surfaceName of ["ground", "ground-2"]) {
+  comparisons += 1;
+  const surface = cssColour(surfaceName);
+  const ratio = contrast(storefrontFaint, surface);
+  if (ratio < 4.5) {
+    failures.push(
+      `Storefront: --faint on --${surfaceName} is ${ratio.toFixed(2)}:1; needs 4.5:1`,
+    );
+  }
+}
 
 if (galleryByName.size !== gallery.length) {
   failures.push("Gallery display names must be unique.");
