@@ -62,6 +62,13 @@ Free WAV Delivery Checklist — a public handoff checklist for producers, engine
 https://gabs-utilities.com/audio-delivery-checklist.html
 ```
 
+Audio-specific press / launch kit:
+
+```text
+Audio Delivery Preflight CLI press kit — product facts, launch copy and gallery assets:
+https://gabs-utilities.com/audio-delivery-preflight-press-kit.html
+```
+
 Use this link for audio communities or newsletters. For general developer
 directories, keep the main pitch focused on the free Claude Code themes and
 developer-tool catalog.

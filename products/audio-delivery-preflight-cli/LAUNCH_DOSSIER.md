@@ -12,6 +12,7 @@ for human listening.
 
 - Landing page: <https://gabs-utilities.com/audio-delivery-preflight-cli.html>
 - Free checklist: <https://gabs-utilities.com/audio-delivery-checklist.html>
+- Press / launch kit: <https://gabs-utilities.com/audio-delivery-preflight-press-kit.html>
 - Sample report: <https://gabs-utilities.com/audio-delivery-preflight-sample-report.html>
 - Public feedback thread: <https://github.com/notgabriels-sys/claude-code-50-dark-themes/issues/21>
 - Public feedback form: <https://github.com/notgabriels-sys/claude-code-50-dark-themes/issues/new?template=audio-preflight-feedback.yml>
@@ -39,6 +40,8 @@ Public critique thread opened 2026-08-24:
 Free checklist added 2026-08-24 so audio-community posts can lead with a
 useful public resource before mentioning the paid CLI:
 <https://gabs-utilities.com/audio-delivery-checklist.html>.
+Press kit and Product Hunt gallery assets added 2026-08-24:
+<https://gabs-utilities.com/audio-delivery-preflight-press-kit.html>.
 
 ## Core positioning
 
@@ -126,6 +129,13 @@ Thumbnail:
 > Use `assets/audio-delivery-preflight-cli-thumbnail.png`. It is a square
 > dark audio-check visual with no misleading text, logos, people, fake DAW
 > screenshot or mastering claim.
+
+Gallery:
+
+1. `assets/product-hunt/audio-preflight-01-check-the-bounce.png`
+2. `assets/product-hunt/audio-preflight-02-free-checklist.png`
+3. `assets/product-hunt/audio-preflight-03-local-reports.png`
+4. `assets/product-hunt/audio-preflight-04-what-it-is-not.png`
 
 First comment:
 

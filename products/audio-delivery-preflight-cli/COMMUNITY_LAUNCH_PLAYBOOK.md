@@ -25,6 +25,7 @@ Unsafe launch framing:
 
 - Product page: <https://gabs-utilities.com/audio-delivery-preflight-cli.html>
 - Free checklist: <https://gabs-utilities.com/audio-delivery-checklist.html>
+- Press / launch kit: <https://gabs-utilities.com/audio-delivery-preflight-press-kit.html>
 - Sample report: <https://gabs-utilities.com/audio-delivery-preflight-sample-report.html>
 - Public feedback thread: <https://github.com/notgabriels-sys/claude-code-50-dark-themes/issues/21>
 - Feedback form: <https://github.com/notgabriels-sys/claude-code-50-dark-themes/issues/new?template=audio-preflight-feedback.yml>
@@ -38,6 +39,7 @@ Unsafe launch framing:
 1. Product Hunt
    - Fit: good for maker/dev discovery and feedback.
    - Use the clean product URL and square thumbnail.
+   - Use the press kit gallery images in order if a gallery is available.
    - Ask people to visit/comment, not upvote.
    - Requires Gabriel's personal Product Hunt account.
 

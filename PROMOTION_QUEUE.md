@@ -29,6 +29,7 @@ be launched feedback-first.
 
 - Landing page: <https://gabs-utilities.com/audio-delivery-preflight-cli.html>
 - Free checklist: <https://gabs-utilities.com/audio-delivery-checklist.html>
+- Press / launch kit: <https://gabs-utilities.com/audio-delivery-preflight-press-kit.html>
 - Sample report: <https://gabs-utilities.com/audio-delivery-preflight-sample-report.html>
 - Public feedback thread: <https://github.com/notgabriels-sys/claude-code-50-dark-themes/issues/21>
 - Gumroad listing: <https://notgabriel.gumroad.com/l/audio-delivery-preflight-cli>
@@ -58,6 +59,7 @@ Safe angle:
 3. Product Hunt
    - Best after the domain, images, and first comments are polished.
    - Tone: short, visual, maker story.
+   - Use the four press-kit gallery images, not random screenshots.
    - Ask for feedback, not “please upvote”.
 
 4. GitHub discovery
