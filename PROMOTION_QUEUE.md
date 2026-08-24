@@ -145,4 +145,9 @@ Use the result to improve positioning before posting again elsewhere.
 | Date | Channel | Status | Next responsible action |
 |---|---|---|---|
 | 2026-08-24 | Custom domain | Live with HTTPS enforced | Use `https://gabs-utilities.com/` as the primary storefront URL |
+| 2026-08-24 | X | Posted by Gabriel | Watch replies for useful feedback; answer as a maker, not a salesperson |
 | 2026-08-24 | Hacker News / Show HN | Blocked by HN `showlim` notice | Do not retry immediately; participate normally on HN first, then submit later when the account is less restricted |
+| 2026-08-24 | Product Hunt | Prelaunch URL returned 404 / sign-in state in controlled browser | Reopen while signed in; verify the product page before posting or launching |
+| 2026-08-24 | GitHub topics | Updated toward Claude Code / themes / dev tools discovery | Keep audio/sample-pack promotion on audio-specific repos/pages, not this theme repo |
+| 2026-08-24 | TheDevToolsDir | Form prefilled but not submitted | Free listing requires adding their badge; wait for explicit approval before adding badge/submitting |
+| 2026-08-24 | DevHunt | Submit route requires sign-in | Log in before submission; use developer-tool framing, not shop framing |
