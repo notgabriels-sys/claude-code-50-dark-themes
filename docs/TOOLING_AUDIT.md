@@ -168,6 +168,49 @@ Coverable today by tools already installed:
 Applying the payment-surface rule from `CLAUDE.md`: read Gumroad's real
 objects before writing any Gumroad figure or link into `index.html`.
 
+## 6b. Follow-through — the Gumroad half, and a hardened tripwire
+
+Acting on §6 turned up three things in the repo itself.
+
+**The inventory line in `CLAUDE.md` was stale.** It claimed "eleven Gumroad
+links (ten products plus the €39 bundle) at lines 259–271". The real count is
+**18 links** at lines 310–360, no duplicates, and the bundle is priced **$39**,
+not €39. Wrong on the number, the range, and the currency. Corrected.
+
+**The shop mixes currencies.** Sixteen products in €, two in $ (`cfcvmy` at
+$19, `xcxeb` at $9), and the bundle's copy reads "$39" — against a rate card
+and a mixing/mastering section that are entirely EUR. Either the Gumroad
+products really are USD and the page is honest but inconsistent, or the page
+misquotes them and buyers see the wrong number. **Not resolved by editing the
+page.** It needs the products read first, and it is now written up in
+`CLAUDE.md` as open work.
+
+**`scripts/verify.mjs` already had a payment tripwire, undocumented.** It fails
+CI on any `stripe` string in `index.html`, on a retired Gumroad slug, and on
+any of the three verified PayPal links going missing.
+
+That last check was one-directional and left the important hole open: it proved
+the three verified links were *present*, but nothing stopped a **fourth,
+unverified, wrongly-priced link** being added — which is exactly the shape of
+the €1,200 charge. Two guards now close it:
+
+1. Every `paypal.com/ncp/payment/<ID>` on the page must be in the verified
+   table, or the build fails.
+2. Each verified link's card must carry its verified price (€45 / €160 / €190),
+   or the build fails.
+
+Both were tested by deliberately breaking `index.html` — injecting a bogus
+fourth link, then knocking €160 down to €16 — and confirming the build fails
+each time, then restoring. A guard that never fires is not a guard.
+
+The limit is worth stating: CI checks the page against a table a human verified
+through a browser. A wrong price *in the table* would pass. Adding an entry is
+an assertion that you read it back from `paypal.com/ncp/links/<ID>` yourself.
+
+There is no equivalent Gumroad guard, because no verified Gumroad table exists
+yet. Building one is the obvious next step, and it needs a signed-in browser
+pass over 18 products.
+
 ## 7. Execution checklist
 
 Everything below is a claude.ai account setting. A non-interactive session has

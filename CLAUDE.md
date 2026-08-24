@@ -12,12 +12,84 @@ you read matches the rate card below. A Stripe link that "looked right"
 sat on the shop through two review rounds and was a live €1,200 charge
 for the wrong service.
 
-Current state of `index.html` (verified 2026-08-18, after `bf14643`):
-eleven Gumroad links (ten products plus the €39 bundle) at lines 259–271,
-and a "Mixing & mastering" section at lines 274–282 carrying the three
-PayPal links below. No Stripe link anywhere. `git log -S stripe` across
-all branches returns nothing, so the bad €1,200 link never lived in this
-repo — it was on some other surface, and may still be.
+Current state of `index.html` (re-counted 2026-08-24):
+
+- **18 Gumroad links**, all `notgabriel.gumroad.com/l/<slug>`, no duplicates:
+  one free zip (line 310), twelve product cards (335–347), the complete-kit
+  bundle (349), and four audio products (357–360).
+- **3 PayPal NCP links** in "Mixing & mastering" (370–372).
+- **No Stripe link anywhere.** `git log -S stripe` across all branches still
+  returns nothing, so the bad €1,200 link never lived in this repo — it was on
+  some other surface, and may still be.
+
+The previous note here — "eleven Gumroad links … at lines 259–271" and "the
+€39 bundle" — was written after `bf14643` and is now wrong on all three
+counts: the number, the line range, and the bundle's currency. The shop grew
+and the note did not. **Re-count before trusting any inventory line in this
+file.**
+
+## The CI tripwire — `scripts/verify.mjs`
+
+Undocumented here until 2026-08-24, and it is the strongest protection this
+repo has. `verify` runs on every push and **fails the build** on:
+
+- any occurrence of `stripe` (case-insensitive) anywhere in `index.html`;
+- the retired résumé checkout slug `notgabriel.gumroad.com/l/wmlrk`;
+- any of the three verified PayPal links going missing;
+- **(added 2026-08-24)** any of the three carrying a price other than its
+  verified one — €45 / €160 / €190;
+- **(added 2026-08-24)** *any* `paypal.com/ncp/payment/<ID>` on the page whose
+  ID is not in the verified table in `scripts/verify.mjs`.
+
+The last two close the hole that mattered. The original check only asserted the
+three links were *present*, so a fourth, unverified, wrongly-priced link could
+be added and CI would pass — which is the exact shape of the €1,200 charge. Now
+an unlisted link cannot ship, and a listed one cannot drift off its price. Both
+failure modes were tested by deliberately breaking the page and confirming the
+build fails.
+
+**This does not replace reading the payment provider's real objects.** CI can
+only check the page against a table a human verified through the browser. A
+wrong price in that table would sail through. Adding a link to
+`verifiedPayPalLinks` is an assertion that you personally read it back from
+`paypal.com/ncp/links/<ID>` — never do it to make the build pass.
+
+There is no equivalent guard for the 18 Gumroad links beyond the single
+blocked slug, because no verified Gumroad table exists yet. See below.
+
+## Gumroad — the unverified half of the shop
+
+The PayPal links below were each read back from their own detail page before
+going on the shop. **The 18 Gumroad links have never had that treatment.** They
+are the larger half of the shop by product count and carry the ordinary sales
+income, and nothing in this repo records a single one being checked against its
+real Gumroad product.
+
+Two things found by static read on 2026-08-24, both needing Gabriel:
+
+**1. The page mixes currencies.** Sixteen products are priced in €; two are
+priced in $ — `cfcvmy` "Dark HTML Templates" at **$19** and `xcxeb` "50 Dark
+Palettes" at **$9** — and the bundle `wuhehk` reads **"$39"** in its own line of
+copy. Everything else on the page, including the entire mixing and mastering
+rate card, is EUR. Either the Gumroad products really are priced in USD, in
+which case the page is honest and inconsistent, or the page is misquoting
+them, in which case a buyer is shown the wrong number. **Do not resolve this by
+editing the page.** Read the products first.
+
+**2. The bundle makes a claim about its own contents.** It says "all of the
+above" for $39 against roughly 119 of listed value. Whether it actually
+contains all twelve is a fact about a Gumroad product, not about this file.
+
+**Verification route, same discipline as PayPal:** sign in at `gumroad.com`,
+open the products list, and read each product's own page — price, currency, and
+for the bundle its contents. Only then reconcile `index.html`. Never adjust a
+price, currency, or slug on this page from a description, from this file, or
+from what looks consistent.
+
+There is no Gumroad MCP connector, and none exists in the registry (nor
+Bandcamp, Beatport, DistroKid, GEMA, Ableton or Bitwig). The routes available
+are a signed-in browser or Zapier's Gumroad actions. Neither is a substitute
+for reading the real product object.
 
 ## Mixing & mastering rate card
 
