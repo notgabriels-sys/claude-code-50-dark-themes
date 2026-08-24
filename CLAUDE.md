@@ -19,6 +19,36 @@ PayPal links below. No Stripe link anywhere. `git log -S stripe` across
 all branches returns nothing, so the bad €1,200 link never lived in this
 repo — it was on some other surface, and may still be.
 
+## Stripe Checkout service — `checkout/`, added 2026-08-24
+
+A standalone Node service that takes a one-time payment through Stripe
+Checkout: `bin/onboard.js` creates the product and its default price for a
+shop SKU, `POST /create-checkout-session` opens a hosted Checkout Session for
+that SKU, and the `checkout.session.completed` webhook marks the order paid.
+Stripe identifiers are stored per SKU in `checkout/data/` (git-ignored). Run
+its tests with `cd checkout && npm test`; CI runs them too.
+
+**It is not a payment surface yet, and it is deliberately not wired to the
+shop.** `index.html` is untouched, no Stripe link is published anywhere, and
+the `/stripe/i` guard in `scripts/verify.mjs` still fails the build if one
+appears there. `checkout/README.md` lists what has to be read back from Stripe
+before a button is added.
+
+**No Stripe object was created.** The only Stripe account this repo's tooling
+can reach is exposed in **live mode only** — the MCP connector offers no
+test-mode context — so onboarding a product would have meant writing a real
+product and a permanent price into Gabriel's merchant account. That is his
+call, not Claude's, so `checkout/data/catalog.json` is empty and the onboard
+CLI refuses a live secret key unless `--live-mode` is passed explicitly.
+
+Read-only on 2026-08-24, the live Stripe account already held five active
+products, all EUR one-time prices: "Mastering, one track" €45, "Mastering, 1
+track" €45, "Mixing, one track" €160, "Mix + master, one track" €190 — those
+match the rate card — plus "Engineering" €160. Two things for Gabriel, neither
+touched: "Engineering" is priced **tax-exclusive** while every other object on
+both providers is tax-inclusive, and the two €45 mastering products are
+duplicates.
+
 ## Mixing & mastering rate card
 
 Verified 2026-08-18 against the live PayPal objects — prices, tier names,
