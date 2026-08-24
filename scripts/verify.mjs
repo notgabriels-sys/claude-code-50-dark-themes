@@ -157,6 +157,9 @@ if (/stripe/i.test(html)) {
 }
 for (const file of publicHtmlFiles) {
   const source = await readFile(new URL(file, root), "utf8");
+  if (!source.includes('rel="icon" type="image/svg+xml" href="favicon.svg"')) {
+    fail(`${file} must expose the first-party SVG favicon.`);
+  }
   for (const match of source.matchAll(/https:\/\/notgabriel\.gumroad\.com\/l\/([a-z0-9-]+)/g)) {
     const slug = match[1];
     if (!verifiedGumroadSlugs.has(slug)) {
