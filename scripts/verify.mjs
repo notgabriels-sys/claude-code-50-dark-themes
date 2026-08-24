@@ -44,9 +44,31 @@ const verifiedGumroadSlugs = new Set([
   "xcxeb",
   "xjcbji",
 ]);
+const pngSignature = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
 function fail(message) {
   throw new Error(message);
+}
+
+async function verifyPng(imagePath, { label, width, height }) {
+  let imageData;
+  try {
+    imageData = await readFile(new URL(imagePath, root));
+  } catch {
+    fail(`${label} is missing: ${imagePath}.`);
+  }
+
+  const hasValidPngHeader =
+    imageData.length >= 24 &&
+    imageData.subarray(0, pngSignature.length).equals(pngSignature) &&
+    imageData.readUInt32BE(8) === 13 &&
+    imageData.subarray(12, 16).equals(Buffer.from("IHDR"));
+  if (!hasValidPngHeader) {
+    fail(`${label} must be a valid PNG: ${imagePath}.`);
+  }
+  if (imageData.readUInt32BE(16) !== width || imageData.readUInt32BE(20) !== height) {
+    fail(`${label} must be ${width}x${height}: ${imagePath}.`);
+  }
 }
 
 const files = (await readdir(root))
@@ -121,6 +143,64 @@ const readme = await readFile(new URL("README.md", root), "utf8");
 const publicHtmlFiles = (await readdir(root))
   .filter((file) => file.endsWith(".html"))
   .sort();
+const normalizeHtmlText = (markup) =>
+  markup
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;|&#160;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/\s+/g, " ")
+    .trim();
+for (const link of html.matchAll(/<a\b[^>]*\baria-label="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi)) {
+  const accessibleName = normalizeHtmlText(link[1]);
+  const visibleLabel = normalizeHtmlText(link[2]);
+  if (visibleLabel && !accessibleName.toLocaleLowerCase().includes(visibleLabel.toLocaleLowerCase())) {
+    fail(`Sales-link accessible name must include its visible label: ${visibleLabel}.`);
+  }
+}
+const storefrontContracts = [
+  [/<a class="skip-link" href="#main-content">/, "keyboard skip link"],
+  [/<main id="main-content">/, "main landmark"],
+  [/<h3 class="tname">\$\{esc\(name\)\}<\/h3>/, "gallery-card headings"],
+  [/<span class="sr-only" id="copyStatus" aria-live="polite"><\/span>/, "copy-status live region"],
+  [/<meta property="og:image:alt" content="[^"]+">/, "Open Graph image alternative"],
+  [/<meta name="twitter:image:alt" content="[^"]+">/, "X image alternative"],
+];
+const missingStorefrontContracts = storefrontContracts
+  .filter(([pattern]) => !pattern.test(html))
+  .map(([, label]) => label);
+if (missingStorefrontContracts.length) {
+  fail(`Storefront accessibility contract is missing: ${missingStorefrontContracts.join(", ")}.`);
+}
+const mainLandmarks = html.match(/<main(?:\s|>)/g) ?? [];
+if (mainLandmarks.length !== 1) {
+  fail(`The storefront must contain exactly one main landmark; found ${mainLandmarks.length}.`);
+}
+const structuredDataMatch = html.match(
+  /<script type="application\/ld\+json">\s*([\s\S]*?)\s*<\/script>/,
+);
+if (!structuredDataMatch) fail("The storefront must expose JSON-LD software metadata.");
+let structuredData;
+try {
+  structuredData = JSON.parse(structuredDataMatch[1]);
+} catch (error) {
+  fail(`The storefront JSON-LD is invalid: ${error.message}`);
+}
+const structuredSoftware = structuredData["@graph"]?.find(
+  (entry) => entry["@type"] === "SoftwareApplication",
+);
+if (!structuredSoftware) fail("The storefront JSON-LD must describe the theme plugin.");
+if (structuredSoftware.softwareVersion !== pluginManifest.version) {
+  fail(
+    `Storefront softwareVersion ${structuredSoftware.softwareVersion} does not match plugin version ${pluginManifest.version}.`,
+  );
+}
+const currentDownloadUrls = new Set([
+  `https://github.com/notgabriels-sys/claude-code-50-dark-themes/releases/tag/themes-plugin-v${pluginManifest.version}`,
+  "https://github.com/notgabriels-sys/claude-code-50-dark-themes/archive/refs/heads/main.zip",
+]);
+if (!currentDownloadUrls.has(structuredSoftware.downloadUrl)) {
+  fail(`Storefront downloadUrl is stale or unrelated: ${structuredSoftware.downloadUrl}.`);
+}
 const match = html.match(/const THEMES = (\[[\s\S]*?\n\]);/);
 if (!match) fail("Could not find the THEMES array in index.html.");
 
@@ -147,6 +227,83 @@ if (!html.includes("claude plugin marketplace add notgabriels-sys/claude-code-50
 if (!html.includes("utm_campaign=50-dark-themes-launch")) {
   fail("The storefront must expose the tracked Product Hunt launch link.");
 }
+
+const featuredProducts = [...html.matchAll(/<article class="featured-product">([\s\S]*?)<\/article>/g)];
+if (featuredProducts.length !== 3) {
+  fail(`Expected 3 curated developer picks; found ${featuredProducts.length}.`);
+}
+
+const expectedFeaturedSlugs = new Set(["cfcvmy", "ckthsb", "dark-app-screens"]);
+const actualFeaturedSlugs = new Set();
+for (const [, productHtml] of featuredProducts) {
+  const image = productHtml.match(/<img\s+[^>]*src="([^"]+)"[^>]*alt="([^"]+)"[^>]*>/);
+  if (!image) {
+    fail("Every curated developer pick must include a local cover image with non-empty alt text.");
+  }
+  const [, imagePath, imageAlt] = image;
+  if (!imagePath.startsWith("assets/products/") || !imageAlt.trim()) {
+    fail("Curated developer pick covers must use local product assets and meaningful alt text.");
+  }
+  await verifyPng(imagePath, {
+    label: "Curated developer pick cover",
+    width: 1280,
+    height: 720,
+  });
+
+  const gumroadLink = productHtml.match(/https:\/\/notgabriel\.gumroad\.com\/l\/([a-z0-9-]+)/);
+  if (!gumroadLink) {
+    fail("Every curated developer pick must link to its verified Gumroad product page.");
+  }
+  const slug = gumroadLink[1];
+  const trackedCheckout = productHtml.match(
+    /href="(https:\/\/notgabriel\.gumroad\.com\/l\/[a-z0-9-]+\?[^\"]+)"/,
+  );
+  if (!trackedCheckout) {
+    fail(`Curated developer pick ${slug} must include campaign tracking.`);
+  }
+  const trackedUrl = new URL(trackedCheckout[1].replaceAll("&amp;", "&"));
+  const expectedTracking = {
+    utm_source: "gabs-utilities.com",
+    utm_medium: "storefront",
+    utm_campaign: "developer-picks",
+    utm_content: slug,
+  };
+  for (const [key, value] of Object.entries(expectedTracking)) {
+    if (trackedUrl.searchParams.get(key) !== value) {
+      fail(`Curated developer pick ${slug} has incorrect ${key} tracking.`);
+    }
+  }
+  actualFeaturedSlugs.add(slug);
+}
+if ([...expectedFeaturedSlugs].some((slug) => !actualFeaturedSlugs.has(slug))) {
+  fail("The curated developer picks must feature the UI kit, HTML templates, and app screens.");
+}
+const uiKitPreview = html.match(/<section[^>]*id="ui-kit-preview"[^>]*>[\s\S]*?<\/section>/);
+if (!uiKitPreview) {
+  fail("The storefront must expose the UI kit preview section.");
+}
+if (!html.includes('href="#ui-kit-preview"')) {
+  fail("The Dark UI Kit card must link to its first-party preview section.");
+}
+if (/<(?:a|link)\b[^>]*\bhref=["'][^"']*dark-ui\.css(?:[?#][^"']*)?["'][^>]*>/i.test(html)) {
+  fail("The storefront must not publish the paid Dark UI Kit stylesheet.");
+}
+const expectedUiKitPreviewImages = [
+  "assets/products/dark-ui-kit-components.png",
+  "assets/products/dark-ui-kit-cards.png",
+  "assets/products/dark-ui-kit-light-mode.png",
+];
+for (const imagePath of expectedUiKitPreviewImages) {
+  if (!uiKitPreview[0].includes(`src="${imagePath}"`)) {
+    fail(`The UI kit preview must include ${imagePath}.`);
+  }
+  await verifyPng(imagePath, {
+    label: "UI kit preview image",
+    width: 1265,
+    height: 712,
+  });
+}
+
 if (html.includes("api.producthunt.com/widgets/embed-image")) {
   fail("Do not restore the remote Product Hunt badge; it sets a third-party cookie.");
 }

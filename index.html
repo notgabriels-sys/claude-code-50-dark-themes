@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>50 Dark Themes for Claude Code</title>
-<meta name="description" content="Browse and install 50 hand-tuned dark themes for Claude Code as a native plugin. Free, MIT licensed, with semantic status colors and a visual gallery.">
+<meta name="description" content="Browse and install 50 hand-tuned dark themes for Claude Code as a native plugin. Free, MIT licensed, with semantic status colors and automated role-aware contrast checks.">
 <meta name="robots" content="index,follow,max-image-preview:large">
 <meta name="theme-color" content="#0f1011">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
@@ -12,15 +12,19 @@
 <link rel="license" href="https://opensource.org/license/mit">
 <link rel="alternate" type="application/json" title="Claude Code marketplace manifest" href="https://raw.githubusercontent.com/notgabriels-sys/claude-code-50-dark-themes/main/.claude-plugin/marketplace.json">
 <meta property="og:title" content="50 Dark Themes for Claude Code">
-<meta property="og:description" content="Install 50 hand-tuned dark themes as a native Claude Code plugin. Free, MIT licensed, and designed to preserve semantic status colors.">
+<meta property="og:description" content="Install 50 hand-tuned dark themes as a native Claude Code plugin. Free, MIT licensed, with semantic status colors and automated role-aware contrast checks.">
 <meta property="og:image" content="https://gabs-utilities.com/preview.png">
+<meta property="og:image:alt" content="A grid of dark Claude Code terminal theme previews with distinct accent colors">
+<meta property="og:image:width" content="1280">
+<meta property="og:image:height" content="720">
 <meta property="og:url" content="https://gabs-utilities.com/">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Gabs Utilities">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="50 Dark Themes for Claude Code">
-<meta name="twitter:description" content="Install 50 hand-tuned dark themes as a native Claude Code plugin. Free, MIT licensed, with semantic status colors.">
+<meta name="twitter:description" content="Install 50 hand-tuned dark themes as a native Claude Code plugin. Free, MIT licensed, with automated role-aware contrast checks.">
 <meta name="twitter:image" content="https://gabs-utilities.com/preview.png">
+<meta name="twitter:image:alt" content="A grid of dark Claude Code terminal theme previews with distinct accent colors">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -31,9 +35,9 @@
       "name": "50 Dark Themes for Claude Code",
       "description": "A free native Claude Code plugin containing 50 hand-tuned dark themes that preserve semantic success, error and warning colors.",
       "url": "https://gabs-utilities.com/",
-      "downloadUrl": "https://github.com/notgabriels-sys/claude-code-50-dark-themes/releases/tag/themes-plugin-v1.0.0",
+      "downloadUrl": "https://github.com/notgabriels-sys/claude-code-50-dark-themes/archive/refs/heads/main.zip",
       "applicationCategory": "DeveloperApplication",
-      "softwareVersion": "1.0.0",
+      "softwareVersion": "1.0.1",
       "softwareRequirements": "Claude Code v2.1.118 or later",
       "isAccessibleForFree": true,
       "license": "https://opensource.org/license/mit",
@@ -69,7 +73,7 @@
     --hair:#2e2f33;
     --ink:#e9eaec;
     --mute:#a0a4ab;
-    --faint:#6a6e74;
+    --faint:#81858d;
     --accent:#c9cfd6;
     --accent-dim:#585c62;
     --radius:12px;
@@ -89,6 +93,17 @@
     padding:clamp(20px,4vw,56px) clamp(16px,4vw,40px) 80px;
   }
   .wrap{max-width:1200px;margin:0 auto}
+  .skip-link{
+    position:fixed;left:12px;top:12px;z-index:100;
+    color:var(--ground);background:var(--ink);border-radius:6px;
+    padding:8px 12px;font-size:12px;font-weight:700;text-decoration:none;
+    transform:translateY(calc(-100% - 16px));transition:transform .15s ease;
+  }
+  .skip-link:focus{transform:translateY(0);outline:2px solid var(--accent);outline-offset:2px}
+  .sr-only{
+    position:absolute;width:1px;height:1px;padding:0;margin:-1px;
+    overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;
+  }
 
   /* ---- header ---- */
   header{margin-bottom:clamp(28px,5vw,52px)}
@@ -204,7 +219,7 @@
   .card .dots{display:flex;gap:5px}
   .card .dots i{width:9px;height:9px;border-radius:50%;display:block;opacity:.7}
   .card .tname{
-    margin-left:4px;font-size:12px;font-weight:600;letter-spacing:.02em;
+    margin:0 0 0 4px;font-size:12px;font-weight:600;letter-spacing:.02em;
     color:var(--fg);
   }
   .card .hex{margin-left:auto;font-size:10.5px;color:var(--sh);letter-spacing:.04em}
@@ -262,6 +277,9 @@
   .tool{display:block;padding:15px 17px;border:1px solid var(--hair);border-radius:11px;
         text-decoration:none;color:var(--ink);transition:border-color .15s}
   .tool:hover{border-color:var(--accent-dim)}
+  .tool:focus-visible,.kit:focus-visible,.cta a:focus-visible,footer a:focus-visible{
+    outline:2px solid var(--accent);outline-offset:3px;
+  }
   .tool b{display:block;color:var(--ink);font-size:14.5px;font-weight:650;margin-bottom:4px}
   .tool span{display:block;color:var(--mute);font-size:13px;line-height:1.5}
   .tool i{font-style:normal;color:var(--accent);font-size:12.5px;font-weight:600}
@@ -269,22 +287,58 @@
        border-radius:11px;text-decoration:none;text-align:center;color:var(--ink);font-size:14.5px}
   .kit:hover{border-color:var(--accent)}
   .kit b{color:var(--accent)}
+  .featured-products{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:16px}
+  .featured-product{display:flex;flex-direction:column;min-width:0;border:1px solid var(--hair);
+                    border-radius:var(--radius);overflow:hidden;background:rgba(255,255,255,.015)}
+  .featured-product img{display:block;width:100%;height:auto;aspect-ratio:16/9;object-fit:cover;
+                        border-bottom:1px solid var(--hair)}
+  .featured-product-body{display:flex;flex:1;flex-direction:column;padding:17px}
+  .featured-product .fit{margin:0 0 7px;color:var(--accent);font-size:10px;font-weight:700;
+                         letter-spacing:.13em;text-transform:uppercase}
+  .featured-product h3{margin:0;color:var(--ink);font-size:17px;line-height:1.3}
+  .featured-product p{margin:8px 0 16px;color:var(--mute);font-size:13px;line-height:1.55}
+  .featured-product-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:auto}
+  .featured-product-actions a{display:inline-flex;align-items:center;justify-content:space-between;gap:12px;
+                              min-height:44px;padding:8px 11px;border:1px solid var(--accent-dim);
+                              border-radius:8px;color:var(--ink);font-size:11.5px;font-weight:650;
+                              text-decoration:none;transition:border-color .15s,background-color .15s}
+  .featured-product-actions a:first-child{flex:1;background:rgba(255,255,255,.035)}
+  .featured-product-actions a:hover{border-color:var(--accent);background:rgba(255,255,255,.06)}
+  .featured-product-actions a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .featured-product-actions span{color:var(--accent)}
+  .product-proof{scroll-margin-top:24px}
+  .product-proof-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:12px}
+  .product-proof figure{margin:0;overflow:hidden;border:1px solid var(--hair);border-radius:var(--radius);
+                        background:rgba(255,255,255,.015)}
+  .product-proof img{display:block;width:100%;height:auto;border-bottom:1px solid var(--hair)}
+  .product-proof figcaption{padding:10px 12px;color:var(--mute);font-size:11px;line-height:1.45}
+  .product-proof-foot{display:flex;align-items:center;justify-content:space-between;gap:16px;
+                      margin-top:14px;padding:15px 16px;border:1px solid var(--hair);border-radius:10px}
+  .product-proof-foot p{margin:0;max-width:76ch;color:var(--mute);font-size:12.5px;line-height:1.55}
+  .proof-buy{display:inline-flex;align-items:center;justify-content:space-between;gap:14px;flex:none;
+             min-height:44px;padding:8px 12px;border:1px solid var(--accent-dim);border-radius:8px;
+             color:var(--ink);font-size:11.5px;font-weight:650;text-decoration:none}
+  .proof-buy:hover{border-color:var(--accent);background:rgba(255,255,255,.05)}
+  .proof-buy:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .proof-buy span{color:var(--accent)}
+  @media (max-width:680px){.product-proof-foot{align-items:stretch;flex-direction:column}.proof-buy{width:100%}}
 </style>
 </head>
 <body>
+<a class="skip-link" href="#main-content">Skip to main content</a>
 <div class="wrap">
-  <main>
+  <main id="main-content">
   <header>
     <p class="kicker">Claude Code · terminal themes</p>
     <h1><span class="n">50</span> dark themes<br>for Claude&nbsp;Code</h1>
-    <p class="lede">The chat app only gives you Light / Dark / System. The Claude Code CLI reads
-      custom theme files — so here are fifty, each hand-tuned around a single accent. Drop one in,
-      run <code class="inline">/theme</code>, done. Requires Claude Code v2.1.118 or later.</p>
+    <p class="lede">Fifty free, hand-tuned themes for the Claude Code terminal, with semantic status
+      colors and automated role-aware contrast checks. Install the native plugin, run
+      <code class="inline">/theme</code>, and pick one. Requires Claude Code v2.1.118 or later.</p>
     <div class="meta">
       <span class="tag"><b>50</b> themes</span>
-      <span class="tag">all <b>dark</b></span>
-      <span class="tag">one <b>.json</b> each</span>
-      <span class="tag">hot-reloads</span>
+      <span class="tag">plugin <b>v1.0.1</b></span>
+      <span class="tag"><b>702</b> role-aware checks</span>
+      <span class="tag"><b>MIT</b> licensed</span>
       <span class="tag">status colors stay <b>semantic</b></span>
     </div>
 
@@ -303,6 +357,7 @@
       <div class="cmd">
         <span><span class="prompt">$ </span>claude plugin marketplace add notgabriels-sys/claude-code-50-dark-themes &amp;&amp; claude plugin install 50-dark-themes@notgabriels-themes</span>
         <button class="copy" id="copyBtn" aria-label="Copy install command">Copy</button>
+        <span class="sr-only" id="copyStatus" aria-live="polite"></span>
       </div>
     </div>
   </header>
@@ -310,6 +365,7 @@
   <nav class="jumpnav" aria-label="Page sections">
     <a href="#themes">Free themes</a>
     <a href="claude-code-theme-install-guide.html">Install guide</a>
+    <a href="#picks">Developer picks</a>
     <a href="#demos">Live demos</a>
     <a href="#tools">Dark tools</a>
     <a href="#audio">Mixing &amp; mastering</a>
@@ -324,12 +380,78 @@
     or the <a href="#audio">audio tools and services</a> below.</p>
   </div>
 
+  <section class="more" id="picks" aria-labelledby="picks-title">
+    <h2 id="picks-title">Start with a developer pick</h2>
+    <p>Three focused packs with a clear job. One-time purchases, no subscriptions.</p>
+    <div class="featured-products">
+      <article class="featured-product">
+        <img src="assets/products/dark-ui-kit.png" alt="Dark UI Kit cover showing buttons, form fields, status chips and toggles" width="1280" height="720" loading="lazy" decoding="async">
+        <div class="featured-product-body">
+          <p class="fit">For building interfaces</p>
+          <h3>Dark UI Kit</h3>
+          <p>Buttons, forms, cards, alerts, tabs, modal and table styles in one dependency-free CSS file.</p>
+          <div class="featured-product-actions">
+            <a href="https://notgabriel.gumroad.com/l/ckthsb?utm_source=gabs-utilities.com&amp;utm_medium=storefront&amp;utm_campaign=developer-picks&amp;utm_content=ckthsb" aria-label="View product €12 — Dark UI Kit on Gumroad">View product <span>€12</span></a>
+            <a href="#ui-kit-preview" aria-label="Preview components — Dark UI Kit on this page">Preview components</a>
+          </div>
+        </div>
+      </article>
+      <article class="featured-product">
+        <img src="assets/products/dark-html-templates.png" alt="Dark HTML Templates cover previewing eight single-file website layouts" width="1280" height="720" loading="lazy" decoding="async">
+        <div class="featured-product-body">
+          <p class="fit">For shipping a website</p>
+          <h3>Dark HTML Templates</h3>
+          <p>Eight responsive single-file pages for portfolios, SaaS launches, docs, pricing and more.</p>
+          <div class="featured-product-actions">
+            <a href="https://notgabriel.gumroad.com/l/cfcvmy?utm_source=gabs-utilities.com&amp;utm_medium=storefront&amp;utm_campaign=developer-picks&amp;utm_content=cfcvmy" aria-label="View product $19 — Dark HTML Templates on Gumroad">View product <span>$19</span></a>
+            <a href="https://notgabriels-sys.github.io/dark-html-templates-demo/">Live demo</a>
+          </div>
+        </div>
+      </article>
+      <article class="featured-product">
+        <img src="assets/products/dark-app-screens.png" alt="Dark App Screens cover showing a dark analytics dashboard and navigation" width="1280" height="720" loading="lazy" decoding="async">
+        <div class="featured-product-body">
+          <p class="fit">For product prototypes</p>
+          <h3>Dark App Screens</h3>
+          <p>Six responsive product screens with fifty drop-in dark palettes and no framework requirement.</p>
+          <div class="featured-product-actions">
+            <a href="https://notgabriel.gumroad.com/l/dark-app-screens?utm_source=gabs-utilities.com&amp;utm_medium=storefront&amp;utm_campaign=developer-picks&amp;utm_content=dark-app-screens" aria-label="View product €14 — Dark App Screens on Gumroad">View product <span>€14</span></a>
+            <a href="https://notgabriels-sys.github.io/dark-templates-demo/">Live demo</a>
+          </div>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section class="more product-proof" id="ui-kit-preview" aria-labelledby="ui-kit-preview-title">
+    <h2 id="ui-kit-preview-title">See the real UI kit</h2>
+    <p>Direct captures from the included HTML demo — not mockups, and no paid source code exposed.</p>
+    <div class="product-proof-grid">
+      <figure>
+        <img src="assets/products/dark-ui-kit-components.png" alt="Dark UI Kit demo showing its palette, button variants and form controls" width="1265" height="712" loading="lazy" decoding="async">
+        <figcaption>Palette, button variants and form controls</figcaption>
+      </figure>
+      <figure>
+        <img src="assets/products/dark-ui-kit-cards.png" alt="Dark UI Kit demo showing validation controls, cards, account status and badges" width="1265" height="712" loading="lazy" decoding="async">
+        <figcaption>Validation, cards, account status and badges</figcaption>
+      </figure>
+      <figure>
+        <img src="assets/products/dark-ui-kit-light-mode.png" alt="Dark UI Kit demo showing CSS-only controls, pagination and the built-in light theme" width="1265" height="712" loading="lazy" decoding="async">
+        <figcaption>CSS-only controls, pagination and built-in light mode</figcaption>
+      </figure>
+    </div>
+    <div class="product-proof-foot">
+      <p>The download contains <strong>dark-ui.css</strong>, the complete demo/docs page, README and a single-seat commercial license. One file, no build step, no dependencies.</p>
+      <a class="proof-buy" href="https://notgabriel.gumroad.com/l/ckthsb?utm_source=gabs-utilities.com&amp;utm_medium=storefront&amp;utm_campaign=ui-kit-preview&amp;utm_content=ckthsb" aria-label="Get the UI kit €12 — Dark UI Kit on Gumroad">Get the UI kit <span>€12</span></a>
+    </div>
+  </section>
+
   <section class="more featured-demos" id="demos">
     <h2>See the other templates running</h2>
     <p>Real pages in your browser — no signup, nothing to download.</p>
     <div class="tools">
-      <a class="tool" href="https://notgabriels-sys.github.io/dark-templates-demo/"><b>Business docs, decks &amp; app screens</b><span>Invoices that print clean, 16:9 slide decks, dashboard and sign-in screens.</span><i>Demo</i></a>
-      <a class="tool" href="https://notgabriels-sys.github.io/dark-html-templates-demo/"><b>Website templates</b><span>Portfolio, SaaS landing, docs, pricing, changelog and waitlist pages.</span><i>Demo</i></a>
+      <a class="tool" href="https://notgabriels-sys.github.io/dark-templates-demo/"><b>Business docs, decks &amp; app screens</b><span>Invoices that print clean, 16:9 slide decks, dashboard and sign-in screens.</span><i>Open demo</i></a>
+      <a class="tool" href="https://notgabriels-sys.github.io/dark-html-templates-demo/"><b>Website templates</b><span>Portfolio, SaaS landing, docs, pricing, changelog and waitlist pages.</span><i>Open demo</i></a>
     </div>
   </section>
 
@@ -343,8 +465,8 @@
     <h2>From the build</h2>
     <p>Practical notes on the design decisions behind the free theme set.</p>
     <div class="tools">
-      <a class="tool" href="claude-code-theme-install-guide.html"><b>Claude Code theme install guide</b><span>Native plugin install, manual JSON fallback, terminal background setup and common troubleshooting.</span><i>Free guide</i></a>
-      <a class="tool" href="semantic-terminal-colors.html"><b>Semantic terminal colors</b><span>What building 50 Claude Code themes taught me about status meaning, contrast roles, surfaces and transparent terminals.</span><i>Free article</i></a>
+      <a class="tool" href="claude-code-theme-install-guide.html"><b>Claude Code theme install guide</b><span>Native plugin install, manual JSON fallback, terminal background setup and common troubleshooting.</span><i>Read free guide</i></a>
+      <a class="tool" href="semantic-terminal-colors.html"><b>Semantic terminal colors</b><span>What building 50 Claude Code themes taught me about status meaning, contrast roles, surfaces and transparent terminals.</span><i>Read free article</i></a>
     </div>
   </section>
 
@@ -352,43 +474,42 @@
     <h2>More dark tools</h2>
     <p>Same palettes, same care, applied elsewhere. One-time purchases, no subscriptions.</p>
     <div class="tools">
-      <a class="tool" href="https://notgabriel.gumroad.com/l/ckthsb"><b>Dark UI Kit</b><span>One CSS file — buttons, forms, cards, tabs, modal. No build step.</span><i>€12</i></a>
-      <a class="tool" href="https://notgabriel.gumroad.com/l/cfcvmy"><b>Dark HTML Templates</b><span>8 single-file pages — portfolio, SaaS, docs, pricing.</span><i>$19</i></a>
-      <a class="tool" href="https://notgabriel.gumroad.com/l/dark-app-screens"><b>Dark App Screens</b><span>Six responsive product screens with 50 drop-in dark themes.</span><i>€14</i></a>
-      <a class="tool" href="https://notgabriel.gumroad.com/l/xjcbji"><b>Dark Email Templates</b><span>Transactional email — welcome, receipt, reset, OTP.</span><i>€9</i></a>
-      <a class="tool" href="https://notgabriel.gumroad.com/l/bunkhy"><b>Social &amp; OG Templates</b><span>Exact-size share images — OG cards, X header, thumbnails.</span><i>€9</i></a>
-      <a class="tool" href="https://notgabriels-sys.github.io/dark-html-templates-demo/resume/"><b>R&eacute;sum&eacute; &amp; CV Templates</b><span>Dark on screen, clean black-on-white in PDF. See the live demo.</span><i>Demo</i></a>
-      <a class="tool" href="https://notgabriel.gumroad.com/l/kxsfa"><b>Dev Cheatsheets</b><span>Six dark reference cards — git, vim, tmux, regex, bash.</span><i>€7</i></a>
-      <a class="tool" href="https://notgabriel.gumroad.com/l/kykega"><b>Dev Cheatsheets Vol.&nbsp;2</b><span>Six more — SQL, CSS, HTTP and friends.</span><i>€7</i></a>
-      <a class="tool" href="https://notgabriel.gumroad.com/l/wgtbkq"><b>Keyboard Shortcuts</b><span>Keycap reference cards — VS Code, macOS, Vim, tmux.</span><i>€7</i></a>
-      <a class="tool" href="https://notgabriel.gumroad.com/l/bqgfv"><b>50 Dark Wallpapers</b><span>Fifty minimal wallpapers, desktop &amp; mobile.</span><i>€8</i></a>
-      <a class="tool" href="https://notgabriel.gumroad.com/l/jqrdfy"><b>Dark Wallpapers Vol.&nbsp;2 · Aurora</b><span>Ten 4K aurora gradient fields on near-black.</span><i>€6</i></a>
-      <a class="tool" href="https://notgabriel.gumroad.com/l/xcxeb"><b>50 Dark Palettes</b><span>These palettes as CSS, SCSS, Tailwind, .ase and .gpl.</span><i>$9</i></a>
+      <a class="tool" href="https://notgabriel.gumroad.com/l/ckthsb"><b>Dark UI Kit</b><span>One CSS file — buttons, forms, cards, tabs, modal. No build step.</span><i>View product · €12</i></a>
+      <a class="tool" href="https://notgabriel.gumroad.com/l/cfcvmy"><b>Dark HTML Templates</b><span>8 single-file pages — portfolio, SaaS, docs, pricing.</span><i>View product · $19</i></a>
+      <a class="tool" href="https://notgabriel.gumroad.com/l/dark-app-screens"><b>Dark App Screens</b><span>Six responsive product screens with 50 drop-in dark themes.</span><i>View product · €14</i></a>
+      <a class="tool" href="https://notgabriel.gumroad.com/l/xjcbji"><b>Dark Email Templates</b><span>Transactional email — welcome, receipt, reset, OTP.</span><i>View product · €9</i></a>
+      <a class="tool" href="https://notgabriel.gumroad.com/l/bunkhy"><b>Social &amp; OG Templates</b><span>Exact-size share images — OG cards, X header, thumbnails.</span><i>View product · €9</i></a>
+      <a class="tool" href="https://notgabriels-sys.github.io/dark-html-templates-demo/resume/"><b>R&eacute;sum&eacute; &amp; CV Templates</b><span>Dark on screen, clean black-on-white in PDF. See the live demo.</span><i>Open demo</i></a>
+      <a class="tool" href="https://notgabriel.gumroad.com/l/kxsfa"><b>Dev Cheatsheets</b><span>Six dark reference cards — git, vim, tmux, regex, bash.</span><i>View product · €7</i></a>
+      <a class="tool" href="https://notgabriel.gumroad.com/l/kykega"><b>Dev Cheatsheets Vol.&nbsp;2</b><span>Six more — SQL, CSS, HTTP and friends.</span><i>View product · €7</i></a>
+      <a class="tool" href="https://notgabriel.gumroad.com/l/wgtbkq"><b>Keyboard Shortcuts</b><span>Keycap reference cards — VS Code, macOS, Vim, tmux.</span><i>View product · €7</i></a>
+      <a class="tool" href="https://notgabriel.gumroad.com/l/bqgfv"><b>50 Dark Wallpapers</b><span>Fifty minimal wallpapers, desktop &amp; mobile.</span><i>View product · €8</i></a>
+      <a class="tool" href="https://notgabriel.gumroad.com/l/jqrdfy"><b>Dark Wallpapers Vol.&nbsp;2 · Aurora</b><span>Ten 4K aurora gradient fields on near-black.</span><i>View product · €6</i></a>
+      <a class="tool" href="https://notgabriel.gumroad.com/l/xcxeb"><b>50 Dark Palettes</b><span>These palettes as CSS, SCSS, Tailwind, .ase and .gpl.</span><i>View product · $9</i></a>
     </div>
-    <a class="kit" href="https://notgabriel.gumroad.com/l/wuhehk"><b>Everything Dark — the complete kit</b> · all of the above, $39</a>
+    <a class="kit" href="https://notgabriel.gumroad.com/l/wuhehk"><b>Everything Dark — the complete kit</b> · view bundle · $39</a>
   </section>
 
   <section class="more" id="audio">
     <h2>Audio tools &amp; services</h2>
     <p>Production downloads and direct studio work. One-time purchases where paid, no subscriptions.</p>
     <div class="tools">
-      <a class="tool" href="https://notgabriel.gumroad.com/l/raw-techno-kick-architecture"><b>Raw Techno Kick Architecture</b><span>Forty WAVs for building weight, impact and movement in raw techno drums.</span><i>€15</i></a>
-      <a class="tool" href="https://notgabriel.gumroad.com/l/industrial-tension-fx"><b>Industrial Tension &amp; Transition FX</b><span>Forty-eight WAVs for pressure, transitions and controlled industrial movement.</span><i>€15</i></a>
+      <a class="tool" href="https://notgabriel.gumroad.com/l/raw-techno-kick-architecture"><b>Raw Techno Kick Architecture</b><span>Forty WAVs for building weight, impact and movement in raw techno drums.</span><i>View product · €15</i></a>
+      <a class="tool" href="https://notgabriel.gumroad.com/l/industrial-tension-fx"><b>Industrial Tension &amp; Transition FX</b><span>Forty-eight WAVs for pressure, transitions and controlled industrial movement.</span><i>View product · €15</i></a>
     </div>
     <p>For the complete service menu, rates, preparation notes and contact route, use the dedicated audio service site first.</p>
     <div class="tools">
-      <a class="tool" href="https://audio.gabs-utilities.com/"><b>Mixing &amp; mastering services</b><span>Dedicated service page for mastering, stem mastering, track mixing, mix + master, vinyl pre-mastering and mix feedback.</span><i>Site</i></a>
-      <a class="tool" href="https://audio.gabs-utilities.com/links.html"><b>Audio service links</b><span>Shareable profile page with rates, project brief, one-sheet and contact.</span><i>Links</i></a>
-      <a class="tool" href="https://tools.gabs-utilities.com/"><b>Tools + Code catalog</b><span>The wider catalog of studio utilities, repositories, product experiments and audio workflow tools.</span><i>Catalog</i></a>
+      <a class="tool" href="https://audio.gabs-utilities.com/"><b>Mixing &amp; mastering services</b><span>Dedicated service page for mastering, stem mastering, track mixing, mix + master, vinyl pre-mastering and mix feedback.</span><i>Open service site</i></a>
+      <a class="tool" href="https://audio.gabs-utilities.com/links.html"><b>Audio service links</b><span>Shareable profile page with rates, project brief, one-sheet and contact.</span><i>Open links</i></a>
+      <a class="tool" href="https://tools.gabs-utilities.com/"><b>Tools + Code catalog</b><span>The wider catalog of studio utilities, repositories, product experiments and audio workflow tools.</span><i>Open catalog</i></a>
     </div>
     <p>Direct PayPal checkout links remain available for simple service bookings.</p>
     <div class="tools">
-      <a class="tool" href="https://www.paypal.com/ncp/payment/3SWZ64EXW9C8W"><b>Mastering</b><span>Your finished mix, prepared for release — level, balance and translation across systems.</span><i>€45</i></a>
-      <a class="tool" href="https://www.paypal.com/ncp/payment/6Z93DNS76PCGS"><b>Mixing</b><span>Your stems balanced, shaped and glued into a finished mix.</span><i>€160</i></a>
-      <a class="tool" href="https://www.paypal.com/ncp/payment/QW8V53WWM2P7E"><b>Mixing + Mastering</b><span>Stems in, release-ready track out. Both stages in one pass.</span><i>€190</i></a>
+      <a class="tool" href="https://www.paypal.com/ncp/payment/3SWZ64EXW9C8W"><b>Mastering</b><span>Your finished mix, prepared for release — level, balance and translation across systems.</span><i>View checkout · €45</i></a>
+      <a class="tool" href="https://www.paypal.com/ncp/payment/6Z93DNS76PCGS"><b>Mixing</b><span>Your stems balanced, shaped and glued into a finished mix.</span><i>View checkout · €160</i></a>
+      <a class="tool" href="https://www.paypal.com/ncp/payment/QW8V53WWM2P7E"><b>Mixing + Mastering</b><span>Stems in, release-ready track out. Both stages in one pass.</span><i>View checkout · €190</i></a>
     </div>
   </section>
-
   </main>
 
   <footer>
@@ -465,7 +586,7 @@ grid.innerHTML = THEMES.map(([name,accent,shimmer,text,mute,bg]) => `
   <article class="card" style="--bg:${bg};--a:${accent};--sh:${shimmer};--fg:${text};--mut:${mute}">
     <div class="titlebar">
       <div class="dots"><i style="background:${accent}"></i><i style="background:${mute};opacity:.4"></i><i style="background:${mute};opacity:.25"></i></div>
-      <span class="tname">${esc(name)}</span>
+      <h3 class="tname">${esc(name)}</h3>
       <span class="hex">${accent}</span>
     </div>
     <div class="term">
@@ -482,10 +603,19 @@ grid.innerHTML = THEMES.map(([name,accent,shimmer,text,mute,bg]) => `
 document.getElementById("count").textContent = THEMES.length + " themes";
 
 const btn = document.getElementById("copyBtn");
+const copyStatus = document.getElementById("copyStatus");
 const CMD = "claude plugin marketplace add notgabriels-sys/claude-code-50-dark-themes && claude plugin install 50-dark-themes@notgabriels-themes";
 btn.addEventListener("click", async () => {
-  try{ await navigator.clipboard.writeText(CMD); btn.textContent="Copied"; }
-  catch{ btn.textContent="Copy failed"; }
+  copyStatus.textContent = "";
+  try{
+    await navigator.clipboard.writeText(CMD);
+    btn.textContent="Copied";
+    copyStatus.textContent="Install command copied to clipboard.";
+  }
+  catch{
+    btn.textContent="Copy failed";
+    copyStatus.textContent="Could not copy the install command. Select and copy it manually.";
+  }
   setTimeout(()=>btn.textContent="Copy",1400);
 });
 </script>
