@@ -15,7 +15,6 @@ Gabs Utilities is a small catalog of dark, practical developer and creator tools
 - free Claude Code themes and plugins
 - paid dark UI/template/productivity packs
 - workflow kits for Claude Code users
-- audio workflow utilities and services under separate neutral/service pages
 
 Best single-line pitch:
 
@@ -39,7 +38,11 @@ Best single-line pitch:
 3. Product Hunt
    - Best after the domain, images, and first comments are polished.
    - Tone: short, visual, maker story.
+   - Use representative project screenshots.
    - Ask for feedback, not “please upvote”.
+   - Current gate: the personal account welcome email arrived on 2026-08-23.
+     Product Hunt's current help center requires new accounts to complete
+     onboarding before posting; use the live account dashboard as the gate.
 
 4. GitHub discovery
    - Keep README clear.
@@ -60,7 +63,7 @@ I moved my Claude Code / dark dev tools catalog onto a proper domain:
 
 https://gabs-utilities.com/
 
-It started as 50 free dark themes for Claude Code, then grew into a small toolbox: UI kits, templates, cheat sheets, workflow kits, wallpapers, and audio workflow tools.
+It started as 50 free dark themes for Claude Code, then grew into a small toolbox: UI kits, templates, cheat sheets, workflow kits, and wallpapers.
 
 Feedback welcome.
 ```
@@ -96,7 +99,7 @@ Hey, I’m Gabriel.
 
 This started as a practical thing for myself: I wanted a set of dark Claude Code themes that stayed readable and did not destroy semantic colors like errors, warnings, success states, and diffs.
 
-I kept expanding it into a small catalog of dark developer/creator utilities: UI kits, HTML templates, email templates, cheat sheets, workflow kits, wallpapers, palettes, and related audio workflow tools.
+I kept expanding it into a small catalog of dark developer/creator utilities: UI kits, HTML templates, email templates, cheat sheets, workflow kits, wallpapers, and palettes.
 
 The core Claude Code themes are free and MIT licensed. The paid packs are there for people who want the broader toolkit.
 
@@ -106,13 +109,13 @@ I’d love feedback from developers, Claude Code users, and people who care abou
 ### Short directory description
 
 ```text
-Gabs Utilities is a compact catalog of dark developer and creator tools: 50 free Claude Code themes, UI/template packs, workflow kits, cheat sheets, wallpapers, palettes, and audio workflow utilities.
+Gabs Utilities is a compact catalog of dark developer and creator tools: 50 free Claude Code themes, UI/template packs, workflow kits, cheat sheets, wallpapers, and palettes.
 ```
 
 ### Longer directory description
 
 ```text
-Gabs Utilities is a small, practical catalog for developers and technical creators who like dark, readable tools. The core project is 50 free MIT-licensed themes for Claude Code, built with semantic colors for errors, warnings, success states, diffs, and terminal UI clarity. The catalog also includes paid packs such as dark UI kits, HTML/email/social templates, developer cheat sheets, Claude Code workflow templates, wallpapers, palettes, and audio workflow utilities.
+Gabs Utilities is a small, practical catalog for developers and technical creators who like dark, readable tools. The core project is 50 free MIT-licensed themes for Claude Code, built with semantic colors for errors, warnings, success states, diffs, and terminal UI clarity. The catalog also includes paid packs such as dark UI kits, HTML/email/social templates, developer cheat sheets, Claude Code workflow templates, wallpapers, and palettes.
 ```
 
 ## Do not post
@@ -145,9 +148,9 @@ Use the result to improve positioning before posting again elsewhere.
 | Date | Channel | Status | Next responsible action |
 |---|---|---|---|
 | 2026-08-24 | Custom domain | Live with HTTPS enforced | Use `https://gabs-utilities.com/` as the primary storefront URL |
-| 2026-08-24 | X | Posted by Gabriel | Watch replies for useful feedback; answer as a maker, not a salesperson |
 | 2026-08-24 | Hacker News / Show HN | Blocked by HN `showlim` notice | Do not retry immediately; participate normally on HN first, then submit later when the account is less restricted |
-| 2026-08-24 | Product Hunt | Prelaunch URL returned 404 / sign-in state in controlled browser | Reopen while signed in; verify the product page before posting or launching |
 | 2026-08-24 | GitHub topics | Updated toward Claude Code / themes / dev tools discovery | Keep audio/sample-pack promotion on audio-specific repos/pages, not this theme repo |
-| 2026-08-24 | TheDevToolsDir | Form prefilled but not submitted | Free listing requires adding their badge; wait for explicit approval before adding badge/submitting |
-| 2026-08-24 | DevHunt | Submit route requires sign-in | Log in before submission; use developer-tool framing, not shop framing |
+| 2026-08-24 | Owned install guide | `https://gabs-utilities.com/claude-code-theme-install-guide.html` is live with HTTP 200, linked from the homepage and sitemap, and submitted to IndexNow with the verified `79F35EFA-F66B-4757-848A-FB1A9029E1BA` key | Use it as the first support link when people ask how to install the free Claude Code themes; pair it with the semantic-colors article for DEV/community posts |
+| 2026-08-24 | TheDevToolsDir | Initial read at 06:40 CEST returned 404 while publication was processing; at 06:57 CEST the exact listing URL returned HTTP 200 and the public title, description, website, Standard tier, categories and tags read back correctly | Listing is independently verified live; keep the required footer badge while the Standard listing remains active and monitor useful referral traffic |
+| 2026-08-24 | DevHunt | The new-tool route redirected to “Log in to your account”; no DevHunt account email was found | Keep the prepared developer-tool fields, but do not create an account merely to add another listing |
+| 2026-08-24 | DEV Community | Paste-ready article draft created in `DEV_COMMUNITY_ARTICLE_DRAFT.md`; browser path not signed in | Preview and publish manually from Gabriel's DEV account, or reopen when signed in for final action-time confirmation |

@@ -8,10 +8,10 @@
     "inactive": "#9DA6AF",
     "subtle": "#242B33",
     "suggestion": "#40E0C0",
-    "permission": "#1E6E5E",
+    "permission": "#257363",
     "promptBorder": "#40E0C0",
     "promptBorderShimmer": "#86EBD7",
-    "planMode": "#1E6E5E",
+    "planMode": "#257363",
     "userMessageBackground": "#19232E",
     "userMessageBackgroundHover": "#202D3B",
     "rate_limit_fill": "#40E0C0"

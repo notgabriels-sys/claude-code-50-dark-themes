@@ -15,18 +15,9 @@ products/raw-techno-kicks/qa/
 products/hypnotic-percussion-grid/pack/
 products/hypnotic-percussion-grid/dist/
 products/hypnotic-percussion-grid/qa/
-products/techno-mix-preflight-toolkit/pack/
-products/techno-mix-preflight-toolkit/dist/
-products/techno-mix-preflight-toolkit/qa/
-products/techno-mix-preflight-toolkit/tmp/
-products/mix-revision-handoff-kit/pack/
-products/mix-revision-handoff-kit/dist/
-products/mix-revision-handoff-kit/qa/
-products/mix-revision-handoff-kit/tmp/
 products/techno-low-end-architecture/pack/
 products/techno-low-end-architecture/dist/
 products/techno-low-end-architecture/qa/
-products/audio-delivery-preflight-cli/private-candidates/
 
 # Internal subagent/task scratch evidence is local-only, not release content.
 .superpowers/

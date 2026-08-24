@@ -2,18 +2,18 @@
   "name": "Signal Red",
   "base": "dark",
   "overrides": {
-    "claude": "#E5484D",
+    "claude": "#E64F54",
     "claudeShimmer": "#EF8F92",
     "text": "#E9EAEC",
     "inactive": "#A0A2AB",
     "subtle": "#2B2C31",
-    "suggestion": "#E5484D",
+    "suggestion": "#E64F54",
     "permission": "#ED7E81",
-    "promptBorder": "#E5484D",
+    "promptBorder": "#E64F54",
     "promptBorderShimmer": "#EF8F92",
     "planMode": "#ED7E81",
     "userMessageBackground": "#232529",
     "userMessageBackgroundHover": "#2C2F34",
-    "rate_limit_fill": "#E5484D"
+    "rate_limit_fill": "#E64F54"
   }
 }
