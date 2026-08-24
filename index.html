@@ -306,6 +306,22 @@
   .featured-product-actions a:hover{border-color:var(--accent);background:rgba(255,255,255,.06)}
   .featured-product-actions a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
   .featured-product-actions span{color:var(--accent)}
+  .product-proof{scroll-margin-top:24px}
+  .product-proof-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:12px}
+  .product-proof figure{margin:0;overflow:hidden;border:1px solid var(--hair);border-radius:var(--radius);
+                        background:rgba(255,255,255,.015)}
+  .product-proof img{display:block;width:100%;height:auto;border-bottom:1px solid var(--hair)}
+  .product-proof figcaption{padding:10px 12px;color:var(--mute);font-size:11px;line-height:1.45}
+  .product-proof-foot{display:flex;align-items:center;justify-content:space-between;gap:16px;
+                      margin-top:14px;padding:15px 16px;border:1px solid var(--hair);border-radius:10px}
+  .product-proof-foot p{margin:0;max-width:76ch;color:var(--mute);font-size:12.5px;line-height:1.55}
+  .proof-buy{display:inline-flex;align-items:center;justify-content:space-between;gap:14px;flex:none;
+             min-height:44px;padding:8px 12px;border:1px solid var(--accent-dim);border-radius:8px;
+             color:var(--ink);font-size:11.5px;font-weight:650;text-decoration:none}
+  .proof-buy:hover{border-color:var(--accent);background:rgba(255,255,255,.05)}
+  .proof-buy:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .proof-buy span{color:var(--accent)}
+  @media (max-width:680px){.product-proof-foot{align-items:stretch;flex-direction:column}.proof-buy{width:100%}}
 </style>
 </head>
 <body>
@@ -375,7 +391,8 @@
           <h3>Dark UI Kit</h3>
           <p>Buttons, forms, cards, alerts, tabs, modal and table styles in one dependency-free CSS file.</p>
           <div class="featured-product-actions">
-            <a href="https://notgabriel.gumroad.com/l/ckthsb?utm_source=gabs-utilities.com&amp;utm_medium=storefront&amp;utm_campaign=developer-picks&amp;utm_content=ckthsb" aria-label="View Dark UI Kit on Gumroad for 12 euros">View product <span>€12</span></a>
+            <a href="https://notgabriel.gumroad.com/l/ckthsb?utm_source=gabs-utilities.com&amp;utm_medium=storefront&amp;utm_campaign=developer-picks&amp;utm_content=ckthsb" aria-label="View product €12 — Dark UI Kit on Gumroad">View product <span>€12</span></a>
+            <a href="#ui-kit-preview" aria-label="Preview components — Dark UI Kit on this page">Preview components</a>
           </div>
         </div>
       </article>
@@ -386,7 +403,7 @@
           <h3>Dark HTML Templates</h3>
           <p>Eight responsive single-file pages for portfolios, SaaS launches, docs, pricing and more.</p>
           <div class="featured-product-actions">
-            <a href="https://notgabriel.gumroad.com/l/cfcvmy?utm_source=gabs-utilities.com&amp;utm_medium=storefront&amp;utm_campaign=developer-picks&amp;utm_content=cfcvmy" aria-label="View Dark HTML Templates on Gumroad for 19 dollars">View product <span>$19</span></a>
+            <a href="https://notgabriel.gumroad.com/l/cfcvmy?utm_source=gabs-utilities.com&amp;utm_medium=storefront&amp;utm_campaign=developer-picks&amp;utm_content=cfcvmy" aria-label="View product $19 — Dark HTML Templates on Gumroad">View product <span>$19</span></a>
             <a href="https://notgabriels-sys.github.io/dark-html-templates-demo/">Live demo</a>
           </div>
         </div>
@@ -398,11 +415,34 @@
           <h3>Dark App Screens</h3>
           <p>Six responsive product screens with fifty drop-in dark palettes and no framework requirement.</p>
           <div class="featured-product-actions">
-            <a href="https://notgabriel.gumroad.com/l/dark-app-screens?utm_source=gabs-utilities.com&amp;utm_medium=storefront&amp;utm_campaign=developer-picks&amp;utm_content=dark-app-screens" aria-label="View Dark App Screens on Gumroad for 14 euros">View product <span>€14</span></a>
+            <a href="https://notgabriel.gumroad.com/l/dark-app-screens?utm_source=gabs-utilities.com&amp;utm_medium=storefront&amp;utm_campaign=developer-picks&amp;utm_content=dark-app-screens" aria-label="View product €14 — Dark App Screens on Gumroad">View product <span>€14</span></a>
             <a href="https://notgabriels-sys.github.io/dark-templates-demo/">Live demo</a>
           </div>
         </div>
       </article>
+    </div>
+  </section>
+
+  <section class="more product-proof" id="ui-kit-preview" aria-labelledby="ui-kit-preview-title">
+    <h2 id="ui-kit-preview-title">See the real UI kit</h2>
+    <p>Direct captures from the included HTML demo — not mockups, and no paid source code exposed.</p>
+    <div class="product-proof-grid">
+      <figure>
+        <img src="assets/products/dark-ui-kit-components.png" alt="Dark UI Kit demo showing its palette, button variants and form controls" width="1265" height="712" loading="lazy" decoding="async">
+        <figcaption>Palette, button variants and form controls</figcaption>
+      </figure>
+      <figure>
+        <img src="assets/products/dark-ui-kit-cards.png" alt="Dark UI Kit demo showing validation controls, cards, account status and badges" width="1265" height="712" loading="lazy" decoding="async">
+        <figcaption>Validation, cards, account status and badges</figcaption>
+      </figure>
+      <figure>
+        <img src="assets/products/dark-ui-kit-light-mode.png" alt="Dark UI Kit demo showing CSS-only controls, pagination and the built-in light theme" width="1265" height="712" loading="lazy" decoding="async">
+        <figcaption>CSS-only controls, pagination and built-in light mode</figcaption>
+      </figure>
+    </div>
+    <div class="product-proof-foot">
+      <p>The download contains <strong>dark-ui.css</strong>, the complete demo/docs page, README and a single-seat commercial license. One file, no build step, no dependencies.</p>
+      <a class="proof-buy" href="https://notgabriel.gumroad.com/l/ckthsb?utm_source=gabs-utilities.com&amp;utm_medium=storefront&amp;utm_campaign=ui-kit-preview&amp;utm_content=ckthsb" aria-label="Get the UI kit €12 — Dark UI Kit on Gumroad">Get the UI kit <span>€12</span></a>
     </div>
   </section>
 
