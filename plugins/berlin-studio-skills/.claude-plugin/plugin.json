@@ -1,0 +1,14 @@
+{
+  "name": "berlin-studio-skills",
+  "version": "1.0.0",
+  "displayName": "Berlin Studio Skills",
+  "description": "Five skills for a Berlin techno producer and freelance audio engineer: sound design, mix and master decisions, release delivery, German correspondence, and German freelance admin.",
+  "author": {
+    "name": "NotGabriels",
+    "url": "https://github.com/notgabriels-sys"
+  },
+  "homepage": "https://notgabriels-sys.github.io/claude-code-50-dark-themes/",
+  "repository": "https://github.com/notgabriels-sys/claude-code-50-dark-themes",
+  "license": "MIT",
+  "keywords": ["claude-code", "skills", "audio", "techno", "mixing", "mastering", "berlin", "freelance"]
+}

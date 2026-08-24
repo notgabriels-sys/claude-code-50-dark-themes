@@ -3,6 +3,36 @@
 Repo: 50 dark themes for Claude Code. Shop surface is `index.html`
 (GitHub Pages), products sold via Gumroad.
 
+## Working agreement — act, don't ask
+
+Standing instruction from Gabriel, 2026-08-24: **add, remove, create,
+implement and install plugins, skills and tooling yourself.** Do not come back
+with a list of things he should go and click. Build it.
+
+What that reaches, and how it is done here:
+
+- **Skills** → write them into `.claude/skills/<name>/SKILL.md`, then
+  `node scripts/sync-plugin-skills.mjs` to mirror them into the installable
+  plugin. CI fails on drift between the two.
+- **Plugins** → this repo *is* a Claude Code plugin marketplace
+  (`.claude-plugin/marketplace.json`). Adding a plugin here makes it
+  installable anywhere with `claude plugin install <name>`, which is the
+  route around account-level settings. Register it in the marketplace and add
+  it to `expectedPlugins` in `scripts/verify.mjs`.
+- **Hooks, permissions, env** → `.claude/settings.json`.
+
+What it genuinely cannot reach, so do not promise it: claude.ai **account-level**
+connectors and plugins are toggled in claude.ai settings, and no tool in a
+Claude Code session enables, disables, or authorizes one. `SuggestConnectors`
+and `SuggestPluginInstall` only render cards. A non-interactive session also
+cannot run an OAuth flow. When something needs that, say so once, in a line,
+and then build whatever *is* buildable instead of stopping.
+
+**This authorization does not extend to payment surfaces.** Everything under
+"Payment surfaces" below still holds without exception: no price, link, slug or
+currency changes from a description, and `create_payment_link` stays off limits.
+Building tooling is authorized; moving money is not.
+
 ## Payment surfaces — read before adding any buy button
 
 **Never add a payment button from a description of an account, or from a
@@ -53,6 +83,14 @@ only check the page against a table a human verified through the browser. A
 wrong price in that table would sail through. Adding a link to
 `verifiedPayPalLinks` is an assertion that you personally read it back from
 `paypal.com/ncp/links/<ID>` — never do it to make the build pass.
+
+`verify` also guards the plugin marketplace: it asserts both plugins are
+registered with the right source paths, that every skill in `.claude/skills/`
+is byte-identical to its packaged copy under
+`plugins/berlin-studio-skills/skills/`, and that each skill has YAML
+frontmatter with a name and description. Drift means an installer silently gets
+a different skill than a contributor reads, so it fails the build — the same
+contract the themes already had.
 
 There is no equivalent guard for the 18 Gumroad links beyond the single
 blocked slug, because no verified Gumroad table exists yet. See below.

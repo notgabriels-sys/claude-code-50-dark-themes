@@ -25,6 +25,18 @@ Then run `/theme` in Claude Code and pick one. The plugin keeps the pack togethe
 available through the marketplace. Press `Ctrl+E` on a plugin theme if you want an editable copy in
 `~/.claude/themes/`.
 
+### Also in this marketplace — Berlin Studio Skills
+
+```bash
+claude plugin install berlin-studio-skills@notgabriels-themes
+```
+
+Five skills for running a techno studio and a freelance audio practice in Berlin: building a
+specific sound, diagnosing a mix that will not translate, getting masters and metadata out the
+door, formal German correspondence, and German freelance invoicing and tax admin. They route to
+one another, so you rarely have to name one. See
+[the plugin README](plugins/berlin-studio-skills/README.md).
+
 ## Manual install
 
 ```bash

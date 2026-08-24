@@ -91,11 +91,64 @@ for (const file of files) {
 const marketplace = JSON.parse(await readFile(new URL(".claude-plugin/marketplace.json", root), "utf8"));
 const pluginManifest = JSON.parse(await readFile(new URL(".claude-plugin/plugin.json", pluginRoot), "utf8"));
 if (marketplace.name !== "notgabriels-themes") fail("Unexpected marketplace name.");
-if (marketplace.plugins?.length !== 1) fail("The marketplace must expose exactly one plugin.");
-if (marketplace.plugins[0].name !== "50-dark-themes") fail("Unexpected marketplace plugin name.");
-if (marketplace.plugins[0].source !== "./plugins/50-dark-themes") fail("Unexpected plugin source path.");
+const expectedPlugins = [
+  { name: "50-dark-themes", source: "./plugins/50-dark-themes" },
+  { name: "berlin-studio-skills", source: "./plugins/berlin-studio-skills" },
+];
+if (marketplace.plugins?.length !== expectedPlugins.length) {
+  fail(`The marketplace must expose exactly ${expectedPlugins.length} plugins.`);
+}
+for (const [index, expected] of expectedPlugins.entries()) {
+  const entry = marketplace.plugins[index];
+  if (entry.name !== expected.name) {
+    fail(`Unexpected marketplace plugin name at position ${index}: ${entry.name}.`);
+  }
+  if (entry.source !== expected.source) {
+    fail(`Unexpected plugin source path for ${expected.name}: ${entry.source}.`);
+  }
+}
 if (pluginManifest.name !== "50-dark-themes") fail("Unexpected plugin manifest name.");
 if (pluginManifest.experimental?.themes !== "./themes/") fail("Plugin manifest must expose ./themes/.");
+
+// The five skills live in .claude/skills/ (source of truth) and are mirrored
+// into the plugin so they can be installed outside this repo. Drift between the
+// two copies means an installer silently gets a different skill than a
+// contributor reads, so it fails the build -- same contract as the themes.
+const skillsManifest = JSON.parse(
+  await readFile(
+    new URL("../plugins/berlin-studio-skills/.claude-plugin/plugin.json", import.meta.url),
+    "utf8",
+  ),
+);
+if (skillsManifest.name !== "berlin-studio-skills") {
+  fail("Unexpected skills plugin manifest name.");
+}
+const sourceSkillDir = new URL("../.claude/skills/", import.meta.url);
+const packagedSkillDir = new URL("../plugins/berlin-studio-skills/skills/", import.meta.url);
+const listSkills = async (dir) =>
+  (await readdir(dir, { withFileTypes: true }))
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name)
+    .sort();
+const sourceSkills = await listSkills(sourceSkillDir);
+const packagedSkills = await listSkills(packagedSkillDir);
+if (sourceSkills.length === 0) fail("No skills found in .claude/skills/.");
+if (sourceSkills.join("\u0000") !== packagedSkills.join("\u0000")) {
+  fail("The packaged skill list differs from .claude/skills/. Run node scripts/sync-plugin-skills.mjs.");
+}
+for (const name of sourceSkills) {
+  const original = await readFile(new URL(`${name}/SKILL.md`, sourceSkillDir), "utf8");
+  const packaged = await readFile(new URL(`${name}/SKILL.md`, packagedSkillDir), "utf8");
+  if (original !== packaged) {
+    fail(`Skill ${name} differs from its plugin copy. Run node scripts/sync-plugin-skills.mjs.`);
+  }
+  if (!/^---\r?\n[\s\S]*?\bname:\s*\S/m.test(original)) {
+    fail(`Skill ${name} is missing YAML frontmatter with a name.`);
+  }
+  if (!/^description:/m.test(original)) {
+    fail(`Skill ${name} is missing a description in its frontmatter.`);
+  }
+}
 
 const html = await readFile(new URL("index.html", root), "utf8");
 const readme = await readFile(new URL("README.md", root), "utf8");
@@ -164,5 +217,5 @@ for (const id of new Set(presentPayPalIds)) {
 
 console.log(
   `Verified ${files.length} themes, ${pluginFiles.length} plugin themes, ${galleryThemes.length} gallery cards, ` +
-    `${verifiedPayPalIds.length} PayPal links, and the safe install command.`,
+    `${verifiedPayPalIds.length} PayPal links, ${sourceSkills.length} skills, and the safe install command.`,
 );
