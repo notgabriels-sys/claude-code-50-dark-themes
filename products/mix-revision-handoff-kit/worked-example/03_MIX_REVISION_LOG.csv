@@ -1,4 +1,0 @@
-version_id,date_sent,source_session,client_feedback_round,changes_requested,changes_completed,deviation_or_question,review_status,approved_by,approval_date,delivery_link
-MIX-v01,2026-09-05,FEX_SB_MIX_20260905,1,"Restore kick weight at 02:14; reduce vocal reverb in verse","Kick/synth automation revised; verse send reduced",None,REVISE,Not approved,NOT APPLICABLE,EXAMPLE-LINK-v01
-MIX-v02,2026-09-09,FEX_SB_MIX_20260909,2,"Keep v02 low end; narrow final percussion layer","Final percussion width reduced 15 percent","Engineer retained wider noise tail and documented reason",REVISE,Not approved,NOT APPLICABLE,EXAMPLE-LINK-v02
-MIX-v03,2026-09-12,FEX_SB_MIX_20260912,3,No further changes,No further changes,None,APPROVED,Example Artist,2026-09-13,EXAMPLE-LINK-v03

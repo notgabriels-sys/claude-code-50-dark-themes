@@ -15,32 +15,10 @@ Gabs Utilities is a small catalog of dark, practical developer and creator tools
 - free Claude Code themes and plugins
 - paid dark UI/template/productivity packs
 - workflow kits for Claude Code users
-- audio workflow utilities and services under separate neutral/service pages
 
 Best single-line pitch:
 
 > A small dark-themed toolbox for Claude Code users, developers, and technical creators.
-
-## Current priority product
-
-Audio Delivery Preflight CLI is the current careful-promotion target because it
-has a stronger problem/solution story than generic design assets, but it should
-be launched feedback-first.
-
-- Landing page: <https://gabs-utilities.com/audio-delivery-preflight-cli.html>
-- Free checklist: <https://gabs-utilities.com/audio-delivery-checklist.html>
-- Practical guide: <https://gabs-utilities.com/audio-delivery-handoff-guide.html>
-- Press / launch kit: <https://gabs-utilities.com/audio-delivery-preflight-press-kit.html>
-- Sample report: <https://gabs-utilities.com/audio-delivery-preflight-sample-report.html>
-- Public feedback thread: <https://github.com/notgabriels-sys/claude-code-50-dark-themes/issues/21>
-- Gumroad listing: <https://notgabriel.gumroad.com/l/audio-delivery-preflight-cli>
-
-Safe angle:
-
-> I built a local read-only CLI for checking bounced WAV delivery folders before
-> client, label or release handoff. I am looking for engineer/developer feedback
-> on whether the free checklist and sample report catch the right boring-but-real
-> delivery issues.
 
 ## Safe launch order
 
@@ -60,7 +38,7 @@ Safe angle:
 3. Product Hunt
    - Best after the domain, images, and first comments are polished.
    - Tone: short, visual, maker story.
-   - Use the four press-kit gallery images, not random screenshots.
+   - Use representative project screenshots.
    - Ask for feedback, not “please upvote”.
    - Current gate: the personal account welcome email arrived on 2026-08-23.
      Product Hunt's current help center requires new accounts to complete
@@ -76,11 +54,6 @@ Safe angle:
    - Use after main launch copy is stable.
    - Prioritize directories that accept dev tools or indie products without spammy backlink demands.
 
-6. Audio communities / newsletters
-   - Lead with the free WAV delivery checklist, not the Gumroad link.
-   - Ask for critique of the checklist and missing checks.
-   - Link the paid CLI only as the automation path for people who repeatedly do this work.
-
 ## Ready-to-post copy
 
 ### X launch post
@@ -90,7 +63,7 @@ I moved my Claude Code / dark dev tools catalog onto a proper domain:
 
 https://gabs-utilities.com/
 
-It started as 50 free dark themes for Claude Code, then grew into a small toolbox: UI kits, templates, cheat sheets, workflow kits, wallpapers, and audio workflow tools.
+It started as 50 free dark themes for Claude Code, then grew into a small toolbox: UI kits, templates, cheat sheets, workflow kits, and wallpapers.
 
 Feedback welcome.
 ```
@@ -126,7 +99,7 @@ Hey, I’m Gabriel.
 
 This started as a practical thing for myself: I wanted a set of dark Claude Code themes that stayed readable and did not destroy semantic colors like errors, warnings, success states, and diffs.
 
-I kept expanding it into a small catalog of dark developer/creator utilities: UI kits, HTML templates, email templates, cheat sheets, workflow kits, wallpapers, palettes, and related audio workflow tools.
+I kept expanding it into a small catalog of dark developer/creator utilities: UI kits, HTML templates, email templates, cheat sheets, workflow kits, wallpapers, and palettes.
 
 The core Claude Code themes are free and MIT licensed. The paid packs are there for people who want the broader toolkit.
 
@@ -136,29 +109,13 @@ I’d love feedback from developers, Claude Code users, and people who care abou
 ### Short directory description
 
 ```text
-Gabs Utilities is a compact catalog of dark developer and creator tools: 50 free Claude Code themes, UI/template packs, workflow kits, cheat sheets, wallpapers, palettes, and audio workflow utilities.
-```
-
-### Audio feedback post
-
-```text
-I made a free WAV delivery handoff checklist for checking bounced folders before client, label, archive or release delivery:
-
-https://gabs-utilities.com/audio-delivery-checklist.html
-
-I also wrote the fuller handoff guide here:
-
-https://gabs-utilities.com/audio-delivery-handoff-guide.html
-
-It covers the boring-but-real mistakes: unclear brief, ambiguous versions, missing credits/metadata, unchecked archives, undocumented format assumptions and skipped listening passes.
-
-I also built a paid local CLI that automates part of this, but I’d genuinely like feedback on the checklist first: what checks are missing, and what wording would make it more useful for engineers/producers?
+Gabs Utilities is a compact catalog of dark developer and creator tools: 50 free Claude Code themes, UI/template packs, workflow kits, cheat sheets, wallpapers, and palettes.
 ```
 
 ### Longer directory description
 
 ```text
-Gabs Utilities is a small, practical catalog for developers and technical creators who like dark, readable tools. The core project is 50 free MIT-licensed themes for Claude Code, built with semantic colors for errors, warnings, success states, diffs, and terminal UI clarity. The catalog also includes paid packs such as dark UI kits, HTML/email/social templates, developer cheat sheets, Claude Code workflow templates, wallpapers, palettes, and audio workflow utilities.
+Gabs Utilities is a small, practical catalog for developers and technical creators who like dark, readable tools. The core project is 50 free MIT-licensed themes for Claude Code, built with semantic colors for errors, warnings, success states, diffs, and terminal UI clarity. The catalog also includes paid packs such as dark UI kits, HTML/email/social templates, developer cheat sheets, Claude Code workflow templates, wallpapers, and palettes.
 ```
 
 ## Do not post
@@ -191,12 +148,9 @@ Use the result to improve positioning before posting again elsewhere.
 | Date | Channel | Status | Next responsible action |
 |---|---|---|---|
 | 2026-08-24 | Custom domain | Live with HTTPS enforced | Use `https://gabs-utilities.com/` as the primary storefront URL |
-| 2026-08-24 | X | General catalog post is public; no dedicated Audio Delivery Preflight/checklist post was visible, and there were no relevant replies | Prepare one feedback-first checklist post; confirm immediately before posting |
 | 2026-08-24 | Hacker News / Show HN | Blocked by HN `showlim` notice | Do not retry immediately; participate normally on HN first, then submit later when the account is less restricted |
-| 2026-08-24 | Product Hunt | Personal account welcome email received 2026-08-23; browser was signed out; the existing themes prelaunch link did not provide a usable Audio Delivery Preflight launch | Complete onboarding in the personal account, then create a separate Audio Delivery Preflight launch draft when the dashboard permits it |
 | 2026-08-24 | GitHub topics | Updated toward Claude Code / themes / dev tools discovery | Keep audio/sample-pack promotion on audio-specific repos/pages, not this theme repo |
 | 2026-08-24 | Owned install guide | `https://gabs-utilities.com/claude-code-theme-install-guide.html` is live with HTTP 200, linked from the homepage and sitemap, and submitted to IndexNow with the verified `79F35EFA-F66B-4757-848A-FB1A9029E1BA` key | Use it as the first support link when people ask how to install the free Claude Code themes; pair it with the semantic-colors article for DEV/community posts |
 | 2026-08-24 | TheDevToolsDir | Initial read at 06:40 CEST returned 404 while publication was processing; at 06:57 CEST the exact listing URL returned HTTP 200 and the public title, description, website, Standard tier, categories and tags read back correctly | Listing is independently verified live; keep the required footer badge while the Standard listing remains active and monitor useful referral traffic |
-| 2026-08-24 | DevHunt | The new-tool route redirected to “Log in to your account”; no DevHunt account email was found | Keep the prepared developer-tool fields, but do not create an account or force a low-fit audio submission merely to add another listing |
+| 2026-08-24 | DevHunt | The new-tool route redirected to “Log in to your account”; no DevHunt account email was found | Keep the prepared developer-tool fields, but do not create an account merely to add another listing |
 | 2026-08-24 | DEV Community | Paste-ready article draft created in `DEV_COMMUNITY_ARTICLE_DRAFT.md`; browser path not signed in | Preview and publish manually from Gabriel's DEV account, or reopen when signed in for final action-time confirmation |
-| 2026-08-24 | Gearnews | Tailored, attachment-free email sent from `notgabriels@gmail.com` to `news@gearnews.com`; Gmail read-back showed label `SENT`, message ID `1a032368de823dff` | If no reply arrives, send at most one polite follow-up in the same thread no earlier than 2026-09-02 |
