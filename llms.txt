@@ -6,12 +6,17 @@ a Berlin-based sound engineer, producer and developer-oriented creator.
 ## Primary pages
 
 - Shop and theme gallery: https://gabs-utilities.com/
+- Semantic terminal color design article: https://gabs-utilities.com/semantic-terminal-colors.html
 - Free WAV delivery handoff checklist: https://gabs-utilities.com/audio-delivery-checklist.html
 - WAV delivery handoff guide: https://gabs-utilities.com/audio-delivery-handoff-guide.html
 - Audio Delivery Preflight CLI: https://gabs-utilities.com/audio-delivery-preflight-cli.html
 - Audio Delivery Preflight CLI press kit: https://gabs-utilities.com/audio-delivery-preflight-press-kit.html
 - Audio Delivery Preflight CLI sample report: https://gabs-utilities.com/audio-delivery-preflight-sample-report.html
 - Impressum: https://gabs-utilities.com/impressum.html
+
+The semantic terminal color article explains the design choices behind the 50
+free Claude Code themes, including preserved status colors, role-specific
+contrast, terminal background ownership and transparent-terminal surfaces.
 
 ## Commercial audio utility
 
