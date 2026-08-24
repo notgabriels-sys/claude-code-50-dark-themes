@@ -2,18 +2,18 @@
   "name": "Nightshade",
   "base": "dark",
   "overrides": {
-    "claude": "#8656C6",
+    "claude": "#976ECE",
     "claudeShimmer": "#B293DB",
     "text": "#EBE8ED",
     "inactive": "#A69DAF",
     "subtle": "#2B2531",
-    "suggestion": "#8656C6",
+    "suggestion": "#976ECE",
     "permission": "#B090D8",
-    "promptBorder": "#8656C6",
+    "promptBorder": "#976ECE",
     "promptBorderShimmer": "#B293DB",
     "planMode": "#B090D8",
     "userMessageBackground": "#231F29",
     "userMessageBackgroundHover": "#2D2835",
-    "rate_limit_fill": "#8656C6"
+    "rate_limit_fill": "#976ECE"
   }
 }
