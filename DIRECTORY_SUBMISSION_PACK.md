@@ -185,7 +185,7 @@ Use the same Product name, URL, tagline, and long description above.
 
 ## TheDevToolsDir
 
-Intended listing URL:
+Live listing:
 
 ```text
 https://thedevtoolsdir.com/product/gabs-utilities/
@@ -194,15 +194,16 @@ https://thedevtoolsdir.com/product/gabs-utilities/
 Status:
 
 ```text
-The provider confirmation page said the dofollow badge was verified. However,
-an independent public request at 06:40 CEST on 2026-08-24 returned HTTP 404 for
-the intended listing URL, and public search found no listing. Treat this as
-provider-confirmed but not publicly verified.
+The provider confirmation page said the dofollow badge was verified. The first
+independent request at 06:40 CEST returned HTTP 404 while publication was still
+processing. A second read-back at 06:57 CEST returned HTTP 200 and verified the
+public title, description, outbound site URL, 2026-08-24 publication date,
+Standard tier, categories and tags.
 ```
 
-Do not claim the listing as live until the public URL reads back successfully.
-Recheck after provider processing. If the 404 persists, remove the dead badge
-or contact the directory before sending users to it.
+The listing is now independently verified as public. Keep the required badge
+while the Standard listing is active, and recheck the target before using it in
+future campaigns.
 
 Suggested category:
 
