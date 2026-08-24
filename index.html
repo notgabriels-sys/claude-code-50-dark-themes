@@ -7,6 +7,7 @@
 <meta name="description" content="Browse and install 50 hand-tuned dark themes for Claude Code as a native plugin. Free, MIT licensed, with semantic status colors and a visual gallery.">
 <meta name="robots" content="index,follow,max-image-preview:large">
 <meta name="theme-color" content="#0f1011">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="canonical" href="https://gabs-utilities.com/">
 <link rel="license" href="https://opensource.org/license/mit">
 <link rel="alternate" type="application/json" title="Claude Code marketplace manifest" href="https://raw.githubusercontent.com/notgabriels-sys/claude-code-50-dark-themes/main/.claude-plugin/marketplace.json">
@@ -15,7 +16,7 @@
 <meta property="og:image" content="https://gabs-utilities.com/preview.png">
 <meta property="og:url" content="https://gabs-utilities.com/">
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="NotGabriels Tools + Code">
+<meta property="og:site_name" content="Gabs Utilities">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="50 Dark Themes for Claude Code">
 <meta name="twitter:description" content="Install 50 hand-tuned dark themes as a native Claude Code plugin. Free, MIT licensed, with semantic status colors.">
@@ -206,7 +207,7 @@
     margin-left:4px;font-size:12px;font-weight:600;letter-spacing:.02em;
     color:var(--fg);
   }
-  .card .hex{margin-left:auto;font-size:10.5px;color:var(--a);letter-spacing:.04em}
+  .card .hex{margin-left:auto;font-size:10.5px;color:var(--sh);letter-spacing:.04em}
   .term{padding:13px 14px 15px;font-size:12px;line-height:1.75;flex:1}
   .term .row{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .term .acc{color:var(--a)}
@@ -236,6 +237,11 @@
   footer .directory-badge{display:inline-flex;align-items:center;border:0;opacity:.78;transition:opacity .15s ease}
   footer .directory-badge:hover{opacity:1;border:0}
   footer .directory-badge img{display:block;width:160px;height:44px}
+  footer .product-hunt-launch{display:inline-flex;flex-direction:column;gap:1px;min-width:218px;padding:10px 14px;
+    border:1px solid #3f343d;border-radius:10px;background:#221d21;color:#eef2ff;opacity:.9;transition:opacity .15s ease}
+  footer .product-hunt-launch:hover{opacity:1;border-color:#695867;color:#fff}
+  footer .product-hunt-launch small{font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#c9c1c8}
+  footer .product-hunt-launch b{font-size:15px;line-height:1.25;color:inherit}
 
   @media (prefers-reduced-motion: reduce){
     .card{transition:none}
@@ -267,6 +273,7 @@
 </head>
 <body>
 <div class="wrap">
+  <main>
   <header>
     <p class="kicker">Claude Code · terminal themes</p>
     <h1><span class="n">50</span> dark themes<br>for Claude&nbsp;Code</h1>
@@ -351,7 +358,6 @@
       <a class="tool" href="https://notgabriel.gumroad.com/l/xjcbji"><b>Dark Email Templates</b><span>Transactional email — welcome, receipt, reset, OTP.</span><i>€9</i></a>
       <a class="tool" href="https://notgabriel.gumroad.com/l/bunkhy"><b>Social &amp; OG Templates</b><span>Exact-size share images — OG cards, X header, thumbnails.</span><i>€9</i></a>
       <a class="tool" href="https://notgabriels-sys.github.io/dark-html-templates-demo/resume/"><b>R&eacute;sum&eacute; &amp; CV Templates</b><span>Dark on screen, clean black-on-white in PDF. See the live demo.</span><i>Demo</i></a>
-      <a class="tool" href="https://notgabriel.gumroad.com/l/zvbti"><b>Claude Code Workflow Kit</b><span>Reusable checklists, prompts and handoff templates for cleaner Claude Code sessions.</span><i>€12</i></a>
       <a class="tool" href="https://notgabriel.gumroad.com/l/kxsfa"><b>Dev Cheatsheets</b><span>Six dark reference cards — git, vim, tmux, regex, bash.</span><i>€7</i></a>
       <a class="tool" href="https://notgabriel.gumroad.com/l/kykega"><b>Dev Cheatsheets Vol.&nbsp;2</b><span>Six more — SQL, CSS, HTTP and friends.</span><i>€7</i></a>
       <a class="tool" href="https://notgabriel.gumroad.com/l/wgtbkq"><b>Keyboard Shortcuts</b><span>Keycap reference cards — VS Code, macOS, Vim, tmux.</span><i>€7</i></a>
@@ -383,12 +389,15 @@
     </div>
   </section>
 
+  </main>
+
   <footer>
     <span>50 dark themes for Claude Code</span>
     <span>Set your terminal background to each theme's surface hex for the full effect.</span>
     <span><a href="claude-code-theme-install-guide.html">Install guide</a></span>
     <span><a href="https://audio.gabs-utilities.com/">Audio services</a></span>
     <span><a href="https://tools.gabs-utilities.com/">Tools + Code</a></span>
+    <span><a class="product-hunt-launch" href="https://www.producthunt.com/products/50-dark-themes-for-claude-code?launch=50-dark-themes-for-claude-code&amp;utm_source=website&amp;utm_medium=footer&amp;utm_campaign=50-dark-themes-launch"><small>Find us on Product Hunt</small><b>50 Dark Themes for Claude Code →</b></a></span>
     <span><a class="directory-badge" href="https://thedevtoolsdir.com/product/gabs-utilities?ref=badge" rel="dofollow"><img src="https://thedevtoolsdir.com/badge/gabs-utilities.svg" alt="Featured on TheDevToolsDir" width="160" height="44"></a></span>
     <span><a href="impressum.html">Impressum</a></span>
   </footer>
