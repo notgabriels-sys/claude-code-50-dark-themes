@@ -165,7 +165,8 @@ always be swapped for it without stepping outside the palette.
 | VU Meter | two | `#E5484D` 4.26:1 | `#87E198` 10.52:1 |
 
 Worth knowing where those two level-one failures come from. `scripts/verify-contrast.mjs`
-holds every theme's `claude` to 4.5:1 against its *own* terminal background, and
+holds every theme's `claude` to 4.5:1 against its *own* terminal background — same
+arithmetic as here, different background — and
 several palettes were retuned to clear it. Passing there does not carry over to
 here: **Nightshade** (`#976ECE`, 4.32:1) and **Signal Red** (`#E64F54`, 4.45:1)
 both clear their own ground and still miss Apple's, because Apple's is lighter.
@@ -178,11 +179,16 @@ node mail/quote-contrast.mjs             # all fifty, with ratios
 node mail/quote-contrast.mjs --failing   # just the eleven and their swaps
 ```
 
-The script self-tests its contrast maths against the WCAG reference values before
-printing anything and exits non-zero if a substitution still fails. That guard is
-not decoration: the first version of it linearised two of the three sRGB channels
-and left blue raw, which reported Deep Field's level one as 8.39:1 instead of
-5.58:1 — wrong, and wrong in the flattering direction.
+The arithmetic lives in [`scripts/contrast.mjs`](../scripts/contrast.mjs) — one
+implementation, shared with `scripts/verify-contrast.mjs`, so the two gates
+cannot drift into disagreeing about whether a palette ships. It self-tests
+against the pooled WCAG reference anchors before printing anything, and
+`scripts/contrast.test.mjs` pins it in CI.
+
+That guard is not decoration: the first version linearised two of the three sRGB
+channels and left blue raw, which reported Deep Field's level one as 8.39:1
+instead of 5.58:1 — wrong, and wrong in the flattering direction. Reintroducing
+that bug now fails both gates and the test suite, not one of them.
 
 For the themes themselves, rather than their behaviour in Mail, the general tool
 still applies:

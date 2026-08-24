@@ -16,46 +16,13 @@
 import { readdir, readFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 
+import { assertReferences, contrast } from "../scripts/contrast.mjs";
+
 const root = new URL("../", import.meta.url);
 export const MAIL_BG = "#1E1E1E";
 export const FLOOR = 4.5;
 
-const channel = (c) => {
-  const v = c / 255;
-  return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
-};
-
-const luminance = (hex) => {
-  const n = Number.parseInt(hex.slice(1), 16);
-  // Every channel goes through the sRGB transfer function. Linearising two of
-  // three and leaving the blue raw produces plausible-looking ratios that are
-  // wrong by a factor of thirty — hence the self-test below.
-  return (
-    0.2126 * channel((n >> 16) & 255) +
-    0.7152 * channel((n >> 8) & 255) +
-    0.0722 * channel(n & 255)
-  );
-};
-
-export const contrast = (a, b) => {
-  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
-  return (hi + 0.05) / (lo + 0.05);
-};
-
-// Reference values from the WCAG 2.x definition. If these drift, every number
-// derived here is untrustworthy, so refuse to return any of them.
-export function selfTest() {
-  for (const [a, b, expected] of [
-    ["#FFFFFF", "#000000", 21.0],
-    ["#767676", "#FFFFFF", 4.54],
-    ["#000000", "#000000", 1.0],
-  ]) {
-    const got = contrast(a, b);
-    if (Math.abs(got - expected) > 0.01) {
-      throw new Error(`Contrast self-test failed: ${a} on ${b} = ${got.toFixed(2)}, expected ${expected}.`);
-    }
-  }
-}
+export { contrast };
 
 const LEVELS = [
   ["one", "claude"],
@@ -64,7 +31,7 @@ const LEVELS = [
 ];
 
 export async function analyse() {
-  selfTest();
+  assertReferences();
   const files = (await readdir(root)).filter((f) => f.endsWith(".json")).sort();
   const rows = [];
   for (const file of files) {

@@ -74,7 +74,9 @@ The command checks:
 - exactly 50 root-level theme files;
 - valid JSON, unique names and the shared override-key contract;
 - six-digit hex colours;
-- role-aware contrast against each theme's recommended terminal background;
+- role-aware contrast against each theme's recommended terminal background,
+  and the Mail quoted-text levels against Apple's message background — both
+  through the one implementation in `scripts/contrast.mjs`;
 - palette parity between theme files and gallery cards;
 - byte-for-byte parity between root themes and the installable plugin;
 - the marketplace and plugin manifests used by Claude Code;

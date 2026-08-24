@@ -1,5 +1,7 @@
 import { readdir, readFile } from "node:fs/promises";
 
+import { assertReferences, contrast } from "./contrast.mjs";
+
 const root = new URL("../", import.meta.url);
 const themes = (await readdir(root)).filter((file) => file.endsWith(".json")).sort();
 const html = await readFile(new URL("index.html", root), "utf8");
@@ -10,37 +12,7 @@ if (!match) throw new Error("Could not find the THEMES array in index.html.");
 const gallery = JSON.parse(match[1]);
 const galleryByName = new Map(gallery.map((row) => [row[0], row]));
 
-function rgb(hex) {
-  if (!/^#[0-9a-f]{6}$/i.test(hex)) throw new Error(`Invalid six-digit hex colour: ${hex}`);
-  return [1, 3, 5].map((offset) => Number.parseInt(hex.slice(offset, offset + 2), 16) / 255);
-}
-
-function luminance(hex) {
-  const [red, green, blue] = rgb(hex).map((channel) =>
-    channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4,
-  );
-  return 0.2126 * red + 0.7152 * green + 0.0722 * blue;
-}
-
-function contrast(first, second) {
-  const a = luminance(first);
-  const b = luminance(second);
-  return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
-}
-
-const references = [
-  ["#000000", "#FFFFFF", 21],
-  ["#777777", "#FFFFFF", 4.48],
-  ["#0000FF", "#FFFFFF", 8.59],
-];
-for (const [foreground, background, expected] of references) {
-  const actual = contrast(foreground, background);
-  if (Math.abs(actual - expected) > 0.01) {
-    throw new Error(
-      `Contrast reference failed for ${foreground} on ${background}: ${actual.toFixed(2)} != ${expected.toFixed(2)}`,
-    );
-  }
-}
+assertReferences();
 
 const checks = [
   // Primary copy is held to WCAG AAA. It can appear on the terminal canvas or
