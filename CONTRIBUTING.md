@@ -45,7 +45,7 @@ Rules:
   states so an error never becomes green because of a palette choice.
 - `userMessageBackground` and its hover state should be visibly above the intended terminal
   background, including on transparent terminals.
-- Keep primary text at 7:1, foreground accents at 4.5:1, readable secondary text at 3.5:1,
+- Keep primary text at 7:1, foreground accents and readable secondary text at 4.5:1,
   and functional borders or indicators at 3:1 against the matching gallery background.
 - Reserve `subtle` for non-essential decorative hairlines. Use `inactive` for readable secondary
   text; do not place meaningful text or required control boundaries in `subtle`.

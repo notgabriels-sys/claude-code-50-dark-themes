@@ -120,6 +120,50 @@ const readme = await readFile(new URL("README.md", root), "utf8");
 const publicHtmlFiles = (await readdir(root))
   .filter((file) => file.endsWith(".html"))
   .sort();
+const storefrontContracts = [
+  [/<a class="skip-link" href="#main-content">/, "keyboard skip link"],
+  [/<main id="main-content">/, "main landmark"],
+  [/<h3 class="tname">\$\{esc\(name\)\}<\/h3>/, "gallery-card headings"],
+  [/<span class="sr-only" id="copyStatus" aria-live="polite"><\/span>/, "copy-status live region"],
+  [/<meta property="og:image:alt" content="[^"]+">/, "Open Graph image alternative"],
+  [/<meta name="twitter:image:alt" content="[^"]+">/, "X image alternative"],
+];
+const missingStorefrontContracts = storefrontContracts
+  .filter(([pattern]) => !pattern.test(html))
+  .map(([, label]) => label);
+if (missingStorefrontContracts.length) {
+  fail(`Storefront accessibility contract is missing: ${missingStorefrontContracts.join(", ")}.`);
+}
+const mainLandmarks = html.match(/<main(?:\s|>)/g) ?? [];
+if (mainLandmarks.length !== 1) {
+  fail(`The storefront must contain exactly one main landmark; found ${mainLandmarks.length}.`);
+}
+const structuredDataMatch = html.match(
+  /<script type="application\/ld\+json">\s*([\s\S]*?)\s*<\/script>/,
+);
+if (!structuredDataMatch) fail("The storefront must expose JSON-LD software metadata.");
+let structuredData;
+try {
+  structuredData = JSON.parse(structuredDataMatch[1]);
+} catch (error) {
+  fail(`The storefront JSON-LD is invalid: ${error.message}`);
+}
+const structuredSoftware = structuredData["@graph"]?.find(
+  (entry) => entry["@type"] === "SoftwareApplication",
+);
+if (!structuredSoftware) fail("The storefront JSON-LD must describe the theme plugin.");
+if (structuredSoftware.softwareVersion !== pluginManifest.version) {
+  fail(
+    `Storefront softwareVersion ${structuredSoftware.softwareVersion} does not match plugin version ${pluginManifest.version}.`,
+  );
+}
+const currentDownloadUrls = new Set([
+  `https://github.com/notgabriels-sys/claude-code-50-dark-themes/releases/tag/themes-plugin-v${pluginManifest.version}`,
+  "https://github.com/notgabriels-sys/claude-code-50-dark-themes/archive/refs/heads/main.zip",
+]);
+if (!currentDownloadUrls.has(structuredSoftware.downloadUrl)) {
+  fail(`Storefront downloadUrl is stale or unrelated: ${structuredSoftware.downloadUrl}.`);
+}
 const match = html.match(/const THEMES = (\[[\s\S]*?\n\]);/);
 if (!match) fail("Could not find the THEMES array in index.html.");
 
