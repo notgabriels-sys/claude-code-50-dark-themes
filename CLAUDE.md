@@ -105,32 +105,43 @@ and calls return data. **This does not make the connector usable for
 verifying anything on this shop, and the reason is worse than the old
 one.**
 
-Read back 2026-08-24 from the connector, both calls read-only:
+Read back 2026-08-24 from the connector, all calls read-only:
 
 - `list_payment_links` → **empty**. Zero links, one page. The three live
-  NCP links in the table above were browser-verified and are on the
-  shop right now.
-- `list_transactions` (31 days) → 65 transactions, but they are *outgoing*
-  EUR debits against a PayPal Wallet via billing agreements (−4.99,
-  −48.73). Subscription charges, not mixing and mastering income.
+  NCP links in the table above were browser-verified and are on the shop
+  right now.
+- `list_invoices` → a real business invoice exists (status SENT).
+- `list_transactions` → alongside outgoing subscription debits there is at
+  least one **fee-bearing incoming EUR payment** (a merchant fee deducted,
+  `protection_eligibility: 01`).
 
-The most likely reading is that the OAuth token is bound to the
-**personal** account, not the Berlin **business** account that holds the
-links — the two-account split this file already warns about. A second
-possibility is that `list_payment_links` simply does not enumerate NCP
-no-code links. Both are unresolved, and either way:
+An account that receives fee-bearing payments and issues invoices **is the
+merchant account.** The first reading of this data — that the token was bound
+to the personal account — was wrong and is retracted.
 
-**Never treat an empty or unfamiliar connector result as evidence about
-the shop's payment links.** The connector answering confidently about the
-wrong account is precisely the failure mode that produced the €1,200
-charge. It reads plausible and it is not the same account. Do not create,
-edit, or confirm a payment link through this connector, and do not use it
-to decide that a link is missing, changed, or dead.
+The actual conclusion is narrower and more dangerous:
 
-Before this connector could ever be trusted here, someone must confirm
-*which account the token belongs to* by comparing a known business
-transaction against what it returns. Until then it is an unverified
-surface, not a source of truth.
+**`list_payment_links` cannot see NCP no-code links.** It enumerates a
+different PayPal product. The three links under `paypal.com/ncp/links/<ID>`
+exist, are live, and are invisible to this connector. The empty result is a
+**false negative**, not a finding.
+
+So the trap is specific. A future session checks the shop's payment links
+through the connector, gets zero, concludes they are missing or broken, and
+"helpfully" runs `create_payment_link` to restore them. That call would mint a
+*different* kind of link — new ID, its own price and tax settings, none of it
+matching the verified rate card — and put it on a public shop. That is the
+€1,200 mistake with new packaging.
+
+**Rules, unchanged in force and now for a known reason:**
+
+- Never conclude a link is missing, changed, or dead from this connector.
+- Never create, edit, or confirm a shop payment link through it.
+  `create_payment_link` is off limits for this shop entirely.
+- The browser route below remains the only way to verify an NCP link.
+
+What the connector *is* good for: reading transactions and invoices on the
+business account. That part is real and now verified. Keep it to reading.
 
 **Use the browser instead.** The working route, and the one every
 verification above was done through:
