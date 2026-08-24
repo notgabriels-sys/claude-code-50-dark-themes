@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Semantic terminal colors: lessons from 50 Claude Code themes</title>
+<meta name="description" content="Practical design notes from building 50 free Claude Code themes: preserve semantic status colors, tune contrast by role, and respect terminal background ownership.">
+<meta name="robots" content="index,follow,max-image-preview:large">
+<link rel="canonical" href="https://gabs-utilities.com/semantic-terminal-colors.html">
+<link rel="license" href="https://opensource.org/license/mit">
+<meta property="og:title" content="Semantic terminal colors: lessons from 50 Claude Code themes">
+<meta property="og:description" content="Why errors, warnings, success states and diffs should keep their meaning while the rest of a terminal theme changes around them.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://gabs-utilities.com/semantic-terminal-colors.html">
+<meta property="og:image" content="https://gabs-utilities.com/preview.png">
+<meta property="og:image:width" content="1280">
+<meta property="og:image:height" content="720">
+<meta property="og:image:alt" content="Gallery preview of dark Claude Code terminal themes.">
+<meta property="og:site_name" content="Gabs Utilities">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Semantic terminal colors: lessons from 50 Claude Code themes">
+<meta name="twitter:description" content="Practical notes on semantic states, contrast roles, surfaces and transparent terminals.">
+<meta name="twitter:image" content="https://gabs-utilities.com/preview.png">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": "What 50 dark Claude Code themes taught me about semantic terminal colors",
+  "description": "Practical design notes from building 50 free Claude Code themes while preserving semantic interface states.",
+  "url": "https://gabs-utilities.com/semantic-terminal-colors.html",
+  "image": "https://gabs-utilities.com/preview.png",
+  "datePublished": "2026-08-24",
+  "dateModified": "2026-08-24",
+  "author": {
+    "@type": "Person",
+    "name": "Gabriel García Alonso"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Gabs Utilities"
+  },
+  "about": [
+    "Claude Code themes",
+    "terminal color design",
+    "semantic colors",
+    "dark mode",
+    "developer tools"
+  ],
+  "isAccessibleForFree": true,
+  "license": "https://opensource.org/license/mit"
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Why not recolor every Claude Code interface state to match a theme?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Errors, warnings, success states and diff colors carry meaning. Leaving them on Claude Code's base dark preset preserves recognition while brand, text, border and surface roles change around them."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Can a Claude Code theme set the terminal background?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No. The terminal application owns its background. The theme gallery provides a matching surface hex that users can set in their terminal when they want the full palette."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Are the 50 Claude Code themes free?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. The complete theme set and source repository are free under the MIT license."
+      }
+    }
+  ]
+}
+</script>
+<style>
+:root{
+  color-scheme:dark;
+  --bg:#0f1011;--panel:#17181a;--panel2:#202124;--hair:#2e2f33;
+  --ink:#e9eaec;--muted:#a0a4ab;--faint:#7a7e85;--accent:#c9cfd6;
+  --green:#8fd6a3;--yellow:#e5c07b;--red:#e38b8b;
+  font-family:ui-monospace,"SF Mono",SFMono-Regular,"JetBrains Mono",Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:radial-gradient(900px 560px at 50% -10%,#232529 0%,rgba(35,37,41,0) 64%),var(--bg);color:var(--ink);line-height:1.66}
+a{color:inherit}.wrap{max-width:1120px;margin:0 auto;padding:28px 20px 56px}
+header,footer{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;color:var(--muted);font-size:13px}
+header{margin-bottom:44px}.brand{font-size:12px;letter-spacing:.18em;text-transform:uppercase;text-decoration:none;color:var(--muted)}
+.nav{display:flex;gap:14px;flex-wrap:wrap}.nav a{text-decoration:none}.nav a:hover{color:var(--ink)}
+.hero,.panel,.callout,.code-panel,.table-wrap{border:1px solid var(--hair);background:linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.025));border-radius:22px;box-shadow:0 24px 80px rgba(0,0,0,.28)}
+.hero{padding:clamp(26px,5vw,48px);margin-bottom:18px}.eyebrow{font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--accent);margin:0 0 18px}
+h1{font-size:clamp(40px,7.3vw,78px);letter-spacing:-.065em;line-height:.94;margin:0 0 20px;max-width:14ch}
+.lead{font-size:clamp(18px,2vw,23px);color:#d8dadd;max-width:870px;margin:0 0 22px}
+.byline{font-size:13px;color:var(--faint)}.ctas{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}
+.button{display:inline-flex;text-decoration:none;border-radius:999px;padding:12px 16px;font-weight:760;background:var(--accent);color:#101112}
+.secondary{background:rgba(255,255,255,.035);border:1px solid var(--hair);color:var(--ink)}
+.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:18px 0}.panel{padding:18px}.panel b{display:block;margin-bottom:5px}.muted{color:var(--muted)}
+.article{max-width:860px;margin:34px auto 0}.section{margin-top:38px}.section h2{font-size:clamp(27px,4vw,38px);line-height:1.08;letter-spacing:-.045em;margin:0 0 14px}.section h3{font-size:21px;letter-spacing:-.025em;margin:24px 0 8px}
+.section p{color:var(--muted)}.section strong{color:var(--ink)}code{color:var(--ink);background:#0b0c0d;border:1px solid var(--hair);border-radius:5px;padding:1px 5px}pre code{border:0;padding:0}ul{padding-left:21px;color:var(--muted)}li{margin:7px 0}
+.callout{padding:22px;margin-top:28px;background:linear-gradient(180deg,rgba(201,207,214,.08),rgba(255,255,255,.025))}.callout p:last-child{margin-bottom:0}
+.code-panel{overflow:hidden;margin:18px 0}.code-head{display:flex;justify-content:space-between;gap:12px;padding:11px 15px;border-bottom:1px solid var(--hair);font-size:12px;color:var(--faint)}
+pre{margin:0;padding:18px;overflow:auto;white-space:pre;color:#d7dadd;background:#0b0c0d;font:13px/1.65 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.key{color:#b9c7ff}.string{color:#b7d7ba}.comment{color:#747981}
+.table-wrap{overflow:auto;margin-top:16px}table{width:100%;border-collapse:collapse;min-width:620px}th,td{text-align:left;padding:13px 15px;border-bottom:1px solid var(--hair);vertical-align:top}th{font-size:12px;text-transform:uppercase;letter-spacing:.12em;color:var(--faint)}td{color:var(--muted)}td:first-child{color:var(--ink);font-weight:700}
+.states{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}.state{border:1px solid var(--hair);border-radius:999px;padding:6px 10px;font-size:12px}.success{color:var(--green)}.warning{color:var(--yellow)}.error{color:var(--red)}
+.faq{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:16px}.faq .panel p{margin-bottom:0}
+.final{margin-top:42px;padding:26px}.final h2{margin-top:0}.final p{color:var(--muted)}
+footer{margin-top:42px;padding-top:22px;border-top:1px solid var(--hair)}
+@media(max-width:760px){.grid,.faq{grid-template-columns:1fr}h1{font-size:44px}.hero{padding:26px}.article{margin-top:26px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <a class="brand" href="./">Gabs Utilities</a>
+    <nav class="nav" aria-label="Article navigation">
+      <a href="./">Theme gallery</a>
+      <a href="https://github.com/notgabriels-sys/claude-code-50-dark-themes">Source</a>
+      <a href="https://github.com/notgabriels-sys/claude-code-50-dark-themes#quick-install--claude-code-plugin">Install guide</a>
+      <a href="impressum.html">Impressum</a>
+    </nav>
+  </header>
+
+  <main>
+    <article>
+      <section class="hero">
+        <p class="eyebrow">Design notes / Claude Code themes</p>
+        <h1>What 50 dark Claude Code themes taught me about semantic terminal colors.</h1>
+        <p class="lead">A terminal theme is not just a palette. It is a mapping between color and meaning. Decorative accents can move; errors, warnings, success states and diffs still need to read instantly.</p>
+        <p class="byline">By Gabriel García Alonso · 24 August 2026 · Free to read</p>
+        <div class="ctas">
+          <a class="button" href="./">Browse all 50 themes</a>
+          <a class="button secondary" href="https://github.com/notgabriels-sys/claude-code-50-dark-themes">Open the MIT source</a>
+          <a class="button secondary" href="#principle">Read the design principle</a>
+        </div>
+      </section>
+
+      <section class="grid" aria-label="Article summary">
+        <div class="panel"><b>50 themes</b><span class="muted">Enough variation to expose which color decisions are structural and which are merely decorative.</span></div>
+        <div class="panel"><b>Semantic states preserved</b><span class="muted">Success, error, warning and diff colors inherit Claude Code's base dark behavior.</span></div>
+        <div class="panel"><b>Free and inspectable</b><span class="muted">Every JSON theme and the installer are public under the MIT license.</span></div>
+      </section>
+
+      <div class="article">
+        <section class="section" id="principle">
+          <h2>The useful constraint: do not theme away meaning.</h2>
+          <p>When I started building the set, the obvious temptation was to make every interface color belong to each palette. That produces a neat screenshot, but it weakens the tool. If the same accent can mean an assistant label, a warning, a successful operation and a diff addition, color stops helping.</p>
+          <p>The better rule was narrower: <strong>change identity and hierarchy, preserve operational meaning.</strong> The theme can own foreground text, secondary text, borders, prompts, permissions and raised surfaces. Claude Code's base dark preset can keep the status roles people already recognize.</p>
+          <div class="states" aria-label="Semantic status examples">
+            <span class="state success">success stays success</span>
+            <span class="state warning">warning stays warning</span>
+            <span class="state error">error stays error</span>
+          </div>
+        </section>
+
+        <section class="section">
+          <h2>Graphite is a useful concrete example.</h2>
+          <p>This focused fragment comes directly from the Graphite theme. It changes the identity, text hierarchy and surfaces, but it does not override <code>success</code>, <code>error</code>, <code>warning</code> or diff colors.</p>
+          <div class="code-panel" aria-label="Focused Graphite theme JSON example">
+            <div class="code-head"><span>graphite.json · focused fragment</span><span>base: dark</span></div>
+<pre>{
+  <span class="key">"name"</span>: <span class="string">"Graphite"</span>,
+  <span class="key">"base"</span>: <span class="string">"dark"</span>,
+  <span class="key">"overrides"</span>: {
+    <span class="key">"claude"</span>: <span class="string">"#C9CFD6"</span>,
+    <span class="key">"text"</span>: <span class="string">"#E9EAEC"</span>,
+    <span class="key">"inactive"</span>: <span class="string">"#A0A4AB"</span>,
+    <span class="key">"subtle"</span>: <span class="string">"#2E2F33"</span>,
+    <span class="key">"promptBorder"</span>: <span class="string">"#C9CFD6"</span>,
+    <span class="key">"permission"</span>: <span class="string">"#ECEEF0"</span>,
+    <span class="key">"userMessageBackground"</span>: <span class="string">"#27282B"</span>
+  }
+}</pre>
+          </div>
+          <p>The omission is the point. A restrained theme file can be more coherent than one that overrides every available key.</p>
+        </section>
+
+        <section class="section">
+          <h2>Contrast needs a role, not one universal number.</h2>
+          <p>“More contrast” is not a complete design direction. Primary text, muted text, decorative borders and selected surfaces do different jobs. Treating them as equivalent either makes the interface harsh or lets important information disappear.</p>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Role</th><th>What it must do</th><th>Common failure</th></tr></thead>
+              <tbody>
+                <tr><td>Primary text</td><td>Remain readable through long responses and logs.</td><td>Looks elegant in a card, tires the eye in continuous output.</td></tr>
+                <tr><td>Inactive text</td><td>Stay legible without competing with the current task.</td><td>Falls so close to the background that context disappears.</td></tr>
+                <tr><td>Subtle borders</td><td>Separate structure without becoming a visual grid.</td><td>Uses a bright accent everywhere and overwhelms content.</td></tr>
+                <tr><td>Status colors</td><td>Signal success, warning, error and change immediately.</td><td>Gets recolored for mood and loses semantic recognition.</td></tr>
+                <tr><td>Raised surfaces</td><td>Separate messages and controls from the terminal plane.</td><td>Matches the background exactly or becomes an opaque patch.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="section">
+          <h2>The terminal owns the background.</h2>
+          <p>Claude Code can style its interface, but it cannot set the terminal application's background. That ownership boundary matters. Each gallery card therefore exposes a matching surface hex so the terminal can be tuned separately when someone wants the complete look.</p>
+          <div class="callout">
+            <p><strong>Graphite example:</strong> set the terminal background to <code>#1D1E20</code>. The Claude Code theme then uses <code>#27282B</code> for the user-message surface, creating a small but deliberate lift.</p>
+          </div>
+        </section>
+
+        <section class="section">
+          <h2>Transparent terminals make the boundary obvious.</h2>
+          <p>A transparent terminal can reveal the desktop or window behind it, but Claude Code's <code>userMessageBackground</code> is still painted as an opaque interface surface. It does not inherit terminal transparency.</p>
+          <p>Trying to hide that with an exact background match produces an awkward block whenever transparency changes. I found it more honest to treat the message as a raised panel: close to the palette, clearly intentional, and usable on both transparent and opaque terminals.</p>
+        </section>
+
+        <section class="section">
+          <h2>What I now check in a real theme.</h2>
+          <ul>
+            <li>Long assistant output, not only the theme picker.</li>
+            <li>Errors, warnings and successful commands next to each other.</li>
+            <li>Diff additions and deletions in the same view.</li>
+            <li>Permission and plan-mode prompts under pressure.</li>
+            <li>Muted information in a dense log.</li>
+            <li>User messages on opaque and transparent terminal backgrounds.</li>
+            <li>The palette with a terminal background that is slightly wrong, because real setups are rarely perfect.</li>
+          </ul>
+          <p>The question is not only “does this look good?” It is “does the interface still tell the truth quickly?”</p>
+        </section>
+
+        <section class="section" aria-labelledby="faq-title">
+          <h2 id="faq-title">Quick answers.</h2>
+          <div class="faq">
+            <div class="panel"><b>Why not recolor every state?</b><p>Errors, warnings, success states and diffs carry meaning. Keeping the base dark status colors preserves recognition while the rest of the interface changes.</p></div>
+            <div class="panel"><b>Can the theme set my terminal background?</b><p>No. The terminal application owns that surface. The gallery provides a matching hex you can set separately.</p></div>
+            <div class="panel"><b>Are all 50 themes free?</b><p>Yes. The complete theme set, plugin package and installer are public under the MIT license.</p></div>
+          </div>
+        </section>
+
+        <section class="section callout final">
+          <h2>The themes are free.</h2>
+          <p>All 50 Claude Code themes, the plugin packaging and the installer are public under the MIT license. Use them, inspect the JSON, change them, or point out where the semantic hierarchy still breaks in real work.</p>
+          <div class="ctas">
+            <a class="button" href="./">Browse the visual gallery</a>
+            <a class="button secondary" href="https://github.com/notgabriels-sys/claude-code-50-dark-themes">View the source and install guide</a>
+          </div>
+        </section>
+      </div>
+    </article>
+  </main>
+
+  <footer>
+    <span>Design notes by Gabriel García Alonso.</span>
+    <span><a href="./">50 dark themes</a> · <a href="https://github.com/notgabriels-sys/claude-code-50-dark-themes">GitHub</a> · <a href="impressum.html">Impressum</a></span>
+  </footer>
+</div>
+</body>
+</html>

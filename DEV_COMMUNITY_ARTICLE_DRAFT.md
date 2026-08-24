@@ -8,7 +8,7 @@ auto-publish without checking the preview and account identity first.
 Title:
 
 ```text
-I made 50 free dark themes for Claude Code. Here is what I learned about semantic terminal colors.
+What 50 dark Claude Code themes taught me about semantic terminal colors
 ```
 
 Tags:
@@ -20,25 +20,25 @@ claudecode, terminal, themes, opensource
 Canonical URL:
 
 ```text
-https://gabs-utilities.com/
+https://gabs-utilities.com/semantic-terminal-colors.html
 ```
 
 ## Paste-ready Markdown
 
-```markdown
+````markdown
 ---
-title: I made 50 free dark themes for Claude Code. Here is what I learned about semantic terminal colors.
+title: What 50 dark Claude Code themes taught me about semantic terminal colors
 published: false
 description: Notes from building 50 free MIT-licensed dark themes for Claude Code, with a focus on semantic colors, contrast and long-session readability.
 tags: claudecode, terminal, themes, opensource
-canonical_url: https://gabs-utilities.com/
+canonical_url: https://gabs-utilities.com/semantic-terminal-colors.html
 ---
 
 I made a set of 50 free dark themes for Claude Code:
 
 https://gabs-utilities.com/
 
-The repo is here:
+The source and install guide are here:
 
 https://github.com/notgabriels-sys/claude-code-50-dark-themes
 
@@ -65,6 +65,29 @@ For a code-assistant terminal, I found it more useful to preserve semantic roles
 - muted text should be readable but not compete with primary output
 - the background should support long sessions, not dominate them
 
+Here is a focused fragment from the actual Graphite theme:
+
+```json
+{
+  "name": "Graphite",
+  "base": "dark",
+  "overrides": {
+    "claude": "#C9CFD6",
+    "text": "#E9EAEC",
+    "inactive": "#A0A4AB",
+    "subtle": "#2E2F33",
+    "promptBorder": "#C9CFD6",
+    "permission": "#ECEEF0",
+    "userMessageBackground": "#27282B"
+  }
+}
+```
+
+The missing keys are important. I deliberately leave `success`, `error`,
+`warning`, and diff colors on Claude Code's base dark preset. The theme changes
+identity, hierarchy, borders and surfaces without recoloring away operational
+meaning.
+
 ## Contrast matters more than vibe
 
 Some palettes looked great at first but became tiring after a few minutes. The problem was usually not the hue. It was contrast.
@@ -80,11 +103,14 @@ The funny part is that the “loudest” palettes often became less useful than 
 
 ## Terminal background matters
 
-For the full effect, I set the terminal background to each theme’s surface hex.
-
-Without that, the palette can still work, but the theme does not feel fully integrated. The background is not just decoration; it is part of the reading environment.
+For the full effect, I set the terminal background to each theme’s surface hex. Claude Code cannot set that value because the terminal application owns the background. Without the matching terminal surface, the palette can still work, but it does not feel fully integrated.
 
 That is also why the gallery shows the surface color clearly. A theme is not only a few accent swatches. It is a working space.
+
+Transparent terminals make this ownership boundary more obvious. Claude Code
+still paints `userMessageBackground` as an opaque interface surface, so I use a
+slightly raised panel color instead of pretending it will inherit the terminal's
+transparency.
 
 ## The install path had to stay boring
 
@@ -113,10 +139,14 @@ Here is the gallery again:
 
 https://gabs-utilities.com/
 
+The full original article:
+
+https://gabs-utilities.com/semantic-terminal-colors.html
+
 And the repo:
 
 https://github.com/notgabriels-sys/claude-code-50-dark-themes
-```
+````
 
 ## Posting notes
 

@@ -155,6 +155,9 @@ python3 theme_contrast.py themes/
 
 ### How these are built
 
+**[What 50 dark Claude Code themes taught me about semantic terminal colors](https://gabs-utilities.com/semantic-terminal-colors.html)**
+— why decorative accents can move while errors, warnings, success states and diffs keep their meaning.
+
 **[Every one of my 50 themes failed a contrast check](https://notgabriels-sys.github.io/dark-templates-demo/writing/contrast-floors.html)**
 — what the floors are, why a naive check is worse than none, and the fix.
 
