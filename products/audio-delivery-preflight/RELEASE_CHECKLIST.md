@@ -15,7 +15,7 @@ This checklist separates repository evidence, a local archive, a customer-tested
 - [x] Minimum deployment target fixed as macOS 14.0.
 - [x] Privacy and limitations documents included.
 - [x] Selected icon master, provenance, `.icns`, bundle metadata, and package-contract checks are present.
-- [ ] Inspect the packaged icon in Finder, Dock, light appearance, dark appearance, and small sizes.
+- [ ] Inspect the packaged icon in Finder, Dock, light appearance, dark appearance, and small sizes. The exact `.icns` now passes direct dark-appearance visual review at 512, 32, and 16 pixels; Finder, Dock, and light appearance remain open.
 - [ ] Customer license terms are drafted in `CUSTOMER_LICENSE_DRAFT.md`; seller legal review, verified identity, acceptance, rename to `LICENSE.txt`, and customer-archive inclusion remain open. “All rights reserved” metadata is not a substitute.
 - [ ] Known critical bugs reviewed immediately before release.
 
@@ -31,7 +31,7 @@ This checklist separates repository evidence, a local archive, a customer-tested
 - [x] Copy the ZIP and checksum to `Audio Delivery Preflight 0.1.0 Universal Unsigned 41beb74` outside temporary storage, verify the external sidecar and ZIP structure there, and retain the earlier durable pair for rollback until provider readback succeeds.
 - [x] Independently extract the exact durable `41beb74` archive, verify provenance, architecture, signatures, internal and external manifests, run its packaged CLI against the included sample, export all reports, require `ready`, and prove source immutability.
 - [x] Normally launch a fresh extraction of the exact replacement app and open its native chooser directly on the included `Sample Delivery Package`; Artwork, Credits, and Masters were visible. The control connection dropped when Open was clicked, so post-selection state is not inferred.
-- [ ] Normally launch and complete the GUI workflow in the exact replacement `41beb74` app. Review-requirements evidence from the superseded `60b9638` app remains historical only.
+- [x] Normally launch the exact replacement `41beb74` app and complete one packaged General Audio GUI happy path through `Ready`, result tabs, all three native report exports, and source-immutability verification. Review-requirements evidence from the superseded `60b9638` app remains historical only; the remaining manual matrix is tracked below.
 
 ## Selected unsigned distribution route
 
@@ -44,25 +44,25 @@ Apple Developer Program payment, Developer ID certificate creation, notarization
 - [x] Put the same unsigned, not-notarized, Gatekeeper, checksum, and manual-opening disclosure on the Gumroad product page before purchase.
 - [x] Preserve the previously verified `60b9638` archive and checksum on Gumroad product `vddnq` while the replacement is being prepared; its downloaded provider copy verified as SHA-256 `be7a195b...6d04`.
 - [x] Replace the unpublished Gumroad attachment with the exact `41beb74` ZIP and sidecar. After a saved-page reload, Gumroad's folder download contained exactly the 2,136,210-byte ZIP and 126-byte sidecar; both resolved to SHA-256 `cb175ec7a22413ae8d2a024f31471766da4dd98bac84718cfbb28184a3bc9ebf`. Only then remove the superseded `be7a195b...6d04` provider folder, save, reload, and download the sole remaining folder again with the same result.
-- [ ] Exercise the browser-quarantined customer copy: extract, launch, complete the core workflow, and confirm the selected source folder remains unchanged.
+- [ ] Exercise the browser-quarantined customer copy: extract, launch, complete the core workflow, and confirm the selected source folder remains unchanged. An isolated checksum-verified top-level-quarantined copy was attempted on macOS 27.0 build `26A5416b`, but the host returned the same `spctl` Code Signing subsystem internal error for the known exact app and the isolated copy; no warning was bypassed and the customer-path gate remains open.
 
 Do not describe the unsigned archive as Apple-verified, notarized, or a normal one-click installation.
 
 ## Manual product validation
 
 - [x] Historical smoke: choose the included deterministic sample using the native chooser in the durable `60b9638` app and reach Review requirements.
-- [ ] Repeat chooser, Review requirements, scan, results, and exports in the exact durable replacement `41beb74` app.
+- [x] Complete an exact packaged General Audio GUI scan, inspect `Ready`, findings/role-assignment/inventory tabs, export HTML/JSON/SHA-256 through native save panels, and validate the exported evidence.
 - [ ] Drop a Finder folder into the application.
-- [ ] Review every built-in preset and a Custom preset.
-- [ ] Start and cancel a scan; confirm the result cannot be reported as ready.
-- [ ] Review filters, repeated findings, details, inventory, and role assignments.
-- [ ] Export HTML, JSON, and SHA-256 files to newly chosen destinations.
-- [ ] Confirm the selected source package is byte-for-byte unchanged.
+- [ ] Review every built-in preset and a Custom preset in the GUI. General Audio completed; Digital Release and Stereo Premaster selector values read back; the exact packaged CLI returned `ready` for all four presets; Custom GUI interaction remains open after the control bridge detached.
+- [ ] Start and cancel a scan manually; confirm the result cannot be reported as ready. Seven focused cancellation tests pass, but they do not replace the manual control check.
+- [ ] Review filters, repeated findings, details, inventory, and role assignments. The zero-finding General Audio view, six-entry inventory, and expected empty role-assignment view passed; repeated-finding/detail interaction remains open.
+- [x] Export HTML, JSON, and SHA-256 files to newly chosen destinations through the exact packaged GUI and verify each result.
+- [x] Confirm the exact packaged sample is byte-for-byte unchanged after the GUI scan and exports, including SHA-256, size, mtime, and mode.
 - [ ] Verify keyboard-only operation.
 - [ ] Verify VoiceOver labels, order, status announcements, and controls.
 - [ ] Verify increased text size and both light and dark appearances.
-- [ ] Inspect the selected packaged icon in Finder and Dock at normal and small sizes in both appearances.
-- [ ] Observe or deny network access while scanning the final packaged build.
+- [ ] Inspect the selected packaged icon in Finder and Dock at normal and small sizes in both appearances. Direct extraction passed at 512, 32, and 16 pixels in dark appearance only.
+- [ ] Observe or deny network access while scanning the final packaged GUI build. The exact app had no socket over 30 idle polls, and the exact packaged CLI had none throughout a Digital Release scan at 0.1-second polling; active GUI scan/firewall observation remains open.
 - [ ] Test on an independent installation at the macOS 14 floor.
 - [ ] Compare multiple audio and artwork formats with trusted tools.
 
