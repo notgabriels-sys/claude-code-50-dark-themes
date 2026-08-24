@@ -233,6 +233,9 @@
   }
   footer a{color:var(--mute);text-decoration:none;border-bottom:1px solid var(--hair)}
   footer a:hover{color:var(--accent);border-color:var(--accent-dim)}
+  footer .directory-badge{display:inline-flex;align-items:center;border:0;opacity:.78;transition:opacity .15s ease}
+  footer .directory-badge:hover{opacity:1;border:0}
+  footer .directory-badge img{display:block;width:160px;height:44px}
 
   @media (prefers-reduced-motion: reduce){
     .card{transition:none}
@@ -299,6 +302,7 @@
 
   <nav class="jumpnav" aria-label="Page sections">
     <a href="#themes">Free themes</a>
+    <a href="claude-code-theme-install-guide.html">Install guide</a>
     <a href="#demos">Live demos</a>
     <a href="#tools">Dark tools</a>
     <a href="#audio">Mixing &amp; mastering</a>
@@ -328,6 +332,15 @@
   </div>
   <div class="grid" id="grid"></div>
 
+  <section class="more" id="writing">
+    <h2>From the build</h2>
+    <p>Practical notes on the design decisions behind the free theme set.</p>
+    <div class="tools">
+      <a class="tool" href="claude-code-theme-install-guide.html"><b>Claude Code theme install guide</b><span>Native plugin install, manual JSON fallback, terminal background setup and common troubleshooting.</span><i>Free guide</i></a>
+      <a class="tool" href="semantic-terminal-colors.html"><b>Semantic terminal colors</b><span>What building 50 Claude Code themes taught me about status meaning, contrast roles, surfaces and transparent terminals.</span><i>Free article</i></a>
+    </div>
+  </section>
+
   <section class="more" id="tools">
     <h2>More dark tools</h2>
     <p>Same palettes, same care, applied elsewhere. One-time purchases, no subscriptions.</p>
@@ -351,9 +364,11 @@
 
   <section class="more" id="audio">
     <h2>Audio tools &amp; services</h2>
-    <p>Production downloads and direct studio work. One-time purchases, no subscriptions.</p>
+    <p>Free references, production downloads and direct studio work. One-time purchases where paid, no subscriptions.</p>
     <div class="tools">
-      <a class="tool" href="audio-delivery-preflight-cli.html"><b>Audio Delivery Preflight CLI</b><span>Command-line checks for bounced WAV deliveries: sample rate, bit depth, loudness metadata, clipping risk and filename hygiene.</span><i>€19</i></a>
+      <a class="tool" href="audio-delivery-checklist.html"><b>Free WAV Delivery Checklist</b><span>Manual handoff checks for bounced WAV folders before client, label, archive or release delivery.</span><i>Free</i></a>
+      <a class="tool" href="audio-delivery-handoff-guide.html"><b>WAV Delivery Handoff Guide</b><span>Practical article on checking bounced audio packages before sending them to clients, labels, archives or release workflows.</span><i>Free</i></a>
+      <a class="tool" href="audio-delivery-preflight-cli.html"><b>Audio Delivery Preflight CLI</b><span>Command-line checks for bounced WAV deliveries: technical file evidence, package consistency, filename hygiene, reports and checksums.</span><i>€19</i></a>
       <a class="tool" href="https://notgabriel.gumroad.com/l/mix-revision-mastering-handoff-kit"><b>Mix Revision &amp; Mastering Handoff Kit</b><span>Eleven editable templates for feedback, version control, approval and delivery.</span><i>€14</i></a>
       <a class="tool" href="https://notgabriel.gumroad.com/l/techno-mix-preflight-toolkit"><b>Techno Mix Preflight Toolkit</b><span>Twenty-four reference WAVs and a practical guide for checking a mix before mastering.</span><i>€12</i></a>
       <a class="tool" href="https://notgabriel.gumroad.com/l/raw-techno-kick-architecture"><b>Raw Techno Kick Architecture</b><span>Forty WAVs for building weight, impact and movement in raw techno drums.</span><i>€15</i></a>
@@ -376,8 +391,10 @@
   <footer>
     <span>50 dark themes for Claude Code</span>
     <span>Set your terminal background to each theme's surface hex for the full effect.</span>
+    <span><a href="claude-code-theme-install-guide.html">Install guide</a></span>
     <span><a href="https://audio.gabs-utilities.com/">Audio services</a></span>
     <span><a href="https://tools.gabs-utilities.com/">Tools + Code</a></span>
+    <span><a class="directory-badge" href="https://thedevtoolsdir.com/product/gabs-utilities?ref=badge" rel="dofollow"><img src="https://thedevtoolsdir.com/badge/gabs-utilities.svg" alt="Featured on TheDevToolsDir" width="160" height="44"></a></span>
     <span><a href="impressum.html">Impressum</a></span>
   </footer>
 </div>

@@ -42,12 +42,16 @@ you read matches the rate card below. A Stripe link that "looked right"
 sat on the shop through two review rounds and was a live €1,200 charge
 for the wrong service.
 
-Current state of `index.html` (re-counted 2026-08-24):
+Current state of `index.html` (re-counted 2026-08-24, after merging `main`):
 
 - **18 Gumroad links**, all `notgabriel.gumroad.com/l/<slug>`, no duplicates:
-  one free zip (line 310), twelve product cards (335–347), the complete-kit
-  bundle (349), and four audio products (357–360).
-- **3 PayPal NCP links** in "Mixing & mastering" (370–372).
+  one free zip (line 314), twelve product cards (348–360), the complete-kit
+  bundle (362), and four audio products (372–375).
+- **3 PayPal NCP links** in "Mixing & mastering" (385–387).
+
+Line numbers move every time `index.html` changes — they already shifted once
+inside a single day. Trust the counts and the slugs; re-derive the lines with
+`grep -n`.
 - **No Stripe link anywhere.** `git log -S stripe` across all branches still
   returns nothing, so the bad €1,200 link never lived in this repo — it was on
   some other surface, and may still be.

@@ -11,13 +11,20 @@ for human listening.
 ## Verified public links
 
 - Landing page: <https://gabs-utilities.com/audio-delivery-preflight-cli.html>
+- Free checklist: <https://gabs-utilities.com/audio-delivery-checklist.html>
+- Practical guide: <https://gabs-utilities.com/audio-delivery-handoff-guide.html>
+- Press / launch kit: <https://gabs-utilities.com/audio-delivery-preflight-press-kit.html>
 - Sample report: <https://gabs-utilities.com/audio-delivery-preflight-sample-report.html>
+- Public feedback thread: <https://github.com/notgabriels-sys/claude-code-50-dark-themes/issues/21>
 - Public feedback form: <https://github.com/notgabriels-sys/claude-code-50-dark-themes/issues/new?template=audio-preflight-feedback.yml>
 - Gumroad listing: <https://notgabriel.gumroad.com/l/audio-delivery-preflight-cli>
 - Catalog card: <https://gabriel-tools-and-code.notgabriels960914.chatgpt.site>
 - Product thumbnail / social image: <https://gabs-utilities.com/assets/audio-delivery-preflight-cli-thumbnail.png>
 - LLM discovery file: <https://gabs-utilities.com/llms.txt>
 - IndexNow verification key: <https://gabs-utilities.com/79F35EFA-F66B-4757-848A-FB1A9029E1BA.txt>
+
+Internal reply guide for public comments and criticism:
+[`COMMUNITY_RESPONSE_PLAYBOOK.md`](COMMUNITY_RESPONSE_PLAYBOOK.md)
 
 Use `https://gabs-utilities.com/audio-delivery-preflight-cli.html` for
 submissions. Normal HTTPS returned `HTTP/2 200` for the root site and the Audio
@@ -32,6 +39,16 @@ while the new key was pending validation, then HTTP 200 on the retry.
 Community-safety update from 2026-08-24: the product now has a public sample
 report and GitHub feedback template so launch posts can ask for critique of the
 checks instead of only pushing a sales link.
+Public critique thread opened 2026-08-24:
+<https://github.com/notgabriels-sys/claude-code-50-dark-themes/issues/21>.
+Free checklist added 2026-08-24 so audio-community posts can lead with a
+useful public resource before mentioning the paid CLI:
+<https://gabs-utilities.com/audio-delivery-checklist.html>.
+Practical handoff guide added 2026-08-24 so communities can be pointed to a
+useful evergreen explanation rather than only a product page:
+<https://gabs-utilities.com/audio-delivery-handoff-guide.html>.
+Press kit and Product Hunt gallery assets added 2026-08-24:
+<https://gabs-utilities.com/audio-delivery-preflight-press-kit.html>.
 
 ## Core positioning
 
@@ -57,9 +74,12 @@ Long description:
 
 ## Submission priority
 
-1. Product Hunt: good general launch surface once Gabriel can post from a
-   personal account. Use the landing page as the primary URL, Gumroad as the
-   purchase link, and the sample report in the first comment or gallery.
+1. Product Hunt: good general launch surface once Gabriel can post from his
+   personal account. The welcome email arrived on 2026-08-23, and Product
+   Hunt's current help center says new accounts must complete onboarding before
+   posting. Use the signed-in dashboard as the gate, the landing page as the
+   primary URL, Gumroad as the purchase link, and the free checklist plus
+   sample report in the first comment or gallery. Do not ask for upvotes.
 2. KVR Developer Access: strong fit for an audio utility, but requires account
    access and a developer/product listing flow.
 3. AlternativeTo: useful for long-tail discovery. Submit as an adjacent utility,
@@ -68,13 +88,16 @@ Long description:
    if SaaSHub requires domain email verification.
 5. BetaList: wait. Their criteria favour technology startups with their own
    active landing page/domain and accessible product flow.
-6. Show HN: wait unless there is a free demo, trial, source preview or other
-   immediately runnable path. The sample report helps, but a paid-only landing
-   page is still a weak fit for Show HN.
+6. Show HN: do not retry while the account has a `showlim` restriction. Do not
+   bypass the restriction with another account or a disguised repost.
+7. Audio communities/newsletters: use the free checklist first. Ask for missing
+   checks or wording critique. Mention the paid CLI only as the optional
+   automation path for repeated delivery work.
 
 ## Submission reference links
 
 - Product Hunt launch guide: <https://www.producthunt.com/launch>
+- Product Hunt launch preparation guide: <https://www.producthunt.com/launch/preparing-for-launch>
 - Product Hunt posting guide: <https://help.producthunt.com/en/articles/479557-how-to-post-a-product>
 - KVR Developer Access: <https://www.kvraudio.com/developer_application.php>
 - AlternativeTo FAQ / suggest application flow: <https://alternativeto.net/faq/>
@@ -91,7 +114,7 @@ Product name:
 
 Tagline:
 
-> Check bounced WAV delivery folders before client or label handoff.
+> Check bounced WAV folders before client or label handoff.
 
 Description:
 
@@ -116,6 +139,13 @@ Thumbnail:
 > dark audio-check visual with no misleading text, logos, people, fake DAW
 > screenshot or mastering claim.
 
+Gallery:
+
+1. `assets/product-hunt/audio-preflight-01-check-the-bounce.png`
+2. `assets/product-hunt/audio-preflight-02-free-checklist.png`
+3. `assets/product-hunt/audio-preflight-03-local-reports.png`
+4. `assets/product-hunt/audio-preflight-04-what-it-is-not.png`
+
 First comment:
 
 > I built this from a recurring studio problem: delivery folders often fail on
@@ -123,6 +153,9 @@ First comment:
 > Delivery Preflight CLI is a local, read-only checker for bounced WAV handoffs.
 > It does not master, upload, rename or judge the music. It checks the technical
 > package so the human can focus on the actual work.
+>
+> Free checklist:
+> https://gabs-utilities.com/audio-delivery-checklist.html
 >
 > Sample report:
 > https://gabs-utilities.com/audio-delivery-preflight-sample-report.html
@@ -132,16 +165,24 @@ First comment:
 Use this when a community allows feedback/showcase posts but dislikes direct
 self-promo:
 
-> I made a small local CLI for checking bounced WAV delivery folders before
-> client, label or release handoff.
+> I made a free WAV delivery handoff checklist for checking bounced folders
+> before client, label, archive or release delivery:
 >
-> It does not master, upload, rename or judge the music. It checks boring
-> delivery issues: technical WAV evidence, naming/version hygiene, report output
-> and checksum workflow.
+> https://gabs-utilities.com/audio-delivery-checklist.html
 >
-> I would appreciate feedback from engineers/producers on whether the sample
-> report catches the right issues:
+> It covers boring-but-real mistakes: unclear brief, ambiguous versions, missing
+> credits/metadata, unchecked archives, undocumented format assumptions and
+> skipped listening passes.
+>
+> I also built a paid local CLI that automates part of this, but I’d genuinely
+> like feedback on the checklist first: what checks are missing, and what wording
+> would make it more useful for engineers/producers?
+>
+> Sample report, if useful:
 > https://gabs-utilities.com/audio-delivery-preflight-sample-report.html
+>
+> Public feedback thread:
+> https://github.com/notgabriels-sys/claude-code-50-dark-themes/issues/21
 >
 > Product page, if useful:
 > https://gabs-utilities.com/audio-delivery-preflight-cli.html

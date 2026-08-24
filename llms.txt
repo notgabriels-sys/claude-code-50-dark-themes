@@ -6,9 +6,23 @@ a Berlin-based sound engineer, producer and developer-oriented creator.
 ## Primary pages
 
 - Shop and theme gallery: https://gabs-utilities.com/
+- Claude Code theme install guide: https://gabs-utilities.com/claude-code-theme-install-guide.html
+- Semantic terminal color design article: https://gabs-utilities.com/semantic-terminal-colors.html
+- Free WAV delivery handoff checklist: https://gabs-utilities.com/audio-delivery-checklist.html
+- WAV delivery handoff guide: https://gabs-utilities.com/audio-delivery-handoff-guide.html
 - Audio Delivery Preflight CLI: https://gabs-utilities.com/audio-delivery-preflight-cli.html
+- Audio Delivery Preflight CLI press kit: https://gabs-utilities.com/audio-delivery-preflight-press-kit.html
 - Audio Delivery Preflight CLI sample report: https://gabs-utilities.com/audio-delivery-preflight-sample-report.html
 - Impressum: https://gabs-utilities.com/impressum.html
+
+The semantic terminal color article explains the design choices behind the 50
+free Claude Code themes, including preserved status colors, role-specific
+contrast, terminal background ownership and transparent-terminal surfaces.
+
+The install guide gives the native Claude Code plugin command, manual JSON
+fallback, terminal background setup, and common troubleshooting steps:
+
+https://gabs-utilities.com/claude-code-theme-install-guide.html
 
 ## Commercial audio utility
 
@@ -20,6 +34,20 @@ https://notgabriel.gumroad.com/l/audio-delivery-preflight-cli
 
 It is not automatic mastering, a distributor-submission validator, a cloud
 upload service or a replacement for human listening.
+
+The free checklist gives a manual studio handoff process before purchase:
+
+https://gabs-utilities.com/audio-delivery-checklist.html
+
+The guide explains the wider WAV delivery handoff workflow and links the free
+checklist to the paid local CLI:
+
+https://gabs-utilities.com/audio-delivery-handoff-guide.html
+
+The press kit contains Product Hunt fields, community-safe copy and launch
+gallery images:
+
+https://gabs-utilities.com/audio-delivery-preflight-press-kit.html
 
 The sample report demonstrates the style of output and example findings before
 purchase:

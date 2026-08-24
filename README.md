@@ -7,7 +7,7 @@ Light / Dark / System, so these install into Claude Code, which does support cus
 
 Requires **Claude Code v2.1.118 or later**, the release that introduced named custom themes.
 
-**→ Visual gallery: [open `index.html`](index.html)** (all 50 previewed in their own colors).
+**→ Visual gallery and storefront: [gabs-utilities.com](https://gabs-utilities.com/)** (all 50 previewed in their own colors).
 
 Prefer a zip to a `git clone`? The same 50 themes are a **free download** here:
 **[get the pack →](https://notgabriel.gumroad.com/l/slhbym)** (name your price, $0 is fine).
@@ -24,6 +24,9 @@ claude plugin install 50-dark-themes@notgabriels-themes
 Then run `/theme` in Claude Code and pick one. The plugin keeps the pack together and makes updates
 available through the marketplace. Press `Ctrl+E` on a plugin theme if you want an editable copy in
 `~/.claude/themes/`.
+
+Step-by-step install, terminal background and troubleshooting guide:
+<https://gabs-utilities.com/claude-code-theme-install-guide.html>
 
 ### Also in this marketplace — Berlin Studio Skills
 
@@ -145,6 +148,7 @@ subscriptions, and none of it needed to use the themes above.
 
 Practical release and handoff utilities from the same studio workflow.
 
+- **[Free WAV Delivery Checklist](https://gabs-utilities.com/audio-delivery-checklist.html)** — manual handoff checks for bounced WAV folders before client, label, archive or release delivery.
 - **[Audio Delivery Preflight CLI](https://gabs-utilities.com/audio-delivery-preflight-cli.html)** — command-line checks for bounced WAV delivery folders before client, label or release handoff. macOS and Linux builds · €19.
 
 ### More free things
@@ -165,6 +169,9 @@ python3 theme_contrast.py themes/
 ```
 
 ### How these are built
+
+**[What 50 dark Claude Code themes taught me about semantic terminal colors](https://gabs-utilities.com/semantic-terminal-colors.html)**
+— why decorative accents can move while errors, warnings, success states and diffs keep their meaning.
 
 **[Every one of my 50 themes failed a contrast check](https://notgabriels-sys.github.io/dark-templates-demo/writing/contrast-floors.html)**
 — what the floors are, why a naive check is worse than none, and the fix.

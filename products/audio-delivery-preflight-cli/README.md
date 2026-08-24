@@ -4,7 +4,12 @@ Audio Delivery Preflight CLI is a local, read-only technical inventory and deliv
 
 Public product page: <https://gabs-utilities.com/audio-delivery-preflight-cli.html>
 
+Free WAV delivery checklist: <https://gabs-utilities.com/audio-delivery-checklist.html>
+
 Gumroad listing: <https://notgabriel.gumroad.com/l/audio-delivery-preflight-cli>
+
+Launch/community reply guide:
+[`COMMUNITY_RESPONSE_PLAYBOOK.md`](COMMUNITY_RESPONSE_PLAYBOOK.md)
 
 ## Commands
 

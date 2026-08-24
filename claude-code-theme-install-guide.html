@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Claude Code theme install guide — 50 free dark themes</title>
+<meta name="description" content="Install 50 free dark themes for Claude Code using the native plugin flow or manual JSON files, then set your terminal background and troubleshoot common theme issues.">
+<meta name="robots" content="index,follow,max-image-preview:large">
+<link rel="canonical" href="https://gabs-utilities.com/claude-code-theme-install-guide.html">
+<link rel="license" href="https://opensource.org/license/mit">
+<meta property="og:title" content="Claude Code theme install guide">
+<meta property="og:description" content="Native plugin install, manual JSON install, terminal background setup and troubleshooting for 50 free Claude Code dark themes.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://gabs-utilities.com/claude-code-theme-install-guide.html">
+<meta property="og:image" content="https://gabs-utilities.com/preview.png">
+<meta property="og:image:width" content="1280">
+<meta property="og:image:height" content="720">
+<meta property="og:image:alt" content="Gallery preview of 50 dark Claude Code themes.">
+<meta property="og:site_name" content="Gabs Utilities">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Claude Code theme install guide">
+<meta name="twitter:description" content="Install 50 free dark themes for Claude Code and fix common theme setup issues.">
+<meta name="twitter:image" content="https://gabs-utilities.com/preview.png">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "HowTo",
+  "name": "How to install 50 dark themes for Claude Code",
+  "description": "Install the free MIT-licensed 50 Dark Themes for Claude Code pack using the native plugin marketplace flow or manual JSON files.",
+  "url": "https://gabs-utilities.com/claude-code-theme-install-guide.html",
+  "image": "https://gabs-utilities.com/preview.png",
+  "datePublished": "2026-08-24",
+  "dateModified": "2026-08-24",
+  "author": {
+    "@type": "Person",
+    "name": "Gabriel García Alonso"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Gabs Utilities"
+  },
+  "supply": [
+    {
+      "@type": "HowToSupply",
+      "name": "Claude Code v2.1.118 or later"
+    },
+    {
+      "@type": "HowToSupply",
+      "name": "Terminal application with editable background color"
+    }
+  ],
+  "tool": [
+    {
+      "@type": "HowToTool",
+      "name": "Claude Code"
+    }
+  ],
+  "step": [
+    {
+      "@type": "HowToStep",
+      "name": "Add the theme marketplace",
+      "text": "Run claude plugin marketplace add notgabriels-sys/claude-code-50-dark-themes."
+    },
+    {
+      "@type": "HowToStep",
+      "name": "Install the theme plugin",
+      "text": "Run claude plugin install 50-dark-themes@notgabriels-themes."
+    },
+    {
+      "@type": "HowToStep",
+      "name": "Choose a theme",
+      "text": "Run /theme in Claude Code and select one of the installed dark themes."
+    },
+    {
+      "@type": "HowToStep",
+      "name": "Set terminal background",
+      "text": "For the full visual match, set the terminal application's background to the selected theme's surface hex from the gallery."
+    }
+  ],
+  "isAccessibleForFree": true,
+  "license": "https://opensource.org/license/mit"
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Do the 50 Claude Code themes cost anything?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No. The 50 dark Claude Code themes are free and MIT licensed. The Gumroad ZIP can be downloaded for zero by choosing the free price."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Why do I need to set the terminal background separately?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Claude Code themes style Claude Code's interface but do not control the terminal application's own background. Matching the terminal background to the theme surface hex makes the palette feel integrated."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "What should I do if a theme does not appear in /theme?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Check that Claude Code is updated, the plugin install command completed, and manual JSON files are inside ~/.claude/themes when using the manual route. Restart Claude Code once if the themes directory was created for the first time."
+      }
+    }
+  ]
+}
+</script>
+<style>
+:root{
+  color-scheme:dark;
+  --bg:#0f1011;--panel:#17181a;--panel2:#202124;--hair:#2e2f33;
+  --ink:#e9eaec;--muted:#a0a4ab;--faint:#7a7e85;--accent:#c9cfd6;
+  font-family:ui-monospace,"SF Mono",SFMono-Regular,"JetBrains Mono",Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:radial-gradient(900px 560px at 50% -10%,#232529 0%,rgba(35,37,41,0) 64%),var(--bg);color:var(--ink);line-height:1.66}
+a{color:inherit}.wrap{max-width:1120px;margin:0 auto;padding:28px 20px 56px}
+header,footer{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;color:var(--muted);font-size:13px}
+header{margin-bottom:44px}.brand{font-size:12px;letter-spacing:.18em;text-transform:uppercase;text-decoration:none;color:var(--muted)}
+.nav{display:flex;gap:14px;flex-wrap:wrap}.nav a{text-decoration:none}.nav a:hover{color:var(--ink)}
+.hero,.panel,.callout,.step,.code-panel,.table-wrap{border:1px solid var(--hair);background:linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.025));border-radius:22px;box-shadow:0 24px 80px rgba(0,0,0,.28)}
+.hero{padding:clamp(26px,5vw,48px);margin-bottom:18px}.eyebrow{font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--accent);margin:0 0 18px}
+h1{font-size:clamp(40px,7.3vw,78px);letter-spacing:-.065em;line-height:.94;margin:0 0 20px;max-width:13ch}
+.lead{font-size:clamp(18px,2vw,23px);color:#d8dadd;max-width:900px;margin:0 0 22px}
+.byline{font-size:13px;color:var(--faint)}.ctas{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}
+.button{display:inline-flex;text-decoration:none;border-radius:999px;padding:12px 16px;font-weight:760;background:var(--accent);color:#101112}
+.secondary{background:rgba(255,255,255,.035);border:1px solid var(--hair);color:var(--ink)}
+.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:18px 0}.panel{padding:18px}.panel b{display:block;margin-bottom:5px}.muted{color:var(--muted)}
+.article{max-width:860px;margin:34px auto 0}.section{margin-top:38px}.section h2{font-size:clamp(27px,4vw,38px);line-height:1.08;letter-spacing:-.045em;margin:0 0 14px}.section h3{font-size:21px;letter-spacing:-.025em;margin:24px 0 8px}
+.section p{color:var(--muted)}.section strong{color:var(--ink)}code{color:var(--ink);background:#0b0c0d;border:1px solid var(--hair);border-radius:5px;padding:1px 5px}
+.steps{display:grid;gap:12px;margin-top:16px}.step{display:grid;grid-template-columns:48px 1fr;gap:14px;padding:18px}.num{width:38px;height:38px;border-radius:999px;display:grid;place-items:center;background:rgba(201,207,214,.12);border:1px solid rgba(201,207,214,.32);color:var(--accent);font-weight:820}
+.code-panel{overflow:hidden;margin:18px 0}.code-head{display:flex;justify-content:space-between;gap:12px;padding:11px 15px;border-bottom:1px solid var(--hair);font-size:12px;color:var(--faint)}
+pre{margin:0;padding:18px;overflow:auto;white-space:pre;color:#d7dadd;background:#0b0c0d;font:13px/1.65 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.callout{padding:22px;margin-top:28px;background:linear-gradient(180deg,rgba(201,207,214,.08),rgba(255,255,255,.025))}.callout p:last-child{margin-bottom:0}
+.table-wrap{overflow:auto;margin-top:16px}table{width:100%;border-collapse:collapse;min-width:620px}th,td{text-align:left;padding:13px 15px;border-bottom:1px solid var(--hair);vertical-align:top}th{font-size:12px;text-transform:uppercase;letter-spacing:.12em;color:var(--faint)}td{color:var(--muted)}td:first-child{color:var(--ink);font-weight:700}
+.final{margin-top:42px;padding:26px}.final h2{margin-top:0}.final p{color:var(--muted)}
+footer{margin-top:42px;padding-top:22px;border-top:1px solid var(--hair)}
+@media(max-width:760px){.grid{grid-template-columns:1fr}.step{grid-template-columns:1fr}h1{font-size:44px}.hero{padding:26px}.article{margin-top:26px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <a class="brand" href="./">Gabs Utilities</a>
+    <nav class="nav" aria-label="Install guide navigation">
+      <a href="./">Theme gallery</a>
+      <a href="semantic-terminal-colors.html">Design notes</a>
+      <a href="https://github.com/notgabriels-sys/claude-code-50-dark-themes">Source</a>
+      <a href="impressum.html">Impressum</a>
+    </nav>
+  </header>
+
+  <main>
+    <article>
+      <section class="hero">
+        <p class="eyebrow">Install guide / Claude Code themes</p>
+        <h1>How to install 50 dark themes for Claude Code.</h1>
+        <p class="lead">Use the native Claude Code plugin flow when possible. Keep the manual JSON route as a fallback. Then set your terminal background to the selected theme’s surface color so the interface feels intentional instead of half-applied.</p>
+        <p class="byline">By Gabriel García Alonso · 24 August 2026 · Free MIT theme pack</p>
+        <div class="ctas">
+          <a class="button" href="#native">Install with the plugin flow</a>
+          <a class="button secondary" href="#manual">Manual install fallback</a>
+          <a class="button secondary" href="./">Browse the gallery</a>
+        </div>
+      </section>
+
+      <section class="grid" aria-label="Install guide summary">
+        <div class="panel"><b>Recommended route</b><span class="muted">Install the native Claude Code plugin and choose a theme with <code>/theme</code>.</span></div>
+        <div class="panel"><b>Fallback route</b><span class="muted">Copy the JSON files into <code>~/.claude/themes</code> if you prefer manual control.</span></div>
+        <div class="panel"><b>Visual finish</b><span class="muted">Set your terminal background to the theme surface hex shown in the gallery.</span></div>
+      </section>
+
+      <div class="article">
+        <section class="section" id="native">
+          <h2>Recommended: native Claude Code plugin install.</h2>
+          <p>This route keeps the pack connected to Claude Code’s plugin system and avoids hand-copying fifty JSON files.</p>
+          <div class="code-panel" aria-label="Native Claude Code theme plugin install command">
+            <div class="code-head"><span>Terminal</span><span>Claude Code v2.1.118+</span></div>
+<pre>claude plugin marketplace add notgabriels-sys/claude-code-50-dark-themes
+claude plugin install 50-dark-themes@notgabriels-themes</pre>
+          </div>
+          <div class="steps">
+            <article class="step"><span class="num">01</span><div><h3>Add the marketplace.</h3><p>Run the marketplace command once. It tells Claude Code where the theme plugin lives.</p></div></article>
+            <article class="step"><span class="num">02</span><div><h3>Install the plugin.</h3><p>Run the plugin install command. The pack exposes the 50 dark themes through Claude Code’s theme picker.</p></div></article>
+            <article class="step"><span class="num">03</span><div><h3>Choose a theme inside Claude Code.</h3><p>Open Claude Code, run <code>/theme</code>, and select the theme you want. Use <code>Ctrl+E</code> if you want an editable copy.</p></div></article>
+          </div>
+        </section>
+
+        <section class="section" id="manual">
+          <h2>Fallback: manual JSON install.</h2>
+          <p>Use this route if you want to inspect or modify the files yourself, or if the plugin flow is unavailable in your setup.</p>
+          <div class="code-panel" aria-label="Manual Claude Code theme install command">
+            <div class="code-head"><span>Terminal</span><span>Manual JSON copy</span></div>
+<pre>mkdir -p ~/.claude/themes
+cp *.json ~/.claude/themes/</pre>
+          </div>
+          <p>After copying, run <code>/theme</code> in Claude Code. If the directory did not exist before, restart Claude Code once so it discovers the new theme folder.</p>
+          <div class="callout">
+            <p><strong>Small safety note:</strong> manual copying is fine for personal use, but keep backups if you edit the JSON files directly. The source repository stays as the clean reference copy.</p>
+          </div>
+        </section>
+
+        <section class="section">
+          <h2>Set the terminal background.</h2>
+          <p>Claude Code themes style Claude Code’s interface, but your terminal application owns the actual background. For the full visual match, set the terminal background to the theme’s surface hex from the gallery.</p>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Example theme</th><th>Terminal background</th><th>What changes</th></tr></thead>
+              <tbody>
+                <tr><td>Graphite</td><td><code>#1D1E20</code></td><td>A neutral dark surface that makes the grey accents feel integrated.</td></tr>
+                <tr><td>Terminal</td><td><code>#171C17</code></td><td>A green-leaning dark surface for the classic terminal mood.</td></tr>
+                <tr><td>Blueprint</td><td><code>#15202E</code></td><td>A blue-black surface that supports cooler accents.</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>If you use a transparent terminal, the user-message surface in Claude Code will still render as an opaque panel. That is expected.</p>
+        </section>
+
+        <section class="section">
+          <h2>Troubleshooting.</h2>
+          <div class="steps">
+            <article class="step"><span class="num">?</span><div><h3>The themes do not appear in <code>/theme</code>.</h3><p>Update Claude Code, rerun the install command, and check that manual files are in <code>~/.claude/themes</code>. Restart once if that directory was just created.</p></div></article>
+            <article class="step"><span class="num">?</span><div><h3>The colors look different from the gallery.</h3><p>Set your terminal background to the theme surface hex. The gallery previews assume that matching surface.</p></div></article>
+            <article class="step"><span class="num">?</span><div><h3>Errors or warnings look less themed than expected.</h3><p>That is intentional. The pack leaves success, error, warning and diff states on Claude Code’s base dark behavior so status meaning stays recognizable.</p></div></article>
+            <article class="step"><span class="num">?</span><div><h3>You want to customize a theme.</h3><p>Use <code>Ctrl+E</code> from Claude Code’s theme picker or edit a copied JSON file. Keep the original source file as a reference.</p></div></article>
+          </div>
+        </section>
+
+        <section class="section callout final">
+          <h2>Start with the free pack.</h2>
+          <p>All 50 Claude Code dark themes are free and MIT licensed. If you want the wider catalog later, the site links to paid dark UI kits, templates, cheatsheets, palettes, wallpapers and audio workflow utilities — but the theme pack itself stays free.</p>
+          <div class="ctas">
+            <a class="button" href="./">Open the theme gallery</a>
+            <a class="button secondary" href="semantic-terminal-colors.html">Read the design notes</a>
+            <a class="button secondary" href="https://github.com/notgabriels-sys/claude-code-50-dark-themes">View source</a>
+          </div>
+        </section>
+      </div>
+    </article>
+  </main>
+
+  <footer>
+    <span>Install guide by Gabriel García Alonso.</span>
+    <span><a href="./">50 dark themes</a> · <a href="semantic-terminal-colors.html">Semantic colors</a> · <a href="impressum.html">Impressum</a></span>
+  </footer>
+</div>
+</body>
+</html>

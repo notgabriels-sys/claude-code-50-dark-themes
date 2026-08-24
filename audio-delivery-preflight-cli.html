@@ -84,6 +84,14 @@
     },
     {
       "@type": "Question",
+      "name": "Is there a free checklist before buying?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. A free WAV delivery handoff checklist is available at https://gabs-utilities.com/audio-delivery-checklist.html for manual preflight before using the paid CLI."
+      }
+    },
+    {
+      "@type": "Question",
       "name": "Who is Audio Delivery Preflight CLI for?",
       "acceptedAnswer": {
         "@type": "Answer",
@@ -145,9 +153,12 @@ footer{margin-top:36px;padding-top:22px;border-top:1px solid var(--hair);display
     <a class="brand" href="./">Gabs Utilities</a>
     <nav class="nav" aria-label="Product navigation">
       <a href="./">Shop</a>
+      <a href="audio-delivery-checklist.html">Free checklist</a>
+      <a href="audio-delivery-handoff-guide.html">Guide</a>
       <a href="audio-delivery-preflight-sample-report.html">Sample report</a>
+      <a href="audio-delivery-preflight-press-kit.html">Press kit</a>
       <a href="https://notgabriel.gumroad.com/l/audio-delivery-preflight-cli">Buy on Gumroad</a>
-      <a href="https://github.com/notgabriels-sys/claude-code-50-dark-themes/issues/new?template=audio-preflight-feedback.yml">Feedback</a>
+      <a href="https://github.com/notgabriels-sys/claude-code-50-dark-themes/issues/21">Feedback</a>
       <a href="impressum.html">Impressum</a>
     </nav>
   </header>
@@ -160,10 +171,13 @@ footer{margin-top:36px;padding-top:22px;border-top:1px solid var(--hair);display
         <p class="lead">Audio Delivery Preflight CLI is a practical command-line checker for bounced WAV delivery folders before client, label or release handoff.</p>
         <div class="ctas">
           <a class="button primary" href="https://notgabriel.gumroad.com/l/audio-delivery-preflight-cli">Buy for €19 →</a>
+          <a class="button secondary" href="audio-delivery-checklist.html">Use free checklist</a>
+          <a class="button secondary" href="audio-delivery-handoff-guide.html">Read handoff guide</a>
           <a class="button secondary" href="audio-delivery-preflight-sample-report.html">View sample report</a>
           <a class="button secondary" href="#checks">See what it checks</a>
         </div>
         <p class="note">One-time Gumroad purchase. Current customer package includes macOS Apple Silicon, macOS Intel and Linux amd64 builds, each with a checksum file.</p>
+        <p class="note"><b>macOS installation note:</b> This CLI is independently distributed without an installer, Apple Developer ID signature or Apple notarization. On macOS 13 or later, first launch may require a one-time user-approved Gatekeeper action.</p>
       </div>
       <div class="terminal" aria-label="Example terminal output">
         <div class="terminal-head"><span>audio-preflight</span><span class="dots"><i></i><i></i><i></i></span></div>
@@ -195,6 +209,7 @@ Fix the boring mistakes early.</pre>
         <li>It is not automatic mastering.</li>
         <li>It is not a replacement for listening, taste or engineering judgement.</li>
         <li>It does not publish, upload or mutate your release metadata for you.</li>
+        <li>It is a command-line utility, not a native macOS app, plug-in or installer.</li>
       </ul>
     </section>
 
@@ -203,8 +218,10 @@ Fix the boring mistakes early.</pre>
       <div class="faq">
         <div class="tile"><b>Does it upload my audio?</b><span>No. It runs locally and does not require an account, cloud upload or network workflow.</span></div>
         <div class="tile"><b>Does it change my files?</b><span>No. It checks a selected delivery folder and writes reports only when you explicitly request report paths.</span></div>
+        <div class="tile"><b>Can I use something free first?</b><span>Yes. The free WAV delivery handoff checklist gives you the manual process before deciding whether the CLI saves enough repeated work.</span></div>
         <div class="tile"><b>Can I inspect output first?</b><span>Yes. The public sample report shows the shape of a real preflight result without requiring a purchase.</span></div>
         <div class="tile"><b>Which systems are included?</b><span>The current Gumroad package includes macOS Apple Silicon, macOS Intel and Linux amd64 builds with checksum sidecars.</span></div>
+        <div class="tile"><b>What should macOS users expect?</b><span>The CLI has no installer, Apple Developer ID signature or Apple notarization. macOS 13 or later may require a one-time user-approved Gatekeeper action. Windows is not supported.</span></div>
         <div class="tile"><b>Who gets the most value?</b><span>Anyone repeatedly sending or receiving bounced WAV folders: producers, engineers, label operators and technical collaborators.</span></div>
       </div>
     </section>
@@ -213,6 +230,9 @@ Fix the boring mistakes early.</pre>
       <h2>Built for feedback, not hype</h2>
       <p>If a real delivery workflow needs a check that is missing, or if the wording overclaims anything, open a public feedback issue. The goal is a useful studio utility that survives engineer scrutiny.</p>
       <div class="ctas">
+        <a class="button secondary" href="audio-delivery-checklist.html">Read the free checklist</a>
+        <a class="button secondary" href="audio-delivery-preflight-press-kit.html">Open press / launch kit</a>
+        <a class="button secondary" href="https://github.com/notgabriels-sys/claude-code-50-dark-themes/issues/21">Join the public feedback thread</a>
         <a class="button secondary" href="https://github.com/notgabriels-sys/claude-code-50-dark-themes/issues/new?template=audio-preflight-feedback.yml">Suggest a check or correction</a>
       </div>
     </section>
@@ -220,7 +240,7 @@ Fix the boring mistakes early.</pre>
     <section class="band" aria-label="Purchase">
       <div>
         <h2>Audio Delivery Preflight CLI</h2>
-        <p class="small">Sold and delivered through Gumroad. Current package: six verified customer files after duplicate-attachment cleanup.</p>
+        <p class="small">Sold and delivered through Gumroad. Current package: six verified customer files after duplicate-attachment cleanup. The macOS executables are independently distributed without an installer, Apple Developer ID signature or Apple notarization.</p>
       </div>
       <div>
         <div class="price">€19</div>
