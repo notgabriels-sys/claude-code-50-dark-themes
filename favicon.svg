@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+  <title>Gabs Utilities</title>
+  <rect width="64" height="64" rx="15" fill="#0d0e10"/>
+  <path d="M47 17H29c-9 0-14 6-14 15v4c0 8 5 13 14 13h18V34H33"
+        fill="none" stroke="#f1eff4" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="39" y="30" width="11" height="11" rx="3.5" fill="#a66bff"/>
+</svg>
