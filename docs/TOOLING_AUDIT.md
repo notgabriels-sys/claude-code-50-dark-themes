@@ -211,21 +211,24 @@ There is no equivalent Gumroad guard, because no verified Gumroad table exists
 yet. Building one is the obvious next step, and it needs a signed-in browser
 pass over 18 products.
 
-## 7. Execution checklist — **declined 2026-08-24**
+## 7. Execution checklist — **reopened 2026-08-24**
 
-**Gabriel's decision: leave the connectors and plugins as they are.** The
-sections below are kept as a record of what the audit found, not as an open
-recommendation. Do not re-raise them as work.
+Gabriel first said to leave the connectors and plugins alone, then reversed
+within the hour and asked for the unnecessary connectors to be removed. The
+reversal stands; this section is live work again, not a record.
 
-The cost of carrying ~100 connectors and ~100 plugins is real but tolerable:
-a longer tool list, slower selection, and the connector flapping observed
-during this session. None of it is a correctness risk. Weigh that against a
-70-item click-through in account settings and the call is reasonable.
+It still cannot be done from a Claude Code session. Removing a connector or
+disabling a plugin is a claude.ai account setting, and no tool in a session
+writes to those — `ListConnectors` and `ListPlugins` read, `SuggestConnectors`
+and `SuggestPluginInstall` only render a card. A non-interactive session also
+cannot run an OAuth flow. Verified repeatedly, including against the `claude`
+CLI (`claude plugin disable` reaches only plugins installed in the local
+container — there are none) and `claude.ai/directory/all` (HTTP 403 without
+the user's browser session).
 
-If it is ever revisited, everything needed is below, still accurate as of the
-audit date.
+So the list below is the work, and it needs Gabriel in claude.ai settings.
+The click-through checklist is published as an artifact for tracking progress.
 
-### Reference — what the audit found
 
 
 Everything below is a claude.ai account setting. A non-interactive session has
