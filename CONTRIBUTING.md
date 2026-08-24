@@ -64,6 +64,7 @@ its interface colours; the terminal application still owns the terminal backgrou
 
 ```bash
 node scripts/sync-plugin-themes.mjs
+node --test scripts/*.test.mjs
 node scripts/verify.mjs
 claude plugin validate .
 ```
@@ -79,8 +80,9 @@ The command checks:
 - the marketplace and plugin manifests used by Claude Code;
 - a fresh-machine-safe installation command;
 - the verified shop payment surfaces.
+- valid 1280×720 PNG assets for the curated developer picks.
 
-GitHub Actions runs the same check on every push and pull request.
+GitHub Actions runs the regression tests and the same repository check on every push and pull request.
 
 For a visual check, copy the changed theme into `~/.claude/themes/`, run `/theme`, and inspect normal
 text, user messages, tool calls, permission prompts and plan mode. If the themes directory did not

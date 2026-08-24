@@ -43,6 +43,7 @@ const verifiedGumroadSlugs = new Set([
   "xcxeb",
   "xjcbji",
 ]);
+const pngSignature = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
 function fail(message) {
   throw new Error(message);
@@ -207,10 +208,24 @@ for (const [, productHtml] of featuredProducts) {
   if (!imagePath.startsWith("assets/products/") || !imageAlt.trim()) {
     fail("Curated developer pick covers must use local product assets and meaningful alt text.");
   }
+  let imageData;
   try {
-    await readFile(new URL(imagePath, root));
+    imageData = await readFile(new URL(imagePath, root));
   } catch {
     fail(`Curated developer pick cover is missing: ${imagePath}.`);
+  }
+  const hasValidPngHeader =
+    imageData.length >= 24 &&
+    imageData.subarray(0, pngSignature.length).equals(pngSignature) &&
+    imageData.readUInt32BE(8) === 13 &&
+    imageData.subarray(12, 16).equals(Buffer.from("IHDR"));
+  if (!hasValidPngHeader) {
+    fail(`Curated developer pick cover must be a valid PNG: ${imagePath}.`);
+  }
+  const imageWidth = imageData.readUInt32BE(16);
+  const imageHeight = imageData.readUInt32BE(20);
+  if (imageWidth !== 1280 || imageHeight !== 720) {
+    fail(`Curated developer pick cover must be 1280x720: ${imagePath}.`);
   }
 
   const gumroadLink = productHtml.match(/https:\/\/notgabriel\.gumroad\.com\/l\/([a-z0-9-]+)/);
