@@ -11,6 +11,8 @@ for human listening.
 ## Verified public links
 
 - Landing page: <https://gabs-utilities.com/audio-delivery-preflight-cli.html>
+- Sample report: <https://gabs-utilities.com/audio-delivery-preflight-sample-report.html>
+- Public feedback form: <https://github.com/notgabriels-sys/claude-code-50-dark-themes/issues/new?template=audio-preflight-feedback.yml>
 - Gumroad listing: <https://notgabriel.gumroad.com/l/audio-delivery-preflight-cli>
 - Catalog card: <https://gabriel-tools-and-code.notgabriels960914.chatgpt.site>
 - Product thumbnail / social image: <https://gabs-utilities.com/assets/audio-delivery-preflight-cli-thumbnail.png>
@@ -27,6 +29,9 @@ Search/discovery update from 2026-08-24: the landing page includes
 IndexNow submission for the root site, Audio Delivery Preflight CLI landing
 page, `llms.txt`, sitemap and Impressum returned HTTP 202 on the first request
 while the new key was pending validation, then HTTP 200 on the retry.
+Community-safety update from 2026-08-24: the product now has a public sample
+report and GitHub feedback template so launch posts can ask for critique of the
+checks instead of only pushing a sales link.
 
 ## Core positioning
 
@@ -53,8 +58,8 @@ Long description:
 ## Submission priority
 
 1. Product Hunt: good general launch surface once Gabriel can post from a
-   personal account. Use the landing page as the primary URL and Gumroad as the
-   purchase link.
+   personal account. Use the landing page as the primary URL, Gumroad as the
+   purchase link, and the sample report in the first comment or gallery.
 2. KVR Developer Access: strong fit for an audio utility, but requires account
    access and a developer/product listing flow.
 3. AlternativeTo: useful for long-tail discovery. Submit as an adjacent utility,
@@ -64,7 +69,8 @@ Long description:
 5. BetaList: wait. Their criteria favour technology startups with their own
    active landing page/domain and accessible product flow.
 6. Show HN: wait unless there is a free demo, trial, source preview or other
-   immediately runnable path. A paid-only landing page is a weak fit.
+   immediately runnable path. The sample report helps, but a paid-only landing
+   page is still a weak fit for Show HN.
 
 ## Submission reference links
 
@@ -117,6 +123,28 @@ First comment:
 > Delivery Preflight CLI is a local, read-only checker for bounced WAV handoffs.
 > It does not master, upload, rename or judge the music. It checks the technical
 > package so the human can focus on the actual work.
+>
+> Sample report:
+> https://gabs-utilities.com/audio-delivery-preflight-sample-report.html
+
+## Community-safe feedback post
+
+Use this when a community allows feedback/showcase posts but dislikes direct
+self-promo:
+
+> I made a small local CLI for checking bounced WAV delivery folders before
+> client, label or release handoff.
+>
+> It does not master, upload, rename or judge the music. It checks boring
+> delivery issues: technical WAV evidence, naming/version hygiene, report output
+> and checksum workflow.
+>
+> I would appreciate feedback from engineers/producers on whether the sample
+> report catches the right issues:
+> https://gabs-utilities.com/audio-delivery-preflight-sample-report.html
+>
+> Product page, if useful:
+> https://gabs-utilities.com/audio-delivery-preflight-cli.html
 
 ## KVR draft
 

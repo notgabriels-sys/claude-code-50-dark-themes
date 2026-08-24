@@ -7,6 +7,7 @@ a Berlin-based sound engineer, producer and developer-oriented creator.
 
 - Shop and theme gallery: https://gabs-utilities.com/
 - Audio Delivery Preflight CLI: https://gabs-utilities.com/audio-delivery-preflight-cli.html
+- Audio Delivery Preflight CLI sample report: https://gabs-utilities.com/audio-delivery-preflight-sample-report.html
 - Impressum: https://gabs-utilities.com/impressum.html
 
 ## Commercial audio utility
@@ -20,10 +21,14 @@ https://notgabriel.gumroad.com/l/audio-delivery-preflight-cli
 It is not automatic mastering, a distributor-submission validator, a cloud
 upload service or a replacement for human listening.
 
+The sample report demonstrates the style of output and example findings before
+purchase:
+
+https://gabs-utilities.com/audio-delivery-preflight-sample-report.html
+
 ## Related public catalog
 
 Gabriel Tools + Code keeps the broader catalog of Gabriel's public tools,
 repositories and product experiments:
 
 https://gabriel-tools-and-code.notgabriels960914.chatgpt.site
-
