@@ -45,6 +45,10 @@ Rules:
   states so an error never becomes green because of a palette choice.
 - `userMessageBackground` and its hover state should be visibly above the intended terminal
   background, including on transparent terminals.
+- Keep primary text at 7:1, foreground accents at 4.5:1, readable secondary text at 3.5:1,
+  and functional borders or indicators at 3:1 against the matching gallery background.
+- Reserve `subtle` for non-essential decorative hairlines. Use `inactive` for readable secondary
+  text; do not place meaningful text or required control boundaries in `subtle`.
 - Do not invent new override keys. Claude Code silently discards unknown keys.
 
 ## Updating the gallery
@@ -69,7 +73,8 @@ The command checks:
 - exactly 50 root-level theme files;
 - valid JSON, unique names and the shared override-key contract;
 - six-digit hex colours;
-- parity between theme files and gallery cards;
+- role-aware contrast against each theme's recommended terminal background;
+- palette parity between theme files and gallery cards;
 - byte-for-byte parity between root themes and the installable plugin;
 - the marketplace and plugin manifests used by Claude Code;
 - a fresh-machine-safe installation command;

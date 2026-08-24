@@ -7,29 +7,30 @@
 <meta name="description" content="Browse and install 50 hand-tuned dark themes for Claude Code as a native plugin. Free, MIT licensed, with semantic status colors and a visual gallery.">
 <meta name="robots" content="index,follow,max-image-preview:large">
 <meta name="theme-color" content="#0f1011">
-<link rel="canonical" href="https://notgabriels-sys.github.io/claude-code-50-dark-themes/">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="canonical" href="https://gabs-utilities.com/">
 <link rel="license" href="https://opensource.org/license/mit">
 <link rel="alternate" type="application/json" title="Claude Code marketplace manifest" href="https://raw.githubusercontent.com/notgabriels-sys/claude-code-50-dark-themes/main/.claude-plugin/marketplace.json">
 <meta property="og:title" content="50 Dark Themes for Claude Code">
 <meta property="og:description" content="Install 50 hand-tuned dark themes as a native Claude Code plugin. Free, MIT licensed, and designed to preserve semantic status colors.">
-<meta property="og:image" content="https://notgabriels-sys.github.io/claude-code-50-dark-themes/preview.png">
-<meta property="og:url" content="https://notgabriels-sys.github.io/claude-code-50-dark-themes/">
+<meta property="og:image" content="https://gabs-utilities.com/preview.png">
+<meta property="og:url" content="https://gabs-utilities.com/">
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="NotGabriels Tools + Code">
+<meta property="og:site_name" content="Gabs Utilities">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="50 Dark Themes for Claude Code">
 <meta name="twitter:description" content="Install 50 hand-tuned dark themes as a native Claude Code plugin. Free, MIT licensed, with semantic status colors.">
-<meta name="twitter:image" content="https://notgabriels-sys.github.io/claude-code-50-dark-themes/preview.png">
+<meta name="twitter:image" content="https://gabs-utilities.com/preview.png">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
   "@graph": [
     {
       "@type": "SoftwareApplication",
-      "@id": "https://notgabriels-sys.github.io/claude-code-50-dark-themes/#plugin",
+      "@id": "https://gabs-utilities.com/#plugin",
       "name": "50 Dark Themes for Claude Code",
       "description": "A free native Claude Code plugin containing 50 hand-tuned dark themes that preserve semantic success, error and warning colors.",
-      "url": "https://notgabriels-sys.github.io/claude-code-50-dark-themes/",
+      "url": "https://gabs-utilities.com/",
       "downloadUrl": "https://github.com/notgabriels-sys/claude-code-50-dark-themes/releases/tag/themes-plugin-v1.0.0",
       "applicationCategory": "DeveloperApplication",
       "softwareVersion": "1.0.0",
@@ -45,7 +46,7 @@
       "author": {
         "@type": "Person",
         "name": "Gabriel García Alonso",
-        "url": "https://gabriel-tools-and-code.notgabriels960914.chatgpt.site"
+        "url": "https://tools.gabs-utilities.com"
       }
     },
     {
@@ -206,7 +207,7 @@
     margin-left:4px;font-size:12px;font-weight:600;letter-spacing:.02em;
     color:var(--fg);
   }
-  .card .hex{margin-left:auto;font-size:10.5px;color:var(--a);letter-spacing:.04em}
+  .card .hex{margin-left:auto;font-size:10.5px;color:var(--sh);letter-spacing:.04em}
   .term{padding:13px 14px 15px;font-size:12px;line-height:1.75;flex:1}
   .term .row{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .term .acc{color:var(--a)}
@@ -233,6 +234,14 @@
   }
   footer a{color:var(--mute);text-decoration:none;border-bottom:1px solid var(--hair)}
   footer a:hover{color:var(--accent);border-color:var(--accent-dim)}
+  footer .directory-badge{display:inline-flex;align-items:center;border:0;opacity:.78;transition:opacity .15s ease}
+  footer .directory-badge:hover{opacity:1;border:0}
+  footer .directory-badge img{display:block;width:160px;height:44px}
+  footer .product-hunt-launch{display:inline-flex;flex-direction:column;gap:1px;min-width:218px;padding:10px 14px;
+    border:1px solid #3f343d;border-radius:10px;background:#221d21;color:#eef2ff;opacity:.9;transition:opacity .15s ease}
+  footer .product-hunt-launch:hover{opacity:1;border-color:#695867;color:#fff}
+  footer .product-hunt-launch small{font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#c9c1c8}
+  footer .product-hunt-launch b{font-size:15px;line-height:1.25;color:inherit}
 
   @media (prefers-reduced-motion: reduce){
     .card{transition:none}
@@ -242,6 +251,7 @@
   .cta{margin:26px 0 4px;padding:20px 22px;border:1px solid var(--hair);border-left:3px solid var(--accent);
        border-radius:12px;background:rgba(255,255,255,.02)}
   .cta p{margin:0;font-size:15px;line-height:1.6;color:var(--mute)}
+  .cta p+p{margin-top:8px}
   .cta a{color:var(--accent);text-decoration:none;font-weight:600;border-bottom:1px solid var(--accent-dim)}
   .cta a:hover{border-color:var(--accent)}
   .more{margin:52px 0 0;padding-top:30px;border-top:1px solid var(--hair)}
@@ -263,6 +273,7 @@
 </head>
 <body>
 <div class="wrap">
+  <main>
   <header>
     <p class="kicker">Claude Code · terminal themes</p>
     <h1><span class="n">50</span> dark themes<br>for Claude&nbsp;Code</h1>
@@ -298,15 +309,19 @@
 
   <nav class="jumpnav" aria-label="Page sections">
     <a href="#themes">Free themes</a>
+    <a href="claude-code-theme-install-guide.html">Install guide</a>
     <a href="#demos">Live demos</a>
     <a href="#tools">Dark tools</a>
     <a href="#audio">Mixing &amp; mastering</a>
+    <a href="https://tools.gabs-utilities.com/">Tools + Code catalog</a>
   </nav>
 
   <div class="cta">
     <p>All 50 are free and MIT — clone the repo, or
     <a href="https://notgabriel.gumroad.com/l/slhbym">grab the zip</a>
     (name your price, $0 is fine).</p>
+    <p>If you want the matching paid assets, jump to the <a href="#tools">dark product kits</a>
+    or the <a href="#audio">audio tools and services</a> below.</p>
   </div>
 
   <section class="more featured-demos" id="demos">
@@ -324,11 +339,19 @@
   </div>
   <div class="grid" id="grid"></div>
 
+  <section class="more" id="writing">
+    <h2>From the build</h2>
+    <p>Practical notes on the design decisions behind the free theme set.</p>
+    <div class="tools">
+      <a class="tool" href="claude-code-theme-install-guide.html"><b>Claude Code theme install guide</b><span>Native plugin install, manual JSON fallback, terminal background setup and common troubleshooting.</span><i>Free guide</i></a>
+      <a class="tool" href="semantic-terminal-colors.html"><b>Semantic terminal colors</b><span>What building 50 Claude Code themes taught me about status meaning, contrast roles, surfaces and transparent terminals.</span><i>Free article</i></a>
+    </div>
+  </section>
+
   <section class="more" id="tools">
     <h2>More dark tools</h2>
     <p>Same palettes, same care, applied elsewhere. One-time purchases, no subscriptions.</p>
     <div class="tools">
-      <a class="tool" href="https://notgabriel.gumroad.com/l/dark-app-screens"><b>Dark App Screens</b><span>Six app screens &mdash; dashboard, sign in, table, settings, inbox, 404 &mdash; plus 50 themes.</span><i>&euro;14</i></a>
       <a class="tool" href="https://notgabriel.gumroad.com/l/ckthsb"><b>Dark UI Kit</b><span>One CSS file — buttons, forms, cards, tabs, modal. No build step.</span><i>€12</i></a>
       <a class="tool" href="https://notgabriel.gumroad.com/l/cfcvmy"><b>Dark HTML Templates</b><span>8 single-file pages — portfolio, SaaS, docs, pricing.</span><i>$19</i></a>
       <a class="tool" href="https://notgabriel.gumroad.com/l/dark-app-screens"><b>Dark App Screens</b><span>Six responsive product screens with 50 drop-in dark themes.</span><i>€14</i></a>
@@ -347,14 +370,18 @@
 
   <section class="more" id="audio">
     <h2>Audio tools &amp; services</h2>
-    <p>Production downloads and direct studio work. One-time purchases, no subscriptions.</p>
+    <p>Production downloads and direct studio work. One-time purchases where paid, no subscriptions.</p>
     <div class="tools">
-      <a class="tool" href="https://notgabriel.gumroad.com/l/mix-revision-mastering-handoff-kit"><b>Mix Revision &amp; Mastering Handoff Kit</b><span>Eleven editable templates for feedback, version control, approval and delivery.</span><i>€14</i></a>
-      <a class="tool" href="https://notgabriel.gumroad.com/l/techno-mix-preflight-toolkit"><b>Techno Mix Preflight Toolkit</b><span>Twenty-four reference WAVs and a practical guide for checking a mix before mastering.</span><i>€12</i></a>
       <a class="tool" href="https://notgabriel.gumroad.com/l/raw-techno-kick-architecture"><b>Raw Techno Kick Architecture</b><span>Forty WAVs for building weight, impact and movement in raw techno drums.</span><i>€15</i></a>
       <a class="tool" href="https://notgabriel.gumroad.com/l/industrial-tension-fx"><b>Industrial Tension &amp; Transition FX</b><span>Forty-eight WAVs for pressure, transitions and controlled industrial movement.</span><i>€15</i></a>
     </div>
-    <p>Mixing and mastering services are booked and paid through PayPal.</p>
+    <p>For the complete service menu, rates, preparation notes and contact route, use the dedicated audio service site first.</p>
+    <div class="tools">
+      <a class="tool" href="https://audio.gabs-utilities.com/"><b>Mixing &amp; mastering services</b><span>Dedicated service page for mastering, stem mastering, track mixing, mix + master, vinyl pre-mastering and mix feedback.</span><i>Site</i></a>
+      <a class="tool" href="https://audio.gabs-utilities.com/links.html"><b>Audio service links</b><span>Shareable profile page with rates, project brief, one-sheet and contact.</span><i>Links</i></a>
+      <a class="tool" href="https://tools.gabs-utilities.com/"><b>Tools + Code catalog</b><span>The wider catalog of studio utilities, repositories, product experiments and audio workflow tools.</span><i>Catalog</i></a>
+    </div>
+    <p>Direct PayPal checkout links remain available for simple service bookings.</p>
     <div class="tools">
       <a class="tool" href="https://www.paypal.com/ncp/payment/3SWZ64EXW9C8W"><b>Mastering</b><span>Your finished mix, prepared for release — level, balance and translation across systems.</span><i>€45</i></a>
       <a class="tool" href="https://www.paypal.com/ncp/payment/6Z93DNS76PCGS"><b>Mixing</b><span>Your stems balanced, shaped and glued into a finished mix.</span><i>€160</i></a>
@@ -362,9 +389,17 @@
     </div>
   </section>
 
+  </main>
+
   <footer>
     <span>50 dark themes for Claude Code</span>
     <span>Set your terminal background to each theme's surface hex for the full effect.</span>
+    <span><a href="claude-code-theme-install-guide.html">Install guide</a></span>
+    <span><a href="https://audio.gabs-utilities.com/">Audio services</a></span>
+    <span><a href="https://tools.gabs-utilities.com/">Tools + Code</a></span>
+    <span><a class="product-hunt-launch" href="https://www.producthunt.com/products/50-dark-themes-for-claude-code?launch=50-dark-themes-for-claude-code&amp;utm_source=website&amp;utm_medium=footer&amp;utm_campaign=50-dark-themes-launch"><small>Find us on Product Hunt</small><b>50 Dark Themes for Claude Code →</b></a></span>
+    <span><a class="directory-badge" href="https://thedevtoolsdir.com/product/gabs-utilities?ref=badge" rel="dofollow"><img src="https://thedevtoolsdir.com/badge/gabs-utilities.svg" alt="Featured on TheDevToolsDir" width="160" height="44"></a></span>
+    <span><a href="impressum.html">Impressum</a></span>
   </footer>
 </div>
 
@@ -378,7 +413,7 @@ const THEMES = [
   ["Blueprint","#52C2F0","#9DDCF7","#E8EAED","#9DA5AF","#15202E"],
   ["Cassette","#E8853C","#F1B385","#EFE4D2","#AFA69D","#231F1A"],
   ["Clay","#C97B5A","#DDAC97","#EDEAE9","#AFA39D","#24201E"],
-  ["Cobalt Hour","#4D7CFE","#9EB8FE","#E8E9ED","#9DA2AF","#181F2F"],
+  ["Cobalt Hour","#5280FE","#9EB8FE","#E8E9ED","#9DA2AF","#181F2F"],
   ["Concrete","#7FA6B8","#B3CAD5","#EAEBEB","#A2A6A9","#222425"],
   ["Coral","#F08060","#F7BCAB","#EDE9E9","#AFA09D","#221D1C"],
   ["Crossfade","#3EC8E8","#87DDF1","#E9E9EC","#9F9FAD","#1A1A1E"],
@@ -398,16 +433,16 @@ const THEMES = [
   ["Lagoon","#4FD8E8","#97E8F1","#E8ECED","#9DAAAF","#152023"],
   ["Lichen","#AFC49A","#D8E2CE","#EAECE9","#A3AD9F","#20241E"],
   ["Moss","#93BF6F","#BDD8A7","#E9EDE9","#9DAFA0","#1E241F"],
-  ["Mulberry","#D05880","#E298B0","#EDE8EB","#AF9DA6","#24191F"],
+  ["Mulberry","#D25E85","#E298B0","#EDE8EB","#AF9DA6","#24191F"],
   ["Nachtschicht","#E3B341","#EDCF88","#E8EAED","#9DA4AF","#1B1E22"],
   ["Night Vision","#52E07A","#97ECAF","#E9ECEA","#9FADA3","#151916"],
-  ["Nightshade","#8656C6","#B293DB","#EBE8ED","#A69DAF","#19161D"],
-  ["Off Air","#D35147","#E38F89","#ECEAEA","#AAA4A1","#201E1D"],
+  ["Nightshade","#976ECE","#B293DB","#EBE8ED","#A69DAF","#19161D"],
+  ["Off Air","#D7635A","#E38F89","#ECEAEA","#AAA4A1","#201E1D"],
   ["Orchid","#C86AD8","#E0ABE9","#EDE8ED","#AC9DAF","#1F1820"],
-  ["Oxide","#C16044","#D59481","#EDE9E9","#AFA09D","#221D1C"],
+  ["Oxide","#C76F55","#D59481","#EDE9E9","#AFA09D","#221D1C"],
   ["Petrol","#2FB8C6","#6BD1DC","#E8EDED","#9DACAF","#152528"],
   ["Plasma","#E858C8","#F2A0E0","#EDE8ED","#AF9DAF","#221622"],
-  ["Signal Red","#E5484D","#EF8F92","#E9EAEC","#A0A2AB","#1A1B1E"],
+  ["Signal Red","#E64F54","#EF8F92","#E9EAEC","#A0A2AB","#1A1B1E"],
   ["Sonar","#40E0C0","#86EBD7","#E8EBED","#9DA6AF","#121921"],
   ["Soot","#9C958C","#C2BDB8","#EDEAE9","#AFA49D","#1C1917"],
   ["Static","#E4E6E8","#FFFFFF","#EBEBEB","#A6A6A6","#212121"],

@@ -1,4 +1,0 @@
-asset_id,asset_role,approved_source,processing_state,sample_rate_hz,bit_depth,channels,start_requirement,tail_requirement,filename,status,verified_by,notes
-EXP-01,main master,FEX_STEEL_BLOOM_MAIN_MASTER-v02.wav,approved master processing,48000,24,stereo,00:00:00.000,full natural tail,FEX_STEEL_BLOOM_MAIN_MASTER-v02_48k24b.wav,CONFIRMED,Example Engineer,"Fictional example; requirements read from Example Label brief v2"
-EXP-02,instrumental master,FEX_STEEL_BLOOM_INSTRUMENTAL_MASTER-v02.wav,approved master processing,48000,24,stereo,00:00:00.000,full natural tail,FEX_STEEL_BLOOM_INSTRUMENTAL_MASTER-v02_48k24b.wav,CONFIRMED,Example Engineer,"Fictional example; level relationship checked against main"
-EXP-03,60-second edit master,FEX_STEEL_BLOOM_EDIT60_MASTER-v02.wav,approved master processing,48000,24,stereo,00:00:00.000,complete edit tail,FEX_STEEL_BLOOM_EDIT60_MASTER-v02_48k24b.wav,CONFIRMED,Example Engineer,"Fictional example; exact edit duration confirmed"

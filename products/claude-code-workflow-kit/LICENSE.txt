@@ -1,0 +1,16 @@
+Claude Code Workflow Kit License
+
+You may:
+- use these templates in personal projects
+- use these templates in commercial projects
+- modify them for your own repositories, clients, and internal workflows
+- include adapted versions inside private client deliverables
+
+You may not:
+- resell this kit as a template pack
+- redistribute the original files as a competing product
+- upload the full kit to public template libraries
+- imply that Anthropic, OpenAI, Claude, or Codex endorses this product
+
+No warranty is provided. You are responsible for reviewing any generated code, technical decisions, releases, and client communications.
+

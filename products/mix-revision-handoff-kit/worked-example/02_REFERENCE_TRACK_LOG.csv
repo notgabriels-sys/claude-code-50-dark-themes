@@ -1,3 +1,0 @@
-reference_id,artist,title,source,reference_purpose,exact_section,level_matched,decision_supported,notes
-REF-01,Fictional Reference Artist,Foundry Pulse,Client-supplied WAV,"Low-end movement and kick-to-bass separation",01:08-01:40,YES,"Keep sub centred while preserving bass motion","Reference is fictional; compare direction rather than loudness"
-REF-02,Fictional Reference Artist,Glass Below,Client-supplied WAV,"Vocal depth without losing consonant detail",00:42-01:12,YES,"Use depth automation rather than a permanently darker vocal","Reference is fictional"
