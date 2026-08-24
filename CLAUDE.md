@@ -92,10 +92,9 @@ audio products):
 
 - **16 Gumroad links**, all `notgabriel.gumroad.com/l/<slug>`, no duplicates:
   one free zip, twelve product cards, the complete-kit bundle, and two audio
-  products. It was 18 earlier the same day — `mix-revision-mastering-handoff-kit`
-  and `techno-mix-preflight-toolkit` were removed from the shop along with their
-  whole product directories. The CI guard caught the disappearance; the slugs
-  were then dropped from `knownGumroadSlugs` deliberately.
+  products. Two retired audio products and their directories were removed from
+  the shop. The CI guard caught the disappearance; the slugs were then dropped
+  from `knownGumroadSlugs` deliberately.
 - **3 PayPal NCP links** in "Mixing & mastering".
 - **No Stripe link anywhere.** `git log -S stripe` across all branches still
   returns nothing beyond this file and the CI guard itself, so the bad €1,200

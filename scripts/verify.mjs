@@ -58,10 +58,9 @@ const knownGumroadSlugs = [
   "jqrdfy",
   "xcxeb",
   "wuhehk",
-  // mix-revision-mastering-handoff-kit and techno-mix-preflight-toolkit were
-  // removed from the shop on 2026-08-24 together with their whole product
-  // directories; the guard caught their disappearance and they are dropped here
-  // deliberately, not to silence it.
+  // Two retired audio products were removed from the shop on 2026-08-24
+  // together with their whole product directories; the guard caught their
+  // disappearance and they are dropped here deliberately, not to silence it.
   "raw-techno-kick-architecture",
   "industrial-tension-fx",
 ];
