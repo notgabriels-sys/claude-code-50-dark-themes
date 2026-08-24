@@ -5,14 +5,41 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Audio Delivery Preflight CLI — WAV delivery checker for engineers</title>
 <meta name="description" content="A €19 command-line tool for checking bounced WAV delivery folders before client, label or release handoff. macOS and Linux builds.">
+<meta name="keywords" content="audio delivery checker, WAV preflight, mastering handoff, mix delivery QA, command line audio tool, label delivery, release handoff">
+<meta name="robots" content="index,follow">
 <link rel="canonical" href="https://notgabriels-sys.github.io/claude-code-50-dark-themes/audio-delivery-preflight-cli.html">
 <meta property="og:title" content="Audio Delivery Preflight CLI">
 <meta property="og:description" content="Check bounced WAV delivery folders before client, label or release handoff. macOS and Linux builds, sold via Gumroad for €19.">
 <meta property="og:type" content="product">
 <meta property="og:url" content="https://notgabriels-sys.github.io/claude-code-50-dark-themes/audio-delivery-preflight-cli.html">
+<meta property="og:site_name" content="Gabs Utilities">
 <meta property="product:price:amount" content="19.0">
 <meta property="product:price:currency" content="EUR">
 <meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Audio Delivery Preflight CLI">
+<meta name="twitter:description" content="A local checker for bounced WAV delivery folders before client, label or release handoff.">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Audio Delivery Preflight CLI",
+  "applicationCategory": "MultimediaApplication",
+  "operatingSystem": "macOS, Linux",
+  "description": "A local command-line checker for bounced WAV delivery folders before client, label or release handoff.",
+  "url": "https://notgabriels-sys.github.io/claude-code-50-dark-themes/audio-delivery-preflight-cli.html",
+  "publisher": {
+    "@type": "Person",
+    "name": "Gabriel García Alonso"
+  },
+  "offers": {
+    "@type": "Offer",
+    "price": "19",
+    "priceCurrency": "EUR",
+    "availability": "https://schema.org/InStock",
+    "url": "https://notgabriel.gumroad.com/l/audio-delivery-preflight-cli"
+  }
+}
+</script>
 <style>
 :root{
   color-scheme:dark;
@@ -51,11 +78,12 @@ pre{margin:0;padding:22px;font:13px/1.6 ui-monospace,SFMono-Regular,Menlo,Consol
 .tile b{display:block;margin-bottom:6px}.tile span{color:var(--muted);font-size:14px}
 .section{margin-top:24px}.section h2{font-size:30px;letter-spacing:-.04em;margin:0 0 12px}.section p{color:var(--muted)}
 ul{margin:12px 0 0;padding-left:20px;color:#dce3ed}li{margin:7px 0}
+.faq{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:14px}
 .band{margin-top:28px;padding:24px;display:grid;grid-template-columns:1fr auto;gap:18px;align-items:center}
 .price{font-size:32px;font-weight:820;color:var(--warn)}
 .small{font-size:13px;color:var(--muted)}
 footer{margin-top:36px;padding-top:22px;border-top:1px solid var(--hair);display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;color:var(--muted);font-size:13px}
-@media (max-width:760px){.hero,.grid,.band{grid-template-columns:1fr}header{align-items:flex-start;flex-direction:column}h1{font-size:48px}}
+@media (max-width:760px){.hero,.grid,.faq,.band{grid-template-columns:1fr}header{align-items:flex-start;flex-direction:column}h1{font-size:48px}}
 </style>
 </head>
 <body>
@@ -112,6 +140,16 @@ Fix the boring mistakes early.</pre>
         <li>It is not a replacement for listening, taste or engineering judgement.</li>
         <li>It does not publish, upload or mutate your release metadata for you.</li>
       </ul>
+    </section>
+
+    <section class="section" aria-label="Frequently asked questions">
+      <h2>Quick answers</h2>
+      <div class="faq">
+        <div class="tile"><b>Does it upload my audio?</b><span>No. It runs locally and does not require an account, cloud upload or network workflow.</span></div>
+        <div class="tile"><b>Does it change my files?</b><span>No. It checks a selected delivery folder and writes reports only when you explicitly request report paths.</span></div>
+        <div class="tile"><b>Which systems are included?</b><span>The current Gumroad package includes macOS Apple Silicon, macOS Intel and Linux amd64 builds with checksum sidecars.</span></div>
+        <div class="tile"><b>Who gets the most value?</b><span>Anyone repeatedly sending or receiving bounced WAV folders: producers, engineers, label operators and technical collaborators.</span></div>
+      </div>
     </section>
 
     <section class="band" aria-label="Purchase">
