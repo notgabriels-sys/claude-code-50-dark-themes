@@ -110,6 +110,10 @@ if (marketplace.plugins[0].name !== "50-dark-themes") fail("Unexpected marketpla
 if (marketplace.plugins[0].source !== "./plugins/50-dark-themes") fail("Unexpected plugin source path.");
 if (pluginManifest.name !== "50-dark-themes") fail("Unexpected plugin manifest name.");
 if (pluginManifest.experimental?.themes !== "./themes/") fail("Plugin manifest must expose ./themes/.");
+if (!/^\d+\.\d+\.\d+$/.test(pluginManifest.version)) fail("Plugin version must use semantic versioning.");
+if (marketplace.plugins[0].version !== pluginManifest.version) {
+  fail("Marketplace and plugin manifest versions must match.");
+}
 
 const html = await readFile(new URL("index.html", root), "utf8");
 const readme = await readFile(new URL("README.md", root), "utf8");
@@ -171,6 +175,8 @@ for (const id of verifiedPayPalIds) {
     fail(`Verified PayPal link ${id} is missing.`);
   }
 }
+
+await import("./verify-contrast.mjs");
 
 console.log(
   `Verified ${files.length} themes, ${pluginFiles.length} plugin themes, ${galleryThemes.length} gallery cards, ` +
