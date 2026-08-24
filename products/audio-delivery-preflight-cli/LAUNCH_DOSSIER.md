@@ -12,6 +12,7 @@ for human listening.
 
 - Landing page: <https://gabs-utilities.com/audio-delivery-preflight-cli.html>
 - Sample report: <https://gabs-utilities.com/audio-delivery-preflight-sample-report.html>
+- Public feedback thread: <https://github.com/notgabriels-sys/claude-code-50-dark-themes/issues/21>
 - Public feedback form: <https://github.com/notgabriels-sys/claude-code-50-dark-themes/issues/new?template=audio-preflight-feedback.yml>
 - Gumroad listing: <https://notgabriel.gumroad.com/l/audio-delivery-preflight-cli>
 - Catalog card: <https://gabriel-tools-and-code.notgabriels960914.chatgpt.site>
@@ -32,6 +33,8 @@ while the new key was pending validation, then HTTP 200 on the retry.
 Community-safety update from 2026-08-24: the product now has a public sample
 report and GitHub feedback template so launch posts can ask for critique of the
 checks instead of only pushing a sales link.
+Public critique thread opened 2026-08-24:
+<https://github.com/notgabriels-sys/claude-code-50-dark-themes/issues/21>.
 
 ## Core positioning
 
@@ -142,6 +145,9 @@ self-promo:
 > I would appreciate feedback from engineers/producers on whether the sample
 > report catches the right issues:
 > https://gabs-utilities.com/audio-delivery-preflight-sample-report.html
+>
+> Public feedback thread:
+> https://github.com/notgabriels-sys/claude-code-50-dark-themes/issues/21
 >
 > Product page, if useful:
 > https://gabs-utilities.com/audio-delivery-preflight-cli.html

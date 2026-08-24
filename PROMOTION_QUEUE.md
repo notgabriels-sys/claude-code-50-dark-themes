@@ -21,6 +21,23 @@ Best single-line pitch:
 
 > A small dark-themed toolbox for Claude Code users, developers, and technical creators.
 
+## Current priority product
+
+Audio Delivery Preflight CLI is the current careful-promotion target because it
+has a stronger problem/solution story than generic design assets, but it should
+be launched feedback-first.
+
+- Landing page: <https://gabs-utilities.com/audio-delivery-preflight-cli.html>
+- Sample report: <https://gabs-utilities.com/audio-delivery-preflight-sample-report.html>
+- Public feedback thread: <https://github.com/notgabriels-sys/claude-code-50-dark-themes/issues/21>
+- Gumroad listing: <https://notgabriel.gumroad.com/l/audio-delivery-preflight-cli>
+
+Safe angle:
+
+> I built a local read-only CLI for checking bounced WAV delivery folders before
+> client, label or release handoff. I am looking for engineer/developer feedback
+> on whether the sample report catches the right boring-but-real delivery issues.
+
 ## Safe launch order
 
 1. X / build-in-public

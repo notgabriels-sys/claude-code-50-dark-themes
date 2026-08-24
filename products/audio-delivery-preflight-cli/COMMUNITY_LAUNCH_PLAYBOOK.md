@@ -23,6 +23,7 @@ Unsafe launch framing:
 
 - Product page: <https://gabs-utilities.com/audio-delivery-preflight-cli.html>
 - Sample report: <https://gabs-utilities.com/audio-delivery-preflight-sample-report.html>
+- Public feedback thread: <https://github.com/notgabriels-sys/claude-code-50-dark-themes/issues/21>
 - Feedback form: <https://github.com/notgabriels-sys/claude-code-50-dark-themes/issues/new?template=audio-preflight-feedback.yml>
 - Thumbnail: <https://gabs-utilities.com/assets/audio-delivery-preflight-cli-thumbnail.png>
 - Gumroad: <https://notgabriel.gumroad.com/l/audio-delivery-preflight-cli>
@@ -105,6 +106,9 @@ First comment:
 >
 > I would appreciate feedback from engineers/producers on the sample report:
 > https://gabs-utilities.com/audio-delivery-preflight-sample-report.html
+>
+> Public feedback thread:
+> https://github.com/notgabriels-sys/claude-code-50-dark-themes/issues/21
 >
 > Product page:
 > https://gabs-utilities.com/audio-delivery-preflight-cli.html
