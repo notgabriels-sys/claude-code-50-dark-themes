@@ -1,4 +1,5 @@
 import { readdir, readFile } from "node:fs/promises";
+import { analyse, failingLevels, MAIL_BG, FLOOR } from "../mail/quote-contrast.mjs";
 
 const root = new URL("../", import.meta.url);
 const pluginRoot = new URL("../plugins/50-dark-themes/", import.meta.url);
@@ -128,7 +129,55 @@ for (const id of verifiedPayPalIds) {
   }
 }
 
+// The mail/ docs quote exact hexes and contrast ratios for the levels that
+// fail on Apple's message background. Recompute them and hold the table to it,
+// so editing a theme's `claude` or `permission` value cannot silently leave a
+// stale number in a published document.
+const mailReadme = await readFile(new URL("mail/README.md", root), "utf8");
+const computedFailures = failingLevels(await analyse());
+
+const tableRow = /^\| (.+?) \| (one|two|three) \| `(#[0-9A-Fa-f]{6})` ([\d.]+):1 \| `(#[0-9A-Fa-f]{6})` ([\d.]+):1 \|$/gm;
+const documentedFailures = [...mailReadme.matchAll(tableRow)].map(
+  ([, theme, level, colour, ratio, substitute, substituteRatio]) => ({
+    theme,
+    level,
+    colour,
+    ratio: Number(ratio),
+    substitute,
+    substituteRatio: Number(substituteRatio),
+  }),
+);
+
+if (!documentedFailures.length) {
+  fail("Could not find the substitution table in mail/README.md.");
+}
+if (documentedFailures.length !== computedFailures.length) {
+  fail(
+    `mail/README.md documents ${documentedFailures.length} failing levels on ${MAIL_BG}; ` +
+      `${computedFailures.length} actually fail the ${FLOOR}:1 floor. Run node mail/quote-contrast.mjs --failing.`,
+  );
+}
+for (const [index, computed] of computedFailures.entries()) {
+  const documented = documentedFailures[index];
+  const same =
+    documented.theme === computed.theme &&
+    documented.level === computed.level &&
+    documented.colour.toLowerCase() === computed.colour.toLowerCase() &&
+    documented.substitute.toLowerCase() === computed.substitute.toLowerCase() &&
+    Math.abs(documented.ratio - computed.ratio) < 0.005 &&
+    Math.abs(documented.substituteRatio - computed.substituteRatio) < 0.005;
+  if (!same) {
+    fail(
+      `mail/README.md row ${index + 1} is stale. Documented: ${documented.theme} level ${documented.level} ` +
+        `${documented.colour} ${documented.ratio.toFixed(2)}:1 → ${documented.substitute} ${documented.substituteRatio.toFixed(2)}:1. ` +
+        `Computed: ${computed.theme} level ${computed.level} ${computed.colour} ${computed.ratio.toFixed(2)}:1 ` +
+        `→ ${computed.substitute} ${computed.substituteRatio.toFixed(2)}:1.`,
+    );
+  }
+}
+
 console.log(
   `Verified ${files.length} themes, ${pluginFiles.length} plugin themes, ${galleryThemes.length} gallery cards, ` +
-    `${verifiedPayPalIds.length} PayPal links, and the safe install command.`,
+    `${verifiedPayPalIds.length} PayPal links, ${computedFailures.length} documented mail quote substitutions, ` +
+    `and the safe install command.`,
 );

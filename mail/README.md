@@ -60,12 +60,24 @@ alone.
 Enter `#7A8CFF`. This is the one system colour that takes an arbitrary value,
 and it is what tints the selected row in Mail's message list and mailbox list.
 
-The same thing, scriptable — the key wants floating-point RGB plus a label, and
-it needs a log out (or at least a relaunch of Mail) before it takes:
+The same thing, scriptable. `AppleHighlightColor` takes four space-separated
+components — the three channels as floats, then a label — so `#7A8CFF` becomes
+122/255, 140/255, 255/255 and a name of your choosing:
 
 ```bash
-defaults write -g AppleHighlightColor "0.478431 0.549020 1.000000 Deep Field"
+defaults write -g AppleHighlightColor -string "0.478431 0.549020 1.000000 Deep Field"
 ```
+
+It needs a log out, or at least a relaunch of Mail, before it takes. Confirm it
+landed by reading the value back rather than by trusting the write:
+
+```bash
+defaults read -g AppleHighlightColor
+```
+
+The four-component shape is documented behaviour, not a guess — but the
+round-trip above is the only thing that proves it on *your* macOS, and it costs
+one line. The GUI route is given first for the same reason.
 
 **Accent colour is a separate setting and it is not ours.** On the macOS
 versions that ship the classic swatch row it is preset-only, and `#7A8CFF` is
