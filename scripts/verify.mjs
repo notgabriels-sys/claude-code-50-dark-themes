@@ -75,10 +75,9 @@ const recordedGumroadPrices = [
   { slug: "jqrdfy", pagePrice: "€6" },
   { slug: "xcxeb", pagePrice: "$9" },
   { slug: "wuhehk", pagePrice: null, copyPrice: "$39" },
-  // mix-revision-mastering-handoff-kit and techno-mix-preflight-toolkit were
-  // removed from the shop on 2026-08-24 together with their whole product
-  // directories; the guard caught their disappearance and they are dropped here
-  // deliberately, not to silence it.
+  // Two retired audio products were removed from the shop on 2026-08-24
+  // together with their whole product directories; the guard caught their
+  // disappearance and they are dropped here deliberately, not to silence it.
   { slug: "raw-techno-kick-architecture", pagePrice: "€15" },
   { slug: "industrial-tension-fx", pagePrice: "€15" },
 ];
