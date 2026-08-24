@@ -130,7 +130,7 @@ The basic lesson: if the thing is free and practical, the path to use it should 
 
 The 50 Claude Code themes are free and MIT licensed.
 
-I also ended up building a wider small catalog around the same dark developer-tool direction: UI kits, templates, cheat sheets, workflow packs, palettes, wallpapers and some audio workflow utilities.
+I also ended up building a wider small catalog around the same dark developer-tool direction: UI kits, templates, cheat sheets, workflow packs, palettes and wallpapers.
 
 But the theme set is the useful entry point, and it stays free.
 

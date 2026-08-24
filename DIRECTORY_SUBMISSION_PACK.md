@@ -23,7 +23,7 @@ Dark developer tools for Claude Code users and technical creators.
 260-character Product Hunt description:
 
 ```text
-A compact catalog of dark developer tools: 50 free Claude Code themes, plus UI kits, templates, cheat sheets, workflow packs, palettes, wallpapers, and audio workflow utilities.
+A compact catalog of dark developer tools: 50 free Claude Code themes, plus UI kits, templates, cheat sheets, workflow packs, palettes, and wallpapers.
 ```
 
 Long description:
@@ -31,7 +31,7 @@ Long description:
 ```text
 Gabs Utilities is a small, practical catalog for developers and technical creators who like dark, readable tools. The core project is 50 free MIT-licensed themes for Claude Code, built with semantic colors for errors, warnings, success states, diffs, and terminal UI clarity.
 
-The catalog also includes paid packs such as dark UI kits, HTML/email/social templates, developer cheat sheets, Claude Code workflow templates, wallpapers, palettes, and audio workflow utilities.
+The catalog also includes paid packs such as dark UI kits, HTML/email/social templates, developer cheat sheets, Claude Code workflow templates, wallpapers, and palettes.
 ```
 
 Category fit:
@@ -69,31 +69,6 @@ Semantic Terminal Colors — design notes from building 50 free Claude Code them
 https://gabs-utilities.com/semantic-terminal-colors.html
 ```
 
-Audio-specific supporting asset:
-
-```text
-Free WAV Delivery Checklist — a public handoff checklist for producers, engineers and labels:
-https://gabs-utilities.com/audio-delivery-checklist.html
-```
-
-Audio-specific evergreen guide:
-
-```text
-WAV Delivery Handoff Guide — a practical article explaining how to check bounced folders before client, label, archive or release delivery:
-https://gabs-utilities.com/audio-delivery-handoff-guide.html
-```
-
-Audio-specific press / launch kit:
-
-```text
-Audio Delivery Preflight CLI press kit — product facts, launch copy and gallery assets:
-https://gabs-utilities.com/audio-delivery-preflight-press-kit.html
-```
-
-Use this link for audio communities or newsletters. For general developer
-directories, keep the main pitch focused on the free Claude Code themes and
-developer-tool catalog.
-
 ## Product Hunt
 
 Use Product Hunt only when signed in and the product page/dashboard is accessible.
@@ -123,7 +98,7 @@ Hey, I’m Gabriel.
 
 This started as a practical thing for myself: I wanted a set of dark Claude Code themes that stayed readable and did not destroy semantic colors like errors, warnings, success states, and diffs.
 
-I kept expanding it into a small catalog of dark developer/creator utilities: UI kits, HTML templates, email templates, cheat sheets, workflow kits, wallpapers, palettes, and related audio workflow tools.
+I kept expanding it into a small catalog of dark developer/creator utilities: UI kits, HTML templates, email templates, cheat sheets, workflow kits, wallpapers, and palettes.
 
 The core Claude Code themes are free and MIT licensed. The paid packs are there for people who want the broader toolkit.
 
@@ -261,8 +236,7 @@ Use this order. It favors relevance and avoids low-quality spam-directory energy
    - Do not ask for upvotes or mass-comment.
 
 3. DevHunt
-   - Good developer-tool fit for the free themes and catalog, not for the audio
-     CLI by itself.
+   - Good developer-tool fit for the free themes and catalog.
    - Requires an existing signed-in account; do not create one only to add a
      listing count.
 
