@@ -121,7 +121,10 @@ repo has. `verify` runs on every push and **fails the build** on:
 - **(added 2026-08-24)** any of the three carrying a price other than its
   verified one — €45 / €160 / €190;
 - **(added 2026-08-24)** *any* `paypal.com/ncp/payment/<ID>` on the page whose
-  ID is not in the verified table in `scripts/verify.mjs`.
+  ID is not in the verified table in `scripts/verify.mjs`;
+- **(added 2026-08-24)** any Gumroad card whose printed price differs from the
+  one recorded in `recordedGumroadPrices` — drift only, see the warning below
+  about how much weaker that table is than the PayPal one.
 
 The last two close the hole that mattered. The original check only asserted the
 three links were *present*, so a fourth, unverified, wrongly-priced link could
@@ -154,15 +157,31 @@ lookalike or a typo), a duplicate slug, a slug not in `knownGumroadSlugs`, or
 a known slug that has vanished from the page. All four were tested by breaking
 `index.html` and confirming the build fails.
 
-**`knownGumroadSlugs` is deliberately weaker than `verifiedPayPalLinks`, and
-the difference matters.** It asserts only *"this slug is known and
-intentional"*. It does **not** assert that any price, currency or bundle
-content was read back from the real Gumroad product — nothing in this repo
-does, because that verification has never happened. Adding a slug to the list
-silences the guard; it verifies nothing. What it buys is that a link cannot
-silently change, appear, disappear, or point at another host. That is the
-structural half. The price half stays unbuilt until someone reads the 18
-products in a signed-in browser.
+**(added 2026-08-24) Gumroad page-price drift.** `recordedGumroadPrices` now
+records the price each card prints, and `verify` fails if any of them changes,
+if a priced card loses its `<i>`, if the free zip or the bundle card grows one,
+or if the bundle's copy stops saying `$39`. The card is matched quote-exact on
+the slug for the same reason the PayPal checks are — a pattern stopping at a
+character class would read the card for `bqgfvX` as the card for `bqgfv` and
+check the wrong product's price. All five failure modes were proven by breaking
+`index.html` and confirming the build goes red.
+
+**`recordedGumroadPrices` is deliberately weaker than `verifiedPayPalLinks`,
+and the difference is the whole point.** `verifiedPayPalLinks` means *a human
+opened `paypal.com/ncp/links/<ID>` and read that price back off the provider's
+own object*. `recordedGumroadPrices` means only *this is what `index.html` said
+on 2026-08-24* — it asserts nothing whatsoever about Gumroad. No Gumroad
+product object has ever been read by anyone working in this repo, so a price
+that was already wrong on the day it was recorded is copied faithfully into the
+table and the build stays green. Adding or changing a row silences the guard;
+it verifies nothing.
+
+What the Gumroad guards do buy is drift detection: a slug cannot silently
+change, appear, disappear or point at another host, and a price cannot be
+edited on the page without the edit being deliberate. That catches a stray
+keystroke or a bad merge, which is worth having on its own. It is not
+verification, and it must never be described as verification. The verified half
+stays unbuilt until someone reads the 16 products in a signed-in browser.
 
 `verify` also guards the plugin marketplace: it asserts both plugins are
 registered with the right source paths, that every skill in `.claude/skills/`
@@ -172,20 +191,20 @@ frontmatter with a name and description. Drift means an installer silently gets
 a different skill than a contributor reads, so it fails the build — the same
 contract the themes already had.
 
-There is no equivalent guard for the 18 Gumroad links beyond the single
-blocked slug, because no verified Gumroad table exists yet. See below.
+The Gumroad half now has structural and drift guards but still no *verified*
+table, because no one has ever read a Gumroad product object. See below.
 
 ## Gumroad — the unverified half of the shop
 
 The PayPal links below were each read back from their own detail page before
-going on the shop. **The 18 Gumroad links have never had that treatment.** They
+going on the shop. **The 16 Gumroad links have never had that treatment.** They
 are the larger half of the shop by product count and carry the ordinary sales
 income, and nothing in this repo records a single one being checked against its
 real Gumroad product.
 
 Two things found by static read on 2026-08-24, both needing Gabriel:
 
-**1. The page mixes currencies.** Sixteen products are priced in €; two are
+**1. The page mixes currencies.** Twelve products are priced in €; two are
 priced in $ — `cfcvmy` "Dark HTML Templates" at **$19** and `xcxeb` "50 Dark
 Palettes" at **$9** — and the bundle `wuhehk` reads **"$39"** in its own line of
 copy. Everything else on the page, including the entire mixing and mastering

@@ -30,41 +30,60 @@ const verifiedPayPalLinks = [
 ];
 const verifiedPayPalIds = verifiedPayPalLinks.map((link) => link.id);
 
-// The Gumroad product slugs currently on the shop. Recorded 2026-08-24; 18
-// at first count, 16 after two audio products were retired the same day.
+// The Gumroad products currently on the shop, and the price each one prints on
+// this page. Recorded 2026-08-24; 18 slugs at first count, 16 after two audio
+// products were retired the same day.
 //
-// READ THIS BEFORE ADDING ONE. Unlike verifiedPayPalLinks above, this list is
-// deliberately WEAKER: it asserts only "this slug is known and intentional",
-// NOT "its price and contents were read back from the real Gumroad product".
-// No Gumroad product has ever had that treatment -- see CLAUDE.md. Adding a
-// slug here silences the guard; it does not verify anything.
+// READ THIS BEFORE ADDING OR CHANGING A ROW. Unlike verifiedPayPalLinks above,
+// this table is deliberately WEAKER, and the difference is the whole point:
 //
-// What it does buy: a slug cannot silently change, appear, or disappear, and
-// no link can point at a lookalike host. That is the structural half of the
-// protection the PayPal links get. The price half is still unbuilt because no
-// verified Gumroad table exists yet.
-const knownGumroadSlugs = [
-  "slhbym",
-  "ckthsb",
-  "cfcvmy",
-  "dark-app-screens",
-  "xjcbji",
-  "bunkhy",
-  "zvbti",
-  "kxsfa",
-  "kykega",
-  "wgtbkq",
-  "bqgfv",
-  "jqrdfy",
-  "xcxeb",
-  "wuhehk",
+//   verifiedPayPalLinks  = "a human opened paypal.com/ncp/links/<ID> and read
+//                           this price back off the provider's own object."
+//   recordedGumroadPrices = "this is what index.html said on 2026-08-24."
+//
+// The second asserts NOTHING about Gumroad. No Gumroad product object has ever
+// been read by anyone working in this repo -- see CLAUDE.md, "Gumroad -- the
+// unverified half of the shop". A wrong price on the page is copied faithfully
+// into this table and the build stays green.
+//
+// What it does buy is drift detection: a slug cannot silently change, appear or
+// disappear, no link can point at a lookalike host, and a price cannot be
+// edited on the page without the edit being deliberate. That is worth having on
+// its own -- it is how a stray keystroke or a bad merge gets caught -- but it is
+// not verification, and it must never be described as verification.
+//
+// pagePrice null means the card prints no <i> price element: `slhbym` is the
+// free zip, and `wuhehk` is the bundle, whose price lives in its own line of
+// copy and is checked there instead.
+//
+// Two rows are in USD on an otherwise-EUR page (`cfcvmy` $19, `xcxeb` $9, and
+// the bundle's copy reads $39). That inconsistency is recorded here on purpose
+// rather than smoothed over. Do NOT resolve it by editing index.html; it is
+// resolved by reading the real products in a signed-in browser.
+const recordedGumroadPrices = [
+  { slug: "slhbym", pagePrice: null },
+  { slug: "ckthsb", pagePrice: "€12" },
+  { slug: "cfcvmy", pagePrice: "$19" },
+  { slug: "dark-app-screens", pagePrice: "€14" },
+  { slug: "xjcbji", pagePrice: "€9" },
+  { slug: "bunkhy", pagePrice: "€9" },
+  { slug: "zvbti", pagePrice: "€12" },
+  { slug: "kxsfa", pagePrice: "€7" },
+  { slug: "kykega", pagePrice: "€7" },
+  { slug: "wgtbkq", pagePrice: "€7" },
+  { slug: "bqgfv", pagePrice: "€8" },
+  { slug: "jqrdfy", pagePrice: "€6" },
+  { slug: "xcxeb", pagePrice: "$9" },
+  { slug: "wuhehk", pagePrice: null, copyPrice: "$39" },
   // mix-revision-mastering-handoff-kit and techno-mix-preflight-toolkit were
   // removed from the shop on 2026-08-24 together with their whole product
   // directories; the guard caught their disappearance and they are dropped here
   // deliberately, not to silence it.
-  "raw-techno-kick-architecture",
-  "industrial-tension-fx",
+  { slug: "raw-techno-kick-architecture", pagePrice: "€15" },
+  { slug: "industrial-tension-fx", pagePrice: "€15" },
 ];
+const knownGumroadSlugs = recordedGumroadPrices.map((entry) => entry.slug);
+
 const GUMROAD_HOST = "notgabriel.gumroad.com";
 
 function fail(message) {
@@ -299,8 +318,53 @@ for (const slug of knownGumroadSlugs) {
   }
 }
 
+// Page-price drift. This checks index.html against recordedGumroadPrices above
+// and NOTHING ELSE -- read that table's comment before trusting a green build
+// here. It catches an unintended edit; it cannot catch a price that was wrong
+// on the day it was recorded.
+//
+// Quote-exact on the closing quote, for the same reason the PayPal checks are:
+// a pattern that stopped at a character class would read the card for `bqgfvX`
+// as the card for `bqgfv` and check the wrong product's price.
+for (const { slug, pagePrice, copyPrice } of recordedGumroadPrices) {
+  const card = html.match(
+    new RegExp(`<a[^>]*href="https://${GUMROAD_HOST}/l/${slug}"[^>]*>([\\s\\S]*?)</a>`),
+  );
+  if (!card) {
+    fail(`Could not read the card wrapping Gumroad link ${slug}.`);
+    continue;
+  }
+  const priceTag = card[1].match(/<i>([^<]*)<\/i>/);
+  const shown = priceTag ? priceTag[1] : null;
+
+  if (pagePrice === null && shown !== null) {
+    fail(
+      `Gumroad card ${slug} now prints a price element <i>${shown}</i> and did ` +
+        `not before. Read the real product at gumroad.com, then record it in ` +
+        `recordedGumroadPrices.`,
+    );
+  } else if (pagePrice !== null && shown === null) {
+    fail(`Gumroad card ${slug} has lost its <i>${pagePrice}</i> price element.`);
+  } else if (pagePrice !== null && shown !== pagePrice) {
+    fail(
+      `Gumroad card ${slug} shows ${shown}; recordedGumroadPrices says ` +
+        `${pagePrice}. If the change is deliberate, read the real product back ` +
+        `from gumroad.com first, then update the table.`,
+    );
+  }
+
+  // The bundle states its price in its own line of copy rather than an <i>.
+  if (copyPrice && !card[1].includes(copyPrice)) {
+    fail(
+      `Gumroad card ${slug} no longer states ${copyPrice} in its copy; ` +
+        `recordedGumroadPrices still expects it.`,
+    );
+  }
+}
+
 console.log(
   `Verified ${files.length} themes, ${pluginFiles.length} plugin themes, ${galleryThemes.length} gallery cards, ` +
-    `${verifiedPayPalIds.length} PayPal links, ${knownGumroadSlugs.length} Gumroad slugs, ` +
+    `${verifiedPayPalIds.length} PayPal links, ${knownGumroadSlugs.length} Gumroad slugs ` +
+    `(prices checked against the recorded page, NOT against Gumroad), ` +
     `${sourceSkills.length} skills, and the safe install command.`,
 );
