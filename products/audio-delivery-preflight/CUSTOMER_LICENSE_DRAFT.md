@@ -40,7 +40,7 @@ The license terminates if the customer materially breaches these terms and does 
 
 ## Refunds and mandatory rights
 
-The commercial offer includes a 14-day money-back guarantee from purchase. Mandatory statutory rights, legal guarantees, and remedies remain unaffected.
+The commercial offer does not include voluntary change-of-mind refunds after access to the download has begun. This does not limit mandatory consumer rights, including any withdrawal right that has not legally expired and statutory remedies for defective or non-conforming digital content.
 
 ## Governing terms
 

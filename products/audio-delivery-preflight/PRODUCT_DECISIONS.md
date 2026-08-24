@@ -47,7 +47,7 @@ The product is not an audio editor, mastering processor, artistic approval servi
 - Support scope: download access, installation, launch, reproducible defects, and clarification of documented behavior.
 - Support does not include remote installation, mixing/mastering advice, distributor submission, custom preset development, or private delivery review.
 - Response target: within three Berlin business days. This is a service target, not a guaranteed service-level agreement.
-- Refund policy: 14-day money-back guarantee from purchase. A short reason may be requested to improve the product but is not required for the refund.
+- Refund policy: no voluntary change-of-mind refunds after access to the download has begun. This does not limit a withdrawal right that has not legally expired or statutory remedies for defective or non-conforming digital content. Customers can reply to the receipt so a materially defective or misdescribed download can be investigated and given an appropriate remedy.
 - Duplicate and fraudulent charges are handled through Gumroad’s supported process.
 - Mandatory consumer rights remain unaffected.
 
@@ -68,7 +68,7 @@ Required product-page disclosures:
 - GUI and CLI included;
 - one user, up to three personally controlled Macs;
 - €24 one-time purchase;
-- 14-day refund policy;
+- no voluntary change-of-mind refunds after download access begins, with mandatory consumer rights and remedies preserved;
 - no guarantee of artistic quality or distributor acceptance.
 
 ## Version policy
