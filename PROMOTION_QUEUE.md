@@ -62,9 +62,9 @@ Safe angle:
    - Tone: short, visual, maker story.
    - Use the four press-kit gallery images, not random screenshots.
    - Ask for feedback, not “please upvote”.
-   - Current gate: the personal account welcome email arrived on 2026-08-23;
-     Product Hunt's current help center says new accounts normally wait one
-     week before they can post.
+   - Current gate: the personal account welcome email arrived on 2026-08-23.
+     Product Hunt's current help center requires new accounts to complete
+     onboarding before posting; use the live account dashboard as the gate.
 
 4. GitHub discovery
    - Keep README clear.
@@ -193,9 +193,9 @@ Use the result to improve positioning before posting again elsewhere.
 | 2026-08-24 | Custom domain | Live with HTTPS enforced | Use `https://gabs-utilities.com/` as the primary storefront URL |
 | 2026-08-24 | X | General catalog post is public; no dedicated Audio Delivery Preflight/checklist post was visible, and there were no relevant replies | Prepare one feedback-first checklist post; confirm immediately before posting |
 | 2026-08-24 | Hacker News / Show HN | Blocked by HN `showlim` notice | Do not retry immediately; participate normally on HN first, then submit later when the account is less restricted |
-| 2026-08-24 | Product Hunt | Personal account welcome email received 2026-08-23; browser was signed out; the existing themes prelaunch link did not provide a usable Audio Delivery Preflight launch | Let the account age for the normal one-week gate, then sign in and create a separate Audio Delivery Preflight launch draft |
+| 2026-08-24 | Product Hunt | Personal account welcome email received 2026-08-23; browser was signed out; the existing themes prelaunch link did not provide a usable Audio Delivery Preflight launch | Complete onboarding in the personal account, then create a separate Audio Delivery Preflight launch draft when the dashboard permits it |
 | 2026-08-24 | GitHub topics | Updated toward Claude Code / themes / dev tools discovery | Keep audio/sample-pack promotion on audio-specific repos/pages, not this theme repo |
 | 2026-08-24 | TheDevToolsDir | Initial read at 06:40 CEST returned 404 while publication was processing; at 06:57 CEST the exact listing URL returned HTTP 200 and the public title, description, website, Standard tier, categories and tags read back correctly | Listing is independently verified live; keep the required footer badge while the Standard listing remains active and monitor useful referral traffic |
 | 2026-08-24 | DevHunt | The new-tool route redirected to “Log in to your account”; no DevHunt account email was found | Keep the prepared developer-tool fields, but do not create an account or force a low-fit audio submission merely to add another listing |
 | 2026-08-24 | DEV Community | Paste-ready article draft created in `DEV_COMMUNITY_ARTICLE_DRAFT.md`; browser path not signed in | Preview and publish manually from Gabriel's DEV account, or reopen when signed in for final action-time confirmation |
-| 2026-08-24 | Gearnews | One tailored, attachment-free email is saved as an unsent Gmail draft to the official PR/news address | Review exact recipient and copy, then confirm immediately before sending |
+| 2026-08-24 | Gearnews | Tailored, attachment-free email sent from `notgabriels@gmail.com` to `news@gearnews.com`; Gmail read-back showed label `SENT`, message ID `1a032368de823dff` | If no reply arrives, send at most one polite follow-up in the same thread no earlier than 2026-09-02 |
