@@ -190,6 +190,58 @@ if (!html.includes("claude plugin marketplace add notgabriels-sys/claude-code-50
 if (!html.includes("utm_campaign=50-dark-themes-launch")) {
   fail("The storefront must expose the tracked Product Hunt launch link.");
 }
+
+const featuredProducts = [...html.matchAll(/<article class="featured-product">([\s\S]*?)<\/article>/g)];
+if (featuredProducts.length !== 3) {
+  fail(`Expected 3 curated developer picks; found ${featuredProducts.length}.`);
+}
+
+const expectedFeaturedSlugs = new Set(["cfcvmy", "ckthsb", "dark-app-screens"]);
+const actualFeaturedSlugs = new Set();
+for (const [, productHtml] of featuredProducts) {
+  const image = productHtml.match(/<img\s+[^>]*src="([^"]+)"[^>]*alt="([^"]+)"[^>]*>/);
+  if (!image) {
+    fail("Every curated developer pick must include a local cover image with non-empty alt text.");
+  }
+  const [, imagePath, imageAlt] = image;
+  if (!imagePath.startsWith("assets/products/") || !imageAlt.trim()) {
+    fail("Curated developer pick covers must use local product assets and meaningful alt text.");
+  }
+  try {
+    await readFile(new URL(imagePath, root));
+  } catch {
+    fail(`Curated developer pick cover is missing: ${imagePath}.`);
+  }
+
+  const gumroadLink = productHtml.match(/https:\/\/notgabriel\.gumroad\.com\/l\/([a-z0-9-]+)/);
+  if (!gumroadLink) {
+    fail("Every curated developer pick must link to its verified Gumroad product page.");
+  }
+  const slug = gumroadLink[1];
+  const trackedCheckout = productHtml.match(
+    /href="(https:\/\/notgabriel\.gumroad\.com\/l\/[a-z0-9-]+\?[^\"]+)"/,
+  );
+  if (!trackedCheckout) {
+    fail(`Curated developer pick ${slug} must include campaign tracking.`);
+  }
+  const trackedUrl = new URL(trackedCheckout[1].replaceAll("&amp;", "&"));
+  const expectedTracking = {
+    utm_source: "gabs-utilities.com",
+    utm_medium: "storefront",
+    utm_campaign: "developer-picks",
+    utm_content: slug,
+  };
+  for (const [key, value] of Object.entries(expectedTracking)) {
+    if (trackedUrl.searchParams.get(key) !== value) {
+      fail(`Curated developer pick ${slug} has incorrect ${key} tracking.`);
+    }
+  }
+  actualFeaturedSlugs.add(slug);
+}
+if ([...expectedFeaturedSlugs].some((slug) => !actualFeaturedSlugs.has(slug))) {
+  fail("The curated developer picks must feature the UI kit, HTML templates, and app screens.");
+}
+
 if (html.includes("api.producthunt.com/widgets/embed-image")) {
   fail("Do not restore the remote Product Hunt badge; it sets a third-party cookie.");
 }
