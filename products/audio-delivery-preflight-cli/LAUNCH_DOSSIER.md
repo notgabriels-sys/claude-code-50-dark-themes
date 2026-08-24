@@ -73,10 +73,10 @@ Long description:
 
 1. Product Hunt: good general launch surface once Gabriel can post from his
    personal account. The welcome email arrived on 2026-08-23, and Product
-   Hunt's current help center says new accounts normally wait one week before
-   posting. Use the landing page as the primary URL, Gumroad as the purchase
-   link, and the free checklist plus sample report in the first comment or
-   gallery. Do not ask for upvotes.
+   Hunt's current help center says new accounts must complete onboarding before
+   posting. Use the signed-in dashboard as the gate, the landing page as the
+   primary URL, Gumroad as the purchase link, and the free checklist plus
+   sample report in the first comment or gallery. Do not ask for upvotes.
 2. KVR Developer Access: strong fit for an audio utility, but requires account
    access and a developer/product listing flow.
 3. AlternativeTo: useful for long-tail discovery. Submit as an adjacent utility,
@@ -94,6 +94,7 @@ Long description:
 ## Submission reference links
 
 - Product Hunt launch guide: <https://www.producthunt.com/launch>
+- Product Hunt launch preparation guide: <https://www.producthunt.com/launch/preparing-for-launch>
 - Product Hunt posting guide: <https://help.producthunt.com/en/articles/479557-how-to-post-a-product>
 - KVR Developer Access: <https://www.kvraudio.com/developer_application.php>
 - AlternativeTo FAQ / suggest application flow: <https://alternativeto.net/faq/>

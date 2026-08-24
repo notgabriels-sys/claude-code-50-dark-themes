@@ -99,9 +99,9 @@ developer-tool catalog.
 Use Product Hunt only when signed in and the product page/dashboard is accessible.
 
 Current gate: the personal-account welcome email arrived on 2026-08-23.
-Product Hunt's current help center says new accounts normally wait one week
-before posting. Use that time to understand the community and finish the draft;
-do not create a second account, pay a hunter, or ask people for upvotes.
+Product Hunt's current help center says new accounts must complete onboarding
+before posting. Use the signed-in dashboard as the source of truth; do not
+create a second account, pay a hunter, or ask people for upvotes.
 
 Official Product Hunt guidance says:
 
@@ -110,6 +110,11 @@ Official Product Hunt guidance says:
 - include the maker
 - prepare a first comment
 - Product Hunt community quality depends on real comments and feedback, not generic or mass comments
+
+Sources checked 2026-08-24:
+
+- <https://help.producthunt.com/en/articles/479557-how-to-post-a-product>
+- <https://www.producthunt.com/launch/preparing-for-launch>
 
 Prepared first comment:
 
@@ -250,8 +255,8 @@ Use this order. It favors relevance and avoids low-quality spam-directory energy
    - Support link: `https://gabs-utilities.com/claude-code-theme-install-guide.html`.
 
 2. Product Hunt
-   - Higher reach, but only after the personal account's normal one-week gate
-     and once the product dashboard is accessible while signed in.
+   - Higher reach, but only after the personal account's onboarding gate is
+     complete and the product dashboard is accessible while signed in.
    - Use the prepared first comment above.
    - Do not ask for upvotes or mass-comment.
 

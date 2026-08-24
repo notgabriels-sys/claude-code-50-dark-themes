@@ -44,9 +44,9 @@ Unsafe launch framing:
    - Ask people to visit/comment, not upvote.
    - Requires Gabriel's personal Product Hunt account.
    - Current gate: the account welcome email arrived on 2026-08-23. Product
-     Hunt's current help center says new personal accounts normally wait one
-     week before posting, so prepare and participate normally rather than
-     forcing an early launch.
+     Hunt's current help center says new accounts must complete onboarding
+     before posting, so use the signed-in dashboard as the gate and prepare
+     normally rather than forcing an early launch.
 
 2. KVR Developer Access
    - Fit: strong because KVR explicitly supports product listings for plugins,
