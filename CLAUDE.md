@@ -33,6 +33,51 @@ and then build whatever *is* buildable instead of stopping.
 currency changes from a description, and `create_payment_link` stays off limits.
 Building tooling is authorized; moving money is not.
 
+## Standard of work
+
+Gabriel's standing bar, 2026-08-24: cutting edge, highest quality, deeply
+studied, and performed well in practice. Stated as ambition; what follows is
+the operational form, so it can be checked rather than felt. Every rule below
+was earned by something that actually went wrong here — most of them in
+Claude's own work.
+
+**Read the real object. Never infer it.** A price, a link, a balance or a
+status is a fact about a live system, not about this repo or a description of
+it. The €1,200 charge came from a link that "looked right". The PayPal
+connector returning zero links for a shop with three live ones is the same
+trap wearing a different face — see "Reading the account".
+
+**A passing test is not evidence. A failing one is.** Every guard here was
+proven by deliberately breaking `index.html` and confirming the build goes red,
+then restoring. A guard never seen to fire may not work at all. Two of them
+did not: the allowlists silently truncated a tampered id to a known prefix and
+passed a €1,200 lookalike link. That was found by attacking the guard, not by
+reading it.
+
+**Re-attack your own work before handing it over.** The uppercase-truncation
+bug was fixed on the Gumroad side and left standing on the PayPal side three
+commits later, because fixing it once felt like finishing. Assume the same
+defect class exists everywhere you have not checked.
+
+**Say exactly how strong a claim is.** `verifiedPayPalLinks` asserts a human
+read the price back from the provider. `knownGumroadSlugs` asserts only that a
+slug is known and intentional. Both are useful; treating the second as the
+first is how an unverified price ships. Label the weaker one as weaker, in the
+code and in this file.
+
+**Do not record facts that rot.** Line numbers in this file went stale twice in
+one day and were removed. Prefer counts, slugs, ids and commands that
+re-derive the answer (`grep -n`) over a snapshot that quietly ages into a lie.
+
+**Correct the record the moment it is wrong**, including your own earlier
+statements in the same session. This file has retracted a wrong reading of the
+PayPal account, a wrong link inventory, and a wrong line range. A document
+nobody trusts is worse than no document.
+
+**Finish to a verified state, not a plausible one.** Green CI, guards proven to
+fire, the working tree restored, and the claim in the commit message matching
+what the code does. "Should work" is not a result.
+
 ## Payment surfaces — read before adding any buy button
 
 **Never add a payment button from a description of an account, or from a
