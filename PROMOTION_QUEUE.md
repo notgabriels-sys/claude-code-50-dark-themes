@@ -33,6 +33,8 @@ Best single-line pitch:
    - Tone: technical, transparent, no hype.
    - Do not ask for upvotes anywhere.
    - Be ready to answer comments calmly for 2 hours after posting.
+   - Current state, 2026-08-24: blocked by HN's `showlim` restriction for newer / less-established accounts.
+   - Do not bypass with a second account, repost as a fake question, or force a non-Show submission. Build normal HN participation first, then retry later.
 
 3. Product Hunt
    - Best after the domain, images, and first comments are polished.
@@ -137,3 +139,10 @@ Record every public action with:
 - follow-up needed
 
 Use the result to improve positioning before posting again elsewhere.
+
+## Channel status log
+
+| Date | Channel | Status | Next responsible action |
+|---|---|---|---|
+| 2026-08-24 | Custom domain | Live with HTTPS enforced | Use `https://gabs-utilities.com/` as the primary storefront URL |
+| 2026-08-24 | Hacker News / Show HN | Blocked by HN `showlim` notice | Do not retry immediately; participate normally on HN first, then submit later when the account is less restricted |
