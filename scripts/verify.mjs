@@ -49,6 +49,27 @@ function fail(message) {
   throw new Error(message);
 }
 
+async function verifyPng(imagePath, { label, width, height }) {
+  let imageData;
+  try {
+    imageData = await readFile(new URL(imagePath, root));
+  } catch {
+    fail(`${label} is missing: ${imagePath}.`);
+  }
+
+  const hasValidPngHeader =
+    imageData.length >= 24 &&
+    imageData.subarray(0, pngSignature.length).equals(pngSignature) &&
+    imageData.readUInt32BE(8) === 13 &&
+    imageData.subarray(12, 16).equals(Buffer.from("IHDR"));
+  if (!hasValidPngHeader) {
+    fail(`${label} must be a valid PNG: ${imagePath}.`);
+  }
+  if (imageData.readUInt32BE(16) !== width || imageData.readUInt32BE(20) !== height) {
+    fail(`${label} must be ${width}x${height}: ${imagePath}.`);
+  }
+}
+
 const files = (await readdir(root))
   .filter((file) => file.endsWith(".json"))
   .sort();
@@ -121,6 +142,20 @@ const readme = await readFile(new URL("README.md", root), "utf8");
 const publicHtmlFiles = (await readdir(root))
   .filter((file) => file.endsWith(".html"))
   .sort();
+const normalizeHtmlText = (markup) =>
+  markup
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;|&#160;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/\s+/g, " ")
+    .trim();
+for (const link of html.matchAll(/<a\b[^>]*\baria-label="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi)) {
+  const accessibleName = normalizeHtmlText(link[1]);
+  const visibleLabel = normalizeHtmlText(link[2]);
+  if (visibleLabel && !accessibleName.toLocaleLowerCase().includes(visibleLabel.toLocaleLowerCase())) {
+    fail(`Sales-link accessible name must include its visible label: ${visibleLabel}.`);
+  }
+}
 const storefrontContracts = [
   [/<a class="skip-link" href="#main-content">/, "keyboard skip link"],
   [/<main id="main-content">/, "main landmark"],
@@ -208,25 +243,11 @@ for (const [, productHtml] of featuredProducts) {
   if (!imagePath.startsWith("assets/products/") || !imageAlt.trim()) {
     fail("Curated developer pick covers must use local product assets and meaningful alt text.");
   }
-  let imageData;
-  try {
-    imageData = await readFile(new URL(imagePath, root));
-  } catch {
-    fail(`Curated developer pick cover is missing: ${imagePath}.`);
-  }
-  const hasValidPngHeader =
-    imageData.length >= 24 &&
-    imageData.subarray(0, pngSignature.length).equals(pngSignature) &&
-    imageData.readUInt32BE(8) === 13 &&
-    imageData.subarray(12, 16).equals(Buffer.from("IHDR"));
-  if (!hasValidPngHeader) {
-    fail(`Curated developer pick cover must be a valid PNG: ${imagePath}.`);
-  }
-  const imageWidth = imageData.readUInt32BE(16);
-  const imageHeight = imageData.readUInt32BE(20);
-  if (imageWidth !== 1280 || imageHeight !== 720) {
-    fail(`Curated developer pick cover must be 1280x720: ${imagePath}.`);
-  }
+  await verifyPng(imagePath, {
+    label: "Curated developer pick cover",
+    width: 1280,
+    height: 720,
+  });
 
   const gumroadLink = productHtml.match(/https:\/\/notgabriel\.gumroad\.com\/l\/([a-z0-9-]+)/);
   if (!gumroadLink) {
@@ -255,6 +276,31 @@ for (const [, productHtml] of featuredProducts) {
 }
 if ([...expectedFeaturedSlugs].some((slug) => !actualFeaturedSlugs.has(slug))) {
   fail("The curated developer picks must feature the UI kit, HTML templates, and app screens.");
+}
+const uiKitPreview = html.match(/<section[^>]*id="ui-kit-preview"[^>]*>[\s\S]*?<\/section>/);
+if (!uiKitPreview) {
+  fail("The storefront must expose the UI kit preview section.");
+}
+if (!html.includes('href="#ui-kit-preview"')) {
+  fail("The Dark UI Kit card must link to its first-party preview section.");
+}
+if (/<(?:a|link)\b[^>]*\bhref=["'][^"']*dark-ui\.css(?:[?#][^"']*)?["'][^>]*>/i.test(html)) {
+  fail("The storefront must not publish the paid Dark UI Kit stylesheet.");
+}
+const expectedUiKitPreviewImages = [
+  "assets/products/dark-ui-kit-components.png",
+  "assets/products/dark-ui-kit-cards.png",
+  "assets/products/dark-ui-kit-light-mode.png",
+];
+for (const imagePath of expectedUiKitPreviewImages) {
+  if (!uiKitPreview[0].includes(`src="${imagePath}"`)) {
+    fail(`The UI kit preview must include ${imagePath}.`);
+  }
+  await verifyPng(imagePath, {
+    label: "UI kit preview image",
+    width: 1265,
+    height: 712,
+  });
 }
 
 if (html.includes("api.producthunt.com/widgets/embed-image")) {
