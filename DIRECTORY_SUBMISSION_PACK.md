@@ -223,10 +223,6 @@ Tags:
 Claude Code, themes, dark mode, developer tools, terminal, UI kit
 ```
 
-## Not suitable right now
-
-- Hacker News / Show HN: currently blocked by HN `showlim`.
-
 ## Next exposure queue
 
 Use this order. It favors relevance and avoids low-quality spam-directory energy.
@@ -236,6 +232,7 @@ Use this order. It favors relevance and avoids low-quality spam-directory energy
      MIT-licensed theme project instead of leading with a shop.
    - Use the prepared article draft and include real screenshots or a concise
      theme JSON example before publishing.
+   - Draft is saved in `DEV_COMMUNITY_ARTICLE_DRAFT.md`.
 
 2. Product Hunt
    - Higher reach, but only after the personal account's normal one-week gate
@@ -257,6 +254,10 @@ Use this order. It favors relevance and avoids low-quality spam-directory energy
    - Use only if they have a clear developer-tools category and a free submission path.
    - Avoid paid placement unless Gabriel explicitly approves the exact price and benefit.
    - Avoid adding multiple directory badges to the storefront footer unless the directory is genuinely relevant.
+
+## Not suitable right now
+
+- Hacker News / Show HN: currently blocked by HN `showlim`.
 - Reddit: Gabriel is permabanned, and circumventing that would be wrong.
 - Paid directory fast-tracks: no purchase without explicit approval.
 - Generic SaaS review sites: weak fit until there are users/customers and a clearer SaaS-style product.
