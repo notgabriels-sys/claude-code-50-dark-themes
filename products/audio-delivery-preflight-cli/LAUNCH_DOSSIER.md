@@ -13,6 +13,7 @@ for human listening.
 - Landing page: <https://gabs-utilities.com/audio-delivery-preflight-cli.html>
 - Gumroad listing: <https://notgabriel.gumroad.com/l/audio-delivery-preflight-cli>
 - Catalog card: <https://gabriel-tools-and-code.notgabriels960914.chatgpt.site>
+- Product thumbnail / social image: <https://gabs-utilities.com/assets/audio-delivery-preflight-cli-thumbnail.png>
 - LLM discovery file: <https://gabs-utilities.com/llms.txt>
 - IndexNow verification key: <https://gabs-utilities.com/79F35EFA-F66B-4757-848A-FB1A9029E1BA.txt>
 
@@ -102,6 +103,12 @@ Topics to try:
 Pricing:
 
 > Paid
+
+Thumbnail:
+
+> Use `assets/audio-delivery-preflight-cli-thumbnail.png`. It is a square
+> dark audio-check visual with no misleading text, logos, people, fake DAW
+> screenshot or mastering claim.
 
 First comment:
 
