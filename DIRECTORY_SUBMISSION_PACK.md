@@ -110,6 +110,45 @@ I’d love feedback from developers, Claude Code users, and people who care abou
 
 Fit: good, but position this as the free Claude Code themes and developer-tool catalog, not as a generic Gumroad shop.
 
+Current status:
+
+```text
+Logged-in Chrome route exists, but browser automation could not control the
+Chrome tab reliably during the submit step.
+```
+
+Use this route when DevHunt is open manually:
+
+```text
+https://devhunt.org/account/tools/new
+```
+
+Suggested fields:
+
+```text
+Name:
+Gabs Utilities
+
+Website:
+https://gabs-utilities.com/
+
+Short description:
+Dark developer tools for Claude Code users and technical creators.
+
+Long description:
+Gabs Utilities is a compact catalog of dark developer tools built around 50
+free MIT-licensed Claude Code themes. It also links to related dark UI kits,
+templates, cheat sheets, workflow packs, palettes, wallpapers, and audio
+workflow utilities. The theme set preserves semantic colors for errors,
+warnings, success states, diffs, and terminal UI clarity.
+
+Pricing:
+Free
+
+Tags:
+Claude Code, themes, dark mode, terminal, developer tools, UI kit
+```
+
 Suggested category:
 
 ```text
@@ -140,7 +179,20 @@ Use the same Product name, URL, tagline, and long description above.
 
 ## TheDevToolsDir
 
-Fit: possible, but free submission requires adding a dofollow badge to the site. Do not add a badge unless it fits the page and Gabriel approves the visual/backlink tradeoff.
+Live listing:
+
+```text
+https://thedevtoolsdir.com/product/gabs-utilities/
+```
+
+Status:
+
+```text
+Submitted 2026-08-24. Free listing badge is live in the storefront footer, and
+TheDevToolsDir verified the dofollow link before publishing the listing.
+```
+
+Keep the badge live while the listing is active.
 
 Suggested category:
 
@@ -163,6 +215,33 @@ Claude Code, themes, dark mode, developer tools, terminal, UI kit
 ## Not suitable right now
 
 - Hacker News / Show HN: currently blocked by HN `showlim`.
+
+## Next exposure queue
+
+Use this order. It favors relevance and avoids low-quality spam-directory energy.
+
+1. DevHunt
+   - Best next developer-tool fit.
+   - Requires the logged-in Chrome form or Gabriel filling the form manually.
+   - Use the fields above.
+
+2. Product Hunt
+   - Higher reach, but only once the product dashboard/prelaunch page is definitely accessible while signed in.
+   - Use the prepared first comment above.
+   - Do not ask for upvotes or mass-comment.
+
+3. DEV Community article
+   - Good community-safe angle: “I made 50 free dark Claude Code themes and learned a few things about semantic terminal colors.”
+   - Focus on lessons, screenshots, and free GitHub repo; mention the catalog lightly at the end.
+
+4. GitHub awesome lists
+   - Only submit to lists that explicitly accept Claude Code, terminal themes, CLI themes, or developer tooling.
+   - Open one careful PR per relevant list; no mass PRs.
+
+5. Launch/startup directories
+   - Use only if they have a clear developer-tools category and a free submission path.
+   - Avoid paid placement unless Gabriel explicitly approves the exact price and benefit.
+   - Avoid adding multiple directory badges to the storefront footer unless the directory is genuinely relevant.
 - Reddit: Gabriel is permabanned, and circumventing that would be wrong.
 - Paid directory fast-tracks: no purchase without explicit approval.
 - Generic SaaS review sites: weak fit until there are users/customers and a clearer SaaS-style product.
