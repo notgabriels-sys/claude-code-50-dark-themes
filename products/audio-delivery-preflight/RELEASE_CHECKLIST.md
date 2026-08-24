@@ -30,6 +30,7 @@ This checklist separates repository evidence, a local archive, a customer-tested
 - [x] Record archive SHA-256 `cb175ec7a22413ae8d2a024f31471766da4dd98bac84718cfbb28184a3bc9ebf` for the 2026-08-23 no-Apple-payment replacement candidate.
 - [x] Copy the ZIP and checksum to `Audio Delivery Preflight 0.1.0 Universal Unsigned 41beb74` outside temporary storage, verify the external sidecar and ZIP structure there, and retain the earlier durable pair for rollback until provider readback succeeds.
 - [x] Independently extract the exact durable `41beb74` archive, verify provenance, architecture, signatures, internal and external manifests, run its packaged CLI against the included sample, export all reports, require `ready`, and prove source immutability.
+- [x] Normally launch a fresh extraction of the exact replacement app and open its native chooser directly on the included `Sample Delivery Package`; Artwork, Credits, and Masters were visible. The control connection dropped when Open was clicked, so post-selection state is not inferred.
 - [ ] Normally launch and complete the GUI workflow in the exact replacement `41beb74` app. Review-requirements evidence from the superseded `60b9638` app remains historical only.
 
 ## Selected unsigned distribution route
@@ -42,7 +43,7 @@ Apple Developer Program payment, Developer ID certificate creation, notarization
 - [x] Include an unavoidable unsigned disclosure and Apple-documented manual opening path in the customer archive.
 - [x] Put the same unsigned, not-notarized, Gatekeeper, checksum, and manual-opening disclosure on the Gumroad product page before purchase.
 - [x] Preserve the previously verified `60b9638` archive and checksum on Gumroad product `vddnq` while the replacement is being prepared; its downloaded provider copy verified as SHA-256 `be7a195b...6d04`.
-- [ ] Replace the unpublished Gumroad attachment with the exact `41beb74` ZIP and sidecar, download the saved folder, verify SHA-256 `cb175ec7...9ebf`, and only then remove the superseded provider files.
+- [x] Replace the unpublished Gumroad attachment with the exact `41beb74` ZIP and sidecar. After a saved-page reload, Gumroad's folder download contained exactly the 2,136,210-byte ZIP and 126-byte sidecar; both resolved to SHA-256 `cb175ec7a22413ae8d2a024f31471766da4dd98bac84718cfbb28184a3bc9ebf`. Only then remove the superseded `be7a195b...6d04` provider folder, save, reload, and download the sole remaining folder again with the same result.
 - [ ] Exercise the browser-quarantined customer copy: extract, launch, complete the core workflow, and confirm the selected source folder remains unchanged.
 
 Do not describe the unsigned archive as Apple-verified, notarized, or a normal one-click installation.
@@ -70,7 +71,7 @@ Do not describe the unsigned archive as Apple-verified, notarized, or a normal o
 - [x] Intended defaults recorded: €24 one-time purchase, one user on up to three personally controlled Macs, version-1 updates, receipt-reply support, and a 14-day refund policy.
 - [ ] Seller reviews and accepts the customer license and all legally required seller and consumer information.
 - [x] Preserve the existing Gumroad product `vddnq` in the signed-in `Sysgga` seller account; do not create a duplicate.
-- [x] Read back the product name, EUR 24 price, 14-day refund period, exact two-file delivery folder, receipt copy, and unpublished state.
+- [x] Read back the product name, EUR 24 price, 14-day refund period, receipt copy, unpublished state, and the final replacement-only two-file delivery folder.
 - [ ] Complete owner review of seller identity, consumer information, tax treatment/presentation, payout, and customer licence terms.
 - [x] Confirm the saved product page accurately states the unsigned, not-notarized, macOS 14-or-later installation status and limitations.
 - [ ] Conduct a zero-charge purchase only after explicit owner confirmation at that time.
