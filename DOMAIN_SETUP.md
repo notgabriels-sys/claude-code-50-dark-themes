@@ -38,14 +38,12 @@ Current status: all four apex `A` records, all four apex `AAAA` records, and
 the `www` CNAME were verified in public DNS on 2026-08-24. Keep the repository
 root `CNAME` file set to `gabs-utilities.com`.
 
-HTTPS status note from 2026-08-24 03:01 CEST: both the root page and the Audio
-Delivery Preflight CLI landing page returned `HTTP/2 200` over normal HTTPS
-with certificate validation enabled. Use the custom domain for public promotion.
-Recheck with:
+HTTPS status note from 2026-08-24 03:01 CEST: the root page returned `HTTP/2
+200` over normal HTTPS with certificate validation enabled. Use the custom
+domain for public promotion. Recheck with:
 
 ```bash
 curl -sSIL https://gabs-utilities.com/
-curl -sSIL https://gabs-utilities.com/audio-delivery-preflight-cli.html
 ```
 
 GitHub Pages certificate provisioning may take time after DNS or `CNAME`

@@ -7,7 +7,7 @@ Light / Dark / System, so these install into Claude Code, which does support cus
 
 Requires **Claude Code v2.1.118 or later**, the release that introduced named custom themes.
 
-**→ Visual gallery: [open `index.html`](index.html)** (all 50 previewed in their own colors).
+**→ Visual gallery and storefront: [gabs-utilities.com](https://gabs-utilities.com/)** (all 50 previewed in their own colors).
 
 Prefer a zip to a `git clone`? The same 50 themes are a **free download** here:
 **[get the pack →](https://notgabriel.gumroad.com/l/slhbym)** (name your price, $0 is fine).
@@ -24,6 +24,9 @@ claude plugin install 50-dark-themes@notgabriels-themes
 Then run `/theme` in Claude Code and pick one. The plugin keeps the pack together and makes updates
 available through the marketplace. Press `Ctrl+E` on a plugin theme if you want an editable copy in
 `~/.claude/themes/`.
+
+Step-by-step install, terminal background and troubleshooting guide:
+<https://gabs-utilities.com/claude-code-theme-install-guide.html>
 
 ## Manual install
 
@@ -65,13 +68,18 @@ different contents it is backed up once as `<name>.json.bak` before being replac
 ## What each file sets
 
 - `claude` + shimmer: brand accent (spinner, assistant label) = theme accent
-- `text` / `inactive` / `subtle`: foreground, secondary text, faint borders
+- `text` / `inactive` / `subtle`: foreground, readable secondary text, non-essential faint hairlines
 - `promptBorder`, `suggestion`, `rate_limit_fill`: accent-matched
 - `permission`, `planMode`: second accent where the theme has one
 - `userMessageBackground` (+hover): raised surface, one step above the theme `bg`
 
 Left at the base `dark` preset on purpose: `success`, `error`, `warning`, diff colors —
 so status colors stay semantically green/red/yellow in every theme.
+
+The repository verifier checks each palette against its recommended terminal background:
+AAA contrast for primary text, AA for foreground accents and readable secondary text, and the
+WCAG non-text floor for functional borders and indicators. `subtle` is reserved for decorative
+hairlines; it is never used as the readable secondary-text color.
 
 ## Note on backgrounds
 
@@ -109,7 +117,7 @@ Same palettes and the same care, applied elsewhere. All one-time purchases, no
 subscriptions, and none of it needed to use the themes above.
 
 <details>
-<summary>Ten packs — UI kit, HTML templates, app screens, email, social, cheatsheets, keycaps, wallpapers, palettes</summary>
+<summary>Nine published packs plus one résumé demo — UI kit, HTML templates, app screens, email, social, cheatsheets, keycaps, wallpapers, palettes</summary>
 
 | | |
 |---|---|
@@ -119,7 +127,6 @@ subscriptions, and none of it needed to use the themes above.
 | **[Dark Email Templates](https://notgabriel.gumroad.com/l/xjcbji)** — transactional email | welcome, receipt, reset, OTP · €9 |
 | **[Social & OG Templates](https://notgabriel.gumroad.com/l/bunkhy)** — exact-size share images | OG cards, X header, thumbnails · €9 |
 | **[Résumé & CV Templates — live demo](https://notgabriels-sys.github.io/dark-html-templates-demo/resume/)** — prints clean to PDF | 5 layouts + cover letter · checkout temporarily withheld |
-| **[Claude Code Workflow Kit](https://notgabriel.gumroad.com/l/zvbti)** — agent workflow templates | repo audits, PR reviews, handoffs, release preflights · €12 |
 | **[Dev Cheatsheets](https://notgabriel.gumroad.com/l/kxsfa)** + **[Vol. 2](https://notgabriel.gumroad.com/l/kykega)** | git, vim, tmux, SQL, CSS, HTTP · €7 each |
 | **[Keyboard Shortcuts](https://notgabriel.gumroad.com/l/wgtbkq)** — keycap reference cards | VS Code, macOS, Vim, tmux · €7 |
 | **[Dark Wallpapers](https://notgabriel.gumroad.com/l/bqgfv)** + **[Vol. 2 · Aurora](https://notgabriel.gumroad.com/l/jqrdfy)** | 4K, desktop & mobile · from €6 |
@@ -127,13 +134,7 @@ subscriptions, and none of it needed to use the themes above.
 
 </details>
 
-**[Everything Dark — the complete kit →](https://notgabriel.gumroad.com/l/wuhehk)** (all of the above, $39)
-
-## Audio tools
-
-Practical release and handoff utilities from the same studio workflow.
-
-- **[Audio Delivery Preflight CLI](https://gabs-utilities.com/audio-delivery-preflight-cli.html)** — command-line checks for bounced WAV delivery folders before client, label or release handoff. macOS and Linux builds · €19.
+**[Everything Dark — the complete kit →](https://notgabriel.gumroad.com/l/wuhehk)** (published dark-asset bundle, $39)
 
 ### More free things
 
@@ -153,6 +154,9 @@ python3 theme_contrast.py themes/
 ```
 
 ### How these are built
+
+**[What 50 dark Claude Code themes taught me about semantic terminal colors](https://gabs-utilities.com/semantic-terminal-colors.html)**
+— why decorative accents can move while errors, warnings, success states and diffs keep their meaning.
 
 **[Every one of my 50 themes failed a contrast check](https://notgabriels-sys.github.io/dark-templates-demo/writing/contrast-floors.html)**
 — what the floors are, why a naive check is worse than none, and the fix.
