@@ -1,0 +1,29 @@
+# Gabs Utilities
+
+Gabs Utilities is a public product and tool catalog by Gabriel García Alonso,
+a Berlin-based sound engineer, producer and developer-oriented creator.
+
+## Primary pages
+
+- Shop and theme gallery: https://gabs-utilities.com/
+- Audio Delivery Preflight CLI: https://gabs-utilities.com/audio-delivery-preflight-cli.html
+- Impressum: https://gabs-utilities.com/impressum.html
+
+## Commercial audio utility
+
+Audio Delivery Preflight CLI is a local, read-only command-line checker for
+bounced WAV delivery folders before client, label or release handoff. It is
+sold via Gumroad for EUR 19:
+
+https://notgabriel.gumroad.com/l/audio-delivery-preflight-cli
+
+It is not automatic mastering, a distributor-submission validator, a cloud
+upload service or a replacement for human listening.
+
+## Related public catalog
+
+Gabriel Tools + Code keeps the broader catalog of Gabriel's public tools,
+repositories and product experiments:
+
+https://gabriel-tools-and-code.notgabriels960914.chatgpt.site
+

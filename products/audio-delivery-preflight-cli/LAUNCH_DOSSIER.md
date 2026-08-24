@@ -13,10 +13,16 @@ for human listening.
 - Landing page: <https://gabs-utilities.com/audio-delivery-preflight-cli.html>
 - Gumroad listing: <https://notgabriel.gumroad.com/l/audio-delivery-preflight-cli>
 - Catalog card: <https://gabriel-tools-and-code.notgabriels960914.chatgpt.site>
+- LLM discovery file: <https://gabs-utilities.com/llms.txt>
+- IndexNow verification key: <https://gabs-utilities.com/79F35EFA-F66B-4757-848A-FB1A9029E1BA.txt>
 
 Use `https://gabs-utilities.com/audio-delivery-preflight-cli.html` for
 submissions. Normal HTTPS returned `HTTP/2 200` for the root site and the Audio
 Delivery Preflight CLI landing page on 2026-08-24 03:01 CEST.
+
+Search/discovery update from 2026-08-24: the landing page includes
+`SoftwareApplication` and `FAQPage` structured data, the root site includes
+`llms.txt`, and the domain hosts an IndexNow key for URL-update notification.
 
 ## Core positioning
 
@@ -65,6 +71,7 @@ Long description:
 - SaaSHub submission guidelines: <https://www.saashub.com/services/submit>
 - Show HN guidelines: <https://news.ycombinator.com/showhn.html>
 - BetaList criteria: <https://betalist.com/criteria>
+- IndexNow documentation: <https://www.indexnow.org/documentation>
 
 ## Product Hunt draft
 
