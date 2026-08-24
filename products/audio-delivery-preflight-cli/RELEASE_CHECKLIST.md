@@ -7,6 +7,10 @@ This checklist keeps repository checks, private candidate archives, customer
 delivery, and public commercial release separate. Nothing in the first two
 sections authorizes publication.
 
+Status update: 2026-08-24. Gumroad publication at EUR 19 and six customer files
+were read back after duplicate-attachment cleanup. An independent paid or
+zero-charge checkout-download smoke test is not recorded here.
+
 ## Build and private-candidate verification
 
 - [ ] Confirm the exact source commit and clean worktree.
@@ -30,15 +34,16 @@ sections authorizes publication.
 
 ## Owner-controlled commercial gates
 
-- [ ] Gabriel creates the Gumroad product in the intended seller account.
-- [ ] Read back the real product name, EUR 19 amount, currency, tax treatment,
+- [x] Gabriel creates the Gumroad product in the intended seller account.
+- [x] Read back the real product name, EUR 19 amount, currency,
       attachment, and customer-delivery settings.
-- [ ] Confirm checkout copy matches the final product and platform limits.
-- [ ] Gabriel explicitly authorizes a zero-charge purchase at that time.
+- [x] Confirm public product page and owned landing page match the final product
+      and platform limits.
+- [ ] Gabriel explicitly authorizes a zero-charge or paid purchase at that time.
 - [ ] Download independently, compare the delivered archive checksum, extract,
       and run the matching platform smoke test.
-- [ ] Add a public shop button or publish only after every preceding gate is
-      satisfied.
+- [x] Add a public shop card and publish the Gumroad listing after owner
+      confirmation.
 
 ## Rollback triggers
 

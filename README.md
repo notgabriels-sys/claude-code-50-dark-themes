@@ -129,6 +129,12 @@ subscriptions, and none of it needed to use the themes above.
 
 **[Everything Dark — the complete kit →](https://notgabriel.gumroad.com/l/wuhehk)** (all of the above, $39)
 
+## Audio tools
+
+Practical release and handoff utilities from the same studio workflow.
+
+- **[Audio Delivery Preflight CLI](https://notgabriels-sys.github.io/claude-code-50-dark-themes/audio-delivery-preflight-cli.html)** — command-line checks for bounced WAV delivery folders before client, label or release handoff. macOS and Linux builds · €19.
+
 ### More free things
 
 - **[Lowlight — 70 VS Code themes](https://github.com/notgabriels-sys/lowlight-themes)** — fifty dark, twenty light, same contrast discipline. MIT.

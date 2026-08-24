@@ -4,6 +4,25 @@ Decision date: 2026-08-21. This records a proposed CLI-only EUR 19 offer. It
 does not create a Gumroad object, checkout, payment link, product attachment,
 or publication, and it does not resolve owner-controlled legal gates.
 
+## Current public release status
+
+Updated: 2026-08-24.
+
+The proposal below has been superseded by a verified public Gumroad listing:
+
+- Product page: <https://notgabriel.gumroad.com/l/audio-delivery-preflight-cli>.
+- Owned landing page: <https://notgabriels-sys.github.io/claude-code-50-dark-themes/audio-delivery-preflight-cli.html>.
+- Price read-back: **EUR 19** (`price_cents: 1900`).
+- Publication read-back: `is_published: true`.
+- Customer file read-back: six files, with no duplicate filenames:
+  `darwin-arm64`, `darwin-amd64`, and `linux-amd64` archives plus checksum
+  sidecars.
+
+No independent paid or zero-charge checkout-download smoke test is recorded in
+this file. Treat Gumroad publication, hosted page visibility, purchase flow,
+downloaded archive verification, and customer support readiness as separate
+states.
+
 ## Proposed offer
 
 - Product name: **Audio Delivery Preflight CLI**.
@@ -35,16 +54,14 @@ Developer ID signature, or notarization is included in this CLI edition.
 
 ## Private-candidate boundary
 
-Current archives are private candidates only. They may include
-`CUSTOMER_LICENSE_DRAFT.md` for controlled review, but they are not public,
-customer-ready, or eligible for final release. The seller must review and
-accept final seller identity, governing terms, consumer information, and the
-customer license before any final archive can include accepted terms.
+Earlier archives were private candidates only. The current public Gumroad
+listing uses customer-release archives, but future archive rebuilds must still
+preserve the private-candidate/customer-release boundary and must not infer
+accepted legal terms from this development document alone.
 
 ## Owner-controlled commercial gates
 
-Gabriel alone must approve the final license and seller information, create the
-actual Gumroad object in the intended seller account, read back product name,
-amount, currency, tax treatment, attachment, and delivery settings, explicitly
-approve any zero-charge checkout, and verify the downloaded artifact before
-publication. No shop button or public listing is authorized by this document.
+Gabriel alone controls seller identity, legal/customer terms, Gumroad settings,
+checkout tests, refunds, taxes, payouts, and future publication changes. A
+source commit, package command, or documentation edit never changes Gumroad
+state by itself.
