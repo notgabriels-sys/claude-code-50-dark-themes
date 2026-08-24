@@ -5,10 +5,10 @@ a Berlin-based sound engineer, producer and developer-oriented creator.
 
 ## Primary pages
 
-- Shop and theme gallery: https://gabs-utilities.com/
-- Claude Code theme install guide: https://gabs-utilities.com/claude-code-theme-install-guide.html
-- Semantic terminal color design article: https://gabs-utilities.com/semantic-terminal-colors.html
-- Impressum: https://gabs-utilities.com/impressum.html
+- [Shop and theme gallery](https://gabs-utilities.com/)
+- [Claude Code theme install guide](https://gabs-utilities.com/claude-code-theme-install-guide.html)
+- [Semantic terminal color design article](https://gabs-utilities.com/semantic-terminal-colors.html)
+- [Impressum](https://gabs-utilities.com/impressum.html)
 
 The semantic terminal color article explains the design choices behind the 50
 free Claude Code themes, including preserved status colors, role-specific
@@ -17,11 +17,11 @@ contrast, terminal background ownership and transparent-terminal surfaces.
 The install guide gives the native Claude Code plugin command, manual JSON
 fallback, terminal background setup, and common troubleshooting steps:
 
-https://gabs-utilities.com/claude-code-theme-install-guide.html
+[Open the Claude Code theme install guide.](https://gabs-utilities.com/claude-code-theme-install-guide.html)
 
 ## Related public catalog
 
 Gabriel Tools + Code keeps the broader catalog of Gabriel's public tools,
 repositories and product experiments:
 
-https://gabriel-tools-and-code.notgabriels960914.chatgpt.site
+[Open Gabriel Tools + Code.](https://gabriel-tools-and-code.notgabriels960914.chatgpt.site)

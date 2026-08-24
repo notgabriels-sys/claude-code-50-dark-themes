@@ -23,6 +23,26 @@ const verifiedPayPalIds = [
   "6Z93DNS76PCGS",
   "QW8V53WWM2P7E",
 ];
+// Buyer-side read-back on 2026-08-24 confirmed these product pages return a
+// published Gumroad product. A plausible URL or HTTP 200 is not enough:
+// unpublished Gumroad products can still render a 200-status product shell.
+const verifiedGumroadSlugs = new Set([
+  "bqgfv",
+  "bunkhy",
+  "cfcvmy",
+  "ckthsb",
+  "dark-app-screens",
+  "industrial-tension-fx",
+  "jqrdfy",
+  "kxsfa",
+  "kykega",
+  "raw-techno-kick-architecture",
+  "slhbym",
+  "wgtbkq",
+  "wuhehk",
+  "xcxeb",
+  "xjcbji",
+]);
 
 function fail(message) {
   throw new Error(message);
@@ -93,6 +113,9 @@ if (pluginManifest.experimental?.themes !== "./themes/") fail("Plugin manifest m
 
 const html = await readFile(new URL("index.html", root), "utf8");
 const readme = await readFile(new URL("README.md", root), "utf8");
+const publicHtmlFiles = (await readdir(root))
+  .filter((file) => file.endsWith(".html"))
+  .sort();
 const match = html.match(/const THEMES = (\[[\s\S]*?\n\]);/);
 if (!match) fail("Could not find the THEMES array in index.html.");
 
@@ -116,11 +139,32 @@ if (!readme.includes("mkdir -p ~/.claude/themes")) {
 if (!html.includes("claude plugin marketplace add notgabriels-sys/claude-code-50-dark-themes")) {
   fail("The gallery must expose the native Claude Code marketplace install command.");
 }
+if (!html.includes("utm_campaign=50-dark-themes-launch")) {
+  fail("The storefront must expose the tracked Product Hunt launch link.");
+}
+if (html.includes("api.producthunt.com/widgets/embed-image")) {
+  fail("Do not restore the remote Product Hunt badge; it sets a third-party cookie.");
+}
 if (html.includes("notgabriel.gumroad.com/l/wmlrk")) {
   fail("Do not restore the résumé checkout until its download is verified.");
 }
 if (/stripe/i.test(html)) {
   fail("No Stripe link is verified for this site.");
+}
+for (const file of publicHtmlFiles) {
+  const source = await readFile(new URL(file, root), "utf8");
+  for (const match of source.matchAll(/https:\/\/notgabriel\.gumroad\.com\/l\/([a-z0-9-]+)/g)) {
+    const slug = match[1];
+    if (!verifiedGumroadSlugs.has(slug)) {
+      fail(`${file} contains an unverified or unavailable Gumroad product link: ${slug}.`);
+    }
+  }
+}
+for (const match of readme.matchAll(/https:\/\/notgabriel\.gumroad\.com\/l\/([a-z0-9-]+)/g)) {
+  const slug = match[1];
+  if (!verifiedGumroadSlugs.has(slug)) {
+    fail(`README.md contains an unverified or unavailable Gumroad product link: ${slug}.`);
+  }
 }
 for (const id of verifiedPayPalIds) {
   if (!html.includes(`https://www.paypal.com/ncp/payment/${id}`)) {
@@ -130,5 +174,5 @@ for (const id of verifiedPayPalIds) {
 
 console.log(
   `Verified ${files.length} themes, ${pluginFiles.length} plugin themes, ${galleryThemes.length} gallery cards, ` +
-    `${verifiedPayPalIds.length} PayPal links, and the safe install command.`,
+    `${verifiedGumroadSlugs.size} Gumroad products, ${verifiedPayPalIds.length} PayPal links, and the safe install command.`,
 );
