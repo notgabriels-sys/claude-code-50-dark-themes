@@ -9,7 +9,7 @@
     {
       "name": "50-dark-themes",
       "source": "./plugins/50-dark-themes",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "displayName": "50 Dark Themes for Claude Code",
       "description": "Fifty hand-tuned dark Claude Code themes with semantic status colors.",
       "author": {
