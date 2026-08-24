@@ -2,7 +2,7 @@
 
 Audio Delivery Preflight CLI is a local, read-only technical inventory and delivery-package check for macOS and Linux. It does not upload source files, make network requests, edit delivery files, assess artistic quality, replace professional listening, or guarantee distributor acceptance.
 
-Public product page: <https://notgabriels-sys.github.io/claude-code-50-dark-themes/audio-delivery-preflight-cli.html>
+Public product page: <https://gabs-utilities.com/audio-delivery-preflight-cli.html>
 
 Gumroad listing: <https://notgabriel.gumroad.com/l/audio-delivery-preflight-cli>
 

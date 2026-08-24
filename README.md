@@ -133,7 +133,7 @@ subscriptions, and none of it needed to use the themes above.
 
 Practical release and handoff utilities from the same studio workflow.
 
-- **[Audio Delivery Preflight CLI](https://notgabriels-sys.github.io/claude-code-50-dark-themes/audio-delivery-preflight-cli.html)** — command-line checks for bounced WAV delivery folders before client, label or release handoff. macOS and Linux builds · €19.
+- **[Audio Delivery Preflight CLI](https://gabs-utilities.com/audio-delivery-preflight-cli.html)** — command-line checks for bounced WAV delivery folders before client, label or release handoff. macOS and Linux builds · €19.
 
 ### More free things
 

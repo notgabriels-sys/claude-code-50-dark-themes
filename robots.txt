@@ -1,3 +1,3 @@
 User-agent: *
 Allow: /
-Sitemap: https://notgabriels-sys.github.io/claude-code-50-dark-themes/sitemap.xml
+Sitemap: https://gabs-utilities.com/sitemap.xml

@@ -11,7 +11,7 @@ Updated: 2026-08-24.
 The proposal below has been superseded by a verified public Gumroad listing:
 
 - Product page: <https://notgabriel.gumroad.com/l/audio-delivery-preflight-cli>.
-- Owned landing page: <https://notgabriels-sys.github.io/claude-code-50-dark-themes/audio-delivery-preflight-cli.html>.
+- Owned landing page: <https://gabs-utilities.com/audio-delivery-preflight-cli.html>.
 - Price read-back: **EUR 19** (`price_cents: 1900`).
 - Publication read-back: `is_published: true`.
 - Customer file read-back: six files, with no duplicate filenames:

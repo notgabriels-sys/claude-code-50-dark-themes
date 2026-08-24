@@ -10,13 +10,13 @@ for human listening.
 
 ## Verified public links
 
-- Landing page: <https://notgabriels-sys.github.io/claude-code-50-dark-themes/audio-delivery-preflight-cli.html>
+- Landing page: <https://gabs-utilities.com/audio-delivery-preflight-cli.html>
 - Gumroad listing: <https://notgabriel.gumroad.com/l/audio-delivery-preflight-cli>
 - Catalog card: <https://gabriel-tools-and-code.notgabriels960914.chatgpt.site>
 
-Do not use `https://gabs-utilities.com` in submissions until HTTPS passes
-without certificate errors. On 2026-08-24 02:54 CEST, HTTP served the site but
-HTTPS returned a certificate-name mismatch.
+Use `https://gabs-utilities.com/audio-delivery-preflight-cli.html` for
+submissions. Normal HTTPS returned `HTTP/2 200` for the root site and the Audio
+Delivery Preflight CLI landing page on 2026-08-24 03:01 CEST.
 
 ## Core positioning
 
@@ -49,8 +49,8 @@ Long description:
    access and a developer/product listing flow.
 3. AlternativeTo: useful for long-tail discovery. Submit as an adjacent utility,
    not as a direct replacement for mastering or distributor tools.
-4. SaaSHub: wait until the custom domain has working HTTPS or there is a domain
-   email/verification route available.
+4. SaaSHub: possible now that the custom domain has working HTTPS; still pause
+   if SaaSHub requires domain email verification.
 5. BetaList: wait. Their criteria favour technology startups with their own
    active landing page/domain and accessible product flow.
 6. Show HN: wait unless there is a free demo, trial, source preview or other
@@ -203,7 +203,7 @@ X / Mastodon:
 > handoff: technical evidence, delivery hygiene, reports and checksum workflow.
 >
 > Local, read-only, macOS + Linux. €19.
-> https://notgabriels-sys.github.io/claude-code-50-dark-themes/audio-delivery-preflight-cli.html
+> https://gabs-utilities.com/audio-delivery-preflight-cli.html
 
 LinkedIn:
 
@@ -218,7 +218,7 @@ LinkedIn:
 > judgement. It is one last technical preflight before the human decision.
 >
 > macOS and Linux builds are available via Gumroad for €19.
-> https://notgabriels-sys.github.io/claude-code-50-dark-themes/audio-delivery-preflight-cli.html
+> https://gabs-utilities.com/audio-delivery-preflight-cli.html
 
 ## Direct outreach candidates
 
@@ -239,4 +239,4 @@ Never mass-send. Good-fit lead categories:
 - Pay for promotion.
 - Change Gumroad price, checkout, refund, tax, payout or seller settings.
 - Claim an independent purchase/download smoke test was completed.
-- Promote `gabs-utilities.com` before HTTPS is verified.
+- Change the promoted URL again without rechecking HTTPS and canonical metadata.
