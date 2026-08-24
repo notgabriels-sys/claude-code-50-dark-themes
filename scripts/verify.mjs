@@ -217,7 +217,9 @@ if (/stripe/i.test(html)) {
 }
 for (const { id, price } of verifiedPayPalLinks) {
   const href = `https://www.paypal.com/ncp/payment/${id}`;
-  if (!html.includes(href)) {
+  // Quote-exact: a bare substring check would also be satisfied by a longer
+  // lookalike such as .../<id>x, which is a different payment link.
+  if (!html.includes(`href="${href}"`)) {
     fail(`Verified PayPal link ${id} is missing.`);
   }
   const card = html.match(
@@ -237,8 +239,14 @@ for (const { id, price } of verifiedPayPalLinks) {
 // priced. This one proves nothing else got added: a fourth NCP link is an
 // unverified charge on a public shop, which is the exact failure this repo
 // already paid for once.
+//
+// Capture to a DELIMITER ([^"'\s<>]+), never to a permitted character class.
+// An earlier version used ([A-Z0-9]+); .../3SWZ64EXW9C8Wx then truncated to the
+// known id 3SWZ64EXW9C8W and a EUR1,200 lookalike link passed CI. The Gumroad
+// slug pattern had the same defect with a dot suffix. Both were reproduced,
+// then fixed. Do not narrow these back to a character class.
 const presentPayPalIds = [
-  ...html.matchAll(/paypal\.com\/ncp\/payment\/([A-Z0-9]+)/g),
+  ...html.matchAll(/paypal\.com\/ncp\/payment\/([^"'\s<>]+)/g),
 ].map((match) => match[1]);
 for (const id of new Set(presentPayPalIds)) {
   if (!verifiedPayPalIds.includes(id)) {
@@ -261,7 +269,7 @@ for (const host of new Set(gumroadHosts)) {
 }
 
 const presentGumroadSlugs = [
-  ...html.matchAll(/notgabriel\.gumroad\.com\/l\/([A-Za-z0-9_-]+)/g),
+  ...html.matchAll(/notgabriel\.gumroad\.com\/l\/([^"'\s<>]+)/g),
 ].map((match) => match[1]);
 
 const duplicateSlugs = presentGumroadSlugs.filter(

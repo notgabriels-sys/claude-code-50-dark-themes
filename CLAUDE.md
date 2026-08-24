@@ -82,6 +82,18 @@ an unlisted link cannot ship, and a listed one cannot drift off its price. Both
 failure modes were tested by deliberately breaking the page and confirming the
 build fails.
 
+**(added 2026-08-24, found by reviewing the guards above) Capture to a
+delimiter, never to a character class.** The first version of both allowlists
+extracted the id with a permitted-character pattern — `([A-Z0-9]+)` for PayPal,
+`([A-Za-z0-9_-]+)` for Gumroad. A tampered link then **truncated to a known
+prefix and passed**: `.../ncp/payment/3SWZ64EXW9C8Wx` read as the verified id
+`3SWZ64EXW9C8W`, so a €1,200 lookalike link sat alongside the real one and CI
+went green. `gumroad.com/l/bqgfv.evil` did the same. Both were reproduced
+against the live page, then fixed to capture `([^"'\s<>]+)` — everything up to
+a quote, space or bracket. The PayPal presence check was also a bare substring
+match, which a longer lookalike satisfies; it is now quote-exact. **Do not
+narrow these patterns back to a character class.**
+
 **This does not replace reading the payment provider's real objects.** CI can
 only check the page against a table a human verified through the browser. A
 wrong price in that table would sail through. Adding a link to
