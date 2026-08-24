@@ -88,6 +88,22 @@ wrong price in that table would sail through. Adding a link to
 `verifiedPayPalLinks` is an assertion that you personally read it back from
 `paypal.com/ncp/links/<ID>` — never do it to make the build pass.
 
+**(added 2026-08-24) Gumroad structural guards.** `verify` now also fails on:
+any Gumroad link whose host is not exactly `notgabriel.gumroad.com` (a
+lookalike or a typo), a duplicate slug, a slug not in `knownGumroadSlugs`, or
+a known slug that has vanished from the page. All four were tested by breaking
+`index.html` and confirming the build fails.
+
+**`knownGumroadSlugs` is deliberately weaker than `verifiedPayPalLinks`, and
+the difference matters.** It asserts only *"this slug is known and
+intentional"*. It does **not** assert that any price, currency or bundle
+content was read back from the real Gumroad product — nothing in this repo
+does, because that verification has never happened. Adding a slug to the list
+silences the guard; it verifies nothing. What it buys is that a link cannot
+silently change, appear, disappear, or point at another host. That is the
+structural half. The price half stays unbuilt until someone reads the 18
+products in a signed-in browser.
+
 `verify` also guards the plugin marketplace: it asserts both plugins are
 registered with the right source paths, that every skill in `.claude/skills/`
 is byte-identical to its packaged copy under

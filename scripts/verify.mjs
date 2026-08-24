@@ -30,6 +30,40 @@ const verifiedPayPalLinks = [
 ];
 const verifiedPayPalIds = verifiedPayPalLinks.map((link) => link.id);
 
+// The 18 Gumroad product slugs currently on the shop, recorded 2026-08-24.
+//
+// READ THIS BEFORE ADDING ONE. Unlike verifiedPayPalLinks above, this list is
+// deliberately WEAKER: it asserts only "this slug is known and intentional",
+// NOT "its price and contents were read back from the real Gumroad product".
+// No Gumroad product has ever had that treatment -- see CLAUDE.md. Adding a
+// slug here silences the guard; it does not verify anything.
+//
+// What it does buy: a slug cannot silently change, appear, or disappear, and
+// no link can point at a lookalike host. That is the structural half of the
+// protection the PayPal links get. The price half is still unbuilt because no
+// verified Gumroad table exists yet.
+const knownGumroadSlugs = [
+  "slhbym",
+  "ckthsb",
+  "cfcvmy",
+  "dark-app-screens",
+  "xjcbji",
+  "bunkhy",
+  "zvbti",
+  "kxsfa",
+  "kykega",
+  "wgtbkq",
+  "bqgfv",
+  "jqrdfy",
+  "xcxeb",
+  "wuhehk",
+  "mix-revision-mastering-handoff-kit",
+  "techno-mix-preflight-toolkit",
+  "raw-techno-kick-architecture",
+  "industrial-tension-fx",
+];
+const GUMROAD_HOST = "notgabriel.gumroad.com";
+
 function fail(message) {
   throw new Error(message);
 }
@@ -215,7 +249,47 @@ for (const id of new Set(presentPayPalIds)) {
   }
 }
 
+// Same shape for the Gumroad half of the shop. Any Gumroad link on a host other
+// than the canonical one is a typo at best and a lookalike at worst.
+const gumroadHosts = [
+  ...html.matchAll(/https:\/\/([a-z0-9.-]*gumroad\.com)/g),
+].map((match) => match[1]);
+for (const host of new Set(gumroadHosts)) {
+  if (host !== GUMROAD_HOST) {
+    fail(`Gumroad link points at ${host}, not ${GUMROAD_HOST}.`);
+  }
+}
+
+const presentGumroadSlugs = [
+  ...html.matchAll(/notgabriel\.gumroad\.com\/l\/([A-Za-z0-9_-]+)/g),
+].map((match) => match[1]);
+
+const duplicateSlugs = presentGumroadSlugs.filter(
+  (slug, index) => presentGumroadSlugs.indexOf(slug) !== index,
+);
+if (duplicateSlugs.length > 0) {
+  fail(`Duplicate Gumroad slug on the page: ${[...new Set(duplicateSlugs)].join(", ")}.`);
+}
+
+for (const slug of presentGumroadSlugs) {
+  if (!knownGumroadSlugs.includes(slug)) {
+    fail(
+      `Unknown Gumroad slug "${slug}" is on the page. Confirm it is the product ` +
+        `you mean at gumroad.com, then add it to knownGumroadSlugs.`,
+    );
+  }
+}
+for (const slug of knownGumroadSlugs) {
+  if (!presentGumroadSlugs.includes(slug)) {
+    fail(
+      `Gumroad slug "${slug}" has disappeared from the page. Remove it from ` +
+        `knownGumroadSlugs if that was deliberate.`,
+    );
+  }
+}
+
 console.log(
   `Verified ${files.length} themes, ${pluginFiles.length} plugin themes, ${galleryThemes.length} gallery cards, ` +
-    `${verifiedPayPalIds.length} PayPal links, ${sourceSkills.length} skills, and the safe install command.`,
+    `${verifiedPayPalIds.length} PayPal links, ${knownGumroadSlugs.length} Gumroad slugs, ` +
+    `${sourceSkills.length} skills, and the safe install command.`,
 );
