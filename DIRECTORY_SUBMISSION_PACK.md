@@ -55,6 +55,17 @@ Maker note:
 Built by Gabriel / NotGabriels under the neutral Gabs Utilities developer-product identity.
 ```
 
+Audio-specific supporting asset:
+
+```text
+Free WAV Delivery Checklist — a public handoff checklist for producers, engineers and labels:
+https://gabs-utilities.com/audio-delivery-checklist.html
+```
+
+Use this link for audio communities or newsletters. For general developer
+directories, keep the main pitch focused on the free Claude Code themes and
+developer-tool catalog.
+
 ## Product Hunt
 
 Use Product Hunt only when signed in and the product page/dashboard is accessible.

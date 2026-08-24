@@ -6,6 +6,7 @@ a Berlin-based sound engineer, producer and developer-oriented creator.
 ## Primary pages
 
 - Shop and theme gallery: https://gabs-utilities.com/
+- Free WAV delivery handoff checklist: https://gabs-utilities.com/audio-delivery-checklist.html
 - Audio Delivery Preflight CLI: https://gabs-utilities.com/audio-delivery-preflight-cli.html
 - Audio Delivery Preflight CLI sample report: https://gabs-utilities.com/audio-delivery-preflight-sample-report.html
 - Impressum: https://gabs-utilities.com/impressum.html
@@ -20,6 +21,10 @@ https://notgabriel.gumroad.com/l/audio-delivery-preflight-cli
 
 It is not automatic mastering, a distributor-submission validator, a cloud
 upload service or a replacement for human listening.
+
+The free checklist gives a manual studio handoff process before purchase:
+
+https://gabs-utilities.com/audio-delivery-checklist.html
 
 The sample report demonstrates the style of output and example findings before
 purchase:

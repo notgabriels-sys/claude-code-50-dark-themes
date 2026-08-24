@@ -7,13 +7,15 @@ engineers, producers, developers and community admins whose trust matters.
 
 ## Community-safe principle
 
-Lead with the problem and the sample report, not only the Gumroad link.
+Lead with the problem, the free checklist and the sample report, not only the
+Gumroad link.
 
 Good launch framing:
 
-> I built a small local CLI for checking bounced WAV delivery folders before
-> client or label handoff. I would appreciate feedback on whether the sample
-> report catches the right boring-but-real delivery issues.
+> I made a free WAV delivery handoff checklist and a small local CLI for
+> checking bounced WAV delivery folders before client or label handoff. I would
+> appreciate feedback on whether the checklist and sample report catch the right
+> boring-but-real delivery issues.
 
 Unsafe launch framing:
 
@@ -22,6 +24,7 @@ Unsafe launch framing:
 ## Public proof assets
 
 - Product page: <https://gabs-utilities.com/audio-delivery-preflight-cli.html>
+- Free checklist: <https://gabs-utilities.com/audio-delivery-checklist.html>
 - Sample report: <https://gabs-utilities.com/audio-delivery-preflight-sample-report.html>
 - Public feedback thread: <https://github.com/notgabriels-sys/claude-code-50-dark-themes/issues/21>
 - Feedback form: <https://github.com/notgabriels-sys/claude-code-50-dark-themes/issues/new?template=audio-preflight-feedback.yml>
@@ -60,7 +63,8 @@ Unsafe launch framing:
    - Do not post a sales link into broad audioengineering/musicproduction
      communities unless a moderator-approved weekly self-promo or feedback
      thread exists.
-   - If allowed, share the sample report and ask for critique of the checks.
+   - If allowed, share the free checklist first and ask for critique of the
+     checks. Mention the paid CLI only as the automation path.
 
 6. Direct outreach
    - Only one person/org at a time.
@@ -96,6 +100,21 @@ First comment:
 > https://gabs-utilities.com/audio-delivery-preflight-sample-report.html
 
 ## Feedback-first social post
+
+> I made a free WAV delivery handoff checklist for checking bounced folders
+> before client, label, archive or release delivery:
+>
+> https://gabs-utilities.com/audio-delivery-checklist.html
+>
+> It covers boring-but-real mistakes: unclear brief, ambiguous versions, missing
+> credits/metadata, unchecked archives, undocumented format assumptions and
+> skipped listening passes.
+>
+> I also built a paid local CLI that automates part of this, but I’d genuinely
+> like feedback on the checklist first: what checks are missing, and what wording
+> would make it more useful for engineers/producers?
+
+## Product-first social post
 
 > I made a small local CLI for checking bounced WAV delivery folders before
 > client, label or release handoff.

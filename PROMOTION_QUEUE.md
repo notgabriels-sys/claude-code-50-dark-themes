@@ -28,6 +28,7 @@ has a stronger problem/solution story than generic design assets, but it should
 be launched feedback-first.
 
 - Landing page: <https://gabs-utilities.com/audio-delivery-preflight-cli.html>
+- Free checklist: <https://gabs-utilities.com/audio-delivery-checklist.html>
 - Sample report: <https://gabs-utilities.com/audio-delivery-preflight-sample-report.html>
 - Public feedback thread: <https://github.com/notgabriels-sys/claude-code-50-dark-themes/issues/21>
 - Gumroad listing: <https://notgabriel.gumroad.com/l/audio-delivery-preflight-cli>
@@ -36,7 +37,8 @@ Safe angle:
 
 > I built a local read-only CLI for checking bounced WAV delivery folders before
 > client, label or release handoff. I am looking for engineer/developer feedback
-> on whether the sample report catches the right boring-but-real delivery issues.
+> on whether the free checklist and sample report catch the right boring-but-real
+> delivery issues.
 
 ## Safe launch order
 
@@ -67,6 +69,11 @@ Safe angle:
 5. Evergreen directories
    - Use after main launch copy is stable.
    - Prioritize directories that accept dev tools or indie products without spammy backlink demands.
+
+6. Audio communities / newsletters
+   - Lead with the free WAV delivery checklist, not the Gumroad link.
+   - Ask for critique of the checklist and missing checks.
+   - Link the paid CLI only as the automation path for people who repeatedly do this work.
 
 ## Ready-to-post copy
 
@@ -124,6 +131,18 @@ I’d love feedback from developers, Claude Code users, and people who care abou
 
 ```text
 Gabs Utilities is a compact catalog of dark developer and creator tools: 50 free Claude Code themes, UI/template packs, workflow kits, cheat sheets, wallpapers, palettes, and audio workflow utilities.
+```
+
+### Audio feedback post
+
+```text
+I made a free WAV delivery handoff checklist for checking bounced folders before client, label, archive or release delivery:
+
+https://gabs-utilities.com/audio-delivery-checklist.html
+
+It covers the boring-but-real mistakes: unclear brief, ambiguous versions, missing credits/metadata, unchecked archives, undocumented format assumptions and skipped listening passes.
+
+I also built a paid local CLI that automates part of this, but I’d genuinely like feedback on the checklist first: what checks are missing, and what wording would make it more useful for engineers/producers?
 ```
 
 ### Longer directory description
