@@ -62,6 +62,9 @@ Safe angle:
    - Tone: short, visual, maker story.
    - Use the four press-kit gallery images, not random screenshots.
    - Ask for feedback, not “please upvote”.
+   - Current gate: the personal account welcome email arrived on 2026-08-23;
+     Product Hunt's current help center says new accounts normally wait one
+     week before they can post.
 
 4. GitHub discovery
    - Keep README clear.
@@ -188,9 +191,10 @@ Use the result to improve positioning before posting again elsewhere.
 | Date | Channel | Status | Next responsible action |
 |---|---|---|---|
 | 2026-08-24 | Custom domain | Live with HTTPS enforced | Use `https://gabs-utilities.com/` as the primary storefront URL |
-| 2026-08-24 | X | Posted by Gabriel | Watch replies for useful feedback; answer as a maker, not a salesperson |
+| 2026-08-24 | X | General catalog post is public; no dedicated Audio Delivery Preflight/checklist post was visible, and there were no relevant replies | Prepare one feedback-first checklist post; confirm immediately before posting |
 | 2026-08-24 | Hacker News / Show HN | Blocked by HN `showlim` notice | Do not retry immediately; participate normally on HN first, then submit later when the account is less restricted |
-| 2026-08-24 | Product Hunt | Prelaunch URL returned 404 / sign-in state in controlled browser | Reopen while signed in; verify the product page before posting or launching |
+| 2026-08-24 | Product Hunt | Personal account welcome email received 2026-08-23; browser was signed out; the existing themes prelaunch link did not provide a usable Audio Delivery Preflight launch | Let the account age for the normal one-week gate, then sign in and create a separate Audio Delivery Preflight launch draft |
 | 2026-08-24 | GitHub topics | Updated toward Claude Code / themes / dev tools discovery | Keep audio/sample-pack promotion on audio-specific repos/pages, not this theme repo |
-| 2026-08-24 | TheDevToolsDir | Live listing: `https://thedevtoolsdir.com/product/gabs-utilities/`. Confirmation page said badge verified and listing live; public page shows Gabs Utilities under IDEs & Editors / Documentation / Other | Leave badge in footer while listing is active; monitor referral traffic and useful developer feedback |
-| 2026-08-24 | DevHunt | Logged-in Chrome route found, but Chrome browser-control connection failed while opening the new-tool form | Retry Chrome control later or have Gabriel keep the DevHunt new-tool form open; use developer-tool framing, not shop framing |
+| 2026-08-24 | TheDevToolsDir | Provider confirmation said the badge was verified, but an independent public read at 06:40 CEST returned HTTP 404 for `https://thedevtoolsdir.com/product/gabs-utilities/`, and search found no public listing | Do not claim the listing as live; recheck after provider processing, then remove the dead badge or contact the directory if the 404 persists |
+| 2026-08-24 | DevHunt | The new-tool route redirected to “Log in to your account”; no DevHunt account email was found | Keep the prepared developer-tool fields, but do not create an account or force a low-fit audio submission merely to add another listing |
+| 2026-08-24 | Gearnews | One tailored, attachment-free email is saved as an unsent Gmail draft to the official PR/news address | Review exact recipient and copy, then confirm immediately before sending |

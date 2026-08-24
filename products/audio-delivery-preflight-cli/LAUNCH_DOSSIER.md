@@ -71,10 +71,12 @@ Long description:
 
 ## Submission priority
 
-1. Product Hunt: good general launch surface once Gabriel can post from a
-   personal account. Use the landing page as the primary URL, Gumroad as the
-   purchase link, and the free checklist plus sample report in the first
-   comment or gallery.
+1. Product Hunt: good general launch surface once Gabriel can post from his
+   personal account. The welcome email arrived on 2026-08-23, and Product
+   Hunt's current help center says new accounts normally wait one week before
+   posting. Use the landing page as the primary URL, Gumroad as the purchase
+   link, and the free checklist plus sample report in the first comment or
+   gallery. Do not ask for upvotes.
 2. KVR Developer Access: strong fit for an audio utility, but requires account
    access and a developer/product listing flow.
 3. AlternativeTo: useful for long-tail discovery. Submit as an adjacent utility,
@@ -83,9 +85,8 @@ Long description:
    if SaaSHub requires domain email verification.
 5. BetaList: wait. Their criteria favour technology startups with their own
    active landing page/domain and accessible product flow.
-6. Show HN: wait unless there is a free demo, trial, source preview or other
-   immediately runnable path. The sample report helps, but a paid-only landing
-   page is still a weak fit for Show HN.
+6. Show HN: do not retry while the account has a `showlim` restriction. Do not
+   bypass the restriction with another account or a disguised repost.
 7. Audio communities/newsletters: use the free checklist first. Ask for missing
    checks or wording critique. Mention the paid CLI only as the optional
    automation path for repeated delivery work.
@@ -109,7 +110,7 @@ Product name:
 
 Tagline:
 
-> Check bounced WAV delivery folders before client or label handoff.
+> Check bounced WAV folders before client or label handoff.
 
 Description:
 

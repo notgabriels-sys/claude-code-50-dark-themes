@@ -84,6 +84,11 @@ developer-tool catalog.
 
 Use Product Hunt only when signed in and the product page/dashboard is accessible.
 
+Current gate: the personal-account welcome email arrived on 2026-08-23.
+Product Hunt's current help center says new accounts normally wait one week
+before posting. Use that time to understand the community and finish the draft;
+do not create a second account, pay a hunter, or ask people for upvotes.
+
 Official Product Hunt guidance says:
 
 - use a personal account, not a company account
@@ -113,8 +118,9 @@ Fit: good, but position this as the free Claude Code themes and developer-tool c
 Current status:
 
 ```text
-Logged-in Chrome route exists, but browser automation could not control the
-Chrome tab reliably during the submit step.
+The new-tool route currently redirects to “Log in to your account.” No DevHunt
+account email was found. The fields below are prepared, but no account or
+submission should be created merely to increase a directory count.
 ```
 
 Use this route when DevHunt is open manually:
@@ -179,7 +185,7 @@ Use the same Product name, URL, tagline, and long description above.
 
 ## TheDevToolsDir
 
-Live listing:
+Intended listing URL:
 
 ```text
 https://thedevtoolsdir.com/product/gabs-utilities/
@@ -188,11 +194,15 @@ https://thedevtoolsdir.com/product/gabs-utilities/
 Status:
 
 ```text
-Submitted 2026-08-24. Free listing badge is live in the storefront footer, and
-TheDevToolsDir verified the dofollow link before publishing the listing.
+The provider confirmation page said the dofollow badge was verified. However,
+an independent public request at 06:40 CEST on 2026-08-24 returned HTTP 404 for
+the intended listing URL, and public search found no listing. Treat this as
+provider-confirmed but not publicly verified.
 ```
 
-Keep the badge live while the listing is active.
+Do not claim the listing as live until the public URL reads back successfully.
+Recheck after provider processing. If the 404 persists, remove the dead badge
+or contact the directory before sending users to it.
 
 Suggested category:
 
@@ -220,19 +230,23 @@ Claude Code, themes, dark mode, developer tools, terminal, UI kit
 
 Use this order. It favors relevance and avoids low-quality spam-directory energy.
 
-1. DevHunt
-   - Best next developer-tool fit.
-   - Requires the logged-in Chrome form or Gabriel filling the form manually.
-   - Use the fields above.
+1. DEV Community article
+   - Strongest immediate community-safe fit because it teaches from the free,
+     MIT-licensed theme project instead of leading with a shop.
+   - Use the prepared article draft and include real screenshots or a concise
+     theme JSON example before publishing.
 
 2. Product Hunt
-   - Higher reach, but only once the product dashboard/prelaunch page is definitely accessible while signed in.
+   - Higher reach, but only after the personal account's normal one-week gate
+     and once the product dashboard is accessible while signed in.
    - Use the prepared first comment above.
    - Do not ask for upvotes or mass-comment.
 
-3. DEV Community article
-   - Good community-safe angle: “I made 50 free dark Claude Code themes and learned a few things about semantic terminal colors.”
-   - Focus on lessons, screenshots, and free GitHub repo; mention the catalog lightly at the end.
+3. DevHunt
+   - Good developer-tool fit for the free themes and catalog, not for the audio
+     CLI by itself.
+   - Requires an existing signed-in account; do not create one only to add a
+     listing count.
 
 4. GitHub awesome lists
    - Only submit to lists that explicitly accept Claude Code, terminal themes, CLI themes, or developer tooling.

@@ -43,6 +43,10 @@ Unsafe launch framing:
    - Use the press kit gallery images in order if a gallery is available.
    - Ask people to visit/comment, not upvote.
    - Requires Gabriel's personal Product Hunt account.
+   - Current gate: the account welcome email arrived on 2026-08-23. Product
+     Hunt's current help center says new personal accounts normally wait one
+     week before posting, so prepare and participate normally rather than
+     forcing an early launch.
 
 2. KVR Developer Access
    - Fit: strong because KVR explicitly supports product listings for plugins,
@@ -57,17 +61,12 @@ Unsafe launch framing:
 ### Do later / only with care
 
 4. Hacker News
-   - Show HN is still not ideal because the paid CLI has no free executable
-     trial. If posting to HN, use a normal submission or a feedback-oriented
-     technical write-up, not "Show HN", unless a free runnable demo exists.
+   - Do not retry. The account currently has a `showlim` restriction, and a
+     second account or disguised repost would be an improper bypass.
 
 5. Reddit audio communities
-   - High risk for direct self-promo.
-   - Do not post a sales link into broad audioengineering/musicproduction
-     communities unless a moderator-approved weekly self-promo or feedback
-     thread exists.
-   - If allowed, share the free checklist first and ask for critique of the
-     checks. Mention the paid CLI only as the automation path.
+   - Do not use Reddit. Gabriel has explicitly excluded every Reddit account,
+     current or future, from this campaign.
 
 6. Direct outreach
    - Only one person/org at a time.
@@ -83,7 +82,7 @@ Product name:
 
 Tagline:
 
-> Check bounced WAV delivery folders before client or label handoff.
+> Check bounced WAV folders before client or label handoff.
 
 Description:
 
