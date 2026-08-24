@@ -23,6 +23,9 @@ Delivery Preflight CLI landing page on 2026-08-24 03:01 CEST.
 Search/discovery update from 2026-08-24: the landing page includes
 `SoftwareApplication` and `FAQPage` structured data, the root site includes
 `llms.txt`, and the domain hosts an IndexNow key for URL-update notification.
+IndexNow submission for the root site, Audio Delivery Preflight CLI landing
+page, `llms.txt`, sitemap and Impressum returned HTTP 202 on the first request
+while the new key was pending validation, then HTTP 200 on the retry.
 
 ## Core positioning
 
