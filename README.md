@@ -25,6 +25,9 @@ Then run `/theme` in Claude Code and pick one. The plugin keeps the pack togethe
 available through the marketplace. Press `Ctrl+E` on a plugin theme if you want an editable copy in
 `~/.claude/themes/`.
 
+Step-by-step install, terminal background and troubleshooting guide:
+<https://gabs-utilities.com/claude-code-theme-install-guide.html>
+
 ## Manual install
 
 ```bash
