@@ -68,11 +68,11 @@ Do not describe the unsigned archive as Apple-verified, notarized, or a normal o
 
 ## Commercial release
 
-- [x] Intended defaults recorded: €24 one-time purchase, one user on up to three personally controlled Macs, version-1 updates, receipt-reply support, and a 14-day refund policy.
+- [x] Intended defaults recorded: €24 one-time purchase, one user on up to three personally controlled Macs, version-1 updates, receipt-reply support, and no voluntary change-of-mind refunds after download access begins, without limiting mandatory consumer rights.
 - [ ] Seller reviews and accepts the customer license and all legally required seller and consumer information.
 - [x] Preserve the existing Gumroad product `vddnq` in the signed-in `Sysgga` seller account; do not create a duplicate.
-- [x] Read back the product name, EUR 24 price, 14-day refund period, receipt copy, unpublished state, and the final replacement-only two-file delivery folder.
-- [ ] Complete owner review of seller identity, consumer information, tax treatment/presentation, payout, and customer licence terms.
+- [x] Read back the product name, EUR 24 price, current no-voluntary-refunds policy and fine print, receipt copy, unpublished state, and the final replacement-only two-file delivery folder.
+- [ ] Complete owner review of seller identity, consumer information, tax treatment/presentation, payout, and customer licence terms. The current Gumroad editor reports that no payout method is connected and blocks publication; connecting one remains an owner-controlled identity and financial action.
 - [x] Confirm the saved product page accurately states the unsigned, not-notarized, macOS 14-or-later installation status and limitations.
 - [ ] Conduct a zero-charge purchase only after explicit owner confirmation at that time.
 - [ ] Download independently, compare SHA-256, extract, launch, and run the key workflow.
