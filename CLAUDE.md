@@ -42,19 +42,22 @@ you read matches the rate card below. A Stripe link that "looked right"
 sat on the shop through two review rounds and was a live €1,200 charge
 for the wrong service.
 
-Current state of `index.html` (re-counted 2026-08-24, after merging `main`):
+Current state of `index.html` (re-counted 2026-08-24, after `main` retired two
+audio products):
 
-- **18 Gumroad links**, all `notgabriel.gumroad.com/l/<slug>`, no duplicates:
-  one free zip (line 314), twelve product cards (348–360), the complete-kit
-  bundle (362), and four audio products (372–375).
-- **3 PayPal NCP links** in "Mixing & mastering" (385–387).
-
-Line numbers move every time `index.html` changes — they already shifted once
-inside a single day. Trust the counts and the slugs; re-derive the lines with
-`grep -n`.
+- **16 Gumroad links**, all `notgabriel.gumroad.com/l/<slug>`, no duplicates:
+  one free zip, twelve product cards, the complete-kit bundle, and two audio
+  products. It was 18 earlier the same day — `mix-revision-mastering-handoff-kit`
+  and `techno-mix-preflight-toolkit` were removed from the shop along with their
+  whole product directories. The CI guard caught the disappearance; the slugs
+  were then dropped from `knownGumroadSlugs` deliberately.
+- **3 PayPal NCP links** in "Mixing & mastering".
 - **No Stripe link anywhere.** `git log -S stripe` across all branches still
-  returns nothing, so the bad €1,200 link never lived in this repo — it was on
-  some other surface, and may still be.
+  returns nothing beyond this file and the CI guard itself, so the bad €1,200
+  link never lived in this repo — it was on some other surface, and may still be.
+
+**Line numbers are deliberately not recorded here.** They moved twice inside one
+day. Re-derive them with `grep -n` and trust the counts and slugs instead.
 
 The previous note here — "eleven Gumroad links … at lines 259–271" and "the
 €39 bundle" — was written after `bf14643` and is now wrong on all three

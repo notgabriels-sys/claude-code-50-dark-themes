@@ -30,7 +30,8 @@ const verifiedPayPalLinks = [
 ];
 const verifiedPayPalIds = verifiedPayPalLinks.map((link) => link.id);
 
-// The 18 Gumroad product slugs currently on the shop, recorded 2026-08-24.
+// The Gumroad product slugs currently on the shop. Recorded 2026-08-24; 18
+// at first count, 16 after two audio products were retired the same day.
 //
 // READ THIS BEFORE ADDING ONE. Unlike verifiedPayPalLinks above, this list is
 // deliberately WEAKER: it asserts only "this slug is known and intentional",
@@ -57,8 +58,10 @@ const knownGumroadSlugs = [
   "jqrdfy",
   "xcxeb",
   "wuhehk",
-  "mix-revision-mastering-handoff-kit",
-  "techno-mix-preflight-toolkit",
+  // mix-revision-mastering-handoff-kit and techno-mix-preflight-toolkit were
+  // removed from the shop on 2026-08-24 together with their whole product
+  // directories; the guard caught their disappearance and they are dropped here
+  // deliberately, not to silence it.
   "raw-techno-kick-architecture",
   "industrial-tension-fx",
 ];
