@@ -1,6 +1,6 @@
 # Domain setup — gabs-utilities.com
 
-This GitHub Pages shop is configured to use:
+This GitHub Pages shop is prepared to use:
 
 ```text
 gabs-utilities.com
@@ -34,4 +34,7 @@ For `www`, add:
 
 Do not add wildcard records such as `*.gabs-utilities.com`.
 
-After DNS propagates, confirm that GitHub Pages has HTTPS enabled for the custom domain.
+Current status: DNS was checked on 2026-08-24 and `gabs-utilities.com`
+did not resolve yet, so the repository should not contain `CNAME` until the
+records above are live. Re-add the `CNAME` file only after DNS propagates, then
+confirm that GitHub Pages has HTTPS enabled for the custom domain.
