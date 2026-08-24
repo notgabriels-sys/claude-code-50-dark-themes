@@ -1,4 +1,0 @@
-asset_id,filename,role,bytes,duration,sample_rate_hz,bit_depth,channels,checksum_sha256,verification_state,recipient,transfer_location,delivered_at,accepted_at,notes
-DEL-01,FEX_STEEL_BLOOM_MAIN_MASTER-v02_20260917_48k24b.wav,main master,118400000,318.42,48000,24,stereo,EXAMPLE_CHECKSUM_NOT_REAL,CONFIRMED,Example Label,EXAMPLE-PRIVATE-LINK,2026-09-18T15:10:00+02:00,2026-09-18T16:02:00+02:00,Fictional worked example
-DEL-02,FEX_STEEL_BLOOM_INSTRUMENTAL_MASTER-v02_20260917_48k24b.wav,instrumental master,118400000,318.42,48000,24,stereo,EXAMPLE_CHECKSUM_NOT_REAL,CONFIRMED,Example Label,EXAMPLE-PRIVATE-LINK,2026-09-18T15:10:00+02:00,2026-09-18T16:02:00+02:00,Fictional worked example
-DEL-03,FEX_STEEL_BLOOM_EDIT60_MASTER-v02_20260917_48k24b.wav,60-second edit master,23040000,60.0,48000,24,stereo,EXAMPLE_CHECKSUM_NOT_REAL,CONFIRMED,Example Label,EXAMPLE-PRIVATE-LINK,2026-09-18T15:10:00+02:00,2026-09-18T16:02:00+02:00,Fictional worked example
