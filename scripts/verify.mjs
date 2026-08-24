@@ -23,6 +23,26 @@ const verifiedPayPalIds = [
   "6Z93DNS76PCGS",
   "QW8V53WWM2P7E",
 ];
+// Buyer-side read-back on 2026-08-24 confirmed these product pages return a
+// published Gumroad product. A plausible URL or HTTP 200 is not enough:
+// unpublished Gumroad products can still render a 200-status product shell.
+const verifiedGumroadSlugs = new Set([
+  "bqgfv",
+  "bunkhy",
+  "cfcvmy",
+  "ckthsb",
+  "dark-app-screens",
+  "industrial-tension-fx",
+  "jqrdfy",
+  "kxsfa",
+  "kykega",
+  "raw-techno-kick-architecture",
+  "slhbym",
+  "wgtbkq",
+  "wuhehk",
+  "xcxeb",
+  "xjcbji",
+]);
 
 function fail(message) {
   throw new Error(message);
@@ -90,9 +110,60 @@ if (marketplace.plugins[0].name !== "50-dark-themes") fail("Unexpected marketpla
 if (marketplace.plugins[0].source !== "./plugins/50-dark-themes") fail("Unexpected plugin source path.");
 if (pluginManifest.name !== "50-dark-themes") fail("Unexpected plugin manifest name.");
 if (pluginManifest.experimental?.themes !== "./themes/") fail("Plugin manifest must expose ./themes/.");
+if (!/^\d+\.\d+\.\d+$/.test(pluginManifest.version)) fail("Plugin version must use semantic versioning.");
+if (marketplace.plugins[0].version !== pluginManifest.version) {
+  fail("Marketplace and plugin manifest versions must match.");
+}
 
 const html = await readFile(new URL("index.html", root), "utf8");
 const readme = await readFile(new URL("README.md", root), "utf8");
+const publicHtmlFiles = (await readdir(root))
+  .filter((file) => file.endsWith(".html"))
+  .sort();
+const storefrontContracts = [
+  [/<a class="skip-link" href="#main-content">/, "keyboard skip link"],
+  [/<main id="main-content">/, "main landmark"],
+  [/<h3 class="tname">\$\{esc\(name\)\}<\/h3>/, "gallery-card headings"],
+  [/<span class="sr-only" id="copyStatus" aria-live="polite"><\/span>/, "copy-status live region"],
+  [/<meta property="og:image:alt" content="[^"]+">/, "Open Graph image alternative"],
+  [/<meta name="twitter:image:alt" content="[^"]+">/, "X image alternative"],
+];
+const missingStorefrontContracts = storefrontContracts
+  .filter(([pattern]) => !pattern.test(html))
+  .map(([, label]) => label);
+if (missingStorefrontContracts.length) {
+  fail(`Storefront accessibility contract is missing: ${missingStorefrontContracts.join(", ")}.`);
+}
+const mainLandmarks = html.match(/<main(?:\s|>)/g) ?? [];
+if (mainLandmarks.length !== 1) {
+  fail(`The storefront must contain exactly one main landmark; found ${mainLandmarks.length}.`);
+}
+const structuredDataMatch = html.match(
+  /<script type="application\/ld\+json">\s*([\s\S]*?)\s*<\/script>/,
+);
+if (!structuredDataMatch) fail("The storefront must expose JSON-LD software metadata.");
+let structuredData;
+try {
+  structuredData = JSON.parse(structuredDataMatch[1]);
+} catch (error) {
+  fail(`The storefront JSON-LD is invalid: ${error.message}`);
+}
+const structuredSoftware = structuredData["@graph"]?.find(
+  (entry) => entry["@type"] === "SoftwareApplication",
+);
+if (!structuredSoftware) fail("The storefront JSON-LD must describe the theme plugin.");
+if (structuredSoftware.softwareVersion !== pluginManifest.version) {
+  fail(
+    `Storefront softwareVersion ${structuredSoftware.softwareVersion} does not match plugin version ${pluginManifest.version}.`,
+  );
+}
+const currentDownloadUrls = new Set([
+  `https://github.com/notgabriels-sys/claude-code-50-dark-themes/releases/tag/themes-plugin-v${pluginManifest.version}`,
+  "https://github.com/notgabriels-sys/claude-code-50-dark-themes/archive/refs/heads/main.zip",
+]);
+if (!currentDownloadUrls.has(structuredSoftware.downloadUrl)) {
+  fail(`Storefront downloadUrl is stale or unrelated: ${structuredSoftware.downloadUrl}.`);
+}
 const match = html.match(/const THEMES = (\[[\s\S]*?\n\]);/);
 if (!match) fail("Could not find the THEMES array in index.html.");
 
@@ -116,11 +187,87 @@ if (!readme.includes("mkdir -p ~/.claude/themes")) {
 if (!html.includes("claude plugin marketplace add notgabriels-sys/claude-code-50-dark-themes")) {
   fail("The gallery must expose the native Claude Code marketplace install command.");
 }
+if (!html.includes("utm_campaign=50-dark-themes-launch")) {
+  fail("The storefront must expose the tracked Product Hunt launch link.");
+}
+
+const featuredProducts = [...html.matchAll(/<article class="featured-product">([\s\S]*?)<\/article>/g)];
+if (featuredProducts.length !== 3) {
+  fail(`Expected 3 curated developer picks; found ${featuredProducts.length}.`);
+}
+
+const expectedFeaturedSlugs = new Set(["cfcvmy", "ckthsb", "dark-app-screens"]);
+const actualFeaturedSlugs = new Set();
+for (const [, productHtml] of featuredProducts) {
+  const image = productHtml.match(/<img\s+[^>]*src="([^"]+)"[^>]*alt="([^"]+)"[^>]*>/);
+  if (!image) {
+    fail("Every curated developer pick must include a local cover image with non-empty alt text.");
+  }
+  const [, imagePath, imageAlt] = image;
+  if (!imagePath.startsWith("assets/products/") || !imageAlt.trim()) {
+    fail("Curated developer pick covers must use local product assets and meaningful alt text.");
+  }
+  try {
+    await readFile(new URL(imagePath, root));
+  } catch {
+    fail(`Curated developer pick cover is missing: ${imagePath}.`);
+  }
+
+  const gumroadLink = productHtml.match(/https:\/\/notgabriel\.gumroad\.com\/l\/([a-z0-9-]+)/);
+  if (!gumroadLink) {
+    fail("Every curated developer pick must link to its verified Gumroad product page.");
+  }
+  const slug = gumroadLink[1];
+  const trackedCheckout = productHtml.match(
+    /href="(https:\/\/notgabriel\.gumroad\.com\/l\/[a-z0-9-]+\?[^\"]+)"/,
+  );
+  if (!trackedCheckout) {
+    fail(`Curated developer pick ${slug} must include campaign tracking.`);
+  }
+  const trackedUrl = new URL(trackedCheckout[1].replaceAll("&amp;", "&"));
+  const expectedTracking = {
+    utm_source: "gabs-utilities.com",
+    utm_medium: "storefront",
+    utm_campaign: "developer-picks",
+    utm_content: slug,
+  };
+  for (const [key, value] of Object.entries(expectedTracking)) {
+    if (trackedUrl.searchParams.get(key) !== value) {
+      fail(`Curated developer pick ${slug} has incorrect ${key} tracking.`);
+    }
+  }
+  actualFeaturedSlugs.add(slug);
+}
+if ([...expectedFeaturedSlugs].some((slug) => !actualFeaturedSlugs.has(slug))) {
+  fail("The curated developer picks must feature the UI kit, HTML templates, and app screens.");
+}
+
+if (html.includes("api.producthunt.com/widgets/embed-image")) {
+  fail("Do not restore the remote Product Hunt badge; it sets a third-party cookie.");
+}
 if (html.includes("notgabriel.gumroad.com/l/wmlrk")) {
   fail("Do not restore the résumé checkout until its download is verified.");
 }
 if (/stripe/i.test(html)) {
   fail("No Stripe link is verified for this site.");
+}
+for (const file of publicHtmlFiles) {
+  const source = await readFile(new URL(file, root), "utf8");
+  if (!source.includes('rel="icon" type="image/svg+xml" href="favicon.svg"')) {
+    fail(`${file} must expose the first-party SVG favicon.`);
+  }
+  for (const match of source.matchAll(/https:\/\/notgabriel\.gumroad\.com\/l\/([a-z0-9-]+)/g)) {
+    const slug = match[1];
+    if (!verifiedGumroadSlugs.has(slug)) {
+      fail(`${file} contains an unverified or unavailable Gumroad product link: ${slug}.`);
+    }
+  }
+}
+for (const match of readme.matchAll(/https:\/\/notgabriel\.gumroad\.com\/l\/([a-z0-9-]+)/g)) {
+  const slug = match[1];
+  if (!verifiedGumroadSlugs.has(slug)) {
+    fail(`README.md contains an unverified or unavailable Gumroad product link: ${slug}.`);
+  }
 }
 for (const id of verifiedPayPalIds) {
   if (!html.includes(`https://www.paypal.com/ncp/payment/${id}`)) {
@@ -128,7 +275,9 @@ for (const id of verifiedPayPalIds) {
   }
 }
 
+await import("./verify-contrast.mjs");
+
 console.log(
   `Verified ${files.length} themes, ${pluginFiles.length} plugin themes, ${galleryThemes.length} gallery cards, ` +
-    `${verifiedPayPalIds.length} PayPal links, and the safe install command.`,
+    `${verifiedGumroadSlugs.size} Gumroad products, ${verifiedPayPalIds.length} PayPal links, and the safe install command.`,
 );
