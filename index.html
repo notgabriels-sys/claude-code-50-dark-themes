@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>50 Dark Themes for Claude Code</title>
-<meta name="description" content="Browse and install 50 hand-tuned dark themes for Claude Code as a native plugin. Free, MIT licensed, with semantic status colors and automated role-aware contrast checks.">
+<meta name="description" content="Browse and install 50 hand-tuned dark themes for Claude Code as a native plugin. Free, MIT licensed, and verified with 726 role-aware contrast comparisons.">
 <meta name="robots" content="index,follow,max-image-preview:large">
 <meta name="theme-color" content="#0f1011">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
@@ -12,7 +12,7 @@
 <link rel="license" href="https://opensource.org/license/mit">
 <link rel="alternate" type="application/json" title="Claude Code marketplace manifest" href="https://raw.githubusercontent.com/notgabriels-sys/claude-code-50-dark-themes/main/.claude-plugin/marketplace.json">
 <meta property="og:title" content="50 Dark Themes for Claude Code">
-<meta property="og:description" content="Install 50 hand-tuned dark themes as a native Claude Code plugin. Free, MIT licensed, with semantic status colors and automated role-aware contrast checks.">
+<meta property="og:description" content="Install 50 hand-tuned dark themes as a native Claude Code plugin. Free, MIT licensed, and verified with 726 role-aware contrast comparisons.">
 <meta property="og:image" content="https://gabs-utilities.com/preview.png">
 <meta property="og:image:alt" content="A grid of dark Claude Code terminal theme previews with distinct accent colors">
 <meta property="og:image:width" content="1280">
@@ -22,7 +22,7 @@
 <meta property="og:site_name" content="Gabs Utilities">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="50 Dark Themes for Claude Code">
-<meta name="twitter:description" content="Install 50 hand-tuned dark themes as a native Claude Code plugin. Free, MIT licensed, with automated role-aware contrast checks.">
+<meta name="twitter:description" content="Install 50 hand-tuned dark themes as a native Claude Code plugin. Free, MIT licensed, and verified with 726 role-aware contrast comparisons.">
 <meta name="twitter:image" content="https://gabs-utilities.com/preview.png">
 <meta name="twitter:image:alt" content="A grid of dark Claude Code terminal theme previews with distinct accent colors">
 <script type="application/ld+json">
@@ -70,11 +70,20 @@
     --ground:#0d0e0f;
     --ground-2:#131416;
     --hair:#292b2f;
-    --ink:#eeeef0;
+    --ink:#e9eaec;
     --mute:#a0a3aa;
     --faint:#858991;
     --accent:#c9cfd6;
     --accent-dim:#5f646c;
+    /* Graphite Semantic — quiet role colours with an unambiguous hierarchy. */
+    --syntax-purple:#a98ce0;
+    --syntax-light-purple:#c7b8ff;
+    --syntax-grey-purple:#a8a0ba;
+    --syntax-dark-blue:#7890bd;
+    --syntax-blue:#8eaadf;
+    --syntax-light-blue:#9ccce8;
+    --syntax-dark-grey:#858a93;
+    --terminal-surface:#0a0a0b;
     --radius:10px;
     --mono:ui-monospace,"SF Mono",SFMono-Regular,"JetBrains Mono","Menlo",Consolas,monospace;
     --display:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
@@ -185,16 +194,26 @@
   }
   .install .bar b{color:var(--ink);font-weight:600}
   .step code, code.inline{
-    color:var(--ink);background:#0c0c0d;border:1px solid var(--hair);
+    color:var(--syntax-light-blue);background:#0c0c0d;border:1px solid var(--hair);
     border-radius:6px;padding:2px 6px;font-size:12.5px;
   }
+  .syntax-version{color:var(--syntax-dark-blue)}
   .cmd{
     display:flex;align-items:center;justify-content:space-between;gap:12px;
-    padding:17px 0;border-top:1px solid var(--hair);
+    padding:17px 14px;border-top:1px solid var(--hair);background:var(--terminal-surface);
     color:var(--ink);font-size:12px;overflow:hidden;
   }
   .cmd>span:first-child{min-width:0;flex:1;overflow-x:auto;white-space:nowrap;scrollbar-width:thin}
-  .cmd .prompt{color:var(--faint);user-select:none}
+  .cmd .prompt{color:var(--syntax-dark-grey);user-select:none}
+  .cmd .syntax-command{color:var(--syntax-light-purple)}
+  .cmd .syntax-keyword{color:var(--syntax-purple)}
+  .cmd .syntax-subcommand,.cmd .syntax-argument,.cmd .syntax-value{color:var(--ink)}
+  .cmd .syntax-type{color:var(--syntax-light-blue)}
+  .cmd .syntax-version,.cmd .syntax-option{color:var(--syntax-dark-blue)}
+  .cmd .syntax-constant{color:var(--syntax-blue)}
+  .cmd .syntax-scope{color:var(--syntax-grey-purple)}
+  .cmd .syntax-default{color:var(--ink)}
+  .cmd .syntax-operator{color:var(--syntax-dark-grey)}
   .copy{
     min-height:44px;flex:none;cursor:pointer;border:1px solid var(--accent-dim);background:transparent;
     color:var(--mute);font-family:var(--mono);font-size:11px;letter-spacing:.08em;
@@ -255,7 +274,7 @@
   .theme-finder{margin:0 0 26px;padding:18px 0;border-top:1px solid var(--hair);border-bottom:1px solid var(--hair)}
   .finder-label{margin:0;color:var(--ink);font-family:var(--display);font-size:15px;font-weight:600;letter-spacing:-.01em}
   .finder-copy{margin:5px 0 0;color:var(--mute);font-size:11px;line-height:1.65}
-  .finder-copy kbd,.finder-search kbd{color:var(--ink);border:1px solid var(--hair);border-bottom-color:var(--accent-dim);border-radius:4px;padding:1px 5px;font-family:var(--mono);font-size:10px}
+  .finder-copy kbd,.finder-search kbd{color:var(--syntax-light-purple);border:1px solid var(--hair);border-bottom-color:var(--accent-dim);border-radius:4px;padding:1px 5px;font-family:var(--mono);font-size:10px}
   .finder-controls{display:flex;align-items:center;gap:24px;margin-top:15px}
   .finder-search{display:flex;align-items:center;gap:10px;flex:0 1 340px;min-height:44px;border-bottom:1px solid var(--hair);color:var(--faint);font-size:9px;letter-spacing:.1em;text-transform:uppercase}
   .finder-search:focus-within{border-color:var(--accent)}
@@ -470,16 +489,16 @@
     </div>
 
     <div class="install">
-      <div class="bar"><b>Install the collection</b><span>Claude Code v2.1.118+</span></div>
+      <div class="bar"><b>Install the collection</b><span>Claude Code <span class="syntax-version">v2.1.118+</span></span></div>
       <div class="cmd">
-        <span><span class="prompt">$ </span>claude plugin marketplace add notgabriels-sys/claude-code-50-dark-themes &amp;&amp; claude plugin install 50-dark-themes@notgabriels-themes</span>
+        <span><span class="prompt">$ </span><span class="syntax-command">claude</span> <span class="syntax-keyword">plugin</span> <span class="syntax-subcommand">marketplace add</span> <span class="syntax-argument"><span class="syntax-type">notgabriels-sys</span>/claude-code-50-dark-themes</span> <span class="syntax-operator">&amp;&amp;</span> <span class="syntax-command">claude</span> <span class="syntax-keyword">plugin</span> <span class="syntax-subcommand">install</span> <span class="syntax-value"><span class="syntax-constant">50</span>-dark-themes<span class="syntax-scope">@notgabriels-themes</span></span></span>
         <button class="copy" id="copyBtn" aria-label="Copy install command">Copy</button>
         <span class="sr-only" id="copyStatus" aria-live="polite"></span>
       </div>
       <details class="install-notes">
         <summary><span>Installation notes</span><span class="disclosure-mark" aria-hidden="true"><span class="is-closed">+</span><span class="is-open">−</span></span></summary>
         <div class="steps">
-          <div class="step"><span class="i">01</span><p>Use Claude Code v2.1.118 or later.</p></div>
+          <div class="step"><span class="i">01</span><p>Use Claude Code <span class="syntax-version">v2.1.118</span> or later.</p></div>
           <div class="step"><span class="i">02</span><p>Run the command above to add the marketplace and install <code>50-dark-themes</code>.</p></div>
           <div class="step"><span class="i">03</span><p>Run <code>/theme</code> and choose one. Press <code>Ctrl+E</code> for an editable copy.</p></div>
         </div>
@@ -489,7 +508,7 @@
     <dl class="proofline" aria-label="Collection details">
       <div><dt>50</dt><dd>hand-tuned themes</dd></div>
       <div><dt>MIT</dt><dd>free to keep</dd></div>
-      <div><dt>702</dt><dd>role-aware checks</dd></div>
+      <div><dt>726</dt><dd>role-aware checks</dd></div>
       <div><dt>Native</dt><dd>Claude Code plugin</dd></div>
     </dl>
   </header>

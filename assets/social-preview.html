@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1280,initial-scale=1">
+<title>50 Dark Themes for Claude Code — social preview source</title>
+<style>
+  :root{
+    color-scheme:dark;
+    --terminal-surface:#0a0a0b;--ground:#0f1011;--raised:#17181a;--hair:#2e2f33;
+    --ink:#e9eaec;--muted:#a0a4ab;--syntax-dark-grey:#858a93;
+    --syntax-purple:#a98ce0;--syntax-light-purple:#c7b8ff;--syntax-grey-purple:#a8a0ba;
+    --syntax-dark-blue:#7890bd;--syntax-blue:#8eaadf;--syntax-light-blue:#9ccce8;
+    font-family:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{width:1280px;height:720px;margin:0;overflow:hidden}
+  body{
+    display:grid;place-items:center;background:
+      radial-gradient(820px 430px at 16% -8%,rgba(46,47,51,.62),rgba(46,47,51,0) 70%),
+      var(--terminal-surface);color:var(--ink);
+  }
+  main{width:1120px}
+  .kicker{display:flex;align-items:center;gap:14px;margin:0 0 30px;color:var(--syntax-dark-grey);font-size:13px;letter-spacing:.22em;text-transform:uppercase}
+  .kicker::before{content:"";width:34px;height:1px;background:var(--syntax-dark-blue)}
+  h1{margin:0;font:550 74px/.98 ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;letter-spacing:-.06em}
+  h1 span{color:var(--syntax-dark-grey)}
+  .lead{margin:23px 0 0;color:var(--muted);font:21px/1.5 ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;letter-spacing:-.015em}
+  .meta{display:flex;gap:0;margin:29px 0 35px;padding:13px 0;border-top:1px solid var(--hair);border-bottom:1px solid var(--hair);color:var(--syntax-dark-grey);font-size:12px}
+  .meta span{padding-right:18px;margin-right:18px;border-right:1px solid var(--hair)}
+  .meta span:last-child{border:0}.meta b{color:var(--ink);font-weight:650}
+  .terminal{border:1px solid var(--hair);border-radius:8px;background:linear-gradient(180deg,var(--raised),#101112);overflow:hidden}
+  .bar{display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--hair);color:var(--syntax-dark-grey);font-size:11px;letter-spacing:.03em}
+  .dot{width:10px;height:10px;border-radius:50%;background:var(--ink)}
+  .dot:nth-child(2){background:var(--syntax-dark-grey)}.dot:nth-child(3){background:#585c62}
+  .label{margin-left:6px}
+  .command{display:grid;gap:2px;margin:18px;padding:13px 17px;border:1px solid var(--hair);border-radius:6px;background:var(--terminal-surface);font-size:14px;line-height:1.55}
+  .command .line{white-space:nowrap}
+  .prompt{color:var(--syntax-dark-grey)}.cmd{color:var(--syntax-light-purple)}.keyword{color:var(--syntax-purple)}.sub,.arg,.value,.default{color:var(--ink)}.type{color:var(--syntax-light-blue)}.version,.option{color:var(--syntax-dark-blue)}.constant{color:var(--syntax-blue)}.scope{color:var(--syntax-grey-purple)}.op{color:var(--syntax-dark-grey)}
+  .roles{display:grid;grid-template-columns:repeat(8,1fr);height:8px;margin-top:22px;overflow:hidden;border-radius:4px}
+  .roles i:nth-child(1){background:var(--syntax-purple)}.roles i:nth-child(2){background:var(--syntax-light-purple)}.roles i:nth-child(3){background:var(--syntax-grey-purple)}.roles i:nth-child(4){background:var(--syntax-dark-blue)}
+  .roles i:nth-child(5){background:var(--syntax-blue)}.roles i:nth-child(6){background:var(--syntax-light-blue)}.roles i:nth-child(7){background:var(--ink)}.roles i:nth-child(8){background:var(--syntax-dark-grey)}
+</style>
+</head>
+<body>
+<main>
+  <p class="kicker">Claude Code · a quiet terminal collection</p>
+  <h1><span>50</span> dark themes<br>for Claude Code</h1>
+  <p class="lead">Free, hand-tuned themes for long sessions · native plugin · semantic status colors · no subscription.</p>
+  <div class="meta"><span><b>50</b> themes</span><span><b>726</b> role-aware checks</span><span><b>MIT</b> licensed</span><span>Claude Code <b>v2.1.118+</b></span></div>
+  <section class="terminal" aria-label="Color-coded install command preview">
+    <div class="bar"><i class="dot"></i><i class="dot"></i><i class="dot"></i><span class="label">install — native Claude Code plugin</span></div>
+    <div class="command"><span class="line"><span class="prompt">$ </span><span class="cmd">claude</span> <span class="keyword">plugin</span> <span class="sub">marketplace add</span> <span class="arg"><span class="type">notgabriels-sys</span>/claude-code-50-dark-themes</span></span><span class="line"><span class="prompt">$ </span><span class="cmd">claude</span> <span class="keyword">plugin</span> <span class="sub">install</span> <span class="value"><span class="constant">50</span>-dark-themes<span class="scope">@notgabriels-themes</span></span></span></div>
+  </section>
+  <div class="roles" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+</main>
+</body>
+</html>
