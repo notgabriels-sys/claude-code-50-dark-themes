@@ -145,7 +145,7 @@ h1{font-size:clamp(40px,7.3vw,78px);letter-spacing:-.065em;line-height:.94;margi
 .steps{display:grid;gap:12px;margin-top:16px}.step{display:grid;grid-template-columns:48px 1fr;gap:14px;padding:18px}.num{width:38px;height:38px;border-radius:999px;display:grid;place-items:center;background:rgba(201,207,214,.12);border:1px solid rgba(201,207,214,.32);color:var(--accent);font-weight:820}
 .code-panel{overflow:hidden;margin:18px 0}.code-head{display:flex;justify-content:space-between;gap:12px;padding:11px 15px;border-bottom:1px solid var(--hair);font-size:12px;color:var(--faint)}
 pre{margin:0;padding:18px;overflow:auto;white-space:pre;color:var(--ink);background:var(--terminal-surface);font:13px/1.65 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
-.syntax-command{color:var(--syntax-light-purple)}.syntax-subcommand{color:var(--syntax-purple)}.syntax-argument{color:var(--syntax-light-blue)}.syntax-value{color:var(--syntax-grey-purple)}.syntax-option{color:var(--syntax-dark-blue)}
+.syntax-command{color:var(--syntax-light-purple)}.syntax-keyword{color:var(--syntax-purple)}.syntax-subcommand,.syntax-argument,.syntax-value{color:var(--ink)}.syntax-type{color:var(--syntax-light-blue)}.syntax-version,.syntax-option{color:var(--syntax-dark-blue)}.syntax-constant{color:var(--syntax-blue)}.syntax-scope{color:var(--syntax-grey-purple)}.syntax-default{color:var(--ink)}
 .callout{padding:22px;margin-top:28px;background:linear-gradient(180deg,rgba(201,207,214,.08),rgba(255,255,255,.025))}.callout p:last-child{margin-bottom:0}
 .table-wrap{overflow:auto;margin-top:16px}table{width:100%;border-collapse:collapse;min-width:620px}th,td{text-align:left;padding:13px 15px;border-bottom:1px solid var(--hair);vertical-align:top}th{font-size:12px;text-transform:uppercase;letter-spacing:.12em;color:var(--faint)}td{color:var(--muted)}td:first-child{color:var(--ink);font-weight:700}
 .final{margin-top:42px;padding:26px}.final h2{margin-top:0}.final p{color:var(--muted)}
@@ -190,9 +190,9 @@ footer{margin-top:42px;padding-top:22px;border-top:1px solid var(--hair)}
           <h2>Recommended: native Claude Code plugin install.</h2>
           <p>This route keeps the pack connected to Claude Code’s plugin system and avoids hand-copying fifty JSON files.</p>
           <div class="code-panel" aria-label="Native Claude Code theme plugin install command">
-            <div class="code-head"><span>Terminal</span><span>Claude Code v2.1.118+</span></div>
-<pre><span class="syntax-command">claude</span> <span class="syntax-subcommand">plugin marketplace add</span> <span class="syntax-argument">notgabriels-sys/claude-code-50-dark-themes</span>
-<span class="syntax-command">claude</span> <span class="syntax-subcommand">plugin install</span> <span class="syntax-value">50-dark-themes@notgabriels-themes</span></pre>
+            <div class="code-head"><span>Terminal</span><span>Claude Code <span class="syntax-version">v2.1.118+</span></span></div>
+<pre><span class="syntax-command">claude</span> <span class="syntax-keyword">plugin</span> <span class="syntax-subcommand">marketplace add</span> <span class="syntax-argument"><span class="syntax-type">notgabriels-sys</span>/claude-code-50-dark-themes</span>
+<span class="syntax-command">claude</span> <span class="syntax-keyword">plugin</span> <span class="syntax-subcommand">install</span> <span class="syntax-value"><span class="syntax-constant">50</span>-dark-themes<span class="syntax-scope">@notgabriels-themes</span></span></pre>
           </div>
           <div class="steps">
             <article class="step"><span class="num">01</span><div><h3>Add the marketplace.</h3><p>Run the marketplace command once. It tells Claude Code where the theme plugin lives.</p></div></article>

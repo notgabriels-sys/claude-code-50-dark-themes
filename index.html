@@ -180,6 +180,7 @@
     color:var(--syntax-light-blue);background:#0c0c0d;border:1px solid var(--hair);
     border-radius:6px;padding:2px 6px;font-size:12.5px;
   }
+  .syntax-version{color:var(--syntax-dark-blue)}
   .cmd{
     display:flex;align-items:center;justify-content:space-between;gap:12px;
     margin:2px 22px 22px;padding:14px 16px;
@@ -189,9 +190,13 @@
   .cmd>span:first-child{min-width:0;overflow-wrap:anywhere}
   .cmd .prompt{color:var(--syntax-dark-grey);user-select:none}
   .cmd .syntax-command{color:var(--syntax-light-purple)}
-  .cmd .syntax-subcommand{color:var(--syntax-purple)}
-  .cmd .syntax-argument{color:var(--syntax-light-blue)}
-  .cmd .syntax-value{color:var(--syntax-grey-purple)}
+  .cmd .syntax-keyword{color:var(--syntax-purple)}
+  .cmd .syntax-subcommand,.cmd .syntax-argument,.cmd .syntax-value{color:var(--ink)}
+  .cmd .syntax-type{color:var(--syntax-light-blue)}
+  .cmd .syntax-version,.cmd .syntax-option{color:var(--syntax-dark-blue)}
+  .cmd .syntax-constant{color:var(--syntax-blue)}
+  .cmd .syntax-scope{color:var(--syntax-grey-purple)}
+  .cmd .syntax-default{color:var(--ink)}
   .cmd .syntax-operator{color:var(--syntax-dark-grey)}
   .copy{
     flex:none;cursor:pointer;border:1px solid var(--hair);background:transparent;
@@ -396,12 +401,12 @@
     <p class="kicker">Claude Code · a quiet terminal collection</p>
     <h1><span class="n">50</span> dark themes<br>for Claude&nbsp;Code</h1>
     <p class="lede">Fifty free, hand-tuned themes for long Claude Code sessions — built around semantic status
-      colors and checked with 702 role-aware contrast comparisons. Install the native plugin, run
+      colors and checked with 726 role-aware contrast comparisons. Install the native plugin, run
       <code class="inline">/theme</code>, and choose the one that feels right. Requires Claude Code v2.1.118 or later.</p>
     <div class="meta">
       <span class="tag"><b>50</b> themes</span>
       <span class="tag">plugin <b>v1.0.1</b></span>
-      <span class="tag"><b>702</b> role-aware checks</span>
+      <span class="tag"><b>726</b> role-aware checks</span>
       <span class="tag"><b>MIT</b> licensed</span>
       <span class="tag">semantic <b>status colors</b></span>
     </div>
@@ -414,12 +419,12 @@
         <span style="margin-left:6px">install — native Claude Code plugin</span>
       </div>
       <div class="steps">
-        <div class="step"><span class="i">01</span><p>Use Claude Code v2.1.118 or later</p></div>
+        <div class="step"><span class="i">01</span><p>Use Claude Code <span class="syntax-version">v2.1.118</span> or later</p></div>
         <div class="step"><span class="i">02</span><p>Add the marketplace and install <code>50-dark-themes</code> with the command below</p></div>
         <div class="step"><span class="i">03</span><p>Run <code>/theme</code> and pick one. Press <code>Ctrl+E</code> if you want an editable copy</p></div>
       </div>
       <div class="cmd">
-        <span><span class="prompt">$ </span><span class="syntax-command">claude</span> <span class="syntax-subcommand">plugin marketplace add</span> <span class="syntax-argument">notgabriels-sys/claude-code-50-dark-themes</span> <span class="syntax-operator">&amp;&amp;</span> <span class="syntax-command">claude</span> <span class="syntax-subcommand">plugin install</span> <span class="syntax-value">50-dark-themes@notgabriels-themes</span></span>
+        <span><span class="prompt">$ </span><span class="syntax-command">claude</span> <span class="syntax-keyword">plugin</span> <span class="syntax-subcommand">marketplace add</span> <span class="syntax-argument"><span class="syntax-type">notgabriels-sys</span>/claude-code-50-dark-themes</span> <span class="syntax-operator">&amp;&amp;</span> <span class="syntax-command">claude</span> <span class="syntax-keyword">plugin</span> <span class="syntax-subcommand">install</span> <span class="syntax-value"><span class="syntax-constant">50</span>-dark-themes<span class="syntax-scope">@notgabriels-themes</span></span></span>
         <button class="copy" id="copyBtn" aria-label="Copy install command">Copy</button>
         <span class="sr-only" id="copyStatus" aria-live="polite"></span>
       </div>

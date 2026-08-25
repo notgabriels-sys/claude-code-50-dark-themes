@@ -36,7 +36,7 @@
   .label{margin-left:6px}
   .command{display:grid;gap:2px;margin:18px;padding:13px 17px;border:1px solid var(--hair);border-radius:6px;background:var(--terminal-surface);font-size:14px;line-height:1.55}
   .command .line{white-space:nowrap}
-  .prompt{color:var(--syntax-dark-grey)}.cmd{color:var(--syntax-light-purple)}.sub{color:var(--syntax-purple)}.arg{color:var(--syntax-light-blue)}.op{color:var(--syntax-dark-grey)}.value{color:var(--syntax-grey-purple)}
+  .prompt{color:var(--syntax-dark-grey)}.cmd{color:var(--syntax-light-purple)}.keyword{color:var(--syntax-purple)}.sub,.arg,.value,.default{color:var(--ink)}.type{color:var(--syntax-light-blue)}.version,.option{color:var(--syntax-dark-blue)}.constant{color:var(--syntax-blue)}.scope{color:var(--syntax-grey-purple)}.op{color:var(--syntax-dark-grey)}
   .roles{display:grid;grid-template-columns:repeat(8,1fr);height:8px;margin-top:22px;overflow:hidden;border-radius:4px}
   .roles i:nth-child(1){background:var(--syntax-purple)}.roles i:nth-child(2){background:var(--syntax-light-purple)}.roles i:nth-child(3){background:var(--syntax-grey-purple)}.roles i:nth-child(4){background:var(--syntax-dark-blue)}
   .roles i:nth-child(5){background:var(--syntax-blue)}.roles i:nth-child(6){background:var(--syntax-light-blue)}.roles i:nth-child(7){background:var(--ink)}.roles i:nth-child(8){background:var(--syntax-dark-grey)}
@@ -47,10 +47,10 @@
   <p class="kicker">Claude Code · a quiet terminal collection</p>
   <h1><span>50</span> dark themes<br>for Claude Code</h1>
   <p class="lead">Free, hand-tuned themes for long sessions · native plugin · semantic status colors · no subscription.</p>
-  <div class="meta"><span><b>50</b> themes</span><span><b>702</b> role-aware checks</span><span><b>MIT</b> licensed</span><span>Claude Code <b>v2.1.118+</b></span></div>
+  <div class="meta"><span><b>50</b> themes</span><span><b>726</b> role-aware checks</span><span><b>MIT</b> licensed</span><span>Claude Code <b>v2.1.118+</b></span></div>
   <section class="terminal" aria-label="Color-coded install command preview">
     <div class="bar"><i class="dot"></i><i class="dot"></i><i class="dot"></i><span class="label">install — native Claude Code plugin</span></div>
-    <div class="command"><span class="line"><span class="prompt">$ </span><span class="cmd">claude</span> <span class="sub">plugin marketplace add</span> <span class="arg">notgabriels-sys/claude-code-50-dark-themes</span></span><span class="line"><span class="prompt">$ </span><span class="cmd">claude</span> <span class="sub">plugin install</span> <span class="value">50-dark-themes@notgabriels-themes</span></span></div>
+    <div class="command"><span class="line"><span class="prompt">$ </span><span class="cmd">claude</span> <span class="keyword">plugin</span> <span class="sub">marketplace add</span> <span class="arg"><span class="type">notgabriels-sys</span>/claude-code-50-dark-themes</span></span><span class="line"><span class="prompt">$ </span><span class="cmd">claude</span> <span class="keyword">plugin</span> <span class="sub">install</span> <span class="value"><span class="constant">50</span>-dark-themes<span class="scope">@notgabriels-themes</span></span></span></div>
   </section>
   <div class="roles" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
 </main>
