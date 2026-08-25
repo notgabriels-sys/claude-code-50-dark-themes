@@ -208,6 +208,24 @@
   }
   .gallery-head h2{font-family:var(--display);font-size:clamp(20px,2.2vw,26px);font-weight:550;letter-spacing:-.03em;margin:0;color:var(--ink)}
   .gallery-head .count{color:var(--faint);font-size:12px}
+  .theme-finder{margin:0 0 28px;padding:18px 0 16px;border-bottom:1px solid var(--hair)}
+  .finder-head{display:flex;align-items:flex-start;justify-content:space-between;gap:24px}
+  .finder-label{margin:0 0 4px;color:var(--ink);font-family:var(--display);font-size:15px;font-weight:600;letter-spacing:-.01em}
+  .finder-copy{margin:0;color:var(--mute);font-family:var(--display);font-size:13px;line-height:1.5}
+  .finder-copy kbd,.finder-search kbd{color:var(--ink);border:1px solid var(--hair);border-bottom-color:var(--accent-dim);border-radius:4px;padding:1px 5px;font-family:var(--mono);font-size:10px}
+  .finder-controls{display:flex;align-items:center;gap:24px;margin-top:17px}
+  .finder-search{display:flex;align-items:center;gap:10px;flex:0 1 330px;min-height:44px;border-bottom:1px solid var(--hair);color:var(--faint);font-size:10px;letter-spacing:.08em;text-transform:uppercase}
+  .finder-search:focus-within{border-color:var(--accent-dim)}
+  .finder-search input{min-width:0;flex:1;padding:8px 0;border:0;outline:0;background:transparent;color:var(--ink);font-family:var(--display);font-size:14px;letter-spacing:0;text-transform:none}
+  .finder-search input::placeholder{color:var(--faint);opacity:1}
+  .finder-search kbd{flex:none;text-transform:none}
+  .finder-filters{display:flex;align-items:center;flex-wrap:wrap;gap:4px 18px;margin-left:auto}
+  .filter{min-height:44px;padding:8px 0;border:0;border-bottom:1px solid transparent;background:transparent;color:var(--mute);cursor:pointer;font-family:var(--display);font-size:12px}
+  .filter:hover{color:var(--ink);border-color:var(--accent-dim)}
+  .filter.is-active{color:var(--ink);border-color:var(--accent)}
+  .filter:focus-visible,.finder-search input:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+  .finder-empty{margin:0 0 28px;padding:18px 0;border-bottom:1px solid var(--hair);color:var(--mute);font-family:var(--display);font-size:14px}
+  .finder-empty button{padding:0;border:0;border-bottom:1px solid var(--accent-dim);background:transparent;color:var(--accent);cursor:pointer;font:inherit}
   .grid{
     display:grid;gap:16px;
     grid-template-columns:repeat(auto-fill,minmax(268px,1fr));
@@ -247,10 +265,14 @@
   .prompt-box{
     margin-top:10px;display:flex;align-items:center;gap:8px;
     border:1px solid color-mix(in srgb, var(--a) 45%, transparent);
-    border-radius:8px;padding:7px 10px;
+    border-radius:8px;padding:7px 10px;min-height:44px;
   }
   .prompt-box .gt{color:var(--a);font-weight:700}
-  .prompt-box .txt{color:var(--fg)}
+  .prompt-box .txt{min-width:0;overflow:hidden;color:var(--fg);text-overflow:ellipsis;white-space:nowrap}
+  .theme-command{width:100%;text-align:left;cursor:pointer;background:transparent;font:inherit;transition:background-color .15s,border-color .15s}
+  .theme-command:hover{border-color:var(--a);background:rgba(255,255,255,.035)}
+  .theme-command:focus-visible{outline:2px solid var(--a);outline-offset:3px}
+  .theme-command .copy-label{margin-left:auto;flex:none;color:var(--mut);font-size:10px;letter-spacing:.06em;text-transform:uppercase}
   .caret{
     width:7px;height:15px;background:var(--a);display:inline-block;
     margin-left:1px;vertical-align:-3px;animation:blink 1.1s step-end infinite;
@@ -343,6 +365,10 @@
     .meta{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 16px}
     .tag{margin:0;padding:0}
     .tag::after{display:none}
+    .finder-head{display:block}
+    .finder-controls{display:block;margin-top:14px}
+    .finder-search{width:100%;max-width:none}
+    .finder-filters{justify-content:space-between;gap:4px 12px;margin:8px 0 0}
     .product-proof-foot{align-items:stretch;flex-direction:column}
     .proof-buy{width:100%}
   }
@@ -481,9 +507,35 @@
 
   <div class="gallery-head" id="themes">
     <h2>The collection</h2>
-    <span class="count" id="count">50 themes</span>
+    <span class="count" id="count" aria-live="polite">50 themes</span>
   </div>
+  <div class="theme-finder" role="search" aria-labelledby="finder-title">
+    <div class="finder-head">
+      <div>
+        <p class="finder-label" id="finder-title">Find a working atmosphere</p>
+        <p class="finder-copy">Search by name, command or accent hex. Narrow the collection by palette family. Press <kbd>/</kbd> to focus.</p>
+      </div>
+    </div>
+    <div class="finder-controls">
+      <label class="finder-search">
+        <span>Search themes</span>
+        <input id="themeSearch" type="search" placeholder="Graphite, Nightshade…" autocomplete="off" spellcheck="false" aria-describedby="finder-help">
+        <kbd aria-hidden="true">/</kbd>
+      </label>
+      <div class="finder-filters" role="group" aria-label="Filter by palette family">
+        <button class="filter is-active" type="button" data-family="all" aria-pressed="true">All</button>
+        <button class="filter" type="button" data-family="warm" aria-pressed="false">Warm</button>
+        <button class="filter" type="button" data-family="cool" aria-pressed="false">Cool</button>
+        <button class="filter" type="button" data-family="green" aria-pressed="false">Green</button>
+        <button class="filter" type="button" data-family="violet" aria-pressed="false">Violet</button>
+        <button class="filter" type="button" data-family="neutral" aria-pressed="false">Neutral</button>
+      </div>
+    </div>
+    <p class="sr-only" id="finder-help">Search by theme name, slash command, or accent hex. Press Escape to clear the search.</p>
+  </div>
+  <p class="finder-empty" id="finderEmpty" hidden>No themes match that search. <button type="button" id="clearFinder">Clear finder</button></p>
   <div class="grid" id="grid"></div>
+  <p class="sr-only" id="themeCopyStatus" aria-live="polite"></p>
 
   <section class="more" id="writing">
     <h2>From the build</h2>
@@ -604,10 +656,30 @@ const THEMES = [
 
 const slug = n => n.toLowerCase().replace(/ /g,"-");
 const esc = s => s.replace(/[&<>]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+const familyOf = hex => {
+  const rgb = hex.match(/[a-f\d]{2}/gi).map(v => parseInt(v,16) / 255);
+  const [r,g,b] = rgb;
+  const max = Math.max(r,g,b), min = Math.min(r,g,b), delta = max - min;
+  if (delta < .12) return "neutral";
+  let hue = 0;
+  if (delta) {
+    if (max === r) hue = ((g - b) / delta) % 6;
+    else if (max === g) hue = (b - r) / delta + 2;
+    else hue = (r - g) / delta + 4;
+    hue = Math.round(hue * 60);
+    if (hue < 0) hue += 360;
+  }
+  if (hue < 25 || hue >= 330 || (hue >= 25 && hue < 85)) return "warm";
+  if (hue < 170) return "green";
+  if (hue < 255) return "cool";
+  return "violet";
+};
 
-const grid = document.getElementById("grid");
-grid.innerHTML = THEMES.map(([name,accent,shimmer,text,mute,bg]) => `
-  <article class="card" style="--bg:${bg};--a:${accent};--sh:${shimmer};--fg:${text};--mut:${mute}">
+const renderTheme = ([name,accent,shimmer,text,mute,bg]) => {
+  const themeSlug = slug(name);
+  const family = familyOf(accent);
+  return `
+  <article class="card" data-family="${family}" data-search="${esc(`${name} ${themeSlug} ${accent} ${family}`.toLowerCase())}" style="--bg:${bg};--a:${accent};--sh:${shimmer};--fg:${text};--mut:${mute}">
     <div class="titlebar">
       <div class="dots"><i style="background:${accent}"></i><i style="background:${mute};opacity:.4"></i><i style="background:${mute};opacity:.25"></i></div>
       <h3 class="tname">${esc(name)}</h3>
@@ -617,14 +689,92 @@ grid.innerHTML = THEMES.map(([name,accent,shimmer,text,mute,bg]) => `
       <div class="row"><span class="acc">✻</span> <span class="sh">Claude Code</span> <span class="mut">· ${esc(name.toLowerCase())}</span></div>
       <div class="row"><span class="acc">●</span> <span class="fg">Applied theme &ldquo;${esc(name)}&rdquo;</span></div>
       <div class="row"><span class="mut">&nbsp;&nbsp;3 files changed · staged</span></div>
-      <div class="prompt-box">
-        <span class="gt">&gt;</span><span class="txt">theme ${slug(name)}</span><span class="caret" aria-hidden="true"></span>
-      </div>
+      <button class="prompt-box theme-command" type="button" data-copy-theme="${themeSlug}" aria-label="Copy /theme ${themeSlug} command">
+        <span class="gt">&gt;</span><span class="txt">theme ${themeSlug}</span><span class="caret" aria-hidden="true"></span><span class="copy-label">Copy command</span>
+      </button>
       <div class="hint">/theme &nbsp;·&nbsp; ⏎ send &nbsp;·&nbsp; esc to interrupt</div>
     </div>
-  </article>`).join("");
+  </article>`;
+};
 
-document.getElementById("count").textContent = THEMES.length + " themes";
+const grid = document.getElementById("grid");
+grid.innerHTML = THEMES.map(renderTheme).join("");
+
+const count = document.getElementById("count");
+const themeSearch = document.getElementById("themeSearch");
+const finderEmpty = document.getElementById("finderEmpty");
+const clearFinder = document.getElementById("clearFinder");
+const filters = [...document.querySelectorAll(".filter")];
+const themeCopyStatus = document.getElementById("themeCopyStatus");
+let activeFamily = "all";
+
+const updateFinder = () => {
+  const query = themeSearch.value.trim().toLowerCase();
+  let visible = 0;
+  grid.querySelectorAll(".card").forEach(card => {
+    const matchesQuery = !query || card.dataset.search.includes(query);
+    const matchesFamily = activeFamily === "all" || card.dataset.family === activeFamily;
+    const show = matchesQuery && matchesFamily;
+    card.hidden = !show;
+    if (show) visible += 1;
+  });
+  const label = `${visible} ${visible === 1 ? "theme" : "themes"}`;
+  count.textContent = label;
+  finderEmpty.hidden = visible !== 0;
+};
+
+themeSearch.addEventListener("input", updateFinder);
+themeSearch.addEventListener("keydown", event => {
+  if (event.key === "Escape") {
+    themeSearch.value = "";
+    updateFinder();
+  }
+});
+filters.forEach(filter => filter.addEventListener("click", () => {
+  activeFamily = filter.dataset.family;
+  filters.forEach(item => {
+    const selected = item === filter;
+    item.classList.toggle("is-active", selected);
+    item.setAttribute("aria-pressed", String(selected));
+  });
+  updateFinder();
+}));
+clearFinder.addEventListener("click", () => {
+  themeSearch.value = "";
+  activeFamily = "all";
+  filters.forEach(item => {
+    const selected = item.dataset.family === "all";
+    item.classList.toggle("is-active", selected);
+    item.setAttribute("aria-pressed", String(selected));
+  });
+  updateFinder();
+  themeSearch.focus();
+});
+document.addEventListener("keydown", event => {
+  const tag = document.activeElement?.tagName;
+  const editing = tag === "INPUT" || tag === "TEXTAREA" || document.activeElement?.isContentEditable;
+  if (event.key === "/" && !editing) {
+    event.preventDefault();
+    themeSearch.focus();
+  }
+});
+
+grid.addEventListener("click", async event => {
+  const button = event.target.closest(".theme-command");
+  if (!button) return;
+  const command = `/theme ${button.dataset.copyTheme}`;
+  const label = button.querySelector(".copy-label");
+  try {
+    await navigator.clipboard.writeText(command);
+    label.textContent = "Copied";
+    themeCopyStatus.textContent = `${command} copied to clipboard.`;
+  } catch {
+    label.textContent = "Copy failed";
+    themeCopyStatus.textContent = `Could not copy ${command}. Select it manually.`;
+  }
+  clearTimeout(button._copyReset);
+  button._copyReset = setTimeout(() => label.textContent = "Copy command", 1400);
+});
 
 const btn = document.getElementById("copyBtn");
 const copyStatus = document.getElementById("copyStatus");
