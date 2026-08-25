@@ -142,6 +142,7 @@ subscriptions, and none of it needed to use the themes above.
 - **[Lowlight — 70 VS Code themes](https://github.com/notgabriels-sys/lowlight-themes)** — fifty dark, twenty light, same contrast discipline. MIT.
 - **[Dark Terminal Themes](https://github.com/notgabriels-sys/dark-terminal-themes)** — the same fifty for Alacritty, kitty, Ghostty, WezTerm, iTerm2 and Windows Terminal. MIT.
 - **[Deep Field for Obsidian](https://github.com/notgabriels-sys/obsidian-deep-field)** — one of the fifty, free and standalone. MIT.
+- **[The palettes in Apple Mail](mail/)** — Mail has no theming API, so this is the honest maximum: the five settings that do take a color or a font, wired to the theme keys, plus a signature that survives the recipient's client.
 
 ### The contrast tool, free
 
