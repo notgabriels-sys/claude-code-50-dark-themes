@@ -76,6 +76,15 @@
     --faint:#81858d;
     --accent:#c9cfd6;
     --accent-dim:#585c62;
+    /* Graphite Semantic — role colors stay quiet, but never ambiguous. */
+    --syntax-purple:#a98ce0;
+    --syntax-light-purple:#c7b8ff;
+    --syntax-grey-purple:#a8a0ba;
+    --syntax-dark-blue:#7890bd;
+    --syntax-blue:#8eaadf;
+    --syntax-light-blue:#9ccce8;
+    --syntax-dark-grey:#858a93;
+    --terminal-surface:#0a0a0b;
     --radius:12px;
     --mono: ui-monospace,"SF Mono",SFMono-Regular,"JetBrains Mono","Menlo",Consolas,monospace;
     --display: ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
@@ -168,17 +177,22 @@
   .step .i{color:var(--accent);font-size:10px;letter-spacing:.08em;padding-top:4px}
   .step p{margin:0;color:var(--mute);font-family:var(--display);font-size:13.5px;line-height:1.55}
   .step code, code.inline{
-    color:var(--ink);background:#0c0c0d;border:1px solid var(--hair);
+    color:var(--syntax-light-blue);background:#0c0c0d;border:1px solid var(--hair);
     border-radius:6px;padding:2px 6px;font-size:12.5px;
   }
   .cmd{
     display:flex;align-items:center;justify-content:space-between;gap:12px;
     margin:2px 22px 22px;padding:14px 16px;
-    background:#0a0a0b;border:1px solid var(--hair);border-radius:6px;
+    background:var(--terminal-surface);border:1px solid var(--hair);border-radius:6px;
     color:var(--ink);font-size:12.5px;line-height:1.5;overflow-x:auto;
   }
   .cmd>span:first-child{min-width:0;overflow-wrap:anywhere}
-  .cmd .prompt{color:var(--accent-dim);user-select:none}
+  .cmd .prompt{color:var(--syntax-dark-grey);user-select:none}
+  .cmd .syntax-command{color:var(--syntax-light-purple)}
+  .cmd .syntax-subcommand{color:var(--syntax-purple)}
+  .cmd .syntax-argument{color:var(--syntax-light-blue)}
+  .cmd .syntax-value{color:var(--syntax-grey-purple)}
+  .cmd .syntax-operator{color:var(--syntax-dark-grey)}
   .copy{
     flex:none;cursor:pointer;border:1px solid var(--hair);background:transparent;
     color:var(--mute);font-family:var(--mono);font-size:11px;letter-spacing:.08em;
@@ -212,7 +226,7 @@
   .finder-head{display:flex;align-items:flex-start;justify-content:space-between;gap:24px}
   .finder-label{margin:0 0 4px;color:var(--ink);font-family:var(--display);font-size:15px;font-weight:600;letter-spacing:-.01em}
   .finder-copy{margin:0;color:var(--mute);font-family:var(--display);font-size:13px;line-height:1.5}
-  .finder-copy kbd,.finder-search kbd{color:var(--ink);border:1px solid var(--hair);border-bottom-color:var(--accent-dim);border-radius:4px;padding:1px 5px;font-family:var(--mono);font-size:10px}
+  .finder-copy kbd,.finder-search kbd{color:var(--syntax-light-purple);border:1px solid var(--hair);border-bottom-color:var(--accent-dim);border-radius:4px;padding:1px 5px;font-family:var(--mono);font-size:10px}
   .finder-controls{display:flex;align-items:center;gap:24px;margin-top:17px}
   .finder-search{display:flex;align-items:center;gap:10px;flex:0 1 330px;min-height:44px;border-bottom:1px solid var(--hair);color:var(--faint);font-size:10px;letter-spacing:.08em;text-transform:uppercase}
   .finder-search:focus-within{border-color:var(--accent-dim)}
@@ -405,7 +419,7 @@
         <div class="step"><span class="i">03</span><p>Run <code>/theme</code> and pick one. Press <code>Ctrl+E</code> if you want an editable copy</p></div>
       </div>
       <div class="cmd">
-        <span><span class="prompt">$ </span>claude plugin marketplace add notgabriels-sys/claude-code-50-dark-themes &amp;&amp; claude plugin install 50-dark-themes@notgabriels-themes</span>
+        <span><span class="prompt">$ </span><span class="syntax-command">claude</span> <span class="syntax-subcommand">plugin marketplace add</span> <span class="syntax-argument">notgabriels-sys/claude-code-50-dark-themes</span> <span class="syntax-operator">&amp;&amp;</span> <span class="syntax-command">claude</span> <span class="syntax-subcommand">plugin install</span> <span class="syntax-value">50-dark-themes@notgabriels-themes</span></span>
         <button class="copy" id="copyBtn" aria-label="Copy install command">Copy</button>
         <span class="sr-only" id="copyStatus" aria-live="polite"></span>
       </div>
