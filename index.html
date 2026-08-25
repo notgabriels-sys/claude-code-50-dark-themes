@@ -76,6 +76,11 @@
     --faint:#81858d;
     --accent:#c9cfd6;
     --accent-dim:#585c62;
+    --syntax-purple:#9da2aa;
+    --syntax-light-purple:#e1e3e6;
+    --syntax-grey-purple:#a8a0ba;
+    --syntax-purple-argument:#b79cff;
+    --syntax-dark-grey:#858a93;
     --radius:12px;
     --mono: ui-monospace,"SF Mono",SFMono-Regular,"JetBrains Mono","Menlo",Consolas,monospace;
     --display: ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
@@ -168,7 +173,7 @@
   .step .i{color:var(--accent);font-size:10px;letter-spacing:.08em;padding-top:4px}
   .step p{margin:0;color:var(--mute);font-family:var(--display);font-size:13.5px;line-height:1.55}
   .step code, code.inline{
-    color:var(--ink);background:#0c0c0d;border:1px solid var(--hair);
+    color:var(--syntax-purple-argument);background:#0c0c0d;border:1px solid var(--hair);
     border-radius:6px;padding:2px 6px;font-size:12.5px;
   }
   .cmd{
@@ -179,6 +184,11 @@
   }
   .cmd>span:first-child{min-width:0;overflow-wrap:anywhere}
   .cmd .prompt{color:var(--accent-dim);user-select:none}
+  .cmd .syntax-command{color:var(--syntax-light-purple)}
+  .cmd .syntax-subcommand{color:var(--syntax-purple)}
+  .cmd .syntax-argument{color:var(--syntax-purple-argument)}
+  .cmd .syntax-value{color:var(--syntax-grey-purple)}
+  .cmd .syntax-operator{color:var(--syntax-dark-grey)}
   .copy{
     flex:none;cursor:pointer;border:1px solid var(--hair);background:transparent;
     color:var(--mute);font-family:var(--mono);font-size:11px;letter-spacing:.08em;
@@ -405,7 +415,7 @@
         <div class="step"><span class="i">03</span><p>Run <code>/theme</code> and pick one. Press <code>Ctrl+E</code> if you want an editable copy</p></div>
       </div>
       <div class="cmd">
-        <span><span class="prompt">$ </span>claude plugin marketplace add notgabriels-sys/claude-code-50-dark-themes &amp;&amp; claude plugin install 50-dark-themes@notgabriels-themes</span>
+        <span><span class="prompt">$ </span><span class="syntax-command">claude</span> <span class="syntax-subcommand">plugin marketplace add</span> <span class="syntax-argument">notgabriels-sys/claude-code-50-dark-themes</span> <span class="syntax-operator">&amp;&amp;</span> <span class="syntax-command">claude</span> <span class="syntax-subcommand">plugin install</span> <span class="syntax-value">50-dark-themes@notgabriels-themes</span></span>
         <button class="copy" id="copyBtn" aria-label="Copy install command">Copy</button>
         <span class="sr-only" id="copyStatus" aria-live="polite"></span>
       </div>
@@ -554,6 +564,8 @@
       <a class="tool" href="https://notgabriel.gumroad.com/l/cfcvmy"><b>Dark HTML Templates</b><span>8 single-file pages — portfolio, SaaS, docs, pricing.</span><i>View product · $19</i></a>
       <a class="tool" href="https://notgabriel.gumroad.com/l/dark-app-screens"><b>Dark App Screens</b><span>Six responsive product screens with 50 drop-in dark themes.</span><i>View product · €14</i></a>
       <a class="tool" href="https://notgabriel.gumroad.com/l/xjcbji"><b>Dark Email Templates</b><span>Transactional email — welcome, receipt, reset, OTP.</span><i>View product · €9</i></a>
+      <a class="tool" href="https://notgabriel.gumroad.com/l/dark-invoice-business-documents"><b>Dark Business Documents</b><span>Nine print-ready HTML documents — invoice, quote, receipt, credit note and more.</span><i>View product · €12</i></a>
+      <a class="tool" href="https://notgabriel.gumroad.com/l/zvbti"><b>Claude Code Workflow Kit</b><span>Reusable checklists, prompts and handoff templates for cleaner Claude Code sessions.</span><i>View product · €12</i></a>
       <a class="tool" href="https://notgabriel.gumroad.com/l/bunkhy"><b>Social &amp; OG Templates</b><span>Exact-size share images — OG cards, X header, thumbnails.</span><i>View product · €9</i></a>
       <a class="tool" href="https://notgabriels-sys.github.io/dark-html-templates-demo/resume/"><b>R&eacute;sum&eacute; &amp; CV Templates</b><span>Dark on screen, clean black-on-white in PDF. See the live demo.</span><i>Open demo</i></a>
       <a class="tool" href="https://notgabriel.gumroad.com/l/kxsfa"><b>Dev Cheatsheets</b><span>Six dark reference cards — git, vim, tmux, regex, bash.</span><i>View product · €7</i></a>

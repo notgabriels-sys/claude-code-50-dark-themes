@@ -23,7 +23,7 @@ const verifiedPayPalIds = [
   "6Z93DNS76PCGS",
   "QW8V53WWM2P7E",
 ];
-// Buyer-side read-back on 2026-08-24 confirmed these product pages return a
+// Buyer-side read-back on 2026-08-24 and 2026-08-25 confirmed these product pages return a
 // published Gumroad product. A plausible URL or HTTP 200 is not enough:
 // unpublished Gumroad products can still render a 200-status product shell.
 const verifiedGumroadSlugs = new Set([
@@ -32,12 +32,14 @@ const verifiedGumroadSlugs = new Set([
   "cfcvmy",
   "ckthsb",
   "dark-app-screens",
+  "dark-invoice-business-documents",
   "industrial-tension-fx",
   "jqrdfy",
   "kxsfa",
   "kykega",
   "raw-techno-kick-architecture",
   "slhbym",
+  "zvbti",
   "wgtbkq",
   "wuhehk",
   "xcxeb",
