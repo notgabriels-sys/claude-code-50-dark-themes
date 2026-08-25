@@ -118,8 +118,11 @@
 <style>
 :root{
   color-scheme:dark;
-  --bg:#0f1011;--panel:#17181a;--panel2:#202124;--hair:#2e2f33;
-  --ink:#e9eaec;--muted:#a0a4ab;--faint:#7a7e85;--accent:#c9cfd6;
+  --bg:#0f1011;--panel:#17181a;--panel2:#1d1e20;--hair:#2e2f33;
+  --ink:#e9eaec;--muted:#a0a4ab;--faint:#858a93;--accent:#c9cfd6;
+  --syntax-purple:#a98ce0;--syntax-light-purple:#c7b8ff;--syntax-grey-purple:#a8a0ba;
+  --syntax-dark-blue:#7890bd;--syntax-blue:#8eaadf;--syntax-light-blue:#9ccce8;--syntax-dark-grey:#858a93;
+  --terminal-surface:#0a0a0b;
   font-family:ui-monospace,"SF Mono",SFMono-Regular,"JetBrains Mono",Menlo,Consolas,monospace;
 }
 *{box-sizing:border-box}
@@ -138,10 +141,11 @@ h1{font-size:clamp(40px,7.3vw,78px);letter-spacing:-.065em;line-height:.94;margi
 .secondary{background:rgba(255,255,255,.035);border:1px solid var(--hair);color:var(--ink)}
 .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:18px 0}.panel{padding:18px}.panel b{display:block;margin-bottom:5px}.muted{color:var(--muted)}
 .article{max-width:860px;margin:34px auto 0}.section{margin-top:38px}.section h2{font-size:clamp(27px,4vw,38px);line-height:1.08;letter-spacing:-.045em;margin:0 0 14px}.section h3{font-size:21px;letter-spacing:-.025em;margin:24px 0 8px}
-.section p{color:var(--muted)}.section strong{color:var(--ink)}code{color:var(--ink);background:#0b0c0d;border:1px solid var(--hair);border-radius:5px;padding:1px 5px}
+.section p{color:var(--muted)}.section strong{color:var(--ink)}code{color:var(--syntax-light-blue);background:var(--terminal-surface);border:1px solid var(--hair);border-radius:5px;padding:1px 5px}
 .steps{display:grid;gap:12px;margin-top:16px}.step{display:grid;grid-template-columns:48px 1fr;gap:14px;padding:18px}.num{width:38px;height:38px;border-radius:999px;display:grid;place-items:center;background:rgba(201,207,214,.12);border:1px solid rgba(201,207,214,.32);color:var(--accent);font-weight:820}
 .code-panel{overflow:hidden;margin:18px 0}.code-head{display:flex;justify-content:space-between;gap:12px;padding:11px 15px;border-bottom:1px solid var(--hair);font-size:12px;color:var(--faint)}
-pre{margin:0;padding:18px;overflow:auto;white-space:pre;color:#d7dadd;background:#0b0c0d;font:13px/1.65 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+pre{margin:0;padding:18px;overflow:auto;white-space:pre;color:var(--ink);background:var(--terminal-surface);font:13px/1.65 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.syntax-command{color:var(--syntax-light-purple)}.syntax-keyword{color:var(--syntax-purple)}.syntax-subcommand,.syntax-argument,.syntax-value{color:var(--ink)}.syntax-type{color:var(--syntax-light-blue)}.syntax-version,.syntax-option{color:var(--syntax-dark-blue)}.syntax-constant{color:var(--syntax-blue)}.syntax-scope{color:var(--syntax-grey-purple)}.syntax-default{color:var(--ink)}
 .callout{padding:22px;margin-top:28px;background:linear-gradient(180deg,rgba(201,207,214,.08),rgba(255,255,255,.025))}.callout p:last-child{margin-bottom:0}
 .table-wrap{overflow:auto;margin-top:16px}table{width:100%;border-collapse:collapse;min-width:620px}th,td{text-align:left;padding:13px 15px;border-bottom:1px solid var(--hair);vertical-align:top}th{font-size:12px;text-transform:uppercase;letter-spacing:.12em;color:var(--faint)}td{color:var(--muted)}td:first-child{color:var(--ink);font-weight:700}
 .final{margin-top:42px;padding:26px}.final h2{margin-top:0}.final p{color:var(--muted)}
@@ -186,9 +190,9 @@ footer{margin-top:42px;padding-top:22px;border-top:1px solid var(--hair)}
           <h2>Recommended: native Claude Code plugin install.</h2>
           <p>This route keeps the pack connected to Claude Code’s plugin system and avoids hand-copying fifty JSON files.</p>
           <div class="code-panel" aria-label="Native Claude Code theme plugin install command">
-            <div class="code-head"><span>Terminal</span><span>Claude Code v2.1.118+</span></div>
-<pre>claude plugin marketplace add notgabriels-sys/claude-code-50-dark-themes
-claude plugin install 50-dark-themes@notgabriels-themes</pre>
+            <div class="code-head"><span>Terminal</span><span>Claude Code <span class="syntax-version">v2.1.118+</span></span></div>
+<pre><span class="syntax-command">claude</span> <span class="syntax-keyword">plugin</span> <span class="syntax-subcommand">marketplace add</span> <span class="syntax-argument"><span class="syntax-type">notgabriels-sys</span>/claude-code-50-dark-themes</span>
+<span class="syntax-command">claude</span> <span class="syntax-keyword">plugin</span> <span class="syntax-subcommand">install</span> <span class="syntax-value"><span class="syntax-constant">50</span>-dark-themes<span class="syntax-scope">@notgabriels-themes</span></span></pre>
           </div>
           <div class="steps">
             <article class="step"><span class="num">01</span><div><h3>Add the marketplace.</h3><p>Run the marketplace command once. It tells Claude Code where the theme plugin lives.</p></div></article>
@@ -202,8 +206,8 @@ claude plugin install 50-dark-themes@notgabriels-themes</pre>
           <p>Use this route if you want to inspect or modify the files yourself, or if the plugin flow is unavailable in your setup.</p>
           <div class="code-panel" aria-label="Manual Claude Code theme install command">
             <div class="code-head"><span>Terminal</span><span>Manual JSON copy</span></div>
-<pre>mkdir -p ~/.claude/themes
-cp *.json ~/.claude/themes/</pre>
+<pre><span class="syntax-command">mkdir</span> <span class="syntax-option">-p</span> <span class="syntax-argument">~/.claude/themes</span>
+<span class="syntax-command">cp</span> <span class="syntax-value">*.json</span> <span class="syntax-argument">~/.claude/themes/</span></pre>
           </div>
           <p>After copying, run <code>/theme</code> in Claude Code. If the directory did not exist before, restart Claude Code once so it discovers the new theme folder.</p>
           <div class="callout">

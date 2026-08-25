@@ -48,6 +48,18 @@ async function runVerifier(cwd) {
   });
 }
 
+test("rejects semantic palette drift in a shared storefront role", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixtureHtml = join(fixtureRoot, "index.html");
+  const html = await readFile(fixtureHtml, "utf8");
+  await writeFile(fixtureHtml, html.replace("--syntax-blue:#8eaadf;", "--syntax-blue:#000000;"));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a storefront with an unreadable semantic role");
+  assert.match(result.stderr, /Storefront: --syntax-blue on --terminal-surface/);
+});
+
 test("rejects a curated cover with a corrupted PNG signature", { timeout: 30_000 }, async (t) => {
   const fixtureRoot = await makeFixture(t);
   const fixtureCover = join(fixtureRoot, coverPath);
