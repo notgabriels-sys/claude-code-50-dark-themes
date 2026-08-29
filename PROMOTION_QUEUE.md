@@ -69,6 +69,35 @@ claude plugin install dark-themes-vol-2@notgabriels-themes
 Gallery: https://gabs-utilities.com/#vol2
 ```
 
+### GitHub release — Dark Themes Vol. 2 (create only after the Vol. 2 PR is merged to main)
+
+Suggested tag: `dark-themes-vol-2-v1.0.0` (do not reuse the `themes-plugin-v*`
+tags — those version the flagship 50-pack, and the storefront JSON-LD
+downloadUrl is pinned to them).
+
+Title:
+
+```text
+Dark Themes Vol. 2 — 12 new free themes
+```
+
+Body:
+
+```text
+The notgabriels-themes marketplace now carries a second free plugin: Dark Themes Vol. 2.
+
+Twelve all-new dark themes for Claude Code — Afterglow, Aurora Borealis, Basalt, Biolume, Cryosleep, Darkroom, Gaslight, Heliotrope, Magnetite, Monsoon, Neon Noir, Ozone — with the same semantic status colors and the same verified contrast floors as the original 50 (AAA primary text, AA secondary, WCAG non-text floor for borders and indicators).
+
+Install:
+
+    claude plugin marketplace add notgabriels-sys/claude-code-50-dark-themes
+    claude plugin install dark-themes-vol-2@notgabriels-themes
+
+Preview every palette in its own colors: https://gabs-utilities.com/#vol2
+
+The original 50-theme pack is unchanged and stays free and MIT licensed.
+```
+
 ### Gumroad — free pack description addendum (paste into the slhbym product description; do not create a new product)
 
 ```text
