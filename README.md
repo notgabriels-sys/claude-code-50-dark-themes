@@ -28,6 +28,16 @@ available through the marketplace. Press `Ctrl+E` on a plugin theme if you want 
 Step-by-step install, terminal background and troubleshooting guide:
 <https://gabs-utilities.com/claude-code-theme-install-guide.html>
 
+### Dark Themes Vol. 2 — 12 new themes
+
+The same marketplace now carries a free expansion pack with twelve all-new palettes
+(Afterglow, Aurora Borealis, Basalt, Biolume, Cryosleep, Darkroom, Gaslight, Heliotrope,
+Magnetite, Monsoon, Neon Noir, Ozone), held to the same contrast standards:
+
+```bash
+claude plugin install dark-themes-vol-2@notgabriels-themes
+```
+
 ## Manual install
 
 ```bash

@@ -1,0 +1,19 @@
+{
+  "name": "Darkroom",
+  "base": "dark",
+  "overrides": {
+    "claude": "#F26D5B",
+    "claudeShimmer": "#F7A398",
+    "text": "#EDE8E8",
+    "inactive": "#AF9E9D",
+    "subtle": "#362A28",
+    "suggestion": "#F26D5B",
+    "permission": "#D08B80",
+    "promptBorder": "#F26D5B",
+    "promptBorderShimmer": "#F7A398",
+    "planMode": "#D08B80",
+    "userMessageBackground": "#2B2322",
+    "userMessageBackgroundHover": "#362C2A",
+    "rate_limit_fill": "#F26D5B"
+  }
+}

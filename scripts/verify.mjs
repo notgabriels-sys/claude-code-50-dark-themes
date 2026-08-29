@@ -79,8 +79,8 @@ if (files.length !== 50) {
 }
 
 const names = new Set();
-for (const file of files) {
-  const source = await readFile(new URL(file, root), "utf8");
+async function validateThemeFile(file, fileUrl) {
+  const source = await readFile(fileUrl, "utf8");
   let theme;
   try {
     theme = JSON.parse(source);
@@ -108,7 +108,15 @@ for (const file of files) {
       fail(`${file}: ${key} must be a six-digit hex colour; got ${value}.`);
     }
   }
+  return theme;
 }
+
+for (const file of files) {
+  await validateThemeFile(file, new URL(file, root));
+}
+// The storefront gallery covers the flagship 50; Vol. 2 names validated below
+// share the uniqueness set but are not gallery cards.
+const rootNames = new Set(names);
 
 const pluginFiles = (await readdir(pluginThemesRoot))
   .filter((file) => file.endsWith(".json"))
@@ -124,10 +132,29 @@ for (const file of files) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Dark Themes Vol. 2 — the expansion pack lives only inside its plugin.
+// ---------------------------------------------------------------------------
+const vol2Root = new URL("../plugins/dark-themes-vol-2/", import.meta.url);
+const vol2ThemesRoot = new URL("themes/", vol2Root);
+const vol2Files = (await readdir(vol2ThemesRoot))
+  .filter((file) => file.endsWith(".json"))
+  .sort();
+if (vol2Files.length === 0) fail("Dark Themes Vol. 2 must package at least one theme.");
+const vol2Previews = JSON.parse(await readFile(new URL("previews.json", vol2Root), "utf8"));
+for (const file of vol2Files) {
+  const theme = await validateThemeFile(`dark-themes-vol-2/${file}`, new URL(file, vol2ThemesRoot));
+  const preview = vol2Previews[theme.name];
+  if (typeof preview !== "string" || !/^#[0-9a-f]{6}$/i.test(preview)) {
+    fail(`Vol. 2 theme ${theme.name} needs a six-digit hex preview terminal colour in previews.json.`);
+  }
+}
+
 const marketplace = JSON.parse(await readFile(new URL(".claude-plugin/marketplace.json", root), "utf8"));
 const pluginManifest = JSON.parse(await readFile(new URL(".claude-plugin/plugin.json", pluginRoot), "utf8"));
+const vol2Manifest = JSON.parse(await readFile(new URL(".claude-plugin/plugin.json", vol2Root), "utf8"));
 if (marketplace.name !== "notgabriels-themes") fail("Unexpected marketplace name.");
-if (marketplace.plugins?.length !== 1) fail("The marketplace must expose exactly one plugin.");
+if (marketplace.plugins?.length !== 2) fail("The marketplace must expose exactly two plugins.");
 if (marketplace.plugins[0].name !== "50-dark-themes") fail("Unexpected marketplace plugin name.");
 if (marketplace.plugins[0].source !== "./plugins/50-dark-themes") fail("Unexpected plugin source path.");
 if (pluginManifest.name !== "50-dark-themes") fail("Unexpected plugin manifest name.");
@@ -135,6 +162,14 @@ if (pluginManifest.experimental?.themes !== "./themes/") fail("Plugin manifest m
 if (!/^\d+\.\d+\.\d+$/.test(pluginManifest.version)) fail("Plugin version must use semantic versioning.");
 if (marketplace.plugins[0].version !== pluginManifest.version) {
   fail("Marketplace and plugin manifest versions must match.");
+}
+if (marketplace.plugins[1].name !== "dark-themes-vol-2") fail("Unexpected Vol. 2 marketplace plugin name.");
+if (marketplace.plugins[1].source !== "./plugins/dark-themes-vol-2") fail("Unexpected Vol. 2 plugin source path.");
+if (vol2Manifest.name !== "dark-themes-vol-2") fail("Unexpected Vol. 2 plugin manifest name.");
+if (vol2Manifest.experimental?.themes !== "./themes/") fail("Vol. 2 plugin manifest must expose ./themes/.");
+if (!/^\d+\.\d+\.\d+$/.test(vol2Manifest.version)) fail("Vol. 2 plugin version must use semantic versioning.");
+if (marketplace.plugins[1].version !== vol2Manifest.version) {
+  fail("Marketplace and Vol. 2 plugin manifest versions must match.");
 }
 
 const html = await readFile(new URL("index.html", root), "utf8");
@@ -213,7 +248,7 @@ if (galleryThemes.length !== 50) {
   fail(`Expected 50 gallery cards; found ${galleryThemes.length}.`);
 }
 const galleryNames = new Set(galleryThemes.map(([name]) => name));
-for (const name of names) {
+for (const name of rootNames) {
   if (!galleryNames.has(name)) fail(`Gallery is missing the ${name} theme.`);
 }
 
@@ -339,6 +374,7 @@ for (const id of verifiedPayPalIds) {
 await import("./verify-contrast.mjs");
 
 console.log(
-  `Verified ${files.length} themes, ${pluginFiles.length} plugin themes, ${galleryThemes.length} gallery cards, ` +
+  `Verified ${files.length} themes, ${pluginFiles.length} plugin themes, ${vol2Files.length} Vol. 2 themes, ` +
+    `${galleryThemes.length} gallery cards, ` +
     `${verifiedGumroadSlugs.size} Gumroad products, ${verifiedPayPalIds.length} PayPal links, and the safe install command.`,
 );

@@ -1,0 +1,19 @@
+{
+  "name": "Magnetite",
+  "base": "dark",
+  "overrides": {
+    "claude": "#6FA8DC",
+    "claudeShimmer": "#A8CBEA",
+    "text": "#E8EAED",
+    "inactive": "#9DA4AF",
+    "subtle": "#2A2F36",
+    "suggestion": "#6FA8DC",
+    "permission": "#86A5C4",
+    "promptBorder": "#6FA8DC",
+    "promptBorderShimmer": "#A8CBEA",
+    "planMode": "#86A5C4",
+    "userMessageBackground": "#22262C",
+    "userMessageBackgroundHover": "#2B3037",
+    "rate_limit_fill": "#6FA8DC"
+  }
+}

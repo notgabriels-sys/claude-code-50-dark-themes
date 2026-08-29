@@ -1,0 +1,19 @@
+{
+  "name": "Basalt",
+  "base": "dark",
+  "overrides": {
+    "claude": "#AEB9C4",
+    "claudeShimmer": "#D5DCE3",
+    "text": "#E9EBED",
+    "inactive": "#9EA6AF",
+    "subtle": "#2B3036",
+    "suggestion": "#AEB9C4",
+    "permission": "#8794A1",
+    "promptBorder": "#AEB9C4",
+    "promptBorderShimmer": "#D5DCE3",
+    "planMode": "#8794A1",
+    "userMessageBackground": "#24282D",
+    "userMessageBackgroundHover": "#2D3238",
+    "rate_limit_fill": "#AEB9C4"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "name": "Cryosleep",
+  "base": "dark",
+  "overrides": {
+    "claude": "#9CCBF0",
+    "claudeShimmer": "#C9E3F8",
+    "text": "#E8EBED",
+    "inactive": "#9DA7AF",
+    "subtle": "#2A3540",
+    "suggestion": "#9CCBF0",
+    "permission": "#7FA8C9",
+    "promptBorder": "#9CCBF0",
+    "promptBorderShimmer": "#C9E3F8",
+    "planMode": "#7FA8C9",
+    "userMessageBackground": "#232B33",
+    "userMessageBackgroundHover": "#2C353E",
+    "rate_limit_fill": "#9CCBF0"
+  }
+}

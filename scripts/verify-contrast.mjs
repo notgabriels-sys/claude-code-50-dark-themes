@@ -141,6 +141,56 @@ for (const file of themes) {
   }
 }
 
+// Dark Themes Vol. 2 has no storefront gallery yet; its preview terminal
+// colours live in the plugin's previews.json and are held to the same floors.
+const vol2Root = new URL("../plugins/dark-themes-vol-2/", import.meta.url);
+const vol2Themes = (await readdir(new URL("themes/", vol2Root)))
+  .filter((file) => file.endsWith(".json"))
+  .sort();
+const vol2Previews = JSON.parse(await readFile(new URL("previews.json", vol2Root), "utf8"));
+
+for (const file of vol2Themes) {
+  const theme = JSON.parse(await readFile(new URL(`themes/${file}`, vol2Root), "utf8"));
+  const terminal = vol2Previews[theme.name];
+  if (!terminal) {
+    failures.push(`dark-themes-vol-2/${file}: missing preview terminal colour in previews.json`);
+    continue;
+  }
+
+  const surfaces = { terminal, userMessageBackground: theme.overrides.userMessageBackground };
+  for (const check of checks) {
+    const foreground = theme.overrides[check.token];
+    for (const surfaceName of check.surfaces) {
+      comparisons += 1;
+      const ratio = contrast(foreground, surfaces[surfaceName]);
+      if (ratio + Number.EPSILON < check.floor) {
+        failures.push(
+          `${theme.name}: ${check.token} on ${surfaceName} is ${ratio.toFixed(2)}:1; needs ${check.floor.toFixed(1)}:1`,
+        );
+      }
+    }
+  }
+
+  const surfaceChecks = [
+    ["userMessageBackground", theme.overrides.userMessageBackground, "terminal", terminal],
+    [
+      "userMessageBackgroundHover",
+      theme.overrides.userMessageBackgroundHover,
+      "userMessageBackground",
+      theme.overrides.userMessageBackground,
+    ],
+  ];
+  for (const [surfaceName, surface, referenceName, reference] of surfaceChecks) {
+    comparisons += 1;
+    const ratio = contrast(surface, reference);
+    if (ratio < 1.08) {
+      failures.push(
+        `${theme.name}: ${surfaceName} is not visibly distinct from ${referenceName} (${ratio.toFixed(2)}:1; needs 1.08:1)`,
+      );
+    }
+  }
+}
+
 if (failures.length) {
   console.error(failures.join("\n"));
   console.error(`\n${failures.length} failure(s) across ${comparisons} contrast comparisons.`);
@@ -148,5 +198,5 @@ if (failures.length) {
 }
 
 console.log(
-  `Verified ${themes.length} themes, ${comparisons} role-aware contrast comparisons, and gallery palette parity.`,
+  `Verified ${themes.length + vol2Themes.length} themes, ${comparisons} role-aware contrast comparisons, and gallery palette parity.`,
 );

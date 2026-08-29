@@ -1,0 +1,19 @@
+{
+  "name": "Biolume",
+  "base": "dark",
+  "overrides": {
+    "claude": "#35E0C0",
+    "claudeShimmer": "#8AEEDB",
+    "text": "#E8EDEC",
+    "inactive": "#9DAFAB",
+    "subtle": "#253431",
+    "suggestion": "#35E0C0",
+    "permission": "#6FBFB0",
+    "promptBorder": "#35E0C0",
+    "promptBorderShimmer": "#8AEEDB",
+    "planMode": "#6FBFB0",
+    "userMessageBackground": "#202A28",
+    "userMessageBackgroundHover": "#293432",
+    "rate_limit_fill": "#35E0C0"
+  }
+}
