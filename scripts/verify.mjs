@@ -691,6 +691,33 @@ if (pluginFiles.includes("themes.json")) {
   fail("themes.json was copied into the plugin; it is an index, not a theme.");
 }
 
+// Deep links. themes.json promises https://gabs-utilities.com/#theme-<id> for
+// every theme; a promised URL that resolves to nothing silently lands the
+// visitor at the top of the page. Two facts make each URL real, so assert
+// both. First, the card template must actually emit the anchor. Second, the
+// gallery derives its slug from the DISPLAY NAME (lowercased, spaces to
+// dashes) while the index id comes from the FILENAME — for all 50 they agree
+// today, but that agreement is a coincidence of naming, not a rule anything
+// else enforces, so a theme named out of step with its file would ship a dead
+// link without this check.
+if (!html.includes('id="theme-${themeSlug}"')) {
+  fail("The gallery card template no longer emits id=\"theme-<slug>\" anchors.");
+}
+const gallerySlugs = new Set(
+  galleryThemes.map(([name]) => name.toLowerCase().replace(/ /g, "-")),
+);
+const themeIndex = JSON.parse(publishedThemeIndex);
+for (const theme of themeIndex.themes) {
+  const promised = theme.url.match(/#theme-([a-z0-9-]+)$/)?.[1];
+  if (!promised || !gallerySlugs.has(promised)) {
+    fail(
+      `themes.json promises ${theme.url} but the gallery renders no card with ` +
+        `that anchor. Rename the theme or the file so display-name slug and ` +
+        `filename agree.`,
+    );
+  }
+}
+
 console.log(
   `Verified ${files.length} themes, ${pluginFiles.length} plugin themes, ${galleryThemes.length} gallery cards, ` +
     `${verifiedGumroadSlugs.size} Gumroad products (prices checked against the recorded page, NOT against Gumroad), ` +

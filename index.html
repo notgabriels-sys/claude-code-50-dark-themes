@@ -447,9 +447,15 @@
     footer{grid-template-columns:1fr}
     footer>span>a{min-height:44px}
   }
+  .card.deep-linked{animation:deep-link-pulse 2.4s ease-out}
+  @keyframes deep-link-pulse{
+    0%,55%{border-color:var(--a);box-shadow:0 0 0 3px color-mix(in srgb, var(--a) 45%, transparent)}
+    100%{box-shadow:0 0 0 3px transparent}
+  }
   @media (prefers-reduced-motion:reduce){
     html{scroll-behavior:auto}
     .card,.tool{transition:none}
+    .card.deep-linked{animation:none;border-color:var(--a)}
   }
 </style>
 </head>
@@ -767,7 +773,7 @@ const renderTheme = ([name,accent,shimmer,text,mute,bg]) => {
   const family = familyOf(accent);
   const searchable = `${name} ${themeSlug} /theme ${themeSlug} ${accent} ${family}`.toLowerCase();
   return `
-  <article class="card" data-family="${family}" data-search="${esc(searchable)}" style="--bg:${bg};--a:${accent};--sh:${shimmer};--fg:${text};--mut:${mute}">
+  <article class="card" id="theme-${themeSlug}" data-family="${family}" data-search="${esc(searchable)}" style="--bg:${bg};--a:${accent};--sh:${shimmer};--fg:${text};--mut:${mute}">
     <div class="titlebar">
       <div class="dots"><i style="background:${accent}"></i><i style="background:${mute};opacity:.4"></i><i style="background:${mute};opacity:.25"></i></div>
       <h3 class="tname">${esc(name)}</h3>
@@ -811,6 +817,32 @@ const updateFinder = ({reveal = false} = {}) => {
   finderEmpty.hidden = visible !== 0;
   if (reveal && (query || activeFamily !== "all")) themeArchive.open = true;
 };
+
+// Deep links: themes.json publishes https://gabs-utilities.com/#theme-<id> for
+// every theme. The cards are rendered by this script, so the browser's native
+// anchor jump happens before they exist; recreate it once the grid is real.
+const revealDeepLinkedTheme = () => {
+  const match = location.hash.match(/^#theme-([a-z0-9-]+)$/);
+  if (!match) return;
+  const card = document.getElementById(`theme-${match[1]}`);
+  if (!card) return;
+  themeArchive.open = true;
+  if (card.hidden) {
+    themeSearch.value = "";
+    activeFamily = "all";
+    filters.forEach(item => {
+      const selected = item.dataset.family === "all";
+      item.classList.toggle("is-active", selected);
+      item.setAttribute("aria-pressed", String(selected));
+    });
+    updateFinder();
+  }
+  card.scrollIntoView({block: "center"});
+  card.classList.add("deep-linked");
+  card.addEventListener("animationend", () => card.classList.remove("deep-linked"), {once: true});
+};
+revealDeepLinkedTheme();
+window.addEventListener("hashchange", revealDeepLinkedTheme);
 
 themeSearch.addEventListener("input", () => updateFinder({reveal:true}));
 themeSearch.addEventListener("keydown", event => {
