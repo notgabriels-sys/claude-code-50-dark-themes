@@ -4,6 +4,7 @@ import {
   buildThemeIndex,
   isThemeFile,
   serializeThemeIndex,
+  serializeThemeItemList,
 } from "./build-theme-index.mjs";
 
 const root = new URL("../", import.meta.url);
@@ -716,6 +717,19 @@ for (const theme of themeIndex.themes) {
         `filename agree.`,
     );
   }
+}
+
+// The crawlable ItemList block in index.html is generated from the same source
+// as themes.json and held to the same standard: rebuild and compare byte for
+// byte. A stale or hand-edited block would hand crawlers theme names or deep
+// links that disagree with what actually ships.
+const expectedItemList = serializeThemeItemList(await buildThemeIndex());
+if (!html.includes(expectedItemList)) {
+  fail(
+    "The theme ItemList block in index.html is missing, stale, or was " +
+      "hand-edited. Regenerate it with `node scripts/build-theme-index.mjs` " +
+      "— do not edit it directly.",
+  );
 }
 
 console.log(
