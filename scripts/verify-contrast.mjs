@@ -65,8 +65,8 @@ const checks = [
 const failures = [];
 let comparisons = 0;
 
-function cssColour(variable) {
-  const variableMatch = html.match(
+function cssColour(variable, source = html) {
+  const variableMatch = source.match(
     new RegExp(`--${variable}\\s*:\\s*(#[0-9a-f]{6})\\s*;`, "i"),
   );
   if (!variableMatch) throw new Error(`Could not find --${variable} in index.html.`);
@@ -82,6 +82,50 @@ for (const surfaceName of ["ground", "ground-2"]) {
     failures.push(
       `Storefront: --faint on --${surfaceName} is ${ratio.toFixed(2)}:1; needs 4.5:1`,
     );
+  }
+}
+
+// The storefront's syntax sample is also the shared personal coding palette.
+// Every semantic foreground must remain readable as normal text across the
+// terminal canvas, page canvas, and raised install panel—not merely look
+// distinct in one screenshot.
+const semanticTokens = [
+  "syntax-purple",
+  "syntax-light-purple",
+  "syntax-grey-purple",
+  "syntax-dark-blue",
+  "syntax-blue",
+  "syntax-light-blue",
+  "ink",
+  "syntax-dark-grey",
+];
+for (const token of semanticTokens) {
+  const foreground = cssColour(token);
+  for (const surfaceName of ["terminal-surface", "ground", "ground-2"]) {
+    comparisons += 1;
+    const surface = cssColour(surfaceName);
+    const ratio = contrast(foreground, surface);
+    if (ratio < 4.5) {
+      failures.push(
+        `Storefront: --${token} on --${surfaceName} is ${ratio.toFixed(2)}:1; needs 4.5:1`,
+      );
+    }
+  }
+}
+
+const sharedPaletteTokens = [...semanticTokens, "terminal-surface"];
+for (const page of [
+  "claude-code-theme-install-guide.html",
+  "semantic-terminal-colors.html",
+  "assets/social-preview.html",
+]) {
+  const pageHtml = await readFile(new URL(page, root), "utf8");
+  for (const token of sharedPaletteTokens) {
+    const expected = cssColour(token).toLowerCase();
+    const actual = cssColour(token, pageHtml).toLowerCase();
+    if (actual !== expected) {
+      failures.push(`${page}: --${token} ${actual} does not match storefront ${expected}`);
+    }
   }
 }
 
@@ -198,5 +242,5 @@ if (failures.length) {
 }
 
 console.log(
-  `Verified ${themes.length + vol2Themes.length} themes, ${comparisons} role-aware contrast comparisons, and gallery palette parity.`,
+  `Verified ${themes.length + vol2Themes.length} themes, ${comparisons} role-aware contrast comparisons, gallery parity, and shared semantic palette parity.`,
 );
