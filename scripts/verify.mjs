@@ -143,12 +143,14 @@ const vol2Files = (await readdir(vol2ThemesRoot))
   .sort();
 if (vol2Files.length === 0) fail("Dark Themes Vol. 2 must package at least one theme.");
 const vol2Previews = JSON.parse(await readFile(new URL("previews.json", vol2Root), "utf8"));
+const vol2ThemesByName = new Map();
 for (const file of vol2Files) {
   const theme = await validateThemeFile(`dark-themes-vol-2/${file}`, new URL(file, vol2ThemesRoot));
   const preview = vol2Previews[theme.name];
   if (typeof preview !== "string" || !/^#[0-9a-f]{6}$/i.test(preview)) {
     fail(`Vol. 2 theme ${theme.name} needs a six-digit hex preview terminal colour in previews.json.`);
   }
+  vol2ThemesByName.set(theme.name, theme);
 }
 
 const marketplace = JSON.parse(await readFile(new URL(".claude-plugin/marketplace.json", root), "utf8"));
@@ -251,6 +253,40 @@ if (galleryThemes.length !== 50) {
 const galleryNames = new Set(galleryThemes.map(([name]) => name));
 for (const name of rootNames) {
   if (!galleryNames.has(name)) fail(`Gallery is missing the ${name} theme.`);
+}
+
+// The Vol. 2 storefront section must mirror the packaged expansion exactly.
+const vol2GalleryMatch = html.match(/const VOL2_THEMES = (\[[\s\S]*?\n\]);/);
+if (!vol2GalleryMatch) fail("Could not find the VOL2_THEMES array in index.html.");
+let vol2Gallery;
+try {
+  vol2Gallery = JSON.parse(vol2GalleryMatch[1]);
+} catch (error) {
+  fail(`The Vol. 2 gallery array is not valid JSON data: ${error.message}`);
+}
+if (vol2Gallery.length !== vol2Files.length) {
+  fail(`Expected ${vol2Files.length} Vol. 2 gallery cards; found ${vol2Gallery.length}.`);
+}
+const vol2GalleryNames = new Set(vol2Gallery.map(([name]) => name));
+if (vol2GalleryNames.size !== vol2Gallery.length) fail("Vol. 2 gallery names must be unique.");
+for (const [name, claude, claudeShimmer, text, inactive, terminal] of vol2Gallery) {
+  const theme = vol2ThemesByName.get(name);
+  if (!theme) fail(`Vol. 2 gallery card ${name} has no packaged theme.`);
+  const expected = { claude, claudeShimmer, text, inactive };
+  for (const [token, value] of Object.entries(expected)) {
+    if (theme.overrides[token].toLowerCase() !== value.toLowerCase()) {
+      fail(`Vol. 2 gallery ${name}: ${token} ${value} does not match theme ${theme.overrides[token]}.`);
+    }
+  }
+  if (vol2Previews[name].toLowerCase() !== terminal.toLowerCase()) {
+    fail(`Vol. 2 gallery ${name}: terminal ${terminal} does not match previews.json ${vol2Previews[name]}.`);
+  }
+}
+for (const name of vol2ThemesByName.keys()) {
+  if (!vol2GalleryNames.has(name)) fail(`Vol. 2 gallery is missing the ${name} theme.`);
+}
+if (!html.includes("claude plugin install dark-themes-vol-2@notgabriels-themes")) {
+  fail("The gallery must expose the Vol. 2 install command.");
 }
 
 if (!readme.includes("mkdir -p ~/.claude/themes")) {

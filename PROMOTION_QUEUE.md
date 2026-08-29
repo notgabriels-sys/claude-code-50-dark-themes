@@ -56,6 +56,30 @@ Best single-line pitch:
 
 ## Ready-to-post copy
 
+### X — Dark Themes Vol. 2 announcement (post once the Vol. 2 PR is merged and live)
+
+```text
+Shipped a free expansion to my Claude Code theme pack: Dark Themes Vol. 2.
+
+12 all-new dark themes — Afterglow, Neon Noir, Cryosleep, Biolume and more — same semantic status colors, same WCAG contrast floors as the original 50.
+
+Same marketplace, one command:
+claude plugin install dark-themes-vol-2@notgabriels-themes
+
+Gallery: https://gabs-utilities.com/#vol2
+```
+
+### Gumroad — free pack description addendum (paste into the slhbym product description; do not create a new product)
+
+```text
+Update: the same Claude Code marketplace now also carries Dark Themes Vol. 2 — a free expansion plugin with 12 all-new themes (Afterglow, Aurora Borealis, Basalt, Biolume, Cryosleep, Darkroom, Gaslight, Heliotrope, Magnetite, Monsoon, Neon Noir, Ozone), held to the same contrast standards.
+
+Install it beside the 50:
+claude plugin install dark-themes-vol-2@notgabriels-themes
+
+Preview all of them in their own colors: https://gabs-utilities.com/#vol2
+```
+
 ### X launch post
 
 ```text
