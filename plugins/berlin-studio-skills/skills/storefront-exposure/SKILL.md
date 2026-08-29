@@ -46,6 +46,12 @@ read those prices off Gumroad in a signed-in browser.
 If asked for Product rich results, say this in a line, build everything else the
 request needs, and leave the priced part for the browser pass.
 
+This rule outranks tooling. The account has the `searchfit-seo` plugin enabled,
+whose `generate-schema` command and `schema-markup` skill will happily emit
+`Product`/`Offer` JSON-LD with prices filled in from the page. Its output is a
+draft, not an authority: strip any price, `Offer`, or `priceCurrency` it
+produces for the paid products before anything ships.
+
 ## The surfaces, and what each is for
 
 | Surface | Serves | Guarded by |
