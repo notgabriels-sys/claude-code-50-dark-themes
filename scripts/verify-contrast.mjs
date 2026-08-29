@@ -1,7 +1,9 @@
 import { readdir, readFile } from "node:fs/promises";
+import { isThemeFile } from "./build-theme-index.mjs";
 
 const root = new URL("../", import.meta.url);
-const themes = (await readdir(root)).filter((file) => file.endsWith(".json")).sort();
+// isThemeFile, not a bare .json glob: themes.json is the published index.
+const themes = (await readdir(root)).filter(isThemeFile).sort();
 const html = await readFile(new URL("index.html", root), "utf8");
 const match = html.match(/const THEMES = (\[[\s\S]*?\n\]);/);
 

@@ -1,5 +1,11 @@
 import { readdir, readFile } from "node:fs/promises";
 
+import {
+  buildThemeIndex,
+  isThemeFile,
+  serializeThemeIndex,
+} from "./build-theme-index.mjs";
+
 const root = new URL("../", import.meta.url);
 const pluginRoot = new URL("../plugins/50-dark-themes/", import.meta.url);
 const pluginThemesRoot = new URL("../plugins/50-dark-themes/themes/", import.meta.url);
@@ -158,9 +164,7 @@ async function verifyPng(imagePath, { label, width, height }) {
   }
 }
 
-const files = (await readdir(root))
-  .filter((file) => file.endsWith(".json"))
-  .sort();
+const files = (await readdir(root)).filter(isThemeFile).sort();
 
 if (files.length !== 50) {
   fail(`Expected 50 root-level theme files; found ${files.length}.`);
@@ -659,6 +663,33 @@ for (const { slug, attrs, inner } of gumroadCards) {
 }
 
 await import("./verify-contrast.mjs");
+
+// themes.json — the machine-readable theme index published at
+// gabs-utilities.com/themes.json. It is generated from the theme files, so the
+// only way it can be wrong is if someone edits it by hand or forgets to
+// regenerate after changing a theme. Rebuild it here and compare byte for byte;
+// a consumer reading a stale index gets a palette that is not what ships.
+const expectedThemeIndex = serializeThemeIndex(await buildThemeIndex());
+let publishedThemeIndex;
+try {
+  publishedThemeIndex = await readFile(new URL("themes.json", root), "utf8");
+} catch {
+  fail("themes.json is missing. Run `node scripts/build-theme-index.mjs`.");
+}
+if (publishedThemeIndex !== expectedThemeIndex) {
+  fail(
+    "themes.json is out of date or was hand-edited. Regenerate it with " +
+      "`node scripts/build-theme-index.mjs` — do not edit it directly.",
+  );
+}
+
+// The index sits at the repo root among the 50 theme files, so it is the one
+// root .json that is not a theme. Assert that exclusion instead of trusting it:
+// if it ever leaked into the plugin it would install as a 51st "theme" with no
+// name or base, and the theme-count check above would already have gone red.
+if (pluginFiles.includes("themes.json")) {
+  fail("themes.json was copied into the plugin; it is an index, not a theme.");
+}
 
 console.log(
   `Verified ${files.length} themes, ${pluginFiles.length} plugin themes, ${galleryThemes.length} gallery cards, ` +

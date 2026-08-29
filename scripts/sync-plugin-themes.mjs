@@ -1,13 +1,15 @@
 import { copyFile, mkdir, readdir, rm } from "node:fs/promises";
 
+import { isThemeFile } from "./build-theme-index.mjs";
+
 const root = new URL("../", import.meta.url);
 const destination = new URL("../plugins/50-dark-themes/themes/", import.meta.url);
 
 await mkdir(destination, { recursive: true });
 
-const rootThemes = (await readdir(root))
-  .filter((file) => file.endsWith(".json"))
-  .sort();
+// isThemeFile, not a bare .json glob: themes.json is the published index and
+// must never be copied into the plugin as a 51st theme.
+const rootThemes = (await readdir(root)).filter(isThemeFile).sort();
 const packagedThemes = (await readdir(destination))
   .filter((file) => file.endsWith(".json"));
 

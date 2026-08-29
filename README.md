@@ -122,6 +122,15 @@ Lagoon · Lichen · Moss · Mulberry · Nachtschicht · Night Vision · Nightsha
 Orchid · Oxide · Petrol · Plasma · Signal Red · Sonar · Soot · Static · Terminal ·
 Tidepool · Tungsten · Ultraviolet · Undergrowth · Undertow · VU Meter · Velvet · Verdigris
 
+Building something on top of these? Every theme's id, name and key palette
+roles are published as one generated JSON file:
+
+**[gabs-utilities.com/themes.json](https://gabs-utilities.com/themes.json)**
+
+It is generated from the theme files by `scripts/build-theme-index.mjs` and CI
+fails if it drifts, so it always matches what actually installs. Free themes
+only — no pricing in it.
+
 
 ## More dark tools
 
