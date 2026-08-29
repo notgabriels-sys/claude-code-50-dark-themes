@@ -30,7 +30,8 @@ const verifiedPayPalLinks = [
 ];
 const verifiedPayPalIds = verifiedPayPalLinks.map((link) => link.id);
 
-// Buyer-side read-back on 2026-08-24 confirmed these product pages return a
+// Buyer-side read-back on 2026-08-24 and 2026-08-25 confirmed these product pages
+// return a
 // published Gumroad product. A plausible URL or HTTP 200 is not enough:
 // unpublished Gumroad products can still render a 200-status product shell.
 //
@@ -43,6 +44,7 @@ const verifiedGumroadSlugs = new Set([
   "cfcvmy",
   "ckthsb",
   "dark-app-screens",
+  "dark-invoice-business-documents",
   "industrial-tension-fx",
   "jqrdfy",
   "kxsfa",
@@ -54,6 +56,7 @@ const verifiedGumroadSlugs = new Set([
   "xcxeb",
   "xjcbji",
 ]);
+const pngSignature = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
 // The price each product prints on the shop. Recorded 2026-08-24 against the
 // page as it then stood, and re-recorded the same day after `main` restyled the
@@ -93,6 +96,8 @@ const recordedGumroadPrices = [
   { slug: "ckthsb", price: "€12" },
   { slug: "cfcvmy", price: "$19" },
   { slug: "dark-app-screens", price: "€14" },
+  // Added to the shop by main on 2026-08-25.
+  { slug: "dark-invoice-business-documents", price: "€12" },
   { slug: "xjcbji", price: "€9" },
   { slug: "bunkhy", price: "€9" },
   { slug: "kxsfa", price: "€7" },
@@ -130,6 +135,27 @@ const GUMROAD_HOST = "notgabriel.gumroad.com";
 
 function fail(message) {
   throw new Error(message);
+}
+
+async function verifyPng(imagePath, { label, width, height }) {
+  let imageData;
+  try {
+    imageData = await readFile(new URL(imagePath, root));
+  } catch {
+    fail(`${label} is missing: ${imagePath}.`);
+  }
+
+  const hasValidPngHeader =
+    imageData.length >= 24 &&
+    imageData.subarray(0, pngSignature.length).equals(pngSignature) &&
+    imageData.readUInt32BE(8) === 13 &&
+    imageData.subarray(12, 16).equals(Buffer.from("IHDR"));
+  if (!hasValidPngHeader) {
+    fail(`${label} must be a valid PNG: ${imagePath}.`);
+  }
+  if (imageData.readUInt32BE(16) !== width || imageData.readUInt32BE(20) !== height) {
+    fail(`${label} must be ${width}x${height}: ${imagePath}.`);
+  }
 }
 
 const files = (await readdir(root))
@@ -257,6 +283,20 @@ const readme = await readFile(new URL("README.md", root), "utf8");
 const publicHtmlFiles = (await readdir(root))
   .filter((file) => file.endsWith(".html"))
   .sort();
+const normalizeHtmlText = (markup) =>
+  markup
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;|&#160;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/\s+/g, " ")
+    .trim();
+for (const link of html.matchAll(/<a\b[^>]*\baria-label="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi)) {
+  const accessibleName = normalizeHtmlText(link[1]);
+  const visibleLabel = normalizeHtmlText(link[2]);
+  if (visibleLabel && !accessibleName.toLocaleLowerCase().includes(visibleLabel.toLocaleLowerCase())) {
+    fail(`Sales-link accessible name must include its visible label: ${visibleLabel}.`);
+  }
+}
 const storefrontContracts = [
   [/<a class="skip-link" href="#main-content">/, "keyboard skip link"],
   [/<main id="main-content">/, "main landmark"],
@@ -344,11 +384,11 @@ for (const [, productHtml] of featuredProducts) {
   if (!imagePath.startsWith("assets/products/") || !imageAlt.trim()) {
     fail("Curated developer pick covers must use local product assets and meaningful alt text.");
   }
-  try {
-    await readFile(new URL(imagePath, root));
-  } catch {
-    fail(`Curated developer pick cover is missing: ${imagePath}.`);
-  }
+  await verifyPng(imagePath, {
+    label: "Curated developer pick cover",
+    width: 1280,
+    height: 720,
+  });
 
   const gumroadLink = productHtml.match(/https:\/\/notgabriel\.gumroad\.com\/l\/([a-z0-9-]+)/);
   if (!gumroadLink) {
@@ -377,6 +417,31 @@ for (const [, productHtml] of featuredProducts) {
 }
 if ([...expectedFeaturedSlugs].some((slug) => !actualFeaturedSlugs.has(slug))) {
   fail("The curated developer picks must feature the UI kit, HTML templates, and app screens.");
+}
+const uiKitPreview = html.match(/<section[^>]*id="ui-kit-preview"[^>]*>[\s\S]*?<\/section>/);
+if (!uiKitPreview) {
+  fail("The storefront must expose the UI kit preview section.");
+}
+if (!html.includes('href="#ui-kit-preview"')) {
+  fail("The Dark UI Kit card must link to its first-party preview section.");
+}
+if (/<(?:a|link)\b[^>]*\bhref=["'][^"']*dark-ui\.css(?:[?#][^"']*)?["'][^>]*>/i.test(html)) {
+  fail("The storefront must not publish the paid Dark UI Kit stylesheet.");
+}
+const expectedUiKitPreviewImages = [
+  "assets/products/dark-ui-kit-components.png",
+  "assets/products/dark-ui-kit-cards.png",
+  "assets/products/dark-ui-kit-light-mode.png",
+];
+for (const imagePath of expectedUiKitPreviewImages) {
+  if (!uiKitPreview[0].includes(`src="${imagePath}"`)) {
+    fail(`The UI kit preview must include ${imagePath}.`);
+  }
+  await verifyPng(imagePath, {
+    label: "UI kit preview image",
+    width: 1265,
+    height: 712,
+  });
 }
 
 if (html.includes("api.producthunt.com/widgets/embed-image")) {
@@ -541,7 +606,6 @@ for (const { slug } of recordedGumroadPrices) {
 // than pin the markup, every currency amount inside the anchor must equal the
 // recorded one -- so a restyle is free but a changed number is not, and a
 // screen-reader label cannot quietly disagree with what sighted buyers see.
-const currencyWords = { "€": "euros", $: "dollars" };
 for (const { slug, attrs, inner } of gumroadCards) {
   const price = recordedGumroadPriceBySlug.get(slug);
   const shown = [...inner.matchAll(/[€$]\s?\d[\d.,]*/g)].map((match) =>
@@ -569,15 +633,26 @@ for (const { slug, attrs, inner } of gumroadCards) {
     }
   }
 
-  const spoken = attrs.match(/aria-label="[^"]*?for (\d[\d.,]*) (euros|dollars)"/);
-  if (spoken) {
-    const expected = price && `${price[0]}${spoken[1]}`;
+  // The aria-label carries the price too, and it has already been written two
+  // ways: "for 12 euros" (words) and "View product €12 — ..." (symbol). Check
+  // both forms rather than pinning either, so a rewording cannot silently drop
+  // the check and leave a screen reader quoting a stale number.
+  const label = (attrs.match(/aria-label="([^"]*)"/) ?? [])[1] ?? "";
+  const spokenAmounts = [...label.matchAll(/[€$]\s?\d[\d.,]*/g)].map((match) =>
+    match[0].replace(/\s+/g, ""),
+  );
+  const spokenWords = label.match(/for (\d[\d.,]*) (euros|dollars)/);
+  if (spokenWords) {
+    spokenAmounts.push(`${spokenWords[2] === "euros" ? "€" : "$"}${spokenWords[1]}`);
+  }
+  for (const amount of spokenAmounts) {
     if (!price) {
-      fail(`Gumroad card ${slug} speaks a price in its aria-label but records none.`);
-    } else if (expected !== price || currencyWords[price[0]] !== spoken[2]) {
+      fail(`Gumroad card ${slug} speaks ${amount} to screen readers but records no price.`);
+    } else if (amount !== price) {
       fail(
-        `Gumroad card ${slug} reads out "${spoken[1]} ${spoken[2]}" to screen readers ` +
-          `but is priced ${price}.`,
+        `Gumroad card ${slug} reads out ${amount} to screen readers but is priced ` +
+          `${price}. A label that disagrees with the visible price is a wrong price ` +
+          `for the buyer who cannot see it.`,
       );
     }
   }

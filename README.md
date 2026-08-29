@@ -129,7 +129,7 @@ Same palettes and the same care, applied elsewhere. All one-time purchases, no
 subscriptions, and none of it needed to use the themes above.
 
 <details>
-<summary>Nine published packs plus one résumé demo — UI kit, HTML templates, app screens, email, social, cheatsheets, keycaps, wallpapers, palettes</summary>
+<summary>Twelve published packs plus one résumé demo — UI kit, HTML templates, app screens, email, business documents, social, cheatsheets, keycaps, wallpapers, palettes</summary>
 
 | | |
 |---|---|
@@ -137,6 +137,7 @@ subscriptions, and none of it needed to use the themes above.
 | **[Dark HTML Templates](https://notgabriel.gumroad.com/l/cfcvmy)** — 8 single-file pages | portfolio, SaaS, docs, pricing · $19 |
 | **[Dark App Screens](https://notgabriel.gumroad.com/l/dark-app-screens)** — 6 product screens + 50 themes | sign-in, dashboard, data table, settings, inbox, error pages · €14 |
 | **[Dark Email Templates](https://notgabriel.gumroad.com/l/xjcbji)** — transactional email | welcome, receipt, reset, OTP · €9 |
+| **[Dark Invoice & Business Documents](https://notgabriel.gumroad.com/l/dark-invoice-business-documents)** — 9 print-ready HTML documents | invoice, quote, receipt, credit note, purchase order and more · €12 |
 | **[Social & OG Templates](https://notgabriel.gumroad.com/l/bunkhy)** — exact-size share images | OG cards, X header, thumbnails · €9 |
 | **[Résumé & CV Templates — live demo](https://notgabriels-sys.github.io/dark-html-templates-demo/resume/)** — prints clean to PDF | 5 layouts + cover letter · checkout temporarily withheld |
 | **[Dev Cheatsheets](https://notgabriel.gumroad.com/l/kxsfa)** + **[Vol. 2](https://notgabriel.gumroad.com/l/kykega)** | git, vim, tmux, SQL, CSS, HTTP · €7 each |
