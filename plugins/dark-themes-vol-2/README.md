@@ -5,6 +5,8 @@ Twelve new hand-tuned dark themes that expand the original
 Same semantic status colors, same contrast standards (AAA primary text, AA secondary),
 all-new palettes. Free and MIT licensed.
 
+![All twelve Dark Themes Vol. 2 palettes previewed as Claude Code terminal cards in their own colors](preview.png)
+
 ```text
 /plugin marketplace add notgabriels-sys/claude-code-50-dark-themes
 /plugin install dark-themes-vol-2@notgabriels-themes
