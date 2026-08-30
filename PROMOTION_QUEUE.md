@@ -14,7 +14,6 @@ Gabs Utilities is a small catalog of dark, practical developer and creator tools
 
 - free Claude Code themes and plugins
 - paid dark UI/template/productivity packs
-- workflow kits for Claude Code users
 
 Best single-line pitch:
 
@@ -53,6 +52,22 @@ Best single-line pitch:
 5. Evergreen directories
    - Use after main launch copy is stable.
    - Prioritize directories that accept dev tools or indie products without spammy backlink demands.
+
+## Not published — keep out of the copy
+
+The **Claude Code Workflow Kit** (`products/claude-code-workflow-kit/`) is
+built but not on sale. Its own `PUBLISHING.md` records that Gumroad reported
+`is_published: false`, and it still lists the remaining upload steps. Its slug
+`zvbti` was removed from the storefront and the README, and `verify.mjs` does
+not carry it in `verifiedGumroadSlugs`.
+
+Until it is actually published, it must not appear in any copy here. Every
+description above previously said the catalog includes "workflow kits" — the
+posts, the Product Hunt comment, and the directory descriptions — which would
+have advertised a product nobody can buy. Those mentions are removed.
+
+When Gabriel publishes it: verify the live product page buyer-side first, add
+the slug to `verifiedGumroadSlugs`, then put it back in the copy.
 
 ## Ready-to-post copy
 
@@ -116,7 +131,7 @@ I moved my Claude Code / dark dev tools catalog onto a proper domain:
 
 https://gabs-utilities.com/
 
-It started as 50 free dark themes for Claude Code, then grew into a small toolbox: UI kits, templates, cheat sheets, workflow kits, and wallpapers.
+It started as 50 free dark themes for Claude Code, then grew into a small toolbox: UI kits, templates, cheat sheets, and wallpapers.
 
 Feedback welcome.
 ```
@@ -152,7 +167,7 @@ Hey, I’m Gabriel.
 
 This started as a practical thing for myself: I wanted a set of dark Claude Code themes that stayed readable and did not destroy semantic colors like errors, warnings, success states, and diffs.
 
-I kept expanding it into a small catalog of dark developer/creator utilities: UI kits, HTML templates, email templates, cheat sheets, workflow kits, wallpapers, and palettes.
+I kept expanding it into a small catalog of dark developer/creator utilities: UI kits, HTML templates, email templates, cheat sheets, wallpapers, and palettes.
 
 The core Claude Code themes are free and MIT licensed. The paid packs are there for people who want the broader toolkit.
 
@@ -162,7 +177,7 @@ I’d love feedback from developers, Claude Code users, and people who care abou
 ### Short directory description
 
 ```text
-Gabs Utilities is a compact catalog of dark developer and creator tools: 50 free Claude Code themes, UI/template packs, workflow kits, cheat sheets, wallpapers, and palettes.
+Gabs Utilities is a compact catalog of dark developer and creator tools: 50 free Claude Code themes, UI/template packs, cheat sheets, wallpapers, and palettes.
 ```
 
 ### Social share assets
@@ -227,7 +242,7 @@ Rules for this route:
 ### Longer directory description
 
 ```text
-Gabs Utilities is a small, practical catalog for developers and technical creators who like dark, readable tools. The core project is 50 free MIT-licensed themes for Claude Code, built with semantic colors for errors, warnings, success states, diffs, and terminal UI clarity. The catalog also includes paid packs such as dark UI kits, HTML/email/social templates, developer cheat sheets, Claude Code workflow templates, wallpapers, and palettes.
+Gabs Utilities is a small, practical catalog for developers and technical creators who like dark, readable tools. The core project is 50 free MIT-licensed themes for Claude Code, built with semantic colors for errors, warnings, success states, diffs, and terminal UI clarity. The catalog also includes paid packs such as dark UI kits, HTML/email/social templates, developer cheat sheets, wallpapers, and palettes.
 ```
 
 ## Do not post
