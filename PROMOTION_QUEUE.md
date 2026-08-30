@@ -165,6 +165,33 @@ I’d love feedback from developers, Claude Code users, and people who care abou
 Gabs Utilities is a compact catalog of dark developer and creator tools: 50 free Claude Code themes, UI/template packs, workflow kits, cheat sheets, wallpapers, and palettes.
 ```
 
+### Social share assets
+
+The link preview card that X, Slack, LinkedIn and Discord render for
+`gabs-utilities.com` is `preview.png` at the repo root, referenced by
+`og:image` and `twitter:image` and declared as 1280x720 in the meta tags.
+
+It is **not** a screenshot. It is rendered from `assets/social-preview.html`,
+a purpose-built 1280x720 card. To regenerate after editing that source, load
+the file in a headless browser at a 1280x720 viewport and screenshot the page
+to `preview.png` — keep the size, or the declared `og:image:width` /
+`og:image:height` become wrong.
+
+What the current card shows, regenerated 2026-08-30:
+
+- Kicker: "Claude Code · a quiet terminal collection"
+- Headline: "50 dark themes for Claude Code"
+- Stat row: 50 + 12 themes · 894 role-aware checks · MIT licensed · Claude Code v2.1.118+
+- A terminal panel with the two-line marketplace + install command
+- A strip of the pack's accent colors
+
+Anything stated on the card is a public claim, so it has to stay true: the
+check count and theme counts were both stale before this regeneration (726
+checks, 50 themes). When either changes, edit the source and regenerate in the
+same change. The `og:image:alt` and `twitter:image:alt` text describes this
+card — it previously described "a grid of theme previews", which the image has
+never been.
+
 ### GitHub awesome lists — prepared entries
 
 Entries only. Per the submission pack's rule, open at most one careful PR per
