@@ -453,6 +453,35 @@ if (Number(cardThemeCounts[1]) !== files.length || Number(cardThemeCounts[2]) !=
   );
 }
 
+// One image, one description. preview.png is shared by every public page; it
+// was described three different ways, two of them as "a gallery preview" of a
+// card that has never been a gallery. Alt text drifts silently because nobody
+// sees it — so pages that share an image must state the same alt, and a page
+// that ships an og:image without alt text fails.
+const sharedImageAlts = new Map();
+for (const file of publicHtmlFiles) {
+  const source = await readFile(new URL(file, root), "utf8");
+  const image = source.match(/<meta property="og:image" content="([^"]+)">/);
+  if (!image) continue;
+  const ogAlt = source.match(/<meta property="og:image:alt" content="([^"]+)">/);
+  if (!ogAlt) fail(`${file} ships an og:image with no og:image:alt.`);
+  if (/<meta name="twitter:image" content=/.test(source)) {
+    const twitterAlt = source.match(/<meta name="twitter:image:alt" content="([^"]+)">/);
+    if (!twitterAlt) fail(`${file} ships a twitter:image with no twitter:image:alt.`);
+    if (twitterAlt[1] !== ogAlt[1]) {
+      fail(`${file} describes the same share image differently to Open Graph and X.`);
+    }
+  }
+  const seen = sharedImageAlts.get(image[1]);
+  if (seen && seen.alt !== ogAlt[1]) {
+    fail(
+      `${file} and ${seen.file} share ${image[1]} but describe it differently. ` +
+        "One image gets one description.",
+    );
+  }
+  if (!seen) sharedImageAlts.set(image[1], { file, alt: ogAlt[1] });
+}
+
 console.log(
   `Verified ${files.length} themes, ${pluginFiles.length} plugin themes, ${vol2Files.length} Vol. 2 themes, ` +
     `${galleryThemes.length} gallery cards, ` +

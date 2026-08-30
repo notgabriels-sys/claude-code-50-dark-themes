@@ -223,3 +223,52 @@ test("rejects a share card that drops its check-count claim entirely", { timeout
   assert.notEqual(result.code, 0, "the verifier let the claim guard go inert");
   assert.match(result.stderr, /states no role-aware check count; the claim guard would be inert/);
 });
+
+test("rejects two pages describing the same share image differently", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixturePage = join(fixtureRoot, "semantic-terminal-colors.html");
+  const page = await readFile(fixturePage, "utf8");
+  // Consistently within the page, but disagreeing with every other page.
+  await writeFile(
+    fixturePage,
+    page.replaceAll(
+      "Title card: 50 dark themes for Claude Code, with the plugin install command and a strip of the pack&#39;s accent colors",
+      "Gallery preview of dark Claude Code terminal themes.",
+    ),
+  );
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted one image with two descriptions");
+  assert.match(result.stderr, /share https:\/\/gabs-utilities\.com\/preview\.png but describe it differently/);
+});
+
+test("rejects a page that ships an og:image with no alternative text", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixturePage = join(fixtureRoot, "claude-code-theme-install-guide.html");
+  const page = await readFile(fixturePage, "utf8");
+  await writeFile(fixturePage, page.replace(/<meta property="og:image:alt"[^>]*>\n/, ""));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a share image with no alternative text");
+  assert.match(result.stderr, /ships an og:image with no og:image:alt/);
+});
+
+test("rejects a page whose X alt disagrees with its Open Graph alt", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixturePage = join(fixtureRoot, "semantic-terminal-colors.html");
+  const page = await readFile(fixturePage, "utf8");
+  await writeFile(
+    fixturePage,
+    page.replace(
+      /<meta name="twitter:image:alt" content="[^"]*">/,
+      '<meta name="twitter:image:alt" content="Something else entirely">',
+    ),
+  );
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted contradictory alt text on one page");
+  assert.match(result.stderr, /describes the same share image differently to Open Graph and X/);
+});
