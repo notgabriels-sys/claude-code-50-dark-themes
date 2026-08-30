@@ -21,3 +21,6 @@ products/techno-low-end-architecture/qa/
 
 # Internal subagent/task scratch evidence is local-only, not release content.
 .superpowers/
+
+# Local-only npm installs (playwright-core was swept in by accident once).
+node_modules/
