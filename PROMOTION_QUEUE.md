@@ -165,6 +165,38 @@ I’d love feedback from developers, Claude Code users, and people who care abou
 Gabs Utilities is a compact catalog of dark developer and creator tools: 50 free Claude Code themes, UI/template packs, workflow kits, cheat sheets, wallpapers, and palettes.
 ```
 
+### GitHub awesome lists — prepared entries
+
+Entries only. Per the submission pack's rule, open at most one careful PR per
+list, and only to lists whose scope explicitly covers Claude Code, terminal or
+CLI themes, or developer tooling. Read each list's CONTRIBUTING file first and
+match its existing line format instead of pasting these verbatim — most lists
+sort alphabetically and pin a specific dash/pipe style.
+
+Claude Code-focused lists (best fit):
+
+```text
+- [50 Dark Themes for Claude Code](https://github.com/notgabriels-sys/claude-code-50-dark-themes) - 50 free MIT-licensed dark themes installable as a native plugin, plus a 12-theme Vol. 2 expansion. Preserves semantic colors for errors, warnings, success states and diffs.
+```
+
+Terminal / dotfiles / color-scheme lists:
+
+```text
+- [Claude Code 50 Dark Themes](https://github.com/notgabriels-sys/claude-code-50-dark-themes) - 62 dark terminal palettes for the Claude Code CLI, each verified against role-aware WCAG contrast floors. MIT.
+```
+
+Short-form lists that allow only a clause:
+
+```text
+- [claude-code-50-dark-themes](https://github.com/notgabriels-sys/claude-code-50-dark-themes) - Dark theme packs for Claude Code.
+```
+
+Rules for this route:
+
+- Do not claim stars, downloads, popularity, or "the best" anything.
+- Do not open a PR to a list whose scope does not cover this project.
+- One list at a time; wait for the outcome before opening the next.
+
 ### Longer directory description
 
 ```text

@@ -116,6 +116,7 @@ h1{font-size:clamp(40px,7.3vw,78px);letter-spacing:-.065em;line-height:.94;margi
 .code-panel{overflow:hidden;margin:18px 0}.code-head{display:flex;justify-content:space-between;gap:12px;padding:11px 15px;border-bottom:1px solid var(--hair);font-size:12px;color:var(--faint)}
 pre{margin:0;padding:18px;overflow:auto;white-space:pre;color:var(--ink);background:var(--terminal-surface);font:13px/1.65 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
 .key{color:var(--syntax-dark-blue)}.string{color:var(--syntax-grey-purple)}.comment{color:var(--syntax-dark-grey)}
+.syntax-command{color:var(--syntax-light-purple)}.syntax-keyword{color:var(--syntax-purple)}.syntax-subcommand,.syntax-value{color:var(--ink)}.syntax-scope{color:var(--syntax-grey-purple)}
 .table-wrap{overflow:auto;margin-top:16px}table{width:100%;border-collapse:collapse;min-width:620px}th,td{text-align:left;padding:13px 15px;border-bottom:1px solid var(--hair);vertical-align:top}th{font-size:12px;text-transform:uppercase;letter-spacing:.12em;color:var(--faint)}td{color:var(--muted)}td:first-child{color:var(--ink);font-weight:700}
 .states{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}.state{border:1px solid var(--hair);border-radius:999px;padding:6px 10px;font-size:12px}.success{color:var(--green)}.warning{color:var(--yellow)}.error{color:var(--red)}
 .faq{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:16px}.faq .panel p{margin-bottom:0}
@@ -235,12 +236,22 @@ footer{margin-top:42px;padding-top:22px;border-top:1px solid var(--hair)}
           <p>The question is not only “does this look good?” It is “does the interface still tell the truth quickly?”</p>
         </section>
 
+        <section class="section" id="vol2">
+          <h2>The system extended cleanly.</h2>
+          <p>The same rules later produced a second free pack, Dark Themes Vol.&nbsp;2: twelve more palettes — Afterglow, Aurora Borealis, Basalt, Biolume, Cryosleep, Darkroom, Gaslight, Heliotrope, Magnetite, Monsoon, Neon Noir and Ozone. They leave the same status colors on the base preset and clear the same role-aware contrast floors, which is the useful test of whether a palette system is a system at all rather than one lucky set of colors.</p>
+          <div class="code-panel" aria-label="Dark Themes Vol. 2 install command">
+            <div class="code-head"><span>Terminal</span><span>Same marketplace</span></div>
+<pre><span class="syntax-command">claude</span> <span class="syntax-keyword">plugin</span> <span class="syntax-subcommand">install</span> <span class="syntax-value">dark-themes-vol-2<span class="syntax-scope">@notgabriels-themes</span></span></pre>
+          </div>
+          <p>Every Vol.&nbsp;2 palette is previewed in its own colors in the <a href="./#vol2">gallery&rsquo;s expansion section</a>.</p>
+        </section>
+
         <section class="section" aria-labelledby="faq-title">
           <h2 id="faq-title">Quick answers.</h2>
           <div class="faq">
             <div class="panel"><b>Why not recolor every state?</b><p>Errors, warnings, success states and diffs carry meaning. Keeping the base dark status colors preserves recognition while the rest of the interface changes.</p></div>
             <div class="panel"><b>Can the theme set my terminal background?</b><p>No. The terminal application owns that surface. The gallery provides a matching hex you can set separately.</p></div>
-            <div class="panel"><b>Are all 50 themes free?</b><p>Yes. The complete theme set, plugin package and installer are public under the MIT license.</p></div>
+            <div class="panel"><b>Are all the themes free?</b><p>Yes. The 50-theme set, the Vol.&nbsp;2 expansion, both plugin packages and the installer are public under the MIT license.</p></div>
           </div>
         </section>
 
