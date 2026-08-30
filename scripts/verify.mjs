@@ -408,10 +408,54 @@ for (const id of verifiedPayPalIds) {
   }
 }
 
-await import("./verify-contrast.mjs");
+const { roleAwareComparisonCount } = await import("./verify-contrast.mjs");
+
+// ---------------------------------------------------------------------------
+// Stated numbers are public claims. The share card shipped "726 role-aware
+// checks" for days after the real figure became 894, because nothing tied the
+// printed number to the computed one. Every surface that states a count is now
+// checked against what the verifier actually ran.
+// ---------------------------------------------------------------------------
+const socialCard = await readFile(new URL("assets/social-preview.html", root), "utf8");
+const claimSurfaces = [
+  ["index.html", html],
+  ["assets/social-preview.html", socialCard],
+];
+
+for (const [page, source] of claimSurfaces) {
+  // Any "<n> role-aware ..." claim must be the real comparison total. The
+  // number and the phrase are often split by markup — the proofline reads
+  // `<dt>894</dt><dd>role-aware checks</dd>` — so allow a run of tags between
+  // them, but no intervening text.
+  const claims = [...source.matchAll(/(\d[\d,]*)\s*(?:<\/?[a-z][^>]*>\s*)*role-aware/gi)];
+  if (!claims.length) {
+    fail(`${page} states no role-aware check count; the claim guard would be inert.`);
+  }
+  for (const [, stated] of claims) {
+    const value = Number.parseInt(stated.replace(/,/g, ""), 10);
+    if (value !== roleAwareComparisonCount) {
+      fail(
+        `${page} claims ${value} role-aware checks; the verifier runs ${roleAwareComparisonCount}.`,
+      );
+    }
+  }
+}
+
+// The share card names both pack sizes: "<50> + <12> themes".
+const cardThemeCounts = socialCard.match(/<b>(\d+)\s*\+\s*(\d+)<\/b>\s*themes/);
+if (!cardThemeCounts) {
+  fail("The social card must state the theme counts as \"<n> + <n> themes\".");
+}
+if (Number(cardThemeCounts[1]) !== files.length || Number(cardThemeCounts[2]) !== vol2Files.length) {
+  fail(
+    `The social card claims ${cardThemeCounts[1]} + ${cardThemeCounts[2]} themes; ` +
+      `the repository ships ${files.length} + ${vol2Files.length}.`,
+  );
+}
 
 console.log(
   `Verified ${files.length} themes, ${pluginFiles.length} plugin themes, ${vol2Files.length} Vol. 2 themes, ` +
     `${galleryThemes.length} gallery cards, ` +
-    `${verifiedGumroadSlugs.size} Gumroad products, ${verifiedPayPalIds.length} PayPal links, and the safe install command.`,
+    `${verifiedGumroadSlugs.size} Gumroad products, ${verifiedPayPalIds.length} PayPal links, ` +
+    `the stated ${roleAwareComparisonCount}-check claims, and the safe install command.`,
 );

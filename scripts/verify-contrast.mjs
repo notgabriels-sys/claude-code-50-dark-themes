@@ -244,3 +244,7 @@ if (failures.length) {
 console.log(
   `Verified ${themes.length + vol2Themes.length} themes, ${comparisons} role-aware contrast comparisons, gallery parity, and shared semantic palette parity.`,
 );
+
+// Exported so verify.mjs can hold the public pages to the real number. Every
+// surface that prints a comparison count is making a claim to a reader.
+export const roleAwareComparisonCount = comparisons;

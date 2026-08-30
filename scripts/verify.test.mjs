@@ -173,3 +173,53 @@ test("rejects a sales link whose accessible name omits its visible label", { tim
     /Sales-link accessible name must include its visible label: Preview components\./,
   );
 });
+
+test("rejects a share card that states a stale role-aware check count", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixtureCard = join(fixtureRoot, "assets/social-preview.html");
+  const card = await readFile(fixtureCard, "utf8");
+  await writeFile(fixtureCard, card.replace("<b>894</b> role-aware", "<b>726</b> role-aware"));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a share card claiming a stale check count");
+  assert.match(result.stderr, /assets\/social-preview\.html claims 726 role-aware checks/);
+});
+
+test("rejects a storefront proofline that states a stale check count", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixtureHtml = join(fixtureRoot, "index.html");
+  const html = await readFile(fixtureHtml, "utf8");
+  // The number and the phrase are split by markup here; the guard must still
+  // read it, because this is the surface that shipped stale before.
+  await writeFile(fixtureHtml, html.replace("<dt>894</dt>", "<dt>900</dt>"));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a proofline claiming a stale check count");
+  assert.match(result.stderr, /index\.html claims 900 role-aware checks/);
+});
+
+test("rejects a share card whose theme counts drift from the shipped packs", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixtureCard = join(fixtureRoot, "assets/social-preview.html");
+  const card = await readFile(fixtureCard, "utf8");
+  await writeFile(fixtureCard, card.replace("<b>50 + 12</b> themes", "<b>50 + 14</b> themes"));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a share card overstating the theme count");
+  assert.match(result.stderr, /claims 50 \+ 14 themes; the repository ships 50 \+ 12/);
+});
+
+test("rejects a share card that drops its check-count claim entirely", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixtureCard = join(fixtureRoot, "assets/social-preview.html");
+  const card = await readFile(fixtureCard, "utf8");
+  await writeFile(fixtureCard, card.replace("<b>894</b> role-aware checks", "<b>MIT</b> licensed"));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier let the claim guard go inert");
+  assert.match(result.stderr, /states no role-aware check count; the claim guard would be inert/);
+});
