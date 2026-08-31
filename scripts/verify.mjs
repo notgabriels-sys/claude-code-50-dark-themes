@@ -445,6 +445,66 @@ if (!html.includes("utm_campaign=50-dark-themes-launch")) {
   fail("The storefront must expose the tracked Product Hunt launch link.");
 }
 
+// This file's own patterns are checked before they are trusted.
+//
+// A payment slug or hosted id must be matched up to a DELIMITER — a negated
+// class like [^"'\s<>)] — never up to a class of permitted characters like
+// [a-z0-9-]. The permitted-character form silently truncates a lookalike to a
+// known-good value: .../l/bqgfvX reads as the verified slug bqgfv, and
+// .../ncp/payment/3SWZ64EXW9C8Wx reads as the verified id 3SWZ64EXW9C8W. Both
+// then pass every downstream check while the page points somewhere else.
+//
+// That defect has now been introduced three separate times in this repository
+// and fixed three separate times, most recently when a merge brought back
+// /l/([a-z0-9-]+) in the developer-picks check. Fixing instances has not
+// stopped it recurring, so the rule stops being prose and becomes a build
+// failure: scan this file's own source and reject the permitted-character form
+// in the one position where it truncates — immediately after /l/ or
+// /ncp/payment/.
+//
+// The scan deliberately looks only at that position. A host pattern such as
+// ([a-z0-9.-]*gumroad\.com) is a permitted-character class too, but it is
+// anchored by a literal suffix and cannot truncate to a shorter valid host, so
+// flagging it would be noise. A guard that fires on everything proves nothing.
+const selfSource = await readFile(new URL("scripts/verify.mjs", root), "utf8");
+// Comments are blanked rather than removed — the prose above and below has to
+// be free to name the bad pattern without tripping the check, while line
+// numbers in the failure message still point at the real line. Blanking also
+// means the rule cannot be evaded by explaining it.
+const selfCode = selfSource
+  .replace(/\/\*[\s\S]*?\*\//g, (block) => block.replace(/[^\n]/g, " "))
+  .replace(/\/\/[^\n]*/g, (line) => " ".repeat(line.length));
+// Built from pieces so this detector does not match its own source. Both the
+// escaped form written inside a regex literal (\/l\/) and the plain form a
+// new RegExp("…") string would use (/l/) are covered; catching only the
+// escaped one would leave an obvious way around the rule.
+const truncatingCapture = new RegExp(
+  [
+    "(?:",
+    "\\\\?/l\\\\?/",
+    "|",
+    "ncp\\\\?/payment\\\\?/",
+    ")",
+    "\\(?",
+    "\\[",
+    "(?!\\^)",
+  ].join(""),
+  "g",
+);
+const truncatingHits = [...selfCode.matchAll(truncatingCapture)];
+if (truncatingHits.length > 0) {
+  const lines = truncatingHits.map(
+    (hit) => selfCode.slice(0, hit.index).split("\n").length,
+  );
+  fail(
+    `scripts/verify.mjs matches a payment slug or hosted id with a class of ` +
+      `permitted characters at line(s) ${lines.join(", ")}. Capture to a ` +
+      `delimiter instead — ([^"'\\s<>)]+) — and split on ?/# afterwards. A ` +
+      `permitted-character class truncates a lookalike to a verified value ` +
+      `and passes it. See CLAUDE.md.`,
+  );
+}
+
 // Shared by every Gumroad check below. Both are deliberate: capture to a
 // delimiter (quote, whitespace, bracket) rather than to a class of permitted
 // characters, then strip a real query or fragment. Narrowing the pattern back
