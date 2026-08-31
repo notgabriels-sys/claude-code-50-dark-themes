@@ -491,3 +491,66 @@ test("rejects a Vol. 2 theme whose text drops below its contrast floor", { timeo
   assert.notEqual(result.code, 0, "an unreadable Vol. 2 theme was accepted");
   assert.match(result.stderr, /Afterglow: text on terminal is [\d.]+:1; needs 7\.0:1/);
 });
+
+// The four remaining verify-contrast guard families. Lower stakes than the
+// reference maths and the theme floors, but the same class of exposure: each
+// could be deleted and the suite would stay green.
+//
+// Note on fixtures: the verifier finds the gallery with a regex that requires a
+// newline before the closing bracket, so re-serialising the THEMES array onto
+// one line makes it unfindable. A first attempt at the last two tests did
+// exactly that, and they "failed" for a missing gallery rather than for the
+// guard under test — a test passing for the wrong reason. Both now edit one row
+// in place and leave the formatting alone.
+
+test("rejects a storefront faint colour that is unreadable on the page canvas", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const page = join(fixtureRoot, "index.html");
+  const html = await readFile(page, "utf8");
+  await writeFile(page, html.replace("--faint:#858991", "--faint:#0a0a0a"));
+
+  const result = await runContrastVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "an unreadable --faint was accepted");
+  assert.match(result.stderr, /Storefront: --faint on --ground is [\d.]+:1; needs 4\.5:1/);
+});
+
+test("rejects a semantic syntax colour that is unreadable as body text", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const page = join(fixtureRoot, "index.html");
+  const html = await readFile(page, "utf8");
+  await writeFile(page, html.replace("--syntax-blue:#8eaadf", "--syntax-blue:#0b0b0b"));
+
+  const result = await runContrastVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "an unreadable semantic token was accepted");
+  assert.match(result.stderr, /Storefront: --syntax-blue on --terminal-surface is [\d.]+:1; needs 4\.5:1/);
+});
+
+test("rejects two gallery cards sharing a display name", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const page = join(fixtureRoot, "index.html");
+  const html = await readFile(page, "utf8");
+  // A duplicate name silently collapses the by-name lookup, so one theme's
+  // colours would never be compared against its gallery card at all.
+  await writeFile(page, html.replace('["Acid",', '["Absinthe",'));
+
+  const result = await runContrastVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "a duplicated gallery display name was accepted");
+  assert.match(result.stderr, /Gallery display names must be unique/);
+});
+
+test("rejects a gallery swatch that disagrees with its theme file", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const page = join(fixtureRoot, "index.html");
+  const html = await readFile(page, "utf8");
+  // The gallery is what a buyer sees; the theme file is what installs. A
+  // divergence means the preview is advertising a colour nobody receives.
+  await writeFile(page, html.replace('["Absinthe","#C0D648"', '["Absinthe","#123456"'));
+
+  const result = await runContrastVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "a gallery swatch diverging from its theme was accepted");
+  assert.match(result.stderr, /absinthe\.json: gallery claude #123456 does not match theme #C0D648/);
+});
