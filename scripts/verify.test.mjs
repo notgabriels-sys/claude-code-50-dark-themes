@@ -284,3 +284,33 @@ test("rejects a finder whose hidden cards are still painted", { timeout: 90_000 
   assert.notEqual(result.code, 0, "the verifier accepted a page that hides cards only in the DOM");
   assert.match(result.stderr, /toggles the hidden property but never overrides it in CSS/);
 });
+
+test("rejects a finder scoped to a single theme grid", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixtureHtml = join(fixtureRoot, "index.html");
+  const html = await readFile(fixtureHtml, "utf8");
+  await writeFile(
+    fixtureHtml,
+    html.replace('document.querySelectorAll(".card[data-search]")', 'grid.querySelectorAll(".card")'),
+  );
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a finder that cannot reach every theme on the page");
+  assert.match(result.stderr, /scopes the finder to one grid/);
+});
+
+test("rejects a finder whose document-wide selector was removed", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixtureHtml = join(fixtureRoot, "index.html");
+  const html = await readFile(fixtureHtml, "utf8");
+  await writeFile(
+    fixtureHtml,
+    html.replace('document.querySelectorAll(".card[data-search]")', 'document.querySelectorAll(".card")'),
+  );
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a page where the finder guard had gone inert");
+  assert.match(result.stderr, /no longer selects finder cards document-wide/);
+});
