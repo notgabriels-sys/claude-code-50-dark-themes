@@ -472,6 +472,31 @@ for (const file of publicHtmlFiles) {
   }
 }
 
+// The install guide's manual fallback is a procedure people follow verbatim on
+// a page that search can land them on directly. It used to open with
+// `cp *.json ~/.claude/themes/` and never say where the files come from — the
+// page contained no clone, download, archive or curl step at all — so the copy
+// silently depended on the reader already standing in a clone. It also copied
+// only the root fifty, immediately after introducing Vol. 2 by name, leaving
+// anyone without the plugin flow no manual route to the twelve.
+const installGuide = await readFile(new URL("claude-code-theme-install-guide.html", root), "utf8");
+const manualSection = installGuide.match(/<section[^>]*id="manual"[\s\S]*?<\/section>/);
+if (!manualSection) {
+  fail("claude-code-theme-install-guide.html has no #manual section; the manual-route guard would be inert.");
+}
+if (!/git<\/span>\s*<span[^>]*>clone |git clone /.test(manualSection[0])) {
+  fail(
+    "The install guide's manual route never says how to obtain the theme files. " +
+      "Its copy commands assume a clone; state the clone step.",
+  );
+}
+if (!manualSection[0].includes("plugins/dark-themes-vol-2/themes/")) {
+  fail(
+    "The install guide's manual route copies only the root themes, so it silently " +
+      "skips Vol. 2. Copy plugins/dark-themes-vol-2/themes/*.json too.",
+  );
+}
+
 // One image, one description. preview.png is shared by every public page; it
 // was described three different ways, two of them as "a gallery preview" of a
 // card that has never been a gallery. Alt text drifts silently because nobody

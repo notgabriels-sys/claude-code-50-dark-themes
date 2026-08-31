@@ -214,11 +214,18 @@ footer{margin-top:42px;padding-top:22px;border-top:1px solid var(--hair)}
 
         <section class="section" id="manual">
           <h2>Fallback: manual JSON install.</h2>
-          <p>Use this route if you want to inspect or modify the files yourself, or if the plugin flow is unavailable in your setup.</p>
+          <p>Use this route if you want to inspect or modify the files yourself, or if the plugin flow is unavailable in your setup. The copy commands read the theme files out of a clone, so start by getting one.</p>
           <div class="code-panel" aria-label="Manual Claude Code theme install command">
             <div class="code-head"><span>Terminal</span><span>Manual JSON copy</span></div>
-<pre><span class="syntax-command">mkdir</span> <span class="syntax-option">-p</span> <span class="syntax-argument">~/.claude/themes</span>
+<pre><span class="syntax-command">git</span> <span class="syntax-argument">clone https://github.com/notgabriels-sys/claude-code-50-dark-themes</span>
+<span class="syntax-command">cd</span> <span class="syntax-argument">claude-code-50-dark-themes</span>
+<span class="syntax-command">mkdir</span> <span class="syntax-option">-p</span> <span class="syntax-argument">~/.claude/themes</span>
 <span class="syntax-command">cp</span> <span class="syntax-value">*.json</span> <span class="syntax-argument">~/.claude/themes/</span></pre>
+          </div>
+          <p>That copies the fifty. Vol.&nbsp;2 ships inside its own plugin folder, so the glob above does not reach it — add the twelve with one more copy:</p>
+          <div class="code-panel" aria-label="Manual Dark Themes Vol. 2 install command">
+            <div class="code-head"><span>Terminal</span><span>Vol.&nbsp;2, manually</span></div>
+<pre><span class="syntax-command">cp</span> <span class="syntax-value">plugins/dark-themes-vol-2/themes/*.json</span> <span class="syntax-argument">~/.claude/themes/</span></pre>
           </div>
           <p>After copying, run <code>/theme</code> in Claude Code. If the directory did not exist before, restart Claude Code once so it discovers the new theme folder.</p>
           <div class="callout">
