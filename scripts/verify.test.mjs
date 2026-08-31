@@ -48,6 +48,24 @@ async function runVerifier(cwd) {
   });
 }
 
+async function runNodeScript(cwd, script) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, [script], { cwd });
+    let stdout = "";
+    let stderr = "";
+    child.stdout.setEncoding("utf8");
+    child.stderr.setEncoding("utf8");
+    child.stdout.on("data", (chunk) => {
+      stdout += chunk;
+    });
+    child.stderr.on("data", (chunk) => {
+      stderr += chunk;
+    });
+    child.on("error", reject);
+    child.on("close", (code) => resolve({ code, stdout, stderr }));
+  });
+}
+
 async function runContrastVerifier(cwd) {
   return new Promise((resolve, reject) => {
     const child = spawn(process.execPath, ["scripts/verify-contrast.mjs"], { cwd });
@@ -553,4 +571,48 @@ test("rejects a gallery swatch that disagrees with its theme file", { timeout: 9
 
   assert.notEqual(result.code, 0, "a gallery swatch diverging from its theme was accepted");
   assert.match(result.stderr, /absinthe\.json: gallery claude #123456 does not match theme #C0D648/);
+});
+
+test("rejects a themes.json generator that publishes a partial palette", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const generator = join(fixtureRoot, "scripts/build-theme-index.mjs");
+  const source = await readFile(generator, "utf8");
+  // The byte comparison against themes.json cannot catch this, because the
+  // documented workflow regenerates the file from the same broken code and the
+  // two then agree. Before verify checked the index against the theme files,
+  // this exact mutation left themes.json publishing a one-key palette with
+  // build, verify and verify-contrast all exiting 0.
+  await writeFile(
+    generator,
+    source.replace(
+      'const SUMMARY_ROLES = ["claude", "claudeShimmer", "text", "inactive"];',
+      'const SUMMARY_ROLES = ["inactive", "inactive", "inactive", "inactive"];',
+    ),
+  );
+  const regenerate = await runNodeScript(fixtureRoot, "scripts/build-theme-index.mjs");
+  assert.equal(regenerate.code, 0, "the generator itself should still run");
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "a gutted theme index shipped green");
+  assert.match(result.stderr, /themes\.json publishes palette roles \[inactive\]/);
+});
+
+test("rejects a themes.json entry whose colour disagrees with its theme file", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const generator = join(fixtureRoot, "scripts/build-theme-index.mjs");
+  const source = await readFile(generator, "utf8");
+  await writeFile(
+    generator,
+    source.replace(
+      "if (theme.overrides[role]) palette[role] = theme.overrides[role];",
+      'if (theme.overrides[role]) palette[role] = role === "text" ? "#000000" : theme.overrides[role];',
+    ),
+  );
+  await runNodeScript(fixtureRoot, "scripts/build-theme-index.mjs");
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "a published colour that does not ship was accepted");
+  assert.match(result.stderr, /themes\.json gives absinthe\.text as #000000 but absinthe\.json says #EBEDE8/);
 });

@@ -1022,6 +1022,52 @@ if (publishedThemeIndex !== expectedThemeIndex) {
   );
 }
 
+// The byte comparison above proves themes.json matches what the generator
+// CURRENTLY emits. It cannot prove the generator is right, and the documented
+// workflow hides that: `build-theme-index && verify` regenerates the file from
+// the same code the check rebuilds from, so the two agree no matter what the
+// generator does. Reproduced before writing this — collapsing SUMMARY_ROLES so
+// each theme published a one-key palette instead of four left themes.json
+// gutted and build, verify and verify-contrast all exiting 0.
+//
+// So check the index against the THEME FILES, which the generator does not get
+// to define. Every entry must name its four palette roles and every value must
+// equal that role in the theme's own source. A consumer reading this index gets
+// what installs, or the build goes red.
+const indexRoles = ["claude", "claudeShimmer", "text", "inactive"];
+const parsedThemeIndex = JSON.parse(expectedThemeIndex);
+if (parsedThemeIndex.themes.length !== files.length) {
+  fail(
+    `themes.json describes ${parsedThemeIndex.themes.length} themes but ` +
+      `${files.length} theme files ship.`,
+  );
+}
+for (const entry of parsedThemeIndex.themes) {
+  const source = JSON.parse(await readFile(new URL(`${entry.id}.json`, root), "utf8"));
+  if (entry.name !== source.name) {
+    fail(`themes.json calls ${entry.id} "${entry.name}"; the theme file says "${source.name}".`);
+  }
+  if (entry.base !== source.base) {
+    fail(`themes.json gives ${entry.id} base "${entry.base}"; the theme file says "${source.base}".`);
+  }
+  const published = Object.keys(entry.palette ?? {}).sort();
+  if (published.join(",") !== [...indexRoles].sort().join(",")) {
+    fail(
+      `themes.json publishes palette roles [${published.join(", ")}] for ` +
+        `${entry.id}; it must publish exactly [${indexRoles.join(", ")}]. A ` +
+        `consumer reading a partial palette renders something that does not ship.`,
+    );
+  }
+  for (const role of indexRoles) {
+    if (entry.palette[role] !== source.overrides[role]) {
+      fail(
+        `themes.json gives ${entry.id}.${role} as ${entry.palette[role]} but ` +
+          `${entry.id}.json says ${source.overrides[role]}.`,
+      );
+    }
+  }
+}
+
 // The index sits at the repo root among the 50 theme files, so it is the one
 // root .json that is not a theme. Assert that exclusion instead of trusting it:
 // if it ever leaked into the plugin it would install as a 51st "theme" with no
