@@ -81,6 +81,11 @@ is where the pieces live:
   two themes named the same would be indistinguishable in `/theme`.
 - Bump the version in `plugins/dark-themes-vol-2/.claude-plugin/plugin.json` and the matching entry
   in `.claude-plugin/marketplace.json` together; the verifier requires them to match.
+- Update the numbers the public pages state, in the same change. A theme adds fourteen contrast
+  comparisons, so the role-aware check count moves, and the share card names each pack's size. Both
+  are CI-enforced — see "Numbers stated on public pages" below. Adding a theme and running
+  `node scripts/verify.mjs` without this step fails with, for example,
+  `index.html claims 894 role-aware checks; the verifier runs 908.`
 
 `scripts/sync-plugin-themes.mjs` does not apply here — it mirrors the root fifty into their plugin,
 and a Vol. 2 theme is authored in its plugin directly.
