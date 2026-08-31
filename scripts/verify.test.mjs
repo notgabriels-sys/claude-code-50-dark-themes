@@ -272,3 +272,15 @@ test("rejects a page whose X alt disagrees with its Open Graph alt", { timeout: 
   assert.notEqual(result.code, 0, "the verifier accepted contradictory alt text on one page");
   assert.match(result.stderr, /describes the same share image differently to Open Graph and X/);
 });
+
+test("rejects a finder whose hidden cards are still painted", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixtureHtml = join(fixtureRoot, "index.html");
+  const html = await readFile(fixtureHtml, "utf8");
+  await writeFile(fixtureHtml, html.replace("[hidden]{display:none!important}", ""));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a page that hides cards only in the DOM");
+  assert.match(result.stderr, /toggles the hidden property but never overrides it in CSS/);
+});

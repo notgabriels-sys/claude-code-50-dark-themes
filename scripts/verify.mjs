@@ -453,6 +453,25 @@ if (Number(cardThemeCounts[1]) !== files.length || Number(cardThemeCounts[2]) !=
   );
 }
 
+// The finder hides non-matching cards by setting the `hidden` property. That
+// only works while no author rule outranks the UA sheet's [hidden]{display:none}
+// — and .card is display:flex, so it does. Without an explicit override the
+// search box and the family filters set the attribute and update the "N themes"
+// counter while every card stays on screen; searching for nothing at all showed
+// the empty-state message above all fifty cards. Assert the override is present
+// on any page whose script toggles the property.
+for (const file of publicHtmlFiles) {
+  const source = await readFile(new URL(file, root), "utf8");
+  if (!/\.hidden\s*=/.test(source)) continue;
+  if (!/\[hidden\]\s*\{[^}]*display\s*:\s*none\s*!important/.test(source)) {
+    fail(
+      `${file} toggles the hidden property but never overrides it in CSS; ` +
+        "an author display rule would leave hidden elements on screen. " +
+        "Add [hidden]{display:none!important}.",
+    );
+  }
+}
+
 // One image, one description. preview.png is shared by every public page; it
 // was described three different ways, two of them as "a gallery preview" of a
 // card that has never been a gallery. Alt text drifts silently because nobody
