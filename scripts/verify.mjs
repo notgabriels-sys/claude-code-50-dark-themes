@@ -445,7 +445,7 @@ if (!html.includes("utm_campaign=50-dark-themes-launch")) {
   fail("The storefront must expose the tracked Product Hunt launch link.");
 }
 
-// This file's own patterns are checked before they are trusted.
+// Every script in scripts/ has its patterns checked before they are trusted.
 //
 // A payment slug or hosted id must be matched up to a DELIMITER — a negated
 // class like [^"'\s<>)] — never up to a class of permitted characters like
@@ -458,22 +458,31 @@ if (!html.includes("utm_campaign=50-dark-themes-launch")) {
 // and fixed three separate times, most recently when a merge brought back
 // /l/([a-z0-9-]+) in the developer-picks check. Fixing instances has not
 // stopped it recurring, so the rule stops being prose and becomes a build
-// failure: scan this file's own source and reject the permitted-character form
-// in the one position where it truncates — immediately after /l/ or
-// /ncp/payment/.
+// failure: scan the source of every script in scripts/ and reject the
+// permitted-character form in the one position where it truncates —
+// immediately after /l/ or /ncp/payment/.
+//
+// Every script, not just this one. Scoping the scan to verify.mjs was this
+// guard's own first version, and it would have missed the same pattern written
+// into a sibling — a new checker, or this file split into modules. Only
+// verify.mjs touches payment URLs today; the guard is scoped to the rule, not
+// to today's layout.
 //
 // The scan deliberately looks only at that position. A host pattern such as
 // ([a-z0-9.-]*gumroad\.com) is a permitted-character class too, but it is
 // anchored by a literal suffix and cannot truncate to a shorter valid host, so
 // flagging it would be noise. A guard that fires on everything proves nothing.
-const selfSource = await readFile(new URL("scripts/verify.mjs", root), "utf8");
+const scriptFiles = (await readdir(new URL("scripts/", root)))
+  .filter((name) => name.endsWith(".mjs"))
+  .sort();
 // Comments are blanked rather than removed — the prose above and below has to
 // be free to name the bad pattern without tripping the check, while line
 // numbers in the failure message still point at the real line. Blanking also
 // means the rule cannot be evaded by explaining it.
-const selfCode = selfSource
-  .replace(/\/\*[\s\S]*?\*\//g, (block) => block.replace(/[^\n]/g, " "))
-  .replace(/\/\/[^\n]*/g, (line) => " ".repeat(line.length));
+const blankComments = (source) =>
+  source
+    .replace(/\/\*[\s\S]*?\*\//g, (block) => block.replace(/[^\n]/g, " "))
+    .replace(/\/\/[^\n]*/g, (line) => " ".repeat(line.length));
 // Built from pieces so this detector does not match its own source. Both the
 // escaped form written inside a regex literal (\/l\/) and the plain form a
 // new RegExp("…") string would use (/l/) are covered; catching only the
@@ -491,14 +500,17 @@ const truncatingCapture = new RegExp(
   ].join(""),
   "g",
 );
-const truncatingHits = [...selfCode.matchAll(truncatingCapture)];
-if (truncatingHits.length > 0) {
-  const lines = truncatingHits.map(
-    (hit) => selfCode.slice(0, hit.index).split("\n").length,
-  );
+const truncatingSites = [];
+for (const name of scriptFiles) {
+  const code = blankComments(await readFile(new URL(`scripts/${name}`, root), "utf8"));
+  for (const hit of code.matchAll(truncatingCapture)) {
+    truncatingSites.push(`scripts/${name}:${code.slice(0, hit.index).split("\n").length}`);
+  }
+}
+if (truncatingSites.length > 0) {
   fail(
-    `scripts/verify.mjs matches a payment slug or hosted id with a class of ` +
-      `permitted characters at line(s) ${lines.join(", ")}. Capture to a ` +
+    `A payment slug or hosted id is matched with a class of permitted ` +
+      `characters at ${truncatingSites.join(", ")}. Capture to a ` +
       `delimiter instead — ([^"'\\s<>)]+) — and split on ?/# afterwards. A ` +
       `permitted-character class truncates a lookalike to a verified value ` +
       `and passes it. See CLAUDE.md.`,
