@@ -839,18 +839,29 @@ const filters = [...document.querySelectorAll(".filter")];
 const themeCopyStatus = document.getElementById("themeCopyStatus");
 let activeFamily = "all";
 
+// Every theme card on the page, not just the archive's. Scoping this to #grid
+// meant searching "afterglow" reported "No themes match that search" while
+// Afterglow sat twelve cards further down in Vol. 2. Selecting on the data
+// attribute the renderer writes keeps a future pack in the finder by default.
+const finderCards = () => document.querySelectorAll(".card[data-search]");
+
 const updateFinder = ({reveal = false} = {}) => {
   const query = themeSearch.value.trim().toLowerCase();
-  let visible = 0;
-  grid.querySelectorAll(".card").forEach(card => {
+  let archiveVisible = 0;
+  let totalVisible = 0;
+  finderCards().forEach(card => {
     const matchesQuery = !query || card.dataset.search.includes(query);
     const matchesFamily = activeFamily === "all" || card.dataset.family === activeFamily;
     const show = matchesQuery && matchesFamily;
     card.hidden = !show;
-    if (show) visible += 1;
+    if (!show) return;
+    totalVisible += 1;
+    if (grid.contains(card)) archiveVisible += 1;
   });
-  count.textContent = `${visible} ${visible === 1 ? "theme" : "themes"}`;
-  finderEmpty.hidden = visible !== 0;
+  // The count labels the archive disclosure, so it counts the archive.
+  count.textContent = `${archiveVisible} ${archiveVisible === 1 ? "theme" : "themes"}`;
+  // The empty note makes a claim about the whole page, so it waits for the whole page.
+  finderEmpty.hidden = totalVisible !== 0;
   if (reveal && (query || activeFamily !== "all")) themeArchive.open = true;
 };
 
