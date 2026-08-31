@@ -138,6 +138,19 @@ for (const { slug } of recordedGumroadPrices) {
   }
 }
 
+// Currency amounts are read off human copy, so a trailing separator can be
+// sentence punctuation rather than part of the number: "from €6, up to €8"
+// yields "€6," unless it is trimmed, and the guard then rejects honest text.
+// Found by a negative control on the README check below — the amount was
+// correct and the guard failed it. A guard that fires on correct copy is worse
+// than no guard, because it gets silenced. Thousands separators survive,
+// because a trailing [.,] is only dropped when no digit follows it.
+const AMOUNT_PATTERN = /[€$]\s?\d[\d.,]*/g;
+const statedAmounts = (source) =>
+  [...source.matchAll(AMOUNT_PATTERN)].map((match) =>
+    match[0].replace(/\s+/g, "").replace(/[.,]+$/, ""),
+  );
+
 const GUMROAD_HOST = "notgabriel.gumroad.com";
 
 function fail(message) {
@@ -643,6 +656,54 @@ for (const match of readme.matchAll(gumroadLinkPattern)) {
   }
 }
 
+// README prices, which nothing read until now.
+//
+// The slug allowlist above has always covered README.md, but the numbers beside
+// those slugs were unguarded: changing "€12" to "€99" on the product table, or
+// the bundle's "$39" to "$399", left CI green. Both were reproduced before this
+// was written. The README is the most-read surface in the repository, so a
+// stale price there is a wrong price shown to more readers than index.html has.
+//
+// Checked per line, because the README legitimately aggregates in a way the
+// storefront does not: one row links two products and prices them "€7 each",
+// another links two and says "from €6", and the free zip's row says "$0 is
+// fine". Demanding one exact price per line would fail on honest copy. So every
+// currency amount on a line must equal the recorded price of ONE of the
+// products that line links — which still rejects a number belonging to no
+// linked product, while leaving "each" and "from" phrasing free.
+//
+// Like recordedGumroadPrices itself, this is drift detection, not verification:
+// it asserts the README agrees with what index.html says, and index.html has
+// never been checked against Gumroad. See that table's comment.
+for (const [index, line] of readme.split("\n").entries()) {
+  const slugs = [...line.matchAll(gumroadLinkPattern)].map((m) => gumroadSlugOf(m[1]));
+  if (slugs.length === 0) continue;
+
+  const allowed = new Set();
+  let allowsFree = false;
+  for (const slug of slugs) {
+    const price = recordedGumroadPriceBySlug.get(slug);
+    if (price === null) allowsFree = true;
+    else if (price !== undefined) allowed.add(price);
+  }
+  if (allowsFree) {
+    // A name-your-price product may state $0 or nothing at all.
+    allowed.add("$0");
+    allowed.add("€0");
+  }
+
+  for (const stated of statedAmounts(line)) {
+    if (!allowed.has(stated)) {
+      fail(
+        `README.md line ${index + 1} states ${stated} beside ${slugs.join(", ")}, ` +
+          `but recordedGumroadPrices has ${[...allowed].join(", ") || "no price"} ` +
+          `for those products. If the change is deliberate, read the real product ` +
+          `back from gumroad.com first, then update the table and the page.`,
+      );
+    }
+  }
+}
+
 for (const { id, price } of verifiedPayPalLinks) {
   const href = `https://www.paypal.com/ncp/payment/${id}`;
   // Quote-exact: a bare substring check would also be satisfied by a longer
@@ -662,9 +723,7 @@ for (const { id, price } of verifiedPayPalLinks) {
   // on 2026-08-24; a check pinned to `<i>EUR45</i>` would have gone red for a
   // wording change while still passing a card that showed a second, wrong number
   // somewhere else in the same anchor. This fails on the number, not the markup.
-  const stated = [...card[1].matchAll(/[€$]\s?\d[\d.,]*/g)].map((match) =>
-    match[0].replace(/\s+/g, ""),
-  );
+  const stated = statedAmounts(card[1]);
   if (stated.length === 0) {
     fail(`PayPal link ${id} must charge ${price}; its card states no price at all.`);
   }
@@ -804,9 +863,7 @@ for (const [file, cards] of gumroadCardsByFile) {
  for (const { slug, attrs, inner } of cards) {
   const where = `${slug} on ${file}`;
   const price = recordedGumroadPriceBySlug.get(slug);
-  const shown = [...inner.matchAll(/[€$]\s?\d[\d.,]*/g)].map((match) =>
-    match[0].replace(/\s+/g, ""),
-  );
+  const shown = statedAmounts(inner);
 
   if (price === null) {
     if (shown.length > 0) {
@@ -834,9 +891,7 @@ for (const [file, cards] of gumroadCardsByFile) {
   // both forms rather than pinning either, so a rewording cannot silently drop
   // the check and leave a screen reader quoting a stale number.
   const label = (attrs.match(/aria-label="([^"]*)"/) ?? [])[1] ?? "";
-  const spokenAmounts = [...label.matchAll(/[€$]\s?\d[\d.,]*/g)].map((match) =>
-    match[0].replace(/\s+/g, ""),
-  );
+  const spokenAmounts = statedAmounts(label);
   const spokenWords = label.match(/for (\d[\d.,]*) (euros|dollars)/);
   if (spokenWords) {
     spokenAmounts.push(`${spokenWords[2] === "euros" ? "€" : "$"}${spokenWords[1]}`);

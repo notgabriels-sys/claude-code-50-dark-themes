@@ -393,3 +393,28 @@ test("accepts the correct recorded price on a page other than index.html", { tim
 
   assert.equal(result.code, 0, `the verifier rejected a correctly priced card: ${result.stderr}`);
 });
+
+test("rejects a README price that drifts from the recorded one", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const readmePath = join(fixtureRoot, "README.md");
+  const readme = await readFile(readmePath, "utf8");
+  await writeFile(readmePath, readme.replace("· €12 |", "· €99 |"));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "a stale README price shipped green");
+  assert.match(result.stderr, /README\.md line \d+ states €99 beside ckthsb/);
+});
+
+test("accepts README copy that puts a correct price after a comma", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const readmePath = join(fixtureRoot, "README.md");
+  const readme = await readFile(readmePath, "utf8");
+  // Negative control, and a real bug this caught: the amount reader used to
+  // swallow the comma and reject "€6," — correct copy failing a guard.
+  await writeFile(readmePath, readme.replace("from €6 |", "from €6, up to €8 |"));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.equal(result.code, 0, `the verifier rejected correct README copy: ${result.stderr}`);
+});
