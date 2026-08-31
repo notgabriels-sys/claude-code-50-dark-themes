@@ -7,7 +7,7 @@ Light / Dark / System, so these install into Claude Code, which does support cus
 
 Requires **Claude Code v2.1.118 or later**, the release that introduced named custom themes.
 
-**→ Visual gallery and storefront: [gabs-utilities.com](https://gabs-utilities.com/)** (all 50 previewed in their own colors).
+**→ Visual gallery and storefront: [gabs-utilities.com](https://gabs-utilities.com/)** (all 50, plus the 12 Vol. 2 themes, previewed in their own colors).
 
 Prefer a zip to a `git clone`? The same 50 themes are a **free download** here:
 **[get the pack →](https://notgabriel.gumroad.com/l/slhbym)** (name your price, $0 is fine).
@@ -27,6 +27,16 @@ available through the marketplace. Press `Ctrl+E` on a plugin theme if you want 
 
 Step-by-step install, terminal background and troubleshooting guide:
 <https://gabs-utilities.com/claude-code-theme-install-guide.html>
+
+### Dark Themes Vol. 2 — 12 new themes
+
+The same marketplace now carries a free expansion pack with twelve all-new palettes
+(Afterglow, Aurora Borealis, Basalt, Biolume, Cryosleep, Darkroom, Gaslight, Heliotrope,
+Magnetite, Monsoon, Neon Noir, Ozone), held to the same contrast standards:
+
+```bash
+claude plugin install dark-themes-vol-2@notgabriels-themes
+```
 
 ## Manual install
 
@@ -109,6 +119,19 @@ Fjord · Furnace · Glacier · Graphite · Greenhouse · Harbor · Hearth · Ink
 Lagoon · Lichen · Moss · Mulberry · Nachtschicht · Night Vision · Nightshade · Off Air ·
 Orchid · Oxide · Petrol · Plasma · Signal Red · Sonar · Soot · Static · Terminal ·
 Tidepool · Tungsten · Ultraviolet · Undergrowth · Undertow · VU Meter · Velvet · Verdigris
+
+## The 12 Vol. 2 themes
+
+Afterglow · Aurora Borealis · Basalt · Biolume · Cryosleep · Darkroom · Gaslight ·
+Heliotrope · Magnetite · Monsoon · Neon Noir · Ozone
+
+A separate free plugin in the same marketplace, held to the same contrast floors.
+Preview them all: [plugins/dark-themes-vol-2/preview.png](plugins/dark-themes-vol-2/preview.png)
+or in the [gallery's expansion section](https://gabs-utilities.com/#vol2).
+
+```bash
+claude plugin install dark-themes-vol-2@notgabriels-themes
+```
 
 
 ## More dark tools

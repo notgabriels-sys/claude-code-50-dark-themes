@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>50 Dark Themes for Claude Code</title>
-<meta name="description" content="Browse and install 50 hand-tuned dark themes for Claude Code as a native plugin. Free, MIT licensed, and verified with 726 role-aware contrast comparisons.">
+<meta name="description" content="Browse and install 50 hand-tuned dark themes for Claude Code as a native plugin, plus the free Vol. 2 expansion pack. Free, MIT licensed, and verified with 894 role-aware contrast comparisons.">
 <meta name="robots" content="index,follow,max-image-preview:large">
 <meta name="theme-color" content="#0f1011">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
@@ -12,9 +12,9 @@
 <link rel="license" href="https://opensource.org/license/mit">
 <link rel="alternate" type="application/json" title="Claude Code marketplace manifest" href="https://raw.githubusercontent.com/notgabriels-sys/claude-code-50-dark-themes/main/.claude-plugin/marketplace.json">
 <meta property="og:title" content="50 Dark Themes for Claude Code">
-<meta property="og:description" content="Install 50 hand-tuned dark themes as a native Claude Code plugin. Free, MIT licensed, and verified with 726 role-aware contrast comparisons.">
+<meta property="og:description" content="Install 50 hand-tuned dark themes as a native Claude Code plugin, plus the free Vol. 2 expansion pack. Free, MIT licensed, and verified with 894 role-aware contrast comparisons.">
 <meta property="og:image" content="https://gabs-utilities.com/preview.png">
-<meta property="og:image:alt" content="A grid of dark Claude Code terminal theme previews with distinct accent colors">
+<meta property="og:image:alt" content="Title card: 50 dark themes for Claude Code, with the plugin install command and a strip of the pack&#39;s accent colors">
 <meta property="og:image:width" content="1280">
 <meta property="og:image:height" content="720">
 <meta property="og:url" content="https://gabs-utilities.com/">
@@ -22,9 +22,9 @@
 <meta property="og:site_name" content="Gabs Utilities">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="50 Dark Themes for Claude Code">
-<meta name="twitter:description" content="Install 50 hand-tuned dark themes as a native Claude Code plugin. Free, MIT licensed, and verified with 726 role-aware contrast comparisons.">
+<meta name="twitter:description" content="Install 50 hand-tuned dark themes as a native Claude Code plugin, plus the free Vol. 2 expansion pack. Free, MIT licensed, and verified with 894 role-aware contrast comparisons.">
 <meta name="twitter:image" content="https://gabs-utilities.com/preview.png">
-<meta name="twitter:image:alt" content="A grid of dark Claude Code terminal theme previews with distinct accent colors">
+<meta name="twitter:image:alt" content="Title card: 50 dark themes for Claude Code, with the plugin install command and a strip of the pack&#39;s accent colors">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -89,6 +89,11 @@
     --display:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
   }
   *{box-sizing:border-box}
+  /* The finder hides cards with the hidden property. An author-level display
+     rule (.card is display:flex) outranks the UA sheet's [hidden]{display:none},
+     so without this the search and family filters set the attribute, update the
+     counter, and change nothing on screen. */
+  [hidden]{display:none!important}
   html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
   body{
     margin:0;
@@ -292,6 +297,9 @@
     display:grid;gap:14px;padding:6px 0 26px;
     grid-template-columns:repeat(auto-fill,minmax(268px,1fr));
   }
+  .vol2{margin-top:clamp(44px,6vw,72px);border-top:1px solid var(--hair);padding-top:clamp(28px,4vw,44px)}
+  .vol2-cmd{border:1px solid var(--hair);border-radius:8px}
+  .vol2-note{margin:10px 0 4px;color:var(--faint);font-size:12px}
   .card{
     --a:var(--accent);
     border:1px solid color-mix(in srgb, var(--a) 22%, transparent);
@@ -508,7 +516,7 @@
     <dl class="proofline" aria-label="Collection details">
       <div><dt>50</dt><dd>hand-tuned themes</dd></div>
       <div><dt>MIT</dt><dd>free to keep</dd></div>
-      <div><dt>726</dt><dd>role-aware checks</dd></div>
+      <div><dt>894</dt><dd>role-aware checks</dd></div>
       <div><dt>Native</dt><dd>Claude Code plugin</dd></div>
     </dl>
   </header>
@@ -549,6 +557,23 @@
       <div class="grid" id="grid"></div>
       <p class="sr-only" id="themeCopyStatus" aria-live="polite"></p>
     </details>
+
+    <div class="vol2" id="vol2" aria-labelledby="vol2-title">
+      <div class="section-intro">
+        <div>
+          <p class="section-index">01&thinsp;+ / The expansion</p>
+          <h3 id="vol2-title">Vol.&nbsp;2 — twelve new atmospheres.</h3>
+        </div>
+        <p class="section-copy">A free expansion pack in the same marketplace: all-new palettes, the same
+          semantic language, the same contrast floors. Ships as its own plugin, beside the fifty.</p>
+      </div>
+      <div class="cmd vol2-cmd">
+        <span><span class="prompt">$ </span><span class="syntax-command">claude</span> <span class="syntax-keyword">plugin</span> <span class="syntax-subcommand">install</span> <span class="syntax-value">dark-themes-vol-2<span class="syntax-scope">@notgabriels-themes</span></span></span>
+        <button class="copy" id="vol2CopyBtn" aria-label="Copy Vol. 2 install command">Copy</button>
+      </div>
+      <p class="vol2-note">New here? Run the marketplace command at the top of the page first — both packs install from it.</p>
+      <div class="grid" id="vol2Grid"></div>
+    </div>
   </section>
 
   <section class="more" id="picks" aria-labelledby="picks-title">
@@ -744,6 +769,21 @@ const THEMES = [
   ["Verdigris","#6FC4A8","#A9DCCB","#E8EDED","#9DAFAC","#1C2625"]
 ];
 
+const VOL2_THEMES = [
+  ["Afterglow","#F0956B","#F6BCA0","#EDEAE8","#AFA49D","#1F1A18"],
+  ["Aurora Borealis","#6FE8A5","#B0F2CE","#E8EDEA","#9DAFA4","#131A16"],
+  ["Basalt","#AEB9C4","#D5DCE3","#E9EBED","#9EA6AF","#17191C"],
+  ["Biolume","#35E0C0","#8AEEDB","#E8EDEC","#9DAFAB","#141B1A"],
+  ["Cryosleep","#9CCBF0","#C9E3F8","#E8EBED","#9DA7AF","#151B21"],
+  ["Darkroom","#F26D5B","#F7A398","#EDE8E8","#AF9E9D","#1E1615"],
+  ["Gaslight","#E7B54A","#F0CF8E","#EDEBE8","#AFA89D","#1C1915"],
+  ["Heliotrope","#DA9BE8","#EAC3F2","#ECE8ED","#A89DAF","#1B161F"],
+  ["Magnetite","#6FA8DC","#A8CBEA","#E8EAED","#9DA4AF","#16181C"],
+  ["Monsoon","#8FBFA9","#B9DACB","#E8EDEA","#9DAFA5","#161C19"],
+  ["Neon Noir","#F25CA2","#F79BC6","#ECE8EA","#AF9DA7","#171315"],
+  ["Ozone","#8E97F2","#BCC2F7","#E9E9ED","#A0A0AF","#16161F"]
+];
+
 const slug = n => n.toLowerCase().replace(/ /g,"-");
 const esc = s => s.replace(/[&<>]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
 const familyOf = hex => {
@@ -787,6 +827,8 @@ const renderTheme = ([name,accent,shimmer,text,mute,bg]) => {
 
 const grid = document.getElementById("grid");
 grid.innerHTML = THEMES.map(renderTheme).join("");
+const vol2Grid = document.getElementById("vol2Grid");
+vol2Grid.innerHTML = VOL2_THEMES.map(renderTheme).join("");
 
 const count = document.getElementById("count");
 const themeArchive = document.querySelector(".theme-archive");
@@ -849,7 +891,7 @@ document.addEventListener("keydown", event => {
   }
 });
 
-grid.addEventListener("click", async event => {
+const copyThemeCommand = async event => {
   const button = event.target.closest(".theme-command");
   if (!button) return;
   const command = `/theme ${button.dataset.copyTheme}`;
@@ -864,7 +906,9 @@ grid.addEventListener("click", async event => {
   }
   clearTimeout(button._copyReset);
   button._copyReset = setTimeout(() => label.textContent = "Copy command", 1400);
-});
+};
+grid.addEventListener("click", copyThemeCommand);
+vol2Grid.addEventListener("click", copyThemeCommand);
 
 updateFinder();
 
@@ -883,6 +927,22 @@ btn.addEventListener("click", async () => {
     copyStatus.textContent="Could not copy the install command. Select and copy it manually.";
   }
   setTimeout(()=>btn.textContent="Copy",1400);
+});
+
+const vol2Btn = document.getElementById("vol2CopyBtn");
+const VOL2_CMD = "claude plugin install dark-themes-vol-2@notgabriels-themes";
+vol2Btn.addEventListener("click", async () => {
+  copyStatus.textContent = "";
+  try{
+    await navigator.clipboard.writeText(VOL2_CMD);
+    vol2Btn.textContent="Copied";
+    copyStatus.textContent="Vol. 2 install command copied to clipboard.";
+  }
+  catch{
+    vol2Btn.textContent="Copy failed";
+    copyStatus.textContent="Could not copy the Vol. 2 install command. Select and copy it manually.";
+  }
+  setTimeout(()=>vol2Btn.textContent="Copy",1400);
 });
 </script>
 </body>

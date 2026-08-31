@@ -1,0 +1,19 @@
+{
+  "name": "Aurora Borealis",
+  "base": "dark",
+  "overrides": {
+    "claude": "#6FE8A5",
+    "claudeShimmer": "#B0F2CE",
+    "text": "#E8EDEA",
+    "inactive": "#9DAFA4",
+    "subtle": "#263329",
+    "suggestion": "#6FE8A5",
+    "permission": "#8AC9A8",
+    "promptBorder": "#6FE8A5",
+    "promptBorderShimmer": "#B0F2CE",
+    "planMode": "#8AC9A8",
+    "userMessageBackground": "#202A24",
+    "userMessageBackgroundHover": "#29342D",
+    "rate_limit_fill": "#6FE8A5"
+  }
+}

@@ -22,6 +22,23 @@
       "category": "themes",
       "tags": ["themes", "dark-theme", "color-scheme", "terminal"],
       "keywords": ["claude-code", "themes", "dark-theme", "terminal"]
+    },
+    {
+      "name": "dark-themes-vol-2",
+      "source": "./plugins/dark-themes-vol-2",
+      "version": "1.0.0",
+      "displayName": "Dark Themes Vol. 2 for Claude Code",
+      "description": "Twelve new hand-tuned dark Claude Code themes expanding the 50 Dark Themes pack.",
+      "author": {
+        "name": "NotGabriels",
+        "url": "https://github.com/notgabriels-sys"
+      },
+      "homepage": "https://notgabriels-sys.github.io/claude-code-50-dark-themes/",
+      "repository": "https://github.com/notgabriels-sys/claude-code-50-dark-themes",
+      "license": "MIT",
+      "category": "themes",
+      "tags": ["themes", "dark-theme", "color-scheme", "terminal"],
+      "keywords": ["claude-code", "themes", "dark-theme", "terminal"]
     }
   ]
 }

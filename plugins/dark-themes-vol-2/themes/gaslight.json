@@ -1,0 +1,19 @@
+{
+  "name": "Gaslight",
+  "base": "dark",
+  "overrides": {
+    "claude": "#E7B54A",
+    "claudeShimmer": "#F0CF8E",
+    "text": "#EDEBE8",
+    "inactive": "#AFA89D",
+    "subtle": "#33302A",
+    "suggestion": "#E7B54A",
+    "permission": "#C4A26B",
+    "promptBorder": "#E7B54A",
+    "promptBorderShimmer": "#F0CF8E",
+    "planMode": "#C4A26B",
+    "userMessageBackground": "#292521",
+    "userMessageBackgroundHover": "#342F2A",
+    "rate_limit_fill": "#E7B54A"
+  }
+}

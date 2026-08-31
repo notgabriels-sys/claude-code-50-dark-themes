@@ -1,0 +1,19 @@
+{
+  "name": "Heliotrope",
+  "base": "dark",
+  "overrides": {
+    "claude": "#DA9BE8",
+    "claudeShimmer": "#EAC3F2",
+    "text": "#ECE8ED",
+    "inactive": "#A89DAF",
+    "subtle": "#322A36",
+    "suggestion": "#DA9BE8",
+    "permission": "#B487C5",
+    "promptBorder": "#DA9BE8",
+    "promptBorderShimmer": "#EAC3F2",
+    "planMode": "#B487C5",
+    "userMessageBackground": "#292330",
+    "userMessageBackgroundHover": "#332C3B",
+    "rate_limit_fill": "#DA9BE8"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "name": "Monsoon",
+  "base": "dark",
+  "overrides": {
+    "claude": "#8FBFA9",
+    "claudeShimmer": "#B9DACB",
+    "text": "#E8EDEA",
+    "inactive": "#9DAFA5",
+    "subtle": "#29342E",
+    "suggestion": "#8FBFA9",
+    "permission": "#74A38D",
+    "promptBorder": "#8FBFA9",
+    "promptBorderShimmer": "#B9DACB",
+    "planMode": "#74A38D",
+    "userMessageBackground": "#232B27",
+    "userMessageBackgroundHover": "#2C3630",
+    "rate_limit_fill": "#8FBFA9"
+  }
+}
