@@ -683,20 +683,37 @@ for (const { id, price } of verifiedPayPalLinks) {
 // unverified charge on a public shop, which is the exact failure this repo
 // already paid for once.
 //
+// It runs over EVERY public page and README.md, not just index.html. Scanning
+// only index.html was this check's own first version, and it was a live hole:
+// an unverified NCP link placed on impressum.html shipped with CI green, while
+// the identical link on index.html failed the build. Both were reproduced
+// against the real pages before this was widened. The Gumroad half of the shop
+// had already been widened this way, and leaving the PayPal half narrow is the
+// same defect class left standing on the other side — see CLAUDE.md.
+//
 // Capture to a DELIMITER ([^"'\s<>]+), never to a permitted character class.
 // An earlier version used ([A-Z0-9]+); .../3SWZ64EXW9C8Wx then truncated to the
 // known id 3SWZ64EXW9C8W and a EUR1,200 lookalike link passed CI. The Gumroad
 // slug pattern had the same defect with a dot suffix. Both were reproduced,
 // then fixed. Do not narrow these back to a character class.
-const presentPayPalIds = [
-  ...html.matchAll(/paypal\.com\/ncp\/payment\/([^"'\s<>]+)/g),
-].map((match) => match[1]);
-for (const id of new Set(presentPayPalIds)) {
-  if (!verifiedPayPalIds.includes(id)) {
-    fail(
-      `Unverified PayPal link ${id} is on the page. Read it back from ` +
-        `paypal.com/ncp/links/${id} and add it to verifiedPayPalLinks first.`,
-    );
+const payPalLinkPattern = /paypal\.com\/ncp\/payment\/([^"'\s<>]+)/g;
+const payPalSources = [
+  ...(await Promise.all(
+    publicHtmlFiles.map(async (file) => ({
+      label: file,
+      source: await readFile(new URL(file, root), "utf8"),
+    })),
+  )),
+  { label: "README.md", source: readme },
+];
+for (const { label, source } of payPalSources) {
+  for (const id of new Set([...source.matchAll(payPalLinkPattern)].map((m) => m[1]))) {
+    if (!verifiedPayPalIds.includes(id)) {
+      fail(
+        `Unverified PayPal link ${id} is on ${label}. Read it back from ` +
+          `paypal.com/ncp/links/${id} and add it to verifiedPayPalLinks first.`,
+      );
+    }
   }
 }
 
