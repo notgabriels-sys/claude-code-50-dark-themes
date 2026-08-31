@@ -130,6 +130,14 @@ The basic lesson: if the thing is free and practical, the path to use it should 
 
 The 50 Claude Code themes are free and MIT licensed.
 
+The same marketplace later grew a free expansion, Dark Themes Vol. 2: twelve
+more palettes held to the same contrast floors, installable with one command
+once the marketplace is added:
+
+```text
+claude plugin install dark-themes-vol-2@notgabriels-themes
+```
+
 I also ended up building a wider small catalog around the same dark developer-tool direction: UI kits, templates, cheat sheets, workflow packs, palettes and wallpapers.
 
 But the theme set is the useful entry point, and it stays free.

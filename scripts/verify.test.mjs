@@ -173,3 +173,114 @@ test("rejects a sales link whose accessible name omits its visible label", { tim
     /Sales-link accessible name must include its visible label: Preview components\./,
   );
 });
+
+test("rejects a share card that states a stale role-aware check count", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixtureCard = join(fixtureRoot, "assets/social-preview.html");
+  const card = await readFile(fixtureCard, "utf8");
+  await writeFile(fixtureCard, card.replace("<b>894</b> role-aware", "<b>726</b> role-aware"));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a share card claiming a stale check count");
+  assert.match(result.stderr, /assets\/social-preview\.html claims 726 role-aware checks/);
+});
+
+test("rejects a storefront proofline that states a stale check count", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixtureHtml = join(fixtureRoot, "index.html");
+  const html = await readFile(fixtureHtml, "utf8");
+  // The number and the phrase are split by markup here; the guard must still
+  // read it, because this is the surface that shipped stale before.
+  await writeFile(fixtureHtml, html.replace("<dt>894</dt>", "<dt>900</dt>"));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a proofline claiming a stale check count");
+  assert.match(result.stderr, /index\.html claims 900 role-aware checks/);
+});
+
+test("rejects a share card whose theme counts drift from the shipped packs", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixtureCard = join(fixtureRoot, "assets/social-preview.html");
+  const card = await readFile(fixtureCard, "utf8");
+  await writeFile(fixtureCard, card.replace("<b>50 + 12</b> themes", "<b>50 + 14</b> themes"));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a share card overstating the theme count");
+  assert.match(result.stderr, /claims 50 \+ 14 themes; the repository ships 50 \+ 12/);
+});
+
+test("rejects a share card that drops its check-count claim entirely", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixtureCard = join(fixtureRoot, "assets/social-preview.html");
+  const card = await readFile(fixtureCard, "utf8");
+  await writeFile(fixtureCard, card.replace("<b>894</b> role-aware checks", "<b>MIT</b> licensed"));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier let the claim guard go inert");
+  assert.match(result.stderr, /states no role-aware check count; the claim guard would be inert/);
+});
+
+test("rejects two pages describing the same share image differently", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixturePage = join(fixtureRoot, "semantic-terminal-colors.html");
+  const page = await readFile(fixturePage, "utf8");
+  // Consistently within the page, but disagreeing with every other page.
+  await writeFile(
+    fixturePage,
+    page.replaceAll(
+      "Title card: 50 dark themes for Claude Code, with the plugin install command and a strip of the pack&#39;s accent colors",
+      "Gallery preview of dark Claude Code terminal themes.",
+    ),
+  );
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted one image with two descriptions");
+  assert.match(result.stderr, /share https:\/\/gabs-utilities\.com\/preview\.png but describe it differently/);
+});
+
+test("rejects a page that ships an og:image with no alternative text", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixturePage = join(fixtureRoot, "claude-code-theme-install-guide.html");
+  const page = await readFile(fixturePage, "utf8");
+  await writeFile(fixturePage, page.replace(/<meta property="og:image:alt"[^>]*>\n/, ""));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a share image with no alternative text");
+  assert.match(result.stderr, /ships an og:image with no og:image:alt/);
+});
+
+test("rejects a page whose X alt disagrees with its Open Graph alt", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixturePage = join(fixtureRoot, "semantic-terminal-colors.html");
+  const page = await readFile(fixturePage, "utf8");
+  await writeFile(
+    fixturePage,
+    page.replace(
+      /<meta name="twitter:image:alt" content="[^"]*">/,
+      '<meta name="twitter:image:alt" content="Something else entirely">',
+    ),
+  );
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted contradictory alt text on one page");
+  assert.match(result.stderr, /describes the same share image differently to Open Graph and X/);
+});
+
+test("rejects a finder whose hidden cards are still painted", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixtureHtml = join(fixtureRoot, "index.html");
+  const html = await readFile(fixtureHtml, "utf8");
+  await writeFile(fixtureHtml, html.replace("[hidden]{display:none!important}", ""));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a page that hides cards only in the DOM");
+  assert.match(result.stderr, /toggles the hidden property but never overrides it in CSS/);
+});

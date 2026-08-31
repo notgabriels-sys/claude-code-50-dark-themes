@@ -1,0 +1,19 @@
+{
+  "name": "Afterglow",
+  "base": "dark",
+  "overrides": {
+    "claude": "#F0956B",
+    "claudeShimmer": "#F6BCA0",
+    "text": "#EDEAE8",
+    "inactive": "#AFA49D",
+    "subtle": "#332B28",
+    "suggestion": "#F0956B",
+    "permission": "#D9A18A",
+    "promptBorder": "#F0956B",
+    "promptBorderShimmer": "#F6BCA0",
+    "planMode": "#D9A18A",
+    "userMessageBackground": "#2A2422",
+    "userMessageBackgroundHover": "#352D2B",
+    "rate_limit_fill": "#F0956B"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "name": "Neon Noir",
+  "base": "dark",
+  "overrides": {
+    "claude": "#F25CA2",
+    "claudeShimmer": "#F79BC6",
+    "text": "#ECE8EA",
+    "inactive": "#AF9DA7",
+    "subtle": "#33282E",
+    "suggestion": "#F25CA2",
+    "permission": "#C87BA0",
+    "promptBorder": "#F25CA2",
+    "promptBorderShimmer": "#F79BC6",
+    "planMode": "#C87BA0",
+    "userMessageBackground": "#2A2227",
+    "userMessageBackgroundHover": "#352B31",
+    "rate_limit_fill": "#F25CA2"
+  }
+}

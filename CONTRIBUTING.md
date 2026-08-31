@@ -36,8 +36,9 @@ Every root-level `.json` file is one named Claude Code theme. Keep this exact st
 
 Rules:
 
-- The pack is intentionally fixed at 50 themes. A new-theme proposal should replace an existing
-  theme unless the product scope and gallery are deliberately changed together.
+- The flagship pack is intentionally fixed at 50 themes. A change here should replace an existing
+  theme unless the product scope and gallery are deliberately changed together. A genuinely new
+  theme belongs in Dark Themes Vol. 2 instead — see below.
 - Use a unique display name and a lowercase kebab-case filename.
 - Keep `base` set to `dark`.
 - Use six-digit hex colours (`#RRGGBB`) for every override.
@@ -60,6 +61,49 @@ present in the gallery.
 The final value in each gallery row is the recommended terminal background. Claude Code controls
 its interface colours; the terminal application still owns the terminal background.
 
+## Adding a theme to Dark Themes Vol. 2
+
+Vol. 2 is the expansion pack, and the place for a new theme. It is a second plugin in the same
+marketplace, so it is not size-capped the way the flagship fifty are.
+
+A Vol. 2 theme is the same file, held to the same rules above — same override-key contract, same
+`dark` base, same six-digit hex colours, same contrast floors, same reserved `subtle`. What differs
+is where the pieces live:
+
+- The theme file goes in `plugins/dark-themes-vol-2/themes/`, and **only** there. Do not add it to
+  the repository root; the root is the flagship fifty, and the verifier fails if that count moves.
+- Add its recommended terminal background to `plugins/dark-themes-vol-2/previews.json`, keyed by
+  display name. Without it the verifier has nothing to check the contrast floors against, and fails.
+- Add a matching row to the `VOL2_THEMES` array near the bottom of `index.html`, in the same
+  `[name, claude, claudeShimmer, text, inactive, terminal]` shape as the flagship gallery. The
+  verifier requires the array, the packaged themes and `previews.json` to agree exactly.
+- Display names must be unique across **both** packs. The two plugins can be installed together, so
+  two themes named the same would be indistinguishable in `/theme`.
+- Bump the version in `plugins/dark-themes-vol-2/.claude-plugin/plugin.json` and the matching entry
+  in `.claude-plugin/marketplace.json` together; the verifier requires them to match.
+
+`scripts/sync-plugin-themes.mjs` does not apply here — it mirrors the root fifty into their plugin,
+and a Vol. 2 theme is authored in its plugin directly.
+
+Regenerating the pack's preview image is optional, and only worth doing if the grid changed
+noticeably: render `index.html` in a headless browser and screenshot the `#vol2Grid` element to
+`plugins/dark-themes-vol-2/preview.png`.
+
+## Numbers stated on public pages
+
+The storefront, the share card and the meta descriptions state a role-aware check count and theme
+counts. These are claims to a reader, so the verifier ties them to the computed values: if a change
+moves the number of contrast comparisons or the size of either pack, the stated numbers must be
+updated in the same change or CI fails. Removing a claim fails too, so the guard cannot be silenced
+by deletion.
+
+The share card is rendered from `assets/social-preview.html`, not screenshotted from the site. Edit
+that source, then regenerate `preview.png` at 1280×720 — the declared `og:image:width` and
+`og:image:height` depend on the size.
+
+Every public page shipping an `og:image` must state `og:image:alt`, a `twitter:image` must state a
+`twitter:image:alt` that agrees with it, and pages sharing one image must describe it identically.
+
 ## Test locally
 
 ```bash
@@ -71,16 +115,18 @@ claude plugin validate .
 
 The command checks:
 
-- exactly 50 root-level theme files;
-- valid JSON, unique names and the shared override-key contract;
+- exactly 50 root-level theme files, plus every packaged Vol. 2 theme;
+- valid JSON, names unique across both packs, and the shared override-key contract;
 - six-digit hex colours;
-- role-aware contrast against each theme's recommended terminal background;
-- palette parity between theme files and gallery cards;
+- role-aware contrast against each theme's recommended terminal background, for both packs;
+- palette parity between theme files and gallery cards, for both packs;
 - byte-for-byte parity between root themes and the installable plugin;
-- the marketplace and plugin manifests used by Claude Code;
+- the marketplace and both plugin manifests used by Claude Code;
 - a fresh-machine-safe installation command;
-- the verified shop payment surfaces.
-- valid 1280×720 PNG assets for the curated developer picks.
+- the verified shop payment surfaces;
+- valid 1280×720 PNG assets for the curated developer picks;
+- that stated check and theme counts on public pages match the computed values;
+- that share images carry alternative text, and that one image is described one way.
 
 GitHub Actions runs the regression tests and the same repository check on every push and pull request.
 

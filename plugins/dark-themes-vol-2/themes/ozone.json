@@ -1,0 +1,19 @@
+{
+  "name": "Ozone",
+  "base": "dark",
+  "overrides": {
+    "claude": "#8E97F2",
+    "claudeShimmer": "#BCC2F7",
+    "text": "#E9E9ED",
+    "inactive": "#A0A0AF",
+    "subtle": "#2C2C3A",
+    "suggestion": "#8E97F2",
+    "permission": "#9BA3D6",
+    "promptBorder": "#8E97F2",
+    "promptBorderShimmer": "#BCC2F7",
+    "planMode": "#9BA3D6",
+    "userMessageBackground": "#252531",
+    "userMessageBackgroundHover": "#2E2E3C",
+    "rate_limit_fill": "#8E97F2"
+  }
+}

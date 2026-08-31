@@ -23,15 +23,15 @@ Dark developer tools for Claude Code users and technical creators.
 260-character Product Hunt description:
 
 ```text
-A compact catalog of dark developer tools: 50 free Claude Code themes, plus UI kits, templates, cheat sheets, workflow packs, palettes, and wallpapers.
+A compact catalog of dark developer tools: 50 free Claude Code themes plus a free 12-theme Vol. 2 expansion, UI kits, templates, cheat sheets, palettes, and wallpapers.
 ```
 
 Long description:
 
 ```text
-Gabs Utilities is a small, practical catalog for developers and technical creators who like dark, readable tools. The core project is 50 free MIT-licensed themes for Claude Code, built with semantic colors for errors, warnings, success states, diffs, and terminal UI clarity.
+Gabs Utilities is a small, practical catalog for developers and technical creators who like dark, readable tools. The core project is 50 free MIT-licensed themes for Claude Code, built with semantic colors for errors, warnings, success states, diffs, and terminal UI clarity. The same marketplace carries Dark Themes Vol. 2, a free 12-theme expansion held to the same contrast standards.
 
-The catalog also includes paid packs such as dark UI kits, HTML/email/social templates, developer cheat sheets, Claude Code workflow templates, wallpapers, and palettes.
+The catalog also includes paid packs such as dark UI kits, HTML/email/social templates, developer cheat sheets, wallpapers, and palettes.
 ```
 
 Category fit:
@@ -46,7 +46,7 @@ Category fit:
 Tags:
 
 ```text
-Claude Code, themes, dark mode, developer tools, terminal, UI kit, templates, accessibility, workflow
+Claude Code, themes, dark mode, developer tools, terminal, UI kit, templates, accessibility
 ```
 
 Maker note:
@@ -98,7 +98,7 @@ Hey, I’m Gabriel.
 
 This started as a practical thing for myself: I wanted a set of dark Claude Code themes that stayed readable and did not destroy semantic colors like errors, warnings, success states, and diffs.
 
-I kept expanding it into a small catalog of dark developer/creator utilities: UI kits, HTML templates, email templates, cheat sheets, workflow kits, wallpapers, and palettes.
+I kept expanding it into a small catalog of dark developer/creator utilities: UI kits, HTML templates, email templates, cheat sheets, wallpapers, and palettes.
 
 The core Claude Code themes are free and MIT licensed. The paid packs are there for people who want the broader toolkit.
 
@@ -137,10 +137,11 @@ Dark developer tools for Claude Code users and technical creators.
 
 Long description:
 Gabs Utilities is a compact catalog of dark developer tools built around 50
-free MIT-licensed Claude Code themes. It also links to related dark UI kits,
-templates, cheat sheets, workflow packs, palettes, wallpapers, and audio
-workflow utilities. The theme set preserves semantic colors for errors,
-warnings, success states, diffs, and terminal UI clarity.
+free MIT-licensed Claude Code themes plus a free 12-theme Vol. 2 expansion.
+It also links to related dark UI kits, templates, cheat sheets, palettes,
+wallpapers, and audio utilities. The theme sets
+preserve semantic colors for errors, warnings, success states, diffs, and
+terminal UI clarity.
 
 Pricing:
 Free
@@ -166,7 +167,7 @@ UI Library
 Submission copy:
 
 ```text
-Gabs Utilities is a small dark-tool catalog built around 50 free Claude Code themes. It includes a visual theme gallery, plugin install flow, and related dark UI/template/workflow packs for developers and technical creators.
+Gabs Utilities is a small dark-tool catalog built around 50 free Claude Code themes and a free 12-theme Vol. 2 expansion. It includes a visual theme gallery, plugin install flow, and related dark UI and template packs for developers and technical creators.
 ```
 
 ## Uneed
