@@ -20,7 +20,10 @@ while [ $# -gt 0 ]; do
     --list)      MODE=list; shift ;;
     --uninstall) MODE=uninstall; shift ;;
     --dir)       DEST="${2:?--dir needs a path}"; shift 2 ;;
-    -h|--help)   sed -n '2,12p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    # Print the header comment block: everything after the shebang up to the
+    # first line that is not a comment. A fixed line range drifts — '2,12p'
+    # had already slipped past the block and printed `set -euo pipefail`.
+    -h|--help)   awk 'NR==1{next} !/^#/{exit} {sub(/^# ?/,""); print}' "${BASH_SOURCE[0]}"; exit 0 ;;
     -*)          echo "unknown option: $1" >&2; exit 2 ;;
     *)           WANTED+=("${1%.json}"); shift ;;
   esac

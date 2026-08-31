@@ -1,4 +1,4 @@
-import { readdir, readFile } from "node:fs/promises";
+import { readdir, readFile, stat } from "node:fs/promises";
 
 const root = new URL("../", import.meta.url);
 const pluginRoot = new URL("../plugins/50-dark-themes/", import.meta.url);
@@ -470,6 +470,24 @@ for (const file of publicHtmlFiles) {
         "Add [hidden]{display:none!important}.",
     );
   }
+}
+
+// The README tells people to clone and run `./install.sh`. That only works if
+// the file carries the executable bit in git — it shipped as mode 100644, so
+// the documented command failed with "Permission denied" on every fresh clone.
+// A mode is invisible in a diff, so assert it.
+const installerStat = await stat(new URL("install.sh", root));
+if (!(installerStat.mode & 0o111)) {
+  fail("install.sh is not executable; the README's `./install.sh` fails on a fresh clone. Run git update-index --chmod=+x install.sh.");
+}
+
+// Its --help prints the header comment block. A hardcoded line range drifts as
+// the header grows: `sed -n '2,12p'` had already slipped past the block and
+// printed `set -euo pipefail` to the user. Require the block be delimited by
+// the comments themselves.
+const installer = await readFile(new URL("install.sh", root), "utf8");
+if (/-h\|--help\)[^\n]*sed -n ['"]\d+,\d+p/.test(installer)) {
+  fail("install.sh builds --help from a fixed line range; it drifts as the header changes. Delimit the block by the comment run instead.");
 }
 
 // One image, one description. preview.png is shared by every public page; it
