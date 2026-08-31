@@ -86,9 +86,16 @@ Gallery: https://gabs-utilities.com/#vol2
 
 ### GitHub release — Dark Themes Vol. 2 (create only after the Vol. 2 PR is merged to main)
 
-Suggested tag: `dark-themes-vol-2-v1.0.0` (do not reuse the `themes-plugin-v*`
-tags — those version the flagship 50-pack, and the storefront JSON-LD
-downloadUrl is pinned to them).
+Suggested tag: `dark-themes-vol-2-v1.0.0`. Do not reuse the `themes-plugin-v*`
+namespace — those tags version the flagship 50-pack (currently
+`themes-plugin-v1.0.1`, matching that plugin's manifest), and reusing them
+would make the release history say the flagship shipped a version it did not.
+
+The storefront's JSON-LD `downloadUrl` is **not** affected either way: it is
+`…/archive/refs/heads/main.zip`, which tracks the default branch, not any tag.
+So the download that link serves is whatever is on `main` at the time — since
+`af24eb7` that includes Vol. 2. Tag freely; just do not point that URL at a tag
+without deciding which pack it is then claiming to be.
 
 Title:
 
