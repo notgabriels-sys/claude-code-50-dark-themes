@@ -48,6 +48,24 @@ async function runVerifier(cwd) {
   });
 }
 
+async function runContrastVerifier(cwd) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, ["scripts/verify-contrast.mjs"], { cwd });
+    let stdout = "";
+    let stderr = "";
+    child.stdout.setEncoding("utf8");
+    child.stderr.setEncoding("utf8");
+    child.stdout.on("data", (chunk) => {
+      stdout += chunk;
+    });
+    child.stderr.on("data", (chunk) => {
+      stderr += chunk;
+    });
+    child.on("error", reject);
+    child.on("close", (code) => resolve({ code, stdout, stderr }));
+  });
+}
+
 test("rejects semantic palette drift in a shared storefront role", { timeout: 90_000 }, async (t) => {
   const fixtureRoot = await makeFixture(t);
   const fixtureHtml = join(fixtureRoot, "index.html");
@@ -417,4 +435,59 @@ test("accepts README copy that puts a correct price after a comma", { timeout: 9
   const result = await runVerifier(fixtureRoot);
 
   assert.equal(result.code, 0, `the verifier rejected correct README copy: ${result.stderr}`);
+});
+
+// ---------------------------------------------------------------------------
+// verify-contrast.mjs had exactly one test — the shared-palette one above —
+// while enforcing seven distinct guard families over 894 comparisons. The three
+// covered here are the load-bearing ones: the reference check that validates
+// the contrast maths itself, and the per-theme floors for both shipped packs.
+//
+// The reference check matters most. It compares contrast() against three known
+// WCAG values, so if the maths broke, all 894 comparisons would still "pass"
+// and every accessibility claim on the storefront would be false. Nothing
+// tested the thing that makes the other 894 mean anything.
+// ---------------------------------------------------------------------------
+
+test("rejects a broken contrast calculation against known WCAG values", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const verifierPath = join(fixtureRoot, "scripts/verify-contrast.mjs");
+  const source = await readFile(verifierPath, "utf8");
+  // Make every pair report perfect contrast. Without the reference check this
+  // passes 894 comparisons while measuring nothing.
+  await writeFile(
+    verifierPath,
+    source.replace("function contrast(first, second) {", "function contrast(first, second) {\n  return 21;"),
+  );
+
+  const result = await runContrastVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "a contrast function that always returns 21 was accepted");
+  assert.match(result.stderr, /Contrast reference failed for #777777 on #FFFFFF/);
+});
+
+test("rejects a root theme whose text drops below its contrast floor", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const themePath = join(fixtureRoot, "absinthe.json");
+  const theme = JSON.parse(await readFile(themePath, "utf8"));
+  theme.overrides.text = "#111111";
+  await writeFile(themePath, `${JSON.stringify(theme, null, 2)}\n`);
+
+  const result = await runContrastVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "an unreadable root theme was accepted");
+  assert.match(result.stderr, /Absinthe: text on terminal is [\d.]+:1; needs 7\.0:1/);
+});
+
+test("rejects a Vol. 2 theme whose text drops below its contrast floor", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const themePath = join(fixtureRoot, "plugins/dark-themes-vol-2/themes/afterglow.json");
+  const theme = JSON.parse(await readFile(themePath, "utf8"));
+  theme.overrides.text = "#111111";
+  await writeFile(themePath, `${JSON.stringify(theme, null, 2)}\n`);
+
+  const result = await runContrastVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "an unreadable Vol. 2 theme was accepted");
+  assert.match(result.stderr, /Afterglow: text on terminal is [\d.]+:1; needs 7\.0:1/);
 });
