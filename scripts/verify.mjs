@@ -732,25 +732,44 @@ for (const host of new Set(gumroadHosts)) {
 // text it wraps. Slugs go through gumroadSlugOf, so the developer-picks row's
 // `?utm_source=...` resolves to the product it names while `bqgfvX` stays
 // `bqgfvX` and fails the allowlist.
-const gumroadCards = [
-  ...html.matchAll(
-    /<a\b([^>]*)href="https:\/\/notgabriel\.gumroad\.com\/l\/([^"'\s<>]+)"([^>]*)>([\s\S]*?)<\/a>/g,
-  ),
-].map((match) => ({
-  slug: gumroadSlugOf(match[2]),
-  attrs: `${match[1]} ${match[3]}`,
-  inner: match[4],
-}));
+// Cards are collected from EVERY public page, not just index.html.
+//
+// Scoping the price checks to index.html was their own first version, and it
+// left a reachable gap: the slug allowlist runs over every page, so an
+// unverified slug elsewhere fails, but a slug that IS verified could be printed
+// on another page at any price at all and nothing looked. Reproduced before
+// widening — a card linking the verified slug `bqgfv` (recorded €8) and stating
+// €99 shipped green from impressum.html, and a bare Gumroad URL outside an
+// anchor escaped there too.
+//
+// Only index.html carries Gumroad links today, so this changes no current
+// result. That is the point: the check is scoped to the rule, not to where the
+// links happen to live this week. It is the same widening already applied to
+// the Gumroad slug allowlist and to the PayPal unverified-link allowlist; the
+// price half was the one still standing narrow.
+const gumroadCardPattern =
+  /<a\b([^>]*)href="https:\/\/notgabriel\.gumroad\.com\/l\/([^"'\s<>]+)"([^>]*)>([\s\S]*?)<\/a>/g;
+const gumroadCardsByFile = new Map();
+for (const file of publicHtmlFiles) {
+  const source = file === "index.html" ? html : await readFile(new URL(file, root), "utf8");
+  const cards = [...source.matchAll(gumroadCardPattern)].map((match) => ({
+    slug: gumroadSlugOf(match[2]),
+    attrs: `${match[1]} ${match[3]}`,
+    inner: match[4],
+  }));
+  gumroadCardsByFile.set(file, cards);
 
-// A Gumroad URL printed outside an anchor would escape every price check below
-// without this. The two counts must agree.
-const rawGumroadLinks = [...html.matchAll(gumroadLinkPattern)];
-if (rawGumroadLinks.length !== gumroadCards.length) {
-  fail(
-    `index.html has ${rawGumroadLinks.length} Gumroad URLs but only ` +
-      `${gumroadCards.length} of them are inside an <a> the price guard can read.`,
-  );
+  // A Gumroad URL printed outside an anchor would escape every price check
+  // below without this. The two counts must agree, on every page.
+  const rawLinks = [...source.matchAll(gumroadLinkPattern)];
+  if (rawLinks.length !== cards.length) {
+    fail(
+      `${file} has ${rawLinks.length} Gumroad URLs but only ` +
+        `${cards.length} of them are inside an <a> the price guard can read.`,
+    );
+  }
 }
+const gumroadCards = gumroadCardsByFile.get("index.html") ?? [];
 
 const presentGumroadSlugs = new Set(gumroadCards.map((card) => card.slug));
 for (const slug of presentGumroadSlugs) {
@@ -781,7 +800,9 @@ for (const { slug } of recordedGumroadPrices) {
 // than pin the markup, every currency amount inside the anchor must equal the
 // recorded one -- so a restyle is free but a changed number is not, and a
 // screen-reader label cannot quietly disagree with what sighted buyers see.
-for (const { slug, attrs, inner } of gumroadCards) {
+for (const [file, cards] of gumroadCardsByFile) {
+ for (const { slug, attrs, inner } of cards) {
+  const where = `${slug} on ${file}`;
   const price = recordedGumroadPriceBySlug.get(slug);
   const shown = [...inner.matchAll(/[€$]\s?\d[\d.,]*/g)].map((match) =>
     match[0].replace(/\s+/g, ""),
@@ -790,17 +811,17 @@ for (const { slug, attrs, inner } of gumroadCards) {
   if (price === null) {
     if (shown.length > 0) {
       fail(
-        `Gumroad card ${slug} now states ${shown.join(", ")} and recordedGumroadPrices ` +
+        `Gumroad card ${where} now states ${shown.join(", ")} and recordedGumroadPrices ` +
           `says it states no price. Read the real product at gumroad.com, then record it.`,
       );
     }
   } else if (shown.length === 0) {
-    fail(`Gumroad card ${slug} no longer states its ${price} price.`);
+    fail(`Gumroad card ${where} no longer states its ${price} price.`);
   } else {
     for (const amount of shown) {
       if (amount !== price) {
         fail(
-          `Gumroad card ${slug} states ${amount}; recordedGumroadPrices says ${price}. ` +
+          `Gumroad card ${where} states ${amount}; recordedGumroadPrices says ${price}. ` +
             `If the change is deliberate, read the real product back from gumroad.com ` +
             `first, then update the table.`,
         );
@@ -822,15 +843,16 @@ for (const { slug, attrs, inner } of gumroadCards) {
   }
   for (const amount of spokenAmounts) {
     if (!price) {
-      fail(`Gumroad card ${slug} speaks ${amount} to screen readers but records no price.`);
+      fail(`Gumroad card ${where} speaks ${amount} to screen readers but records no price.`);
     } else if (amount !== price) {
       fail(
-        `Gumroad card ${slug} reads out ${amount} to screen readers but is priced ` +
+        `Gumroad card ${where} reads out ${amount} to screen readers but is priced ` +
           `${price}. A label that disagrees with the visible price is a wrong price ` +
           `for the buyer who cannot see it.`,
       );
     }
   }
+ }
 }
 
 const { roleAwareComparisonCount } = await import("./verify-contrast.mjs");
