@@ -284,3 +284,41 @@ test("rejects a finder whose hidden cards are still painted", { timeout: 90_000 
   assert.notEqual(result.code, 0, "the verifier accepted a page that hides cards only in the DOM");
   assert.match(result.stderr, /toggles the hidden property but never overrides it in CSS/);
 });
+
+test("rejects a manual install route that never says where the files come from", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixtureGuide = join(fixtureRoot, "claude-code-theme-install-guide.html");
+  const guide = await readFile(fixtureGuide, "utf8");
+  const start = guide.indexOf('<span class="syntax-command">git</span>');
+  const end = guide.indexOf('<span class="syntax-command">mkdir</span>');
+  await writeFile(fixtureGuide, guide.slice(0, start) + guide.slice(end));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a manual route with no way to obtain the files");
+  assert.match(result.stderr, /never says how to obtain the theme files/);
+});
+
+test("rejects a manual install route that silently skips Vol. 2", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixtureGuide = join(fixtureRoot, "claude-code-theme-install-guide.html");
+  const guide = await readFile(fixtureGuide, "utf8");
+  await writeFile(fixtureGuide, guide.replaceAll("plugins/dark-themes-vol-2/themes/*.json", "*.json"));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a manual route covering only the flagship pack");
+  assert.match(result.stderr, /silently\s+skips Vol\. 2/);
+});
+
+test("rejects a guide whose manual section was removed entirely", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixtureGuide = join(fixtureRoot, "claude-code-theme-install-guide.html");
+  const guide = await readFile(fixtureGuide, "utf8");
+  await writeFile(fixtureGuide, guide.replace(/<section[^>]*id="manual"[\s\S]*?<\/section>/, ""));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a guide with no manual section, leaving the guard inert");
+  assert.match(result.stderr, /has no #manual section/);
+});
