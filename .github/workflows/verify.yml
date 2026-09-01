@@ -18,3 +18,9 @@ jobs:
           node-version: 22
       - run: node --test scripts/*.test.mjs
       - run: node scripts/verify.mjs
+
+      - name: Test the checkout service
+        working-directory: checkout
+        run: |
+          npm ci
+          npm test

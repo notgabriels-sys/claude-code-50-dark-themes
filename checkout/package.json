@@ -1,0 +1,18 @@
+{
+  "name": "claude-code-themes-checkout",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Stripe Checkout service for one-time purchases of shop products.",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "onboard": "node bin/onboard.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "stripe": "^22.5.0"
+  }
+}
