@@ -472,6 +472,27 @@ for (const file of publicHtmlFiles) {
   }
 }
 
+// Copy that advertises a product nobody can buy. The Claude Code Workflow Kit
+// (slug zvbti) is built but unpublished — its own PUBLISHING.md records
+// is_published: false — so it is deliberately absent from verifiedGumroadSlugs
+// above. PROMOTION_QUEUE.md scrubbed its own paste-ready copy of "workflow kits"
+// for that reason, but the DEV Community draft still listed "workflow packs" in
+// the catalog. Until the slug is verified and added to the set, no paste-ready
+// copy may mention it: the DEV draft as a whole, and PROMOTION_QUEUE.md's fenced
+// blocks (its prose legitimately explains why the kit is held back).
+if (!verifiedGumroadSlugs.has("zvbti")) {
+  const unpublishedProduct = /workflow[ -]?(kit|pack)s?/i;
+  const devDraft = await readFile(new URL("DEV_COMMUNITY_ARTICLE_DRAFT.md", root), "utf8");
+  if (unpublishedProduct.test(devDraft)) {
+    fail("DEV_COMMUNITY_ARTICLE_DRAFT.md advertises the Workflow Kit, which is unpublished (zvbti is not in verifiedGumroadSlugs). Remove it from the copy, or publish and verify the product first.");
+  }
+  const promoQueue = await readFile(new URL("PROMOTION_QUEUE.md", root), "utf8");
+  const fenced = promoQueue.match(/```[\s\S]*?```/g) ?? [];
+  if (fenced.some((block) => unpublishedProduct.test(block))) {
+    fail("PROMOTION_QUEUE.md paste-ready copy advertises the Workflow Kit, which is unpublished (zvbti is not in verifiedGumroadSlugs).");
+  }
+}
+
 // One image, one description. preview.png is shared by every public page; it
 // was described three different ways, two of them as "a gallery preview" of a
 // card that has never been a gallery. Alt text drifts silently because nobody
