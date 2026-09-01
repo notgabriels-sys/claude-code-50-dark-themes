@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { cp, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { chmod, cp, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -283,4 +283,65 @@ test("rejects a finder whose hidden cards are still painted", { timeout: 90_000 
 
   assert.notEqual(result.code, 0, "the verifier accepted a page that hides cards only in the DOM");
   assert.match(result.stderr, /toggles the hidden property but never overrides it in CSS/);
+});
+
+test("rejects an installer the README cannot run", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  await chmod(join(fixtureRoot, "install.sh"), 0o644);
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a non-executable install.sh");
+  assert.match(result.stderr, /install\.sh is not executable/);
+});
+
+test("rejects installer help built from a fixed line range", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixtureInstaller = join(fixtureRoot, "install.sh");
+  const installer = await readFile(fixtureInstaller, "utf8");
+  await writeFile(
+    fixtureInstaller,
+    installer.replace(
+      /(-h\|--help\)\s*)awk[^\n]*/,
+      "$1sed -n '2,12p' \"${BASH_SOURCE[0]}\"; exit 0 ;;",
+    ),
+  );
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a --help that drifts with the header");
+  assert.match(result.stderr, /fixed line range/);
+});
+
+test("rejects an installer that claims --uninstall knows what it installed", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixtureInstaller = join(fixtureRoot, "install.sh");
+  const installer = await readFile(fixtureInstaller, "utf8");
+  await writeFile(
+    fixtureInstaller,
+    installer.replace(
+      /remove every theme in the pack from the themes dir/,
+      "remove the ones this script installed",
+    ),
+  );
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a --help that overstates what --uninstall tracks");
+  assert.match(result.stderr, /removes only what the script installed/);
+});
+
+test("rejects an installer whose help drops the filename-matching warning", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixtureInstaller = join(fixtureRoot, "install.sh");
+  const installer = await readFile(fixtureInstaller, "utf8");
+  await writeFile(
+    fixtureInstaller,
+    installer.replace(/^# --uninstall matches by filename[\s\S]*?Backups are never touched\.\n/m, ""),
+  );
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a destructive flag documented without its caveat");
+  assert.match(result.stderr, /matches by filename, not contents/);
 });
