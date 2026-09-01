@@ -1,4 +1,6 @@
-import { readdir, readFile } from "node:fs/promises";
+import { readdir, readFile, stat } from "node:fs/promises";
+
+import { sep } from "node:path";
 
 import {
   buildThemeIndex,
@@ -320,12 +322,46 @@ if (sourceSkills.length === 0) fail("No skills found in .claude/skills/.");
 if (sourceSkills.join("\u0000") !== packagedSkills.join("\u0000")) {
   fail("The packaged skill list differs from .claude/skills/. Run node scripts/sync-plugin-skills.mjs.");
 }
-for (const name of sourceSkills) {
-  const original = await readFile(new URL(`${name}/SKILL.md`, sourceSkillDir), "utf8");
-  const packaged = await readFile(new URL(`${name}/SKILL.md`, packagedSkillDir), "utf8");
-  if (original !== packaged) {
-    fail(`Skill ${name} differs from its plugin copy. Run node scripts/sync-plugin-skills.mjs.`);
+// Compare EVERY file in a skill, not just SKILL.md. The sync used to copy the
+// entry file alone, so a reference, script or asset added beside it was
+// silently never packaged and this check — reading only SKILL.md — stayed
+// green. Reproduced: adding references/kleinunternehmer.md to a source skill
+// left the packaged copy holding SKILL.md alone with verify exiting 0, which
+// ships an installer a skill whose own instructions point at a missing file.
+// Every skill is SKILL.md-only today; the check is scoped to the rule so that
+// stops being load-bearing.
+const listSkillFiles = async (dir, name) => {
+  const skillRoot = new URL(`${name}/`, dir);
+  const found = [];
+  for (const relative of await readdir(skillRoot, { recursive: true })) {
+    const entry = await stat(new URL(relative, skillRoot));
+    if (entry.isFile()) found.push(relative.split(sep).join("/"));
   }
+  return found.sort();
+};
+for (const name of sourceSkills) {
+  const sourceFiles = await listSkillFiles(sourceSkillDir, name);
+  const packagedFiles = await listSkillFiles(packagedSkillDir, name);
+  if (sourceFiles.join("\u0000") !== packagedFiles.join("\u0000")) {
+    fail(
+      `Skill ${name} packages [${packagedFiles.join(", ")}] but its source has ` +
+        `[${sourceFiles.join(", ")}]. Run node scripts/sync-plugin-skills.mjs.`,
+    );
+  }
+  if (!sourceFiles.includes("SKILL.md")) {
+    fail(`Skill ${name} has no SKILL.md.`);
+  }
+  for (const file of sourceFiles) {
+    const a = await readFile(new URL(`${name}/${file}`, sourceSkillDir), "utf8");
+    const b = await readFile(new URL(`${name}/${file}`, packagedSkillDir), "utf8");
+    if (a !== b) {
+      fail(
+        `Skill ${name}/${file} differs from its plugin copy. ` +
+          `Run node scripts/sync-plugin-skills.mjs.`,
+      );
+    }
+  }
+  const original = await readFile(new URL(`${name}/SKILL.md`, sourceSkillDir), "utf8");
   if (!/^---\r?\n[\s\S]*?\bname:\s*\S/m.test(original)) {
     fail(`Skill ${name} is missing YAML frontmatter with a name.`);
   }

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { cp, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -615,4 +615,45 @@ test("rejects a themes.json entry whose colour disagrees with its theme file", {
 
   assert.notEqual(result.code, 0, "a published colour that does not ship was accepted");
   assert.match(result.stderr, /themes\.json gives absinthe\.text as #000000 but absinthe\.json says #EBEDE8/);
+});
+
+test("rejects a skill whose supporting files were not packaged", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  // A skill may carry references, scripts or assets beside SKILL.md. The sync
+  // used to copy only SKILL.md and the check used to read only SKILL.md, so a
+  // supporting file was silently never packaged and the build stayed green —
+  // shipping an installer a skill pointing at a file that is not there.
+  const references = join(fixtureRoot, ".claude/skills/freelance-admin-de/references");
+  await mkdir(references, { recursive: true });
+  await writeFile(join(references, "kleinunternehmer.md"), "# reference\n");
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "an unpackaged supporting file shipped green");
+  assert.match(result.stderr, /packages \[SKILL\.md\] but its source has \[SKILL\.md, references\/kleinunternehmer\.md\]/);
+});
+
+test("packages a skill's supporting files and detects tampering in them", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const references = join(fixtureRoot, ".claude/skills/freelance-admin-de/references");
+  await mkdir(references, { recursive: true });
+  await writeFile(join(references, "kleinunternehmer.md"), "# reference\n");
+
+  const synced = await runNodeScript(fixtureRoot, "scripts/sync-plugin-skills.mjs");
+  assert.equal(synced.code, 0, "the sync should succeed");
+
+  // Negative control first: once synced, the same state must be accepted.
+  const afterSync = await runVerifier(fixtureRoot);
+  assert.equal(afterSync.code, 0, `a correctly synced skill was rejected: ${afterSync.stderr}`);
+
+  // Then the packaged copy is tampered with, which must not survive.
+  await writeFile(
+    join(fixtureRoot, "plugins/berlin-studio-skills/skills/freelance-admin-de/references/kleinunternehmer.md"),
+    "# tampered\n",
+  );
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "a tampered supporting file was accepted");
+  assert.match(result.stderr, /freelance-admin-de\/references\/kleinunternehmer\.md differs from its plugin copy/);
 });

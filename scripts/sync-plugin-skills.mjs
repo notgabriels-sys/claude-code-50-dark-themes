@@ -1,4 +1,4 @@
-import { copyFile, mkdir, readdir, rm } from "node:fs/promises";
+import { cp, mkdir, readdir, rm } from "node:fs/promises";
 
 const source = new URL("../.claude/skills/", import.meta.url);
 const destination = new URL(
@@ -21,12 +21,19 @@ for (const name of packagedSkills) {
     await rm(new URL(`${name}/`, destination), { recursive: true });
   }
 }
+// Copy the whole skill directory, not just SKILL.md. A skill may carry
+// references, scripts or assets that its SKILL.md points at, and copying only
+// the entry file ships an installer a skill whose own instructions reference
+// files that are not there. Every skill happens to be SKILL.md-only today;
+// that is the reason to fix this now rather than after the first one is not.
+// The destination copy is removed first so a file deleted at source cannot
+// survive in the package.
 for (const name of sourceSkills) {
+  await rm(new URL(`${name}/`, destination), { recursive: true, force: true });
   await mkdir(new URL(`${name}/`, destination), { recursive: true });
-  await copyFile(
-    new URL(`${name}/SKILL.md`, source),
-    new URL(`${name}/SKILL.md`, destination),
-  );
+  await cp(new URL(`${name}/`, source), new URL(`${name}/`, destination), {
+    recursive: true,
+  });
 }
 
 console.log(`Synced ${sourceSkills.length} skills into the Claude Code plugin.`);
