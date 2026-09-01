@@ -284,3 +284,29 @@ test("rejects a finder whose hidden cards are still painted", { timeout: 90_000 
   assert.notEqual(result.code, 0, "the verifier accepted a page that hides cards only in the DOM");
   assert.match(result.stderr, /toggles the hidden property but never overrides it in CSS/);
 });
+
+test("rejects a DEV draft that advertises the unpublished Workflow Kit", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const draftPath = join(fixtureRoot, "DEV_COMMUNITY_ARTICLE_DRAFT.md");
+  const draft = await readFile(draftPath, "utf8");
+  await writeFile(draftPath, draft.replace("cheat sheets, palettes", "cheat sheets, workflow packs, palettes"));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted copy advertising a product nobody can buy");
+  assert.match(result.stderr, /DEV_COMMUNITY_ARTICLE_DRAFT\.md advertises the Workflow Kit/);
+});
+
+test("rejects paste-ready promotion copy that advertises the unpublished Workflow Kit", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const queuePath = join(fixtureRoot, "PROMOTION_QUEUE.md");
+  const queue = await readFile(queuePath, "utf8");
+  // The prose already names the kit to explain why it is held back; only a fenced
+  // block — the copy someone would paste — may trip the guard.
+  await writeFile(queuePath, queue.replace("```text\n", "```text\nIncludes the Claude Code Workflow Kit.\n"));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted paste-ready copy advertising an unpublished product");
+  assert.match(result.stderr, /PROMOTION_QUEUE\.md paste-ready copy advertises the Workflow Kit/);
+});
