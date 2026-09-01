@@ -490,6 +490,19 @@ if (/-h\|--help\)[^\n]*sed -n ['"]\d+,\d+p/.test(installer)) {
   fail("install.sh builds --help from a fixed line range; it drifts as the header changes. Delimit the block by the comment run instead.");
 }
 
+// That same header is the only thing a user reads before running --uninstall,
+// and the uninstall branch matches by filename and rm -f's whatever it finds.
+// It has no idea what it installed, so it must not claim it does: the header
+// said "remove the ones this script installed" while deleting a hand-written
+// acid.json it never wrote, with none of the backup care the install path takes.
+const installerHeader = installer.split(/^set -euo pipefail$/m)[0];
+if (/the ones this script installed/i.test(installerHeader)) {
+  fail("install.sh --help claims --uninstall removes only what the script installed. It matches by filename and deletes a same-named file it never wrote. Say what it really does, or make the removal content-aware.");
+}
+if (!/matches by filename, not contents/i.test(installerHeader)) {
+  fail("install.sh --help must say --uninstall matches by filename, not contents; without it the destructive path reads safer than it is.");
+}
+
 // One image, one description. preview.png is shared by every public page; it
 // was described three different ways, two of them as "a gallery preview" of a
 // card that has never been a gallery. Alt text drifts silently because nobody
