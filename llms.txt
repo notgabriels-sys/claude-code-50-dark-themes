@@ -10,6 +10,17 @@ a Berlin-based sound engineer, producer and developer-oriented creator.
 - [Semantic terminal color design article](https://gabs-utilities.com/semantic-terminal-colors.html)
 - [Impressum](https://gabs-utilities.com/impressum.html)
 
+## Machine-readable theme index
+
+Every theme in the free plugin is listed, with its id, display name and key
+palette roles, in a single generated JSON file:
+
+[https://gabs-utilities.com/themes.json](https://gabs-utilities.com/themes.json)
+
+It is built from the theme files themselves, so it never disagrees with what
+installs. It describes only the free MIT-licensed themes — it carries no
+pricing and nothing about the paid products.
+
 The semantic terminal color article explains the design choices behind the 50
 free Claude Code themes, including preserved status colors, role-specific
 contrast, terminal background ownership and transparent-terminal surfaces.

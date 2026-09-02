@@ -38,6 +38,19 @@ Magnetite, Monsoon, Neon Noir, Ozone), held to the same contrast standards:
 claude plugin install dark-themes-vol-2@notgabriels-themes
 ```
 
+### Also in this marketplace — Berlin Studio Skills
+
+```bash
+claude plugin install berlin-studio-skills@notgabriels-themes
+```
+
+Six skills for running a techno studio and a freelance audio practice in Berlin: building a
+specific sound, diagnosing a mix that will not translate, getting masters and metadata out the
+door, formal German correspondence, German freelance invoicing and tax admin, and making the
+shop and repository easier to find. They route to one another, so you rarely have to name one. See
+[the plugin README](plugins/berlin-studio-skills/README.md).
+
+
 ## Manual install
 
 ```bash
@@ -132,6 +145,15 @@ or in the [gallery's expansion section](https://gabs-utilities.com/#vol2).
 ```bash
 claude plugin install dark-themes-vol-2@notgabriels-themes
 ```
+
+Building something on top of these? Every theme's id, name and key palette
+roles are published as one generated JSON file:
+
+**[gabs-utilities.com/themes.json](https://gabs-utilities.com/themes.json)**
+
+It is generated from the theme files by `scripts/build-theme-index.mjs` and CI
+fails if it drifts, so it always matches what actually installs. Free themes
+only — no pricing in it.
 
 
 ## More dark tools

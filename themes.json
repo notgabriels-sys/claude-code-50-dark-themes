@@ -1,0 +1,662 @@
+{
+  "$schema": "https://schema.org/ItemList",
+  "name": "50 Dark Themes for Claude Code",
+  "description": "Machine-readable index of every theme in the 50 Dark Themes plugin for Claude Code. Free and MIT-licensed. Generated from the theme files themselves by scripts/build-theme-index.mjs.",
+  "license": "https://opensource.org/license/mit",
+  "homepage": "https://gabs-utilities.com/",
+  "repository": "https://github.com/notgabriels-sys/claude-code-50-dark-themes",
+  "install": "claude plugin install 50-dark-themes@notgabriels-themes",
+  "count": 50,
+  "themes": [
+    {
+      "id": "absinthe",
+      "name": "Absinthe",
+      "base": "dark",
+      "palette": {
+        "claude": "#C0D648",
+        "claudeShimmer": "#D7E58B",
+        "text": "#EBEDE8",
+        "inactive": "#A9AF9D"
+      },
+      "source": "https://github.com/notgabriels-sys/claude-code-50-dark-themes/blob/main/absinthe.json",
+      "url": "https://gabs-utilities.com/#theme-absinthe"
+    },
+    {
+      "id": "acid",
+      "name": "Acid",
+      "base": "dark",
+      "palette": {
+        "claude": "#C8E62E",
+        "claudeShimmer": "#DBEF77",
+        "text": "#EDEDE8",
+        "inactive": "#ACAF9D"
+      },
+      "source": "https://github.com/notgabriels-sys/claude-code-50-dark-themes/blob/main/acid.json",
+      "url": "https://gabs-utilities.com/#theme-acid"
+    },
+    {
+      "id": "amber-room",
+      "name": "Amber Room",
+      "base": "dark",
+      "palette": {
+        "claude": "#E0A83C",
+        "claudeShimmer": "#EBC782",
+        "text": "#EDEBE8",
+        "inactive": "#AFA79D"
+      },
+      "source": "https://github.com/notgabriels-sys/claude-code-50-dark-themes/blob/main/amber-room.json",
+      "url": "https://gabs-utilities.com/#theme-amber-room"
+    },
+    {
+      "id": "anaglyph",
+      "name": "Anaglyph",
+      "base": "dark",
+      "palette": {
+        "claude": "#FF5548",
+        "claudeShimmer": "#FFA19A",
+        "text": "#E9E9EC",
+        "inactive": "#A0A0AB"
+      },
+      "source": "https://github.com/notgabriels-sys/claude-code-50-dark-themes/blob/main/anaglyph.json",
+      "url": "https://gabs-utilities.com/#theme-anaglyph"
+    },
+    {
+      "id": "blackout",
+      "name": "Blackout",
+      "base": "dark",
+      "palette": {
+        "claude": "#E0A83C",
+        "claudeShimmer": "#EBC782",
+        "text": "#EAEAEB",
+        "inactive": "#A2A2A9"
+      },
+      "source": "https://github.com/notgabriels-sys/claude-code-50-dark-themes/blob/main/blackout.json",
+      "url": "https://gabs-utilities.com/#theme-blackout"
+    },
+    {
+      "id": "blueprint",
+      "name": "Blueprint",
+      "base": "dark",
+      "palette": {
+        "claude": "#52C2F0",
+        "claudeShimmer": "#9DDCF7",
+        "text": "#E8EAED",
+        "inactive": "#9DA5AF"
+      },
+      "source": "https://github.com/notgabriels-sys/claude-code-50-dark-themes/blob/main/blueprint.json",
+      "url": "https://gabs-utilities.com/#theme-blueprint"
+    },
+    {
+      "id": "cassette",
+      "name": "Cassette",
+      "base": "dark",
+      "palette": {
+        "claude": "#E8853C",
+        "claudeShimmer": "#F1B385",
+        "text": "#EFE4D2",
+        "inactive": "#AFA69D"
+      },
+      "source": "https://github.com/notgabriels-sys/claude-code-50-dark-themes/blob/main/cassette.json",
+      "url": "https://gabs-utilities.com/#theme-cassette"
+    },
+    {
+      "id": "clay",
+      "name": "Clay",
+      "base": "dark",
+      "palette": {
+        "claude": "#C97B5A",
+        "claudeShimmer": "#DDAC97",
+        "text": "#EDEAE9",
+        "inactive": "#AFA39D"
+      },
+      "source": "https://github.com/notgabriels-sys/claude-code-50-dark-themes/blob/main/clay.json",
+      "url": "https://gabs-utilities.com/#theme-clay"
+    },
+    {
+      "id": "cobalt-hour",
+      "name": "Cobalt Hour",
+      "base": "dark",
+      "palette": {
+        "claude": "#5280FE",
+        "claudeShimmer": "#9EB8FE",
+        "text": "#E8E9ED",
+        "inactive": "#9DA2AF"
+      },
+      "source": "https://github.com/notgabriels-sys/claude-code-50-dark-themes/blob/main/cobalt-hour.json",
+      "url": "https://gabs-utilities.com/#theme-cobalt-hour"
+    },
+    {
+      "id": "concrete",
+      "name": "Concrete",
+      "base": "dark",
+      "palette": {
+        "claude": "#7FA6B8",
+        "claudeShimmer": "#B3CAD5",
+        "text": "#EAEBEB",
+        "inactive": "#A2A6A9"
+      },
+      "source": "https://github.com/notgabriels-sys/claude-code-50-dark-themes/blob/main/concrete.json",
+      "url": "https://gabs-utilities.com/#theme-concrete"
+    },
+    {
+      "id": "coral",
+      "name": "Coral",
+      "base": "dark",
+      "palette": {
+        "claude": "#F08060",
+        "claudeShimmer": "#F7BCAB",
+        "text": "#EDE9E9",
+        "inactive": "#AFA09D"
+      },
+      "source": "https://github.com/notgabriels-sys/claude-code-50-dark-themes/blob/main/coral.json",
+      "url": "https://gabs-utilities.com/#theme-coral"
+    },
+    {
+      "id": "crossfade",
+      "name": "Crossfade",
+      "base": "dark",
+      "palette": {
+        "claude": "#3EC8E8",
+        "claudeShimmer": "#87DDF1",
+        "text": "#E9E9EC",
+        "inactive": "#9F9FAD"
+      },
+      "source": "https://github.com/notgabriels-sys/claude-code-50-dark-themes/blob/main/crossfade.json",
+      "url": "https://gabs-utilities.com/#theme-crossfade"
+    },
+    {
+      "id": "deep-field",
+      "name": "Deep Field",
+      "base": "dark",
+      "palette": {
+        "claude": "#7A8CFF",
+        "claudeShimmer": "#CCD3FF",
+        "text": "#E8E9ED",
+        "inactive": "#9DA0AF"
+      },
+      "source": "https://github.com/notgabriels-sys/claude-code-50-dark-themes/blob/main/deep-field.json",
+      "url": "https://gabs-utilities.com/#theme-deep-field"
+    },
+    {
+      "id": "dubplate",
+      "name": "Dubplate",
+      "base": "dark",
+      "palette": {
+        "claude": "#E8D44A",
+        "claudeShimmer": "#F1E592",
+        "text": "#ECEBE9",
+        "inactive": "#ABA8A0"
+      },
+      "source": "https://github.com/notgabriels-sys/claude-code-50-dark-themes/blob/main/dubplate.json",
+      "url": "https://gabs-utilities.com/#theme-dubplate"
+    },
+    {
+      "id": "ember",
+      "name": "Ember",
+      "base": "dark",
+      "palette": {
+        "claude": "#E8703C",
+        "claudeShimmer": "#F1A685",
+        "text": "#EDE9E8",
+        "inactive": "#AFA19D"
+      },
+      "source": "https://github.com/notgabriels-sys/claude-code-50-dark-themes/blob/main/ember.json",
+      "url": "https://gabs-utilities.com/#theme-ember"
+    },
+    {
+      "id": "fathom",
+      "name": "Fathom",
+      "base": "dark",
+      "palette": {
+        "claude": "#38A8C8",
+        "claudeShimmer": "#78C4DA",
+        "text": "#E8EBED",
+        "inactive": "#9DA7AF"
+      },
+      "source": "https://github.com/notgabriels-sys/claude-code-50-dark-themes/blob/main/fathom.json",
+      "url": "https://gabs-utilities.com/#theme-fathom"
+    },
+    {
+      "id": "fjord",
+      "name": "Fjord",
+      "base": "dark",
+      "palette": {
+        "claude": "#5A9EC8",
+        "claudeShimmer": "#97C2DC",
+        "text": "#E8EBED",
+        "inactive": "#9DA6AF"
+      },
+      "source": "https://github.com/notgabriels-sys/claude-code-50-dark-themes/blob/main/fjord.json",
+      "url": "https://gabs-utilities.com/#theme-fjord"
+    },
+    {
+      "id": "furnace",
+      "name": "Furnace",
+      "base": "dark",
+      "palette": {
+        "claude": "#FF5A36",
+        "claudeShimmer": "#FF9D88",
+        "text": "#EDE8E8",
+        "inactive": "#AF9D9E"
+      },
+      "source": "https://github.com/notgabriels-sys/claude-code-50-dark-themes/blob/main/furnace.json",
+      "url": "https://gabs-utilities.com/#theme-furnace"
+    },
+    {
+      "id": "glacier",
+      "name": "Glacier",
+      "base": "dark",
+      "palette": {
+        "claude": "#A8DCE8",
+        "claudeShimmer": "#E9F6F9",
+        "text": "#E8ECED",
+        "inactive": "#9DA9AF"
+      },
+      "source": "https://github.com/notgabriels-sys/claude-code-50-dark-themes/blob/main/glacier.json",
+      "url": "https://gabs-utilities.com/#theme-glacier"
+    },
+    {
+      "id": "graphite",
+      "name": "Graphite",
+      "base": "dark",
+      "palette": {
+        "claude": "#C9CFD6",
+        "claudeShimmer": "#F7F8F9",
+        "text": "#E9EAEC",
+        "inactive": "#A0A4AB"
+      },
+      "source": "https://github.com/notgabriels-sys/claude-code-50-dark-themes/blob/main/graphite.json",
+      "url": "https://gabs-utilities.com/#theme-graphite"
+    },
+    {
+      "id": "greenhouse",
+      "name": "Greenhouse",
+      "base": "dark",
+      "palette": {
+        "claude": "#58C89A",
+        "claudeShimmer": "#95DCBF",
+        "text": "#E8EDEC",
+        "inactive": "#9DAFA9"
+      },
+      "source": "https://github.com/notgabriels-sys/claude-code-50-dark-themes/blob/main/greenhouse.json",
+      "url": "https://gabs-utilities.com/#theme-greenhouse"
+    },
+    {
+      "id": "harbor",
+      "name": "Harbor",
+      "base": "dark",
+      "palette": {
+        "claude": "#62A8D8",
+        "claudeShimmer": "#A3CCE8",
+        "text": "#E8EBED",
+        "inactive": "#9DA6AF"
+      },
+      "source": "https://github.com/notgabriels-sys/claude-code-50-dark-themes/blob/main/harbor.json",
+      "url": "https://gabs-utilities.com/#theme-harbor"
+    },
+    {
+      "id": "hearth",
+      "name": "Hearth",
+      "base": "dark",
+      "palette": {
+        "claude": "#E07840",
+        "claudeShimmer": "#EBAA86",
+        "text": "#ECEBEA",
+        "inactive": "#AAA6A1"
+      },
+      "source": "https://github.com/notgabriels-sys/claude-code-50-dark-themes/blob/main/hearth.json",
+      "url": "https://gabs-utilities.com/#theme-hearth"
+    },
+    {
+      "id": "ink",
+      "name": "Ink",
+      "base": "dark",
+      "palette": {
+        "claude": "#A9B8CE",
+        "claudeShimmer": "#DDE3EC",
+        "text": "#E8E9ED",
+        "inactive": "#9DA2AF"
+      },
+      "source": "https://github.com/notgabriels-sys/claude-code-50-dark-themes/blob/main/ink.json",
+      "url": "https://gabs-utilities.com/#theme-ink"
+    },
+    {
+      "id": "iris",
+      "name": "Iris",
+      "base": "dark",
+      "palette": {
+        "claude": "#8C8CE8",
+        "claudeShimmer": "#D0D0F6",
+        "text": "#E8E8ED",
+        "inactive": "#9D9DAF"
+      },
+      "source": "https://github.com/notgabriels-sys/claude-code-50-dark-themes/blob/main/iris.json",
+      "url": "https://gabs-utilities.com/#theme-iris"
+    },
+    {
+      "id": "lagoon",
+      "name": "Lagoon",
+      "base": "dark",
+      "palette": {
+        "claude": "#4FD8E8",
+        "claudeShimmer": "#97E8F1",
+        "text": "#E8ECED",
+        "inactive": "#9DAAAF"
+      },
+      "source": "https://github.com/notgabriels-sys/claude-code-50-dark-themes/blob/main/lagoon.json",
+      "url": "https://gabs-utilities.com/#theme-lagoon"
+    },
+    {
+      "id": "lichen",
+      "name": "Lichen",
+      "base": "dark",
+      "palette": {
+        "claude": "#AFC49A",
+        "claudeShimmer": "#D8E2CE",
+        "text": "#EAECE9",
+        "inactive": "#A3AD9F"
+      },
+      "source": "https://github.com/notgabriels-sys/claude-code-50-dark-themes/blob/main/lichen.json",
+      "url": "https://gabs-utilities.com/#theme-lichen"
+    },
+    {
+      "id": "moss",
+      "name": "Moss",
+      "base": "dark",
+      "palette": {
+        "claude": "#93BF6F",
+        "claudeShimmer": "#BDD8A7",
+        "text": "#E9EDE9",
+        "inactive": "#9DAFA0"
+      },
+      "source": "https://github.com/notgabriels-sys/claude-code-50-dark-themes/blob/main/moss.json",
+      "url": "https://gabs-utilities.com/#theme-moss"
+    },
+    {
+      "id": "mulberry",
+      "name": "Mulberry",
+      "base": "dark",
+      "palette": {
+        "claude": "#D25E85",
+        "claudeShimmer": "#E298B0",
+        "text": "#EDE8EB",
+        "inactive": "#AF9DA6"
+      },
+      "source": "https://github.com/notgabriels-sys/claude-code-50-dark-themes/blob/main/mulberry.json",
+      "url": "https://gabs-utilities.com/#theme-mulberry"
+    },
+    {
+      "id": "nachtschicht",
+      "name": "Nachtschicht",
+      "base": "dark",
+      "palette": {
+        "claude": "#E3B341",
+        "claudeShimmer": "#EDCF88",
+        "text": "#E8EAED",
+        "inactive": "#9DA4AF"
+      },
+      "source": "https://github.com/notgabriels-sys/claude-code-50-dark-themes/blob/main/nachtschicht.json",
+      "url": "https://gabs-utilities.com/#theme-nachtschicht"
+    },
+    {
+      "id": "night-vision",
+      "name": "Night Vision",
+      "base": "dark",
+      "palette": {
+        "claude": "#52E07A",
+        "claudeShimmer": "#97ECAF",
+        "text": "#E9ECEA",
+        "inactive": "#9FADA3"
+      },
+      "source": "https://github.com/notgabriels-sys/claude-code-50-dark-themes/blob/main/night-vision.json",
+      "url": "https://gabs-utilities.com/#theme-night-vision"
+    },
+    {
+      "id": "nightshade",
+      "name": "Nightshade",
+      "base": "dark",
+      "palette": {
+        "claude": "#976ECE",
+        "claudeShimmer": "#B293DB",
+        "text": "#EBE8ED",
+        "inactive": "#A69DAF"
+      },
+      "source": "https://github.com/notgabriels-sys/claude-code-50-dark-themes/blob/main/nightshade.json",
+      "url": "https://gabs-utilities.com/#theme-nightshade"
+    },
+    {
+      "id": "off-air",
+      "name": "Off Air",
+      "base": "dark",
+      "palette": {
+        "claude": "#D7635A",
+        "claudeShimmer": "#E38F89",
+        "text": "#ECEAEA",
+        "inactive": "#AAA4A1"
+      },
+      "source": "https://github.com/notgabriels-sys/claude-code-50-dark-themes/blob/main/off-air.json",
+      "url": "https://gabs-utilities.com/#theme-off-air"
+    },
+    {
+      "id": "orchid",
+      "name": "Orchid",
+      "base": "dark",
+      "palette": {
+        "claude": "#C86AD8",
+        "claudeShimmer": "#E0ABE9",
+        "text": "#EDE8ED",
+        "inactive": "#AC9DAF"
+      },
+      "source": "https://github.com/notgabriels-sys/claude-code-50-dark-themes/blob/main/orchid.json",
+      "url": "https://gabs-utilities.com/#theme-orchid"
+    },
+    {
+      "id": "oxide",
+      "name": "Oxide",
+      "base": "dark",
+      "palette": {
+        "claude": "#C76F55",
+        "claudeShimmer": "#D59481",
+        "text": "#EDE9E9",
+        "inactive": "#AFA09D"
+      },
+      "source": "https://github.com/notgabriels-sys/claude-code-50-dark-themes/blob/main/oxide.json",
+      "url": "https://gabs-utilities.com/#theme-oxide"
+    },
+    {
+      "id": "petrol",
+      "name": "Petrol",
+      "base": "dark",
+      "palette": {
+        "claude": "#2FB8C6",
+        "claudeShimmer": "#6BD1DC",
+        "text": "#E8EDED",
+        "inactive": "#9DACAF"
+      },
+      "source": "https://github.com/notgabriels-sys/claude-code-50-dark-themes/blob/main/petrol.json",
+      "url": "https://gabs-utilities.com/#theme-petrol"
+    },
+    {
+      "id": "plasma",
+      "name": "Plasma",
+      "base": "dark",
+      "palette": {
+        "claude": "#E858C8",
+        "claudeShimmer": "#F2A0E0",
+        "text": "#EDE8ED",
+        "inactive": "#AF9DAF"
+      },
+      "source": "https://github.com/notgabriels-sys/claude-code-50-dark-themes/blob/main/plasma.json",
+      "url": "https://gabs-utilities.com/#theme-plasma"
+    },
+    {
+      "id": "signal-red",
+      "name": "Signal Red",
+      "base": "dark",
+      "palette": {
+        "claude": "#E64F54",
+        "claudeShimmer": "#EF8F92",
+        "text": "#E9EAEC",
+        "inactive": "#A0A2AB"
+      },
+      "source": "https://github.com/notgabriels-sys/claude-code-50-dark-themes/blob/main/signal-red.json",
+      "url": "https://gabs-utilities.com/#theme-signal-red"
+    },
+    {
+      "id": "sonar",
+      "name": "Sonar",
+      "base": "dark",
+      "palette": {
+        "claude": "#40E0C0",
+        "claudeShimmer": "#86EBD7",
+        "text": "#E8EBED",
+        "inactive": "#9DA6AF"
+      },
+      "source": "https://github.com/notgabriels-sys/claude-code-50-dark-themes/blob/main/sonar.json",
+      "url": "https://gabs-utilities.com/#theme-sonar"
+    },
+    {
+      "id": "soot",
+      "name": "Soot",
+      "base": "dark",
+      "palette": {
+        "claude": "#9C958C",
+        "claudeShimmer": "#C2BDB8",
+        "text": "#EDEAE9",
+        "inactive": "#AFA49D"
+      },
+      "source": "https://github.com/notgabriels-sys/claude-code-50-dark-themes/blob/main/soot.json",
+      "url": "https://gabs-utilities.com/#theme-soot"
+    },
+    {
+      "id": "static",
+      "name": "Static",
+      "base": "dark",
+      "palette": {
+        "claude": "#E4E6E8",
+        "claudeShimmer": "#FFFFFF",
+        "text": "#EBEBEB",
+        "inactive": "#A6A6A6"
+      },
+      "source": "https://github.com/notgabriels-sys/claude-code-50-dark-themes/blob/main/static.json",
+      "url": "https://gabs-utilities.com/#theme-static"
+    },
+    {
+      "id": "terminal",
+      "name": "Terminal",
+      "base": "dark",
+      "palette": {
+        "claude": "#33D17A",
+        "claudeShimmer": "#76E0A5",
+        "text": "#E9EDE9",
+        "inactive": "#9DAF9D"
+      },
+      "source": "https://github.com/notgabriels-sys/claude-code-50-dark-themes/blob/main/terminal.json",
+      "url": "https://gabs-utilities.com/#theme-terminal"
+    },
+    {
+      "id": "tidepool",
+      "name": "Tidepool",
+      "base": "dark",
+      "palette": {
+        "claude": "#3FC8B0",
+        "claudeShimmer": "#7EDACA",
+        "text": "#E8EDED",
+        "inactive": "#9DAFAF"
+      },
+      "source": "https://github.com/notgabriels-sys/claude-code-50-dark-themes/blob/main/tidepool.json",
+      "url": "https://gabs-utilities.com/#theme-tidepool"
+    },
+    {
+      "id": "tungsten",
+      "name": "Tungsten",
+      "base": "dark",
+      "palette": {
+        "claude": "#FFB374",
+        "claudeShimmer": "#FFE0C6",
+        "text": "#ECEBE9",
+        "inactive": "#ADA69F"
+      },
+      "source": "https://github.com/notgabriels-sys/claude-code-50-dark-themes/blob/main/tungsten.json",
+      "url": "https://gabs-utilities.com/#theme-tungsten"
+    },
+    {
+      "id": "ultraviolet",
+      "name": "Ultraviolet",
+      "base": "dark",
+      "palette": {
+        "claude": "#9D6BFF",
+        "claudeShimmer": "#D3BDFF",
+        "text": "#EAE8ED",
+        "inactive": "#A49DAF"
+      },
+      "source": "https://github.com/notgabriels-sys/claude-code-50-dark-themes/blob/main/ultraviolet.json",
+      "url": "https://gabs-utilities.com/#theme-ultraviolet"
+    },
+    {
+      "id": "undergrowth",
+      "name": "Undergrowth",
+      "base": "dark",
+      "palette": {
+        "claude": "#4FA872",
+        "claudeShimmer": "#84C59D",
+        "text": "#E8EDEB",
+        "inactive": "#9DAFA6"
+      },
+      "source": "https://github.com/notgabriels-sys/claude-code-50-dark-themes/blob/main/undergrowth.json",
+      "url": "https://gabs-utilities.com/#theme-undergrowth"
+    },
+    {
+      "id": "undertow",
+      "name": "Undertow",
+      "base": "dark",
+      "palette": {
+        "claude": "#A8D8E8",
+        "claudeShimmer": "#E9F5F9",
+        "text": "#E8ECED",
+        "inactive": "#9DA9AF"
+      },
+      "source": "https://github.com/notgabriels-sys/claude-code-50-dark-themes/blob/main/undertow.json",
+      "url": "https://gabs-utilities.com/#theme-undertow"
+    },
+    {
+      "id": "velvet",
+      "name": "Velvet",
+      "base": "dark",
+      "palette": {
+        "claude": "#C0A8E8",
+        "claudeShimmer": "#EFE9F9",
+        "text": "#ECE8ED",
+        "inactive": "#A99DAF"
+      },
+      "source": "https://github.com/notgabriels-sys/claude-code-50-dark-themes/blob/main/velvet.json",
+      "url": "https://gabs-utilities.com/#theme-velvet"
+    },
+    {
+      "id": "verdigris",
+      "name": "Verdigris",
+      "base": "dark",
+      "palette": {
+        "claude": "#6FC4A8",
+        "claudeShimmer": "#A9DCCB",
+        "text": "#E8EDED",
+        "inactive": "#9DAFAC"
+      },
+      "source": "https://github.com/notgabriels-sys/claude-code-50-dark-themes/blob/main/verdigris.json",
+      "url": "https://gabs-utilities.com/#theme-verdigris"
+    },
+    {
+      "id": "vu-meter",
+      "name": "VU Meter",
+      "base": "dark",
+      "palette": {
+        "claude": "#46D160",
+        "claudeShimmer": "#87E198",
+        "text": "#EAEAEB",
+        "inactive": "#A4A4A8"
+      },
+      "source": "https://github.com/notgabriels-sys/claude-code-50-dark-themes/blob/main/vu-meter.json",
+      "url": "https://gabs-utilities.com/#theme-vu-meter"
+    }
+  ]
+}
