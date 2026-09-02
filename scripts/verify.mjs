@@ -438,6 +438,49 @@ for (const name of sourceSkills) {
     fail(`plugins/berlin-studio-skills/README.md does not list the packaged skill ${name}.`);
   }
 }
+// The theme counts are stated in words too — "Fifty atmospheres", "twelve new
+// atmospheres", "twelve additional dark themes", "twelve all-new palettes" —
+// across the storefront, llms.txt and the READMEs, and the description guard
+// above reads only the plugin descriptions. That is the exact shape of the
+// "Five skills" rot: when the pack grows, the description is forced to move
+// and the prose is not. So every "<number> … themes|palettes|atmospheres"
+// claim on a public surface must be a count that ships: the flagship pack,
+// Vol. 2, or the two together. Plural nouns only — "one step above the theme"
+// is not a count — and a digit directly after "Vol." is an edition number,
+// not a count ("Vol. 2 themes"), which a bare digit scan reads as 2 themes.
+const shippedThemeCounts = new Set([files.length, vol2Files.length, files.length + vol2Files.length]);
+const numberWordPattern = Object.keys(NUMBER_WORDS).join("|");
+const themeCountPattern = new RegExp(
+  // The intervening words may not themselves be numbers: in "one of my 50
+  // themes" the count bound to "themes" is 50, not one.
+  `(?<![\\w.&;])(${numberWordPattern}|\\d{1,3})((?:[ \\t]+(?!(?:${numberWordPattern}|\\d+)\\b)[\\w-]+){0,3})[ \\t]+(themes|palettes|atmospheres)\\b`,
+  "gi",
+);
+const themeCountSurfaces = [
+  ...(await readdir(root)).filter((file) => file.endsWith(".html")).sort(),
+  "llms.txt",
+  "README.md",
+  "plugins/50-dark-themes/README.md",
+  "plugins/dark-themes-vol-2/README.md",
+];
+for (const surface of themeCountSurfaces) {
+  const raw = await readFile(new URL(surface, root), "utf8");
+  const text = raw.replace(/&nbsp;/g, " ").replace(/<[^>]+>/g, " ");
+  for (const match of text.matchAll(themeCountPattern)) {
+    const before = text.slice(Math.max(0, match.index - 8), match.index);
+    if (/Vol\.\s*$/i.test(before)) continue;
+    // "70 VS Code themes" is a claim about a different product, not this pack.
+    if (/\bVS Code\b/i.test(match[2])) continue;
+    const word = match[1].toLowerCase();
+    const stated = word in NUMBER_WORDS ? NUMBER_WORDS[word] : Number(word);
+    if (!shippedThemeCounts.has(stated)) {
+      fail(
+        `${surface} says "${match[0].replace(/\s+/g, " ")}" but the packs ship ` +
+          `${files.length} + ${vol2Files.length} themes.`,
+      );
+    }
+  }
+}
 
 const html = await readFile(new URL("index.html", root), "utf8");
 const readme = await readFile(new URL("README.md", root), "utf8");

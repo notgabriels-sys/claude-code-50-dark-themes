@@ -694,3 +694,40 @@ test("rejects a plugin whose description still states yesterday's count", { time
   assert.notEqual(result.code, 0, "a stale count in the plugin description shipped green");
   assert.match(result.stderr, /berlin-studio-skills describes itself as shipping \d+ but \d+ ship/);
 });
+
+test("rejects a public page whose prose theme count drifts from what ships", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  // The Vol. 2 count is written as a word on the storefront, the install
+  // guide, llms.txt and the READMEs, and the description guard reads only the
+  // plugin descriptions. When the pack grows, the description is forced to
+  // move and the prose is not — the "Five skills" rot in another place.
+  const readmePath = join(fixtureRoot, "README.md");
+  const readme = await readFile(readmePath, "utf8");
+  assert.equal(readme.split("twelve all-new palettes").length, 2, "fixture anchor must be unique");
+  await writeFile(readmePath, readme.replace("twelve all-new palettes", "eleven all-new palettes"));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "a stale prose theme count shipped green");
+  assert.match(result.stderr, /README\.md says "eleven all-new palettes" but the packs ship \d+ \+ \d+ themes/);
+});
+
+test("accepts an edition number, a foreign product's count and a count bound to a later number", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  // Negative control: "Vol. 3 themes" is an edition, not three themes;
+  // "70 VS Code themes" is another product; and in "one of my 50 themes" the
+  // count bound to "themes" is 50, not one. None may fire.
+  const readmePath = join(fixtureRoot, "README.md");
+  const readme = await readFile(readmePath, "utf8");
+  await writeFile(
+    readmePath,
+    readme.replace(
+      "twelve all-new palettes",
+      "twelve all-new palettes (no Vol. 3 themes are planned; Lowlight has 70 VS Code themes; one of my 50 themes)",
+    ),
+  );
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.equal(result.code, 0, `a legitimate sentence was rejected: ${result.stderr}`);
+});
