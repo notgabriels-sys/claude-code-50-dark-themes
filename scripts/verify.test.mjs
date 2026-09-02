@@ -657,3 +657,40 @@ test("packages a skill's supporting files and detects tampering in them", { time
   assert.notEqual(result.code, 0, "a tampered supporting file was accepted");
   assert.match(result.stderr, /freelance-admin-de\/references\/kleinunternehmer\.md differs from its plugin copy/);
 });
+
+test("rejects a marketplace listing that disagrees with the plugin's own manifest", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  // Every plugin's metadata is written twice — plugin.json and the marketplace
+  // entry — and only name, source and version used to be compared. Found live:
+  // the skills plugin listed six keywords in the marketplace and eight in its
+  // manifest, and verify was green.
+  const marketplacePath = join(fixtureRoot, ".claude-plugin/marketplace.json");
+  const marketplace = JSON.parse(await readFile(marketplacePath, "utf8"));
+  const entry = marketplace.plugins.find((plugin) => plugin.name === "berlin-studio-skills");
+  entry.keywords = entry.keywords.slice(0, -1);
+  await writeFile(marketplacePath, `${JSON.stringify(marketplace, null, 2)}\n`);
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "a marketplace listing that drifted from its manifest shipped green");
+  assert.match(result.stderr, /Marketplace entry for berlin-studio-skills disagrees with its plugin manifest on keywords/);
+});
+
+test("rejects a plugin whose description still states yesterday's count", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  // A count written in prose rots the day the next thing is added. Found live:
+  // both the manifest and the listing said "Five skills" while six shipped.
+  // Here a seventh skill is added and packaged correctly, and nothing else
+  // changes — the only defect is the number in the description.
+  const seventh = join(fixtureRoot, ".claude/skills/zz-seventh");
+  await cp(join(fixtureRoot, ".claude/skills/release-delivery"), seventh, { recursive: true });
+  const skillPath = join(seventh, "SKILL.md");
+  await writeFile(skillPath, (await readFile(skillPath, "utf8")).replace(/^name: .*$/m, "name: zz-seventh"));
+  const synced = await runNodeScript(fixtureRoot, "scripts/sync-plugin-skills.mjs");
+  assert.equal(synced.code, 0, "the sync should succeed");
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "a stale count in the plugin description shipped green");
+  assert.match(result.stderr, /berlin-studio-skills describes itself as shipping \d+ but \d+ ship/);
+});

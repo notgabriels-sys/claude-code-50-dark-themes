@@ -44,10 +44,10 @@ claude plugin install dark-themes-vol-2@notgabriels-themes
 claude plugin install berlin-studio-skills@notgabriels-themes
 ```
 
-Five skills for running a techno studio and a freelance audio practice in Berlin: building a
+Six skills for running a techno studio and a freelance audio practice in Berlin: building a
 specific sound, diagnosing a mix that will not translate, getting masters and metadata out the
-door, formal German correspondence, and German freelance invoicing and tax admin. They route to
-one another, so you rarely have to name one. See
+door, formal German correspondence, German freelance invoicing and tax admin, and making the
+shop and repository easier to find. They route to one another, so you rarely have to name one. See
 [the plugin README](plugins/berlin-studio-skills/README.md).
 
 

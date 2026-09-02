@@ -1,6 +1,6 @@
 # Berlin Studio Skills
 
-Five Claude Code skills for running a techno studio and a freelance audio
+Six Claude Code skills for running a techno studio and a freelance audio
 practice in Berlin.
 
 ```
@@ -15,6 +15,7 @@ claude plugin install berlin-studio-skills
 | `release-delivery` | Master specs, ISRC/UPC, artwork, metadata, distributor lead times |
 | `german-correspondence` | Formal German letters and email — Kündigung, Widerspruch, Mahnung |
 | `freelance-admin-de` | Rechnung, §14 UStG fields, Kleinunternehmerregelung, KSK, deadlines |
+| `storefront-exposure` | SEO, structured data, sitemap, llms.txt, directory listings — and the price-in-structured-data trap |
 
 They route to one another, so asking "what do I do with this track" lands in the
 right one without naming it.

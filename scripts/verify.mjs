@@ -296,7 +296,7 @@ if (marketplace.plugins[1].version !== vol2Manifest.version) {
   fail("Marketplace and Vol. 2 plugin manifest versions must match.");
 }
 
-// The five skills live in .claude/skills/ (source of truth) and are mirrored
+// The skills live in .claude/skills/ (source of truth) and are mirrored
 // into the plugin so they can be installed outside this repo. Drift between the
 // two copies means an installer silently gets a different skill than a
 // contributor reads, so it fails the build -- same contract as the themes.
@@ -367,6 +367,75 @@ for (const name of sourceSkills) {
   }
   if (!/^description:/m.test(original)) {
     fail(`Skill ${name} is missing a description in its frontmatter.`);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// What a listing says must be what the package says. Every plugin's metadata
+// is written twice — in its own plugin.json and again in its marketplace entry
+// — and the checks above compared only name, source and version. Found live on
+// 2026-09-02: berlin-studio-skills carried eight keywords in its manifest and
+// six in the marketplace, and both described "Five skills" while six shipped;
+// verify was green. A count written in prose rots the day the next thing is
+// added, so the count is read back from what ships rather than trusted.
+// ---------------------------------------------------------------------------
+const NUMBER_WORDS = Object.fromEntries(
+  [
+    "zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine",
+    "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen",
+    "seventeen", "eighteen", "nineteen", "twenty",
+  ].map((word, value) => [word, value]).concat([
+    ["thirty", 30], ["forty", 40], ["fifty", 50], ["sixty", 60],
+  ]),
+);
+const statedCount = (text) => {
+  const match = /^([A-Za-z]+)\b/.exec(text.trim());
+  return match ? NUMBER_WORDS[match[1].toLowerCase()] : undefined;
+};
+const shippedCounts = {
+  "50-dark-themes": files.length,
+  "dark-themes-vol-2": vol2Files.length,
+  "berlin-studio-skills": sourceSkills.length,
+};
+for (const [index, expected] of expectedPlugins.entries()) {
+  const entry = marketplace.plugins[index];
+  const manifest = JSON.parse(
+    await readFile(new URL(`${expected.source}/.claude-plugin/plugin.json`, root), "utf8"),
+  );
+  for (const [key, value] of Object.entries(manifest)) {
+    if (key === "experimental") continue;
+    if (JSON.stringify(entry[key]) !== JSON.stringify(value)) {
+      fail(
+        `Marketplace entry for ${expected.name} disagrees with its plugin manifest on ${key}: ` +
+          `listing ${JSON.stringify(entry[key])}, manifest ${JSON.stringify(value)}.`,
+      );
+    }
+  }
+  const stated = statedCount(manifest.description ?? "");
+  if (stated === undefined) {
+    fail(`${expected.name}'s description must open with the number of things it ships, as a word.`);
+  } else if (stated !== shippedCounts[expected.name]) {
+    fail(`${expected.name} describes itself as shipping ${stated} but ${shippedCounts[expected.name]} ship.`);
+  }
+}
+// The same count is stated in prose in the READMEs. Any "<number> skills"
+// there must be the shipped number, not the number on the day it was written.
+const skillCountPattern = /\b([A-Za-z]+) (?:Claude Code )?skills\b/g;
+for (const readme of ["README.md", "plugins/berlin-studio-skills/README.md"]) {
+  const text = await readFile(new URL(readme, root), "utf8");
+  for (const match of text.matchAll(skillCountPattern)) {
+    const stated = NUMBER_WORDS[match[1].toLowerCase()];
+    if (stated !== undefined && stated !== sourceSkills.length) {
+      fail(`${readme} says "${match[0]}" but ${sourceSkills.length} skills ship.`);
+    }
+  }
+}
+// And every skill that ships is named in the plugin README's table, so the
+// sixth skill cannot be installed while the README still lists five.
+const skillsReadme = await readFile(new URL("plugins/berlin-studio-skills/README.md", root), "utf8");
+for (const name of sourceSkills) {
+  if (!skillsReadme.includes(`\`${name}\``)) {
+    fail(`plugins/berlin-studio-skills/README.md does not list the packaged skill ${name}.`);
   }
 }
 
