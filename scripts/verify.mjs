@@ -388,9 +388,18 @@ const NUMBER_WORDS = Object.fromEntries(
     ["thirty", 30], ["forty", 40], ["fifty", 50], ["sixty", 60],
   ]),
 );
+// "sixty-two" is a number word too; the storefront already writes
+// "Forty-eight" in that style, and a bare-word table read "sixty-two themes"
+// as "two themes" and "Twenty-six skills" as twenty.
+const numberWordValue = (word) => {
+  const lower = word.toLowerCase();
+  if (lower in NUMBER_WORDS) return NUMBER_WORDS[lower];
+  const parts = /^(twenty|thirty|forty|fifty|sixty)-(one|two|three|four|five|six|seven|eight|nine)$/.exec(lower);
+  return parts ? NUMBER_WORDS[parts[1]] + NUMBER_WORDS[parts[2]] : undefined;
+};
 const statedCount = (text) => {
-  const match = /^([A-Za-z]+)\b/.exec(text.trim());
-  return match ? NUMBER_WORDS[match[1].toLowerCase()] : undefined;
+  const match = /^([A-Za-z]+(?:-[A-Za-z]+)?)\b/.exec(text.trim());
+  return match ? numberWordValue(match[1]) : undefined;
 };
 const shippedCounts = {
   "50-dark-themes": files.length,
@@ -420,11 +429,11 @@ for (const [index, expected] of expectedPlugins.entries()) {
 }
 // The same count is stated in prose in the READMEs. Any "<number> skills"
 // there must be the shipped number, not the number on the day it was written.
-const skillCountPattern = /\b([A-Za-z]+) (?:Claude Code )?skills\b/g;
+const skillCountPattern = /\b([A-Za-z]+(?:-[A-Za-z]+)?) (?:Claude Code )?skills\b/g;
 for (const readme of ["README.md", "plugins/berlin-studio-skills/README.md"]) {
   const text = await readFile(new URL(readme, root), "utf8");
   for (const match of text.matchAll(skillCountPattern)) {
-    const stated = NUMBER_WORDS[match[1].toLowerCase()];
+    const stated = numberWordValue(match[1]);
     if (stated !== undefined && stated !== sourceSkills.length) {
       fail(`${readme} says "${match[0]}" but ${sourceSkills.length} skills ship.`);
     }
@@ -449,11 +458,13 @@ for (const name of sourceSkills) {
 // is not a count — and a digit directly after "Vol." is an edition number,
 // not a count ("Vol. 2 themes"), which a bare digit scan reads as 2 themes.
 const shippedThemeCounts = new Set([files.length, vol2Files.length, files.length + vol2Files.length]);
-const numberWordPattern = Object.keys(NUMBER_WORDS).join("|");
+const numberWordPattern =
+  "(?:twenty|thirty|forty|fifty|sixty)-(?:one|two|three|four|five|six|seven|eight|nine)|" +
+  Object.keys(NUMBER_WORDS).join("|");
 const themeCountPattern = new RegExp(
   // The intervening words may not themselves be numbers: in "one of my 50
   // themes" the count bound to "themes" is 50, not one.
-  `(?<![\\w.&;])(${numberWordPattern}|\\d{1,3})((?:[ \\t]+(?!(?:${numberWordPattern}|\\d+)\\b)[\\w-]+){0,3})[ \\t]+(themes|palettes|atmospheres)\\b`,
+  `(?<![\\w.&;-])(${numberWordPattern}|\\d{1,3})((?:[ \\t]+(?!(?:${numberWordPattern}|\\d+)\\b)[\\w-]+){0,3})[ \\t]+(themes|palettes|atmospheres)\\b`,
   "gi",
 );
 const themeCountSurfaces = [
@@ -471,8 +482,7 @@ for (const surface of themeCountSurfaces) {
     if (/Vol\.\s*$/i.test(before)) continue;
     // "70 VS Code themes" is a claim about a different product, not this pack.
     if (/\bVS Code\b/i.test(match[2])) continue;
-    const word = match[1].toLowerCase();
-    const stated = word in NUMBER_WORDS ? NUMBER_WORDS[word] : Number(word);
+    const stated = /^\d/.test(match[1]) ? Number(match[1]) : numberWordValue(match[1]);
     if (!shippedThemeCounts.has(stated)) {
       fail(
         `${surface} says "${match[0].replace(/\s+/g, " ")}" but the packs ship ` +

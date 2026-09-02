@@ -712,22 +712,54 @@ test("rejects a public page whose prose theme count drifts from what ships", { t
   assert.match(result.stderr, /README\.md says "eleven all-new palettes" but the packs ship \d+ \+ \d+ themes/);
 });
 
-test("accepts an edition number, a foreign product's count and a count bound to a later number", { timeout: 90_000 }, async (t) => {
+test("accepts an edition number, a foreign product's count, a count bound to a later number and a hyphenated total", { timeout: 90_000 }, async (t) => {
   const fixtureRoot = await makeFixture(t);
   // Negative control: "Vol. 3 themes" is an edition, not three themes;
-  // "70 VS Code themes" is another product; and in "one of my 50 themes" the
-  // count bound to "themes" is 50, not one. None may fire.
+  // "70 VS Code themes" is another product; in "one of my 50 themes" the
+  // count bound to "themes" is 50, not one; and "sixty-two themes" is the
+  // shipped total, which a bare-word table once read as "two themes". None
+  // may fire.
   const readmePath = join(fixtureRoot, "README.md");
   const readme = await readFile(readmePath, "utf8");
   await writeFile(
     readmePath,
     readme.replace(
       "twelve all-new palettes",
-      "twelve all-new palettes (no Vol. 3 themes are planned; Lowlight has 70 VS Code themes; one of my 50 themes)",
+      "twelve all-new palettes (no Vol. 3 themes are planned; Lowlight has 70 VS Code themes; one of my 50 themes; sixty-two themes in all)",
     ),
   );
 
   const result = await runVerifier(fixtureRoot);
 
   assert.equal(result.code, 0, `a legitimate sentence was rejected: ${result.stderr}`);
+});
+
+test("rejects a hyphenated prose count as the whole word, not its last half", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  // "sixty-three" must be read as 63 and reported as "sixty-three palettes".
+  // Before the hyphen was understood the scan read it as "three palettes" —
+  // a failure for the wrong reason, which also meant a correct "sixty-two"
+  // failed and "Twenty-six skills" in the README passed unread.
+  const readmePath = join(fixtureRoot, "README.md");
+  const readme = await readFile(readmePath, "utf8");
+  assert.equal(readme.split("twelve all-new palettes").length, 2, "fixture anchor must be unique");
+  await writeFile(readmePath, readme.replace("twelve all-new palettes", "sixty-three palettes"));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "a wrong hyphenated count shipped green");
+  assert.match(result.stderr, /README\.md says "sixty-three palettes" but the packs ship/);
+});
+
+test("rejects a hyphenated skills count in the README", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const readmePath = join(fixtureRoot, "README.md");
+  const readme = await readFile(readmePath, "utf8");
+  assert.equal(readme.split("Six skills for running").length, 2, "fixture anchor must be unique");
+  await writeFile(readmePath, readme.replace("Six skills for running", "Twenty-six skills for running"));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "a hyphenated skills count passed unread");
+  assert.match(result.stderr, /README\.md says "Twenty-six skills" but \d+ skills ship/);
 });
