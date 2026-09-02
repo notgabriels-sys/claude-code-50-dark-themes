@@ -80,6 +80,46 @@ nobody trusts is worse than no document.
 fire, the working tree restored, and the claim in the commit message matching
 what the code does. "Should work" is not a result.
 
+## Proving a guard — the working method, earned here
+
+Every guard in `scripts/verify.mjs` was added by this loop, and every rule
+below was paid for by a defect in Claude's own work in this repo. Recorded
+2026-09-02 as commands and counts, not line numbers.
+
+1. **Reproduce green first.** Break a copy of the tree under the scratchpad
+   the way the defect would, run `node scripts/verify.mjs`, and watch it pass.
+   A guard built without seeing the hole pass is guarding a guess.
+2. **A fixture edit asserts its anchor.** Count the anchor string before
+   replacing it and require exactly one match. A replace that matched zero or
+   two times silently produced a fixture that tested nothing — twice.
+3. **A control must fail for its own reason.** Read the error text, not the
+   exit code. A thirteenth Vol. 2 theme first failed on a duplicate display
+   name, which proved nothing about the count guard it was meant to prove.
+4. **Run a new scan against the real tree before trusting it**, and treat
+   every match as a finding. The prose-count scan found three false positives
+   that way ("Vol. 2 themes", "70 VS Code themes", "one of my 50 themes") and
+   one public page that stated a count nobody had listed.
+5. **Mutation-test every new test.** Gut the guard it covers and confirm that
+   test, and only that test, fails. Reset the mutated file between mutations:
+   a scratch copy with no commit cannot be checked out back, and two mutations
+   stacked once without anyone noticing until the pass count looked wrong.
+6. **Compose bad patterns from pieces** in tests (join `"[a-z0"` and
+   `"-9-]+"`), so the self-check that scans every script for the truncating
+   capture does not fire on the test that exercises it. It did, and took
+   fifteen unrelated tests down with it.
+7. **Escapes, not bytes.** Write `"\u0000"` in source, never a literal NUL.
+   It ran and the suite passed; grep started calling the file binary. Check:
+   `python3 -c "print(open('scripts/verify.mjs','rb').read().count(b'\x00'))"`.
+8. **Control characters in a commit message** go through
+   `git commit -F <file>` from the scratchpad.
+9. **CI publishes a check run, not a commit status.** Read it with
+   `get_check_runs`; `get_status` reports pending forever.
+10. **A count in prose rots.** When something is added, `verify` fails on the
+    stale sentence by design — fix the sentence, never the guard.
+11. **Every skill in `.claude/skills/` ships to installers** through
+    `berlin-studio-skills`. A repo-internal method belongs in this file, not
+    in a skill.
+
 ## Payment surfaces — read before adding any buy button
 
 **Never add a payment button from a description of an account, or from a
