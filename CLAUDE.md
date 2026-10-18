@@ -121,6 +121,13 @@ below was paid for by a defect in Claude's own work in this repo. Recorded
 11. **Every skill in `.claude/skills/` ships to installers** through
     `berlin-studio-skills`. A repo-internal method belongs in this file, not
     in a skill.
+12. **Distrust an expected value that comes from the code being checked.**
+    `verify` compared `themes.json` and the crawlable ItemList in `index.html`
+    only with what their generator produces now, so a generator bug
+    regenerated into a file that agreed with itself — a one-key palette in
+    one, a dropped theme and dead anchors in the other — and CI stayed green.
+    A byte comparison catches hand edits; content needs a second source (the
+    theme files, the page's canonical link, the plugin manifest).
 
 ## Payment surfaces — read before adding any buy button
 
@@ -308,6 +315,15 @@ a plain clone, and the installed plugin reported `Hooks (1) SessionStart`. So
 `verify` fails on a `.gitmodules` file and on any empty directory under
 `plugins/` — git checks out an empty directory only as a submodule placeholder.
 The skills sync dereferences symlinks for the same reason the walk rejects them.
+
+**Generated surfaces are checked against their sources, not their generator.**
+`themes.json` and the JSON-LD ItemList in `index.html` are both written by
+`scripts/build-theme-index.mjs`. `verify` checks each twice: byte for byte
+against a fresh build (which catches a hand edit), and by content against the
+theme files, the canonical link and the plugin manifest (which catches a
+generator bug). For the ItemList it also requires one marker pair and exactly
+one ItemList on the page, because the generator rewrites only the first pair and
+a stale second block would survive regeneration.
 
 The Gumroad half now has structural guards, an existence-verified slug list and
 a price-drift table — but no verified *price* for any product. See below.
