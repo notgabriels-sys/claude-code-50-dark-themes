@@ -830,8 +830,9 @@ for (const [gridId, listName] of [["grid", "THEMES"], ["vol2Grid", "VOL2_THEMES"
 
 // Text as a reader gets it: comments, <style> and <script> removed, block
 // boundaries as line breaks, other tags as spaces, character references
-// decoded, and source whitespace collapsed as a browser collapses it, so a
-// newline in the HTML source never counts as a line break. Attribute values
+// decoded, and source whitespace collapsed as a browser collapses it: a
+// newline in the HTML source counts as a line break only inside <pre> or
+// <textarea>, where a browser keeps it. Attribute values
 // are read separately, because a screen reader announces an aria-label and a
 // share card shows a meta description.
 const namedEntities = {
@@ -855,9 +856,11 @@ const blockTag = new RegExp(
   "i",
 );
 const blockBreak = "\u0000";
+const keepPreformatted = (markup) =>
+  markup.replace(/<(pre|textarea)\b[\s\S]*?<\/\1\s*>/gi, (block) => block.replace(/\r\n?|\n/g, blockBreak));
 const visibleText = (markup) =>
   decodeEntities(
-    withoutCode(markup)
+    keepPreformatted(withoutCode(markup))
       .replace(anyTag, (tag, closing, name) => (blockTag.test(name) ? blockBreak : " "))
       .replace(/<![^>]*>/g, " "),
   )
@@ -874,7 +877,7 @@ const attributeValues = (markup) =>
 // buttons, and anything whose class names a prompt or a command.
 const voidTag = /^(?:area|base|br|col|embed|hr|img|input|link|meta|source|track|wbr)$/i;
 const commandTexts = (markup) => {
-  const source = withoutCode(markup);
+  const source = keepPreformatted(withoutCode(markup));
   const open = [];
   const texts = [];
   for (const tag of source.matchAll(anyTag)) {

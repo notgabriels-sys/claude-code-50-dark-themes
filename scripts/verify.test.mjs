@@ -950,3 +950,20 @@ test("names the page script's error when a card loses its name", { timeout: 90_0
   assert.notEqual(result.code, 0, "the verifier checked blank cards a browser never shows");
   assert.match(result.stderr, /rendered the Absinthe card without its name[^\n]*failed first: reducedMotionQuery is not defined/);
 });
+
+test("accepts a <pre> transcript with the theme to choose on the next line", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixturePage = join(fixtureRoot, "index.html");
+  const page = await readFile(fixturePage, "utf8");
+  await writeFile(
+    fixturePage,
+    page.replace(
+      "Run <code>/theme</code> and choose one.",
+      "Run <code>/theme</code> and choose one.</p><pre><code>&gt; /theme\nDeep Field  ← pick it in the list</code></pre><p>",
+    ),
+  );
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.equal(result.code, 0, `a <pre> line break, which a browser keeps, was read as one line:\n${result.stderr}`);
+});
