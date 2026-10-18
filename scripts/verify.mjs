@@ -606,6 +606,24 @@ if (/\/theme \$\{|["'`]\/theme [a-z0-9][a-z0-9-]*["'`]/.test(html)) {
   );
 }
 
+// The install guide (its HowTo steps included) and the semantic-colours
+// article tell readers to set their terminal to "the theme's surface hex from
+// the gallery". The cards only ever printed the accent hex; the surface value
+// lived in an inline style nobody can read without devtools, so a reader
+// following the steps would paint their terminal in a bright accent colour.
+// Wherever a public page promises it, the card template must print it.
+const surfacePromisedBy = [];
+for (const file of publicHtmlFiles) {
+  const source = await readFile(new URL(file, root), "utf8");
+  if (/surface hex/i.test(source)) surfacePromisedBy.push(file);
+}
+if (surfacePromisedBy.length && !/>[^<]*surface \$\{bg\}/.test(html)) {
+  fail(
+    `${surfacePromisedBy.join(", ")} promise a surface hex in the gallery, but the cards do not print it. ` +
+      "Render ${bg} as visible text on each card.",
+  );
+}
+
 console.log(
   `Verified ${files.length} themes, ${pluginFiles.length} plugin themes, ${vol2Files.length} Vol. 2 themes, ` +
     `${galleryThemes.length} gallery cards, ` +

@@ -820,7 +820,7 @@ const renderTheme = ([name,accent,shimmer,text,mute,bg]) => {
       <button class="prompt-box theme-command" type="button" data-theme-name="${esc(name)}" aria-label="Copy /theme, then choose ${esc(name)} in Claude Code">
         <span class="gt">&gt;</span><span class="txt">/theme</span><span class="caret" aria-hidden="true"></span><span class="copy-label">Copy command</span>
       </button>
-      <div class="hint">then choose &ldquo;${esc(name)}&rdquo;</div>
+      <div class="hint">then choose &ldquo;${esc(name)}&rdquo; &nbsp;·&nbsp; surface ${bg}</div>
     </div>
   </article>`;
 };

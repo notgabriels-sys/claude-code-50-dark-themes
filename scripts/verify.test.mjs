@@ -454,3 +454,15 @@ test("rejects gallery cards that copy /theme with a theme argument", { timeout: 
   assert.notEqual(result.code, 0, "the verifier accepted a copied command Claude Code ignores the argument of");
   assert.match(result.stderr, /copies a \/theme command with a theme argument/);
 });
+
+test("rejects cards that hide the surface hex the guides promise", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixturePage = join(fixtureRoot, "index.html");
+  const page = await readFile(fixturePage, "utf8");
+  await writeFile(fixturePage, page.replace(" &nbsp;·&nbsp; surface ${bg}</div>", "</div>"));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted cards that never show the surface hex readers are sent to find");
+  assert.match(result.stderr, /promise a surface hex in the gallery/);
+});
