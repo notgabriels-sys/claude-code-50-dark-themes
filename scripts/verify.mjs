@@ -639,6 +639,30 @@ for (const file of publicHtmlFiles) {
   }
 }
 
+// The share image's alt text said its colour strip showed "the pack's accent
+// colors". The strip is the site's own syntax-role palette: seven of its eight
+// colours appear in no theme at all, and the eighth is a text colour. If any
+// alt text claims theme accents again, every colour in the strip must be one.
+const accentClaims = [];
+for (const file of publicHtmlFiles) {
+  const source = await readFile(new URL(file, root), "utf8");
+  if (/image:alt" content="[^"]*accent colou?rs/i.test(source)) accentClaims.push(file);
+}
+if (accentClaims.length) {
+  const tokens = new Map([...socialCard.matchAll(/--([a-z-]+):(#[0-9a-f]{6})/gi)].map(([, k, v]) => [k, v.toUpperCase()]));
+  const strip = [...socialCard.matchAll(/\.roles i:nth-child\(\d+\)\{background:var\(--([a-z-]+)\)\}/g)].map(([, k]) => tokens.get(k));
+  const accents = new Set();
+  for (const file of files) accents.add(JSON.parse(await readFile(new URL(file, root), "utf8")).overrides.claude.toUpperCase());
+  for (const file of vol2Files) accents.add(JSON.parse(await readFile(new URL(file, vol2ThemesRoot), "utf8")).overrides.claude.toUpperCase());
+  const strangers = strip.filter((hex) => !accents.has(hex));
+  if (!strip.length || strangers.length) {
+    fail(
+      `${accentClaims.join(", ")} describe the share card's strip as theme accent colours, but ` +
+        `${strangers.length || "all"} of its colours are not any theme's accent (${strangers.join(", ")}).`,
+    );
+  }
+}
+
 console.log(
   `Verified ${files.length} themes, ${pluginFiles.length} plugin themes, ${vol2Files.length} Vol. 2 themes, ` +
     `${galleryThemes.length} gallery cards, ` +

@@ -232,7 +232,7 @@ test("rejects two pages describing the same share image differently", { timeout:
   await writeFile(
     fixturePage,
     page.replaceAll(
-      "Title card: 50 dark themes for Claude Code, with the plugin install command and a strip of the pack&#39;s accent colors",
+      "Title card: 50 dark themes for Claude Code, with the plugin install command and a strip of the site&#39;s interface colors",
       "Gallery preview of dark Claude Code terminal themes.",
     ),
   );
@@ -483,4 +483,18 @@ test("rejects a live region hidden inside a closed disclosure", { timeout: 90_00
 
   assert.notEqual(result.code, 0, "the verifier accepted an announcement no screen reader can hear while the archive is closed");
   assert.match(result.stderr, /aria-live region inside a <details> body/);
+});
+
+test("rejects alt text that calls the share card's strip theme accents", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  for (const name of ["index.html", "claude-code-theme-install-guide.html", "semantic-terminal-colors.html"]) {
+    const path = join(fixtureRoot, name);
+    const page = await readFile(path, "utf8");
+    await writeFile(path, page.replaceAll("a strip of the site&#39;s interface colors", "a strip of the pack&#39;s accent colors"));
+  }
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted alt text describing colours the image does not show");
+  assert.match(result.stderr, /describe the share card's strip as theme accent colours/);
 });
