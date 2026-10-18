@@ -29,6 +29,10 @@ available through the marketplace. Press `Ctrl+E` on a plugin theme if you want 
 Step-by-step install, terminal background and troubleshooting guide:
 <https://gabs-utilities.com/claude-code-theme-install-guide.html>
 
+Prefer to have your agent do it? The **[Claude Code Theme Setup Assistant](https://agensi.io/skills/claude-code-theme-setup-assistant)** ($12 on Agensi)
+picks a theme with you, installs it, checks it shows in `/theme` and gives you the matching terminal
+background. The themes themselves stay free here.
+
 ### Dark Themes Vol. 2 — 12 new themes
 
 The same marketplace now carries a free expansion pack with twelve all-new palettes
