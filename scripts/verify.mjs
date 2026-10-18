@@ -612,6 +612,11 @@ for (const file of [
   text = text.replace(/\s+/g, " ");
   const commands = [...text.matchAll(/plugin install [\w-]+@notgabriels-themes/g)];
   if (!commands.length) fail(`${file} no longer shows a plugin install command; update the restart check in verify.mjs.`);
+  // Run alone on a fresh machine, the install fails: "Plugin not found in
+  // marketplace". llms.txt gave only that line, for agents that run it verbatim.
+  if (!text.includes("marketplace add notgabriels-sys/claude-code-50-dark-themes")) {
+    fail(`${file} gives a plugin install command but not the marketplace add command it needs first.`);
+  }
   for (const command of commands) {
     if (!/restart/i.test(text.slice(command.index, command.index + 700))) {
       fail(

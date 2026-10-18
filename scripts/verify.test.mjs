@@ -1021,3 +1021,17 @@ test("rejects a Vol. 2 previews.json entry that no packaged theme uses", { timeo
   assert.notEqual(result.code, 0, "the verifier accepted a stale preview entry for a theme that does not exist");
   assert.match(result.stderr, /previews\.json has an entry for Ghost, which no packaged theme uses/);
 });
+
+test("rejects a plugin install command given without the marketplace it needs", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const llms = join(fixtureRoot, "llms.txt");
+  const text = await readFile(llms, "utf8");
+  const marketplace = "claude plugin marketplace add notgabriels-sys/claude-code-50-dark-themes\n";
+  assert.ok(text.includes(marketplace), "fixture anchor moved; update this test");
+  await writeFile(llms, text.replace(marketplace, ""));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted an install line that fails on a fresh machine");
+  assert.match(result.stderr, /llms\.txt gives a plugin install command but not the marketplace add command/);
+});
