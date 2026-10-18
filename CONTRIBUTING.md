@@ -85,9 +85,13 @@ is where the pieces live:
   in `.claude-plugin/marketplace.json` together; the verifier requires them to match.
 - Update the numbers the public pages state, in the same change. A theme adds fourteen contrast
   comparisons, so the role-aware check count moves; the share card names each pack's size, and the
-  storefront's Vol. 2 heading spells that pack's size out in words. All three are CI-enforced — see "Numbers stated on public pages" below. Adding a theme and running
-  `node scripts/verify.mjs` without this step fails with, for example,
+  storefront's Vol. 2 heading spells that pack's size out in words. All three are CI-enforced — see
+  "Numbers stated on public pages" below. Adding a theme and running `node scripts/verify.mjs`
+  without this step fails with, for example,
   `index.html claims 894 role-aware checks; the verifier runs 908.`
+  The Vol. 2 size also appears in prose that CI does not check — README.md, the install guide
+  (`claude-code-theme-install-guide.html`), `PROMOTION_QUEUE.md` and
+  `DEV_COMMUNITY_ARTICLE_DRAFT.md` — as "twelve" or "12". Search for both and update them by hand.
 
 `scripts/sync-plugin-themes.mjs` does not apply here — it mirrors the root fifty into their plugin,
 and a Vol. 2 theme is authored in its plugin directly.

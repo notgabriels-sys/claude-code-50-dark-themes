@@ -444,8 +444,10 @@ for (const [page, source] of claimSurfaces) {
   }
 }
 
-// The storefront's Vol. 2 heading states that pack's size in words — the one
-// count a contributor following CONTRIBUTING's add-a-theme steps would move.
+// The storefront's Vol. 2 heading states that pack's size in words, and it is
+// the storefront's only statement of it. README, the install guide and the
+// promotion drafts give the same size in free prose, which no pattern here
+// reads reliably; CONTRIBUTING's add-a-theme step names them for a person.
 const numberWords = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten",
   "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen", "twenty"];
 const vol2Heading = html.match(/Vol\.(?:&nbsp;|\s)2\s*—\s*([a-z]+|\d+)\s+new atmospheres/i);
