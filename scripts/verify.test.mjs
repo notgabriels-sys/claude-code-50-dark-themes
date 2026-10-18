@@ -724,5 +724,154 @@ test("names the page script's own error when the gallery never renders", { timeo
   const result = await runVerifier(fixtureRoot);
 
   assert.notEqual(result.code, 0, "the verifier passed a page whose script stopped before rendering the gallery");
-  assert.match(result.stderr, /The page script threw first: reducedMotionQuery is not defined/);
+  assert.match(result.stderr, /The page script failed first: reducedMotionQuery is not defined/);
+});
+
+const textNodeEsc =
+  'const esc = s => { const div = document.createElement("div"); ' +
+  "div.appendChild(document.createTextNode(s)); return div.innerHTML; };";
+const pageEsc = 'const esc = s => s.replace(/[&<>]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));';
+
+test("rejects the dead command behind a prompt glyph drawn by CSS", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixturePage = join(fixtureRoot, "index.html");
+  const page = await readFile(fixturePage, "utf8");
+  await writeFile(
+    fixturePage,
+    page
+      .replace('<span class="gt">&gt;</span>', "")
+      .replace('<span class="txt">/theme</span>', '<span class="txt">theme ${themeSlug}</span>'),
+  );
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted the dead command once the prompt glyph left the markup");
+  assert.match(result.stderr, /shows "theme absinthe" as a command \(Absinthe\)/);
+});
+
+test("rejects the dead command behind createTextNode escaping", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixturePage = join(fixtureRoot, "index.html");
+  const page = await readFile(fixturePage, "utf8");
+  await writeFile(
+    fixturePage,
+    page
+      .replace(pageEsc, textNodeEsc)
+      .replace('<span class="txt">/theme</span>', '<span class="txt">theme ${esc(themeSlug)}</span>'),
+  );
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted the dead command once esc() went through the DOM");
+  assert.match(result.stderr, /shows "theme absinthe" as a command \(Absinthe\)/);
+});
+
+test("fails loudly when the stand-in DOM renders a card without its name", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixturePage = join(fixtureRoot, "index.html");
+  const page = await readFile(fixturePage, "utf8");
+  await writeFile(
+    fixturePage,
+    page.replace(
+      pageEsc,
+      'const esc = s => { const div = document.createElement("div"); div.prepend(s); return div.innerHTML; };',
+    ),
+  );
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier checked blank cards a browser never shows");
+  assert.match(result.stderr, /rendered the Absinthe card without its name/);
+});
+
+test("accepts page scripts that walk or clear the DOM, reject, or import a module", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixturePage = join(fixtureRoot, "index.html");
+  const page = await readFile(fixturePage, "utf8");
+  const headScript =
+    '<script>const fig = document.querySelector(".theme-monolith"); let top = 0;' +
+    " for (let n = fig; n; n = n.offsetParent) top += n.offsetTop || 0;" +
+    ' (async () => { const repo = await document.fonts.ready.then(() => fetch("/repo.json")); })();</script>';
+  await writeFile(
+    fixturePage,
+    page
+      .replace("</head>", `${headScript}\n</head>`)
+      .replace(
+        'const grid = document.getElementById("grid");',
+        'const grid = document.getElementById("grid");\nwhile (grid.firstChild) grid.removeChild(grid.firstChild);',
+      )
+      .replace("\nupdateFinder();\n", '\nupdateFinder();\nimport("./assets/js/readout.js").then((m) => m.attach(grid));\n'),
+  );
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.equal(result.code, 0, `ordinary page code broke the card checks:\n${result.stderr}`);
+});
+
+test("accepts a gallery filled through querySelector on DOMContentLoaded", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixturePage = join(fixtureRoot, "index.html");
+  const page = await readFile(fixturePage, "utf8");
+  const fill =
+    'grid.innerHTML = THEMES.map(renderTheme).join("");\nconst vol2Grid = document.getElementById("vol2Grid");\n' +
+    'vol2Grid.innerHTML = VOL2_THEMES.map(renderTheme).join("");';
+  assert.ok(page.includes(fill), "fixture anchor moved; update this test");
+  await writeFile(
+    fixturePage,
+    page
+      .replace('const grid = document.getElementById("grid");', 'const grid = document.querySelector("#grid");')
+      .replace(
+        fill,
+        'const vol2Grid = document.querySelector("#vol2Grid");\n' +
+          'document.addEventListener("DOMContentLoaded", () => {\n' +
+          '  grid.innerHTML = THEMES.map(renderTheme).join("\\n");\n' +
+          '  vol2Grid.innerHTML = VOL2_THEMES.map(renderTheme).join("\\n");\n' +
+          "});",
+      ),
+  );
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.equal(result.code, 0, `a gallery the browser renders identically was rejected:\n${result.stderr}`);
+});
+
+test("accepts /theme with the theme to choose on the next line", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixturePage = join(fixtureRoot, "index.html");
+  const page = await readFile(fixturePage, "utf8");
+  const prompt = '<div class="monolith-prompt"><span>&gt;</span><span>/theme</span></div>';
+  await writeFile(
+    fixturePage,
+    page
+      .replace(prompt, `${prompt}<ul class="monolith-picker"><li aria-current="true">Deep Field</li><li>Graphite</li></ul>`)
+      .replace(
+        "Run <code>/theme</code> and choose one.",
+        "Run <code>/theme</code></p><p>Graphite, Ink and Soot sit near the top of the picker.",
+      ),
+  );
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.equal(result.code, 0, `the command followed by a separate line naming a theme was rejected:\n${result.stderr}`);
+});
+
+test("accepts createTextNode escaping and favourites read from localStorage", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixturePage = join(fixtureRoot, "index.html");
+  const page = await readFile(fixturePage, "utf8");
+  const renderer = "const renderTheme = ([name,accent,shimmer,text,mute,bg]) => {";
+  await writeFile(
+    fixturePage,
+    page
+      .replace(pageEsc, textNodeEsc)
+      .replace(renderer, `const favourites = new Set(JSON.parse(localStorage.getItem("favourites") || "[]"));\n${renderer}`)
+      .replace(
+        '<h3 class="tname">${esc(name)}</h3>',
+        '<h3 class="tname">${esc(name)}</h3>${favourites.has(name) ? \'<span class="fav">★</span>\' : ""}',
+      ),
+  );
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.equal(result.code, 0, `a working page was rejected:\n${result.stderr}`);
 });

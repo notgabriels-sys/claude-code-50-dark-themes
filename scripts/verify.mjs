@@ -632,11 +632,22 @@ if (/\/theme \$\{|["'`]\/theme [a-z0-9][a-z0-9-]*["'`]/.test(html)) {
 // (`${esc(themeSlug)}`, `${slug(name)}`) or rejected correct styling
 // (`<span class="hex">`), and evaluating a slice of the script broke on CRLF
 // line endings, helpers defined elsewhere and browser globals. So run the
-// page's inline scripts in order, as the browser does, against a stand-in DOM
-// that records what they write, and take renderTheme, THEMES and VOL2_THEMES
-// from them. #grid and #vol2Grid must hold exactly THEMES.map(renderTheme) and
-// VOL2_THEMES.map(renderTheme); anything else fails loudly, so the cards
-// checked below are the cards the page shows.
+// page's inline scripts in order, as the browser does, in a node:vm context
+// against a stand-in DOM that records what they write, and take renderTheme,
+// THEMES and VOL2_THEMES from them. Three rules keep that honest:
+// - a script that runs too long, throws or rejects is reported, never hangs
+//   or crashes the build;
+// - #grid and #vol2Grid must hold exactly THEMES.map(renderTheme) and
+//   VOL2_THEMES.map(renderTheme), so the cards checked are the cards shown;
+// - every rendered card must still show its theme's name, so a DOM call the
+//   stand-in does not model fails loudly instead of rendering blank cards
+//   that pass.
+const pageScriptTimeout = 2000;
+// A real tree ends, and loops that walk it stop on null.
+const treeWalks = new Set([
+  "firstChild", "lastChild", "firstElementChild", "lastElementChild", "parentNode", "parentElement",
+  "nextSibling", "previousSibling", "nextElementSibling", "previousElementSibling", "offsetParent",
+]);
 const standIn = (props = Object.create(null)) =>
   new Proxy(function () {}, {
     get(target, key) {
@@ -644,6 +655,7 @@ const standIn = (props = Object.create(null)) =>
       if (key === Symbol.iterator) return function* () {};
       if (key === Symbol.toPrimitive) return () => "";
       if (typeof key === "symbol" || key === "then") return undefined;
+      if (treeWalks.has(key)) return null;
       return (props[key] = standIn());
     },
     set(target, key, value) {
@@ -653,6 +665,7 @@ const standIn = (props = Object.create(null)) =>
     apply: () => standIn(),
     construct: () => standIn(),
   });
+const withProps = (props) => standIn(Object.assign(Object.create(null), props));
 const pageElements = new Map();
 const pageElement = (id) => {
   if (!pageElements.has(id)) {
@@ -661,79 +674,150 @@ const pageElement = (id) => {
   }
   return pageElements.get(id).element;
 };
-// Enough of a new element for the usual escaping idiom: set textContent, read
-// innerHTML. Without it an escaped name would render as an empty string.
+// Enough of a new element for the usual escaping idioms: set textContent or
+// append text (a string or a createTextNode()), then read innerHTML.
+const escapeText = (text) =>
+  text.replace(/[&<>\u00a0]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\u00a0": "&nbsp;" })[c]);
+const textNodes = new WeakMap();
+const createdTextNode = (value) => {
+  const node = withProps({ nodeType: 3, data: String(value), textContent: String(value) });
+  textNodes.set(node, String(value));
+  return node;
+};
 const createdElement = () => {
   const props = Object.create(null);
   let text = "";
   let markup = "";
+  const textOf = (item) =>
+    typeof item === "string" || typeof item === "number" ? String(item) : textNodes.get(item) ?? "";
+  const append = (...items) => {
+    for (const item of items) {
+      text += textOf(item);
+      markup += escapeText(textOf(item));
+    }
+  };
   const textAccess = {
     get: () => text,
     set: (value) => {
       text = String(value);
-      markup = text.replace(/[&<>\u00a0]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\u00a0": "&nbsp;" })[c]);
+      markup = escapeText(text);
     },
   };
   Object.defineProperties(props, {
     textContent: textAccess,
     innerText: textAccess,
-    innerHTML: { get: () => markup, set: (value) => (markup = String(value)) },
+    innerHTML: { get: () => markup, set: (value) => (markup = text = String(value)) },
+  });
+  Object.assign(props, {
+    nodeType: 1,
+    append,
+    appendChild: (node) => (append(node), node),
+    replaceChildren: (...items) => {
+      text = markup = "";
+      append(...items);
+    },
+    insertAdjacentText: (position, value) => {
+      if (/^afterbegin$/i.test(position)) {
+        text = String(value) + text;
+        markup = escapeText(String(value)) + markup;
+      } else if (/^beforeend$/i.test(position)) append(value);
+    },
   });
   return standIn(props);
 };
-const pageDocument = standIn(
-  Object.assign(Object.create(null), {
-    getElementById: (id) => pageElement(String(id)),
-    createElement: createdElement,
-  }),
-);
-const pageGlobals = { document: pageDocument, console: { log() {}, info() {}, warn() {}, error() {} } };
-for (const name of ["window", "self"]) {
-  pageGlobals[name] = standIn(Object.assign(Object.create(null), { document: pageDocument }));
-}
+// DOMContentLoaded and load fire once the scripts have run.
+const loadListeners = [];
+const addEventListener = (type, listener) => {
+  if (/^(?:DOMContentLoaded|load)$/.test(type)) loadListeners.push(listener);
+};
+const pageDocument = withProps({
+  addEventListener,
+  readyState: "loading",
+  getElementById: (id) => pageElement(String(id)),
+  querySelector: (selector) =>
+    /^#[\w-]+$/.test(String(selector).trim()) ? pageElement(String(selector).trim().slice(1)) : standIn(),
+  createElement: createdElement,
+  createTextNode: createdTextNode,
+});
+const pageStorage = () =>
+  withProps({ length: 0, getItem: () => null, key: () => null, setItem() {}, removeItem() {}, clear() {} });
+const pageGlobals = {
+  document: pageDocument,
+  console: { log() {}, info() {}, warn() {}, error() {}, debug() {} },
+  localStorage: pageStorage(),
+  sessionStorage: pageStorage(),
+  matchMedia: (query) => withProps({ matches: false, media: String(query) }),
+  // Never settles, so code waiting on the network simply never resumes.
+  fetch: () => new Promise(() => {}),
+};
+pageGlobals.window = pageGlobals.self = withProps({ ...pageGlobals, addEventListener });
 for (const name of [
-  "navigator", "location", "history", "localStorage", "sessionStorage", "matchMedia", "getComputedStyle",
-  "requestAnimationFrame", "cancelAnimationFrame", "setTimeout", "clearTimeout", "setInterval", "clearInterval",
-  "queueMicrotask", "IntersectionObserver", "ResizeObserver", "MutationObserver", "Event", "CustomEvent",
-  "HTMLElement", "Element", "Node", "fetch", "performance", "alert", "scrollTo",
+  "navigator", "location", "history", "getComputedStyle", "requestAnimationFrame", "cancelAnimationFrame",
+  "setTimeout", "clearTimeout", "setInterval", "clearInterval", "queueMicrotask", "IntersectionObserver",
+  "ResizeObserver", "MutationObserver", "Event", "CustomEvent", "HTMLElement", "Element", "Node", "performance",
+  "alert", "scrollTo",
 ]) {
   pageGlobals[name] = standIn();
 }
 Object.assign(pageGlobals, { URL, URLSearchParams, TextEncoder, TextDecoder, atob, btoa });
-const pageContext = createContext(pageGlobals);
+const pageContext = createContext(pageGlobals, { microtaskMode: "afterEvaluate" });
 let pageScriptError;
-for (const [, attributes, source] of html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi)) {
+const runInPage = (source, filename = "index.html") => {
+  try {
+    return { value: new Script(source, { filename }).runInContext(pageContext, { timeout: pageScriptTimeout }) };
+  } catch (error) {
+    return { error };
+  }
+};
+const recordPageRejection = (reason) => {
+  pageScriptError ??= reason;
+};
+process.on("unhandledRejection", recordPageRejection);
+// A browser runs no script inside a comment or a <template>.
+const runnableMarkup = html.replace(/<!--[\s\S]*?-->/g, "").replace(/<template\b[\s\S]*?<\/template\s*>/gi, "");
+for (const [, attributes, source] of runnableMarkup.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi)) {
   const type = attributes.match(/\btype\s*=\s*["']?([^"'\s>]+)/i)?.[1];
   if (/\bsrc\s*=/i.test(attributes) || (type && !/^(?:text|application)\/(?:java|ecma)script$/i.test(type))) continue;
-  try {
-    new Script(source, { filename: "index.html" }).runInContext(pageContext);
-  } catch (error) {
-    pageScriptError ??= error;
-  }
+  pageScriptError ??= runInPage(source).error;
 }
-const pageScriptNote = pageScriptError ? ` The page script threw first: ${pageScriptError.message}.` : "";
-let cardSource;
-try {
-  cardSource = new Script("({ renderTheme, THEMES, VOL2_THEMES })").runInContext(pageContext);
-} catch (error) {
+pageGlobals.__fireLoadListeners = () => {
+  for (const listener of loadListeners.splice(0)) {
+    try {
+      if (typeof listener === "function") listener.call(pageDocument, withProps({ type: "load" }));
+    } catch (error) {
+      pageScriptError ??= error;
+    }
+  }
+};
+pageScriptError ??= runInPage("__fireLoadListeners()").error;
+await new Promise((resolve) => setImmediate(resolve));
+process.off("unhandledRejection", recordPageRejection);
+const pageScriptNote = pageScriptError
+  ? ` The page script failed first: ${pageScriptError?.message ?? pageScriptError}.`
+  : "";
+const bindings = runInPage("({ renderTheme, THEMES, VOL2_THEMES })");
+if (bindings.error) {
   fail(
     `index.html's script did not define renderTheme, THEMES and VOL2_THEMES when verify.mjs ran it ` +
-      `(${error.message}).${pageScriptNote} Update the card checks in verify.mjs.`,
+      `(${bindings.error.message}).${pageScriptNote} Update the card checks in verify.mjs.`,
   );
 }
+// Rendered inside the page, by the page's own .map(), so every argument it
+// passes is the one the browser passes.
+const rendered = runInPage("({ grid: THEMES.map(renderTheme), vol2Grid: VOL2_THEMES.map(renderTheme) })");
+if (rendered.error) {
+  fail(
+    `renderTheme() could not render the gallery when verify.mjs ran it (${rendered.error.message}).` +
+      `${pageScriptNote} Update the card checks.`,
+  );
+}
+const squeeze = (markup) => String(markup).replace(/>\s+</g, "><").trim();
 const renderedCards = [];
 for (const [gridId, listName] of [["grid", "THEMES"], ["vol2Grid", "VOL2_THEMES"]]) {
-  let rows;
-  let cards;
-  try {
-    rows = [...cardSource[listName]];
-    cards = rows.map((row, index, all) => cardSource.renderTheme(row, index, all));
-  } catch (error) {
-    fail(
-      `renderTheme() could not render ${listName} when verify.mjs ran it (${error.message}). Update the card checks.`,
-    );
-  }
-  if (cards.join("") !== pageElements.get(gridId)?.props.innerHTML) {
+  const rows = [...bindings.value[listName]];
+  const cards = [...rendered.value[gridId]];
+  const shown = pageElements.get(gridId)?.props.innerHTML;
+  if (cards.some((card) => typeof card !== "string") || squeeze(cards.join("")) !== squeeze(shown ?? "")) {
     fail(
       `#${gridId} in index.html does not hold ${listName}.map(renderTheme), so verify.mjs cannot tell which ` +
         `cards the page shows.${pageScriptNote} Update the card checks to follow the new rendering.`,
@@ -742,10 +826,10 @@ for (const [gridId, listName] of [["grid", "THEMES"], ["vol2Grid", "VOL2_THEMES"
   rows.forEach((row, index) => renderedCards.push({ row, markup: cards[index] }));
 }
 
-// Text as a reader gets it: comments, <style> and <script> removed, tags as
-// spaces, character references decoded. Attribute values are read separately,
-// because a screen reader announces an aria-label and a share card shows a
-// meta description.
+// Text as a reader gets it: comments, <style> and <script> removed, block
+// boundaries as line breaks, other tags as spaces, character references
+// decoded. Attribute values are read separately, because a screen reader
+// announces an aria-label and a share card shows a meta description.
 const namedEntities = {
   nbsp: "\u00a0", thinsp: "\u2009", ensp: "\u2002", emsp: "\u2003", ldquo: "\u201c", rdquo: "\u201d",
   lsquo: "\u2018", rsquo: "\u2019", quot: '"', apos: "'", middot: "\u00b7", mdash: "\u2014", ndash: "\u2013",
@@ -760,15 +844,52 @@ const decodeEntities = (text) =>
     .replace(/&amp;/gi, "&");
 const withoutCode = (markup) =>
   markup.replace(/<!--[\s\S]*?-->/g, " ").replace(/<(style|script)\b[\s\S]*?<\/\1\s*>/gi, " ");
-const startTag = /<[a-z][a-z0-9-]*(?:\s+[^\s"'=/>]+(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'>]+))?)*\s*\/?>/gi;
+const anyTag = /<(\/?)([a-z][a-z0-9-]*)\b((?:[^>"']|"[^"]*"|'[^']*')*)>/gi;
+const blockTag = new RegExp(
+  "^(?:address|article|aside|blockquote|br|button|caption|dd|details|dialog|div|dl|dt|fieldset|figcaption|figure|" +
+    "footer|form|h[1-6]|header|hr|li|main|nav|ol|p|pre|section|summary|table|tbody|td|tfoot|th|thead|tr|ul)$",
+  "i",
+);
 const visibleText = (markup) =>
-  decodeEntities(withoutCode(markup).replace(startTag, " ").replace(/<[^>]*>/g, " ")).replace(/\s+/g, " ");
+  decodeEntities(
+    withoutCode(markup)
+      .replace(anyTag, (tag, closing, name) => (blockTag.test(name) ? "\n" : " "))
+      .replace(/<![^>]*>/g, " "),
+  )
+    .replace(/[^\S\n]+/g, " ")
+    .replace(/ ?\n[\s]*/g, "\n");
+const startTag = /<[a-z][a-z0-9-]*(?:\s+[^\s"'=/>]+(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'>]+))?)*\s*\/?>/gi;
 const attributeValues = (markup) =>
   [...withoutCode(markup).matchAll(startTag)].flatMap(([tag]) =>
     [...tag.matchAll(/\s[^\s"'=/>]+\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+))/g)].map((attribute) =>
       decodeEntities(attribute[1] ?? attribute[2] ?? attribute[3]).replace(/\s+/g, " "),
     ),
   );
+// The text of every element that displays a command: code, kbd, samp, pre,
+// buttons, and anything whose class names a prompt or a command.
+const voidTag = /^(?:area|base|br|col|embed|hr|img|input|link|meta|source|track|wbr)$/i;
+const commandTexts = (markup) => {
+  const source = withoutCode(markup);
+  const open = [];
+  const texts = [];
+  for (const tag of source.matchAll(anyTag)) {
+    const [whole, closing, name, attributes] = tag;
+    if (closing) {
+      const at = open.findLastIndex((entry) => entry.name === name.toLowerCase());
+      if (at < 0) continue;
+      for (const entry of open.splice(at)) {
+        if (entry.command) texts.push(visibleText(source.slice(entry.from, tag.index)));
+      }
+    } else if (!voidTag.test(name) && !/\/\s*$/.test(attributes)) {
+      const className = attributes.match(/\bclass\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+))/i);
+      const command =
+        /^(?:button|code|kbd|pre|samp)$/i.test(name) ||
+        /prompt|command/i.test(className?.[1] ?? className?.[2] ?? className?.[3] ?? "");
+      open.push({ name: name.toLowerCase(), command, from: tag.index + whole.length });
+    }
+  }
+  return texts;
+};
 const jsonLdStrings = [];
 const collectStrings = (value) => {
   if (typeof value === "string") jsonLdStrings.push(value);
@@ -783,32 +904,57 @@ for (const [, body] of html.matchAll(jsonLdBlock)) {
   }
 }
 
+// A stand-in DOM that loses text renders blank cards that every check below
+// would pass. Each card names its theme, so a card without its name means the
+// stand-in no longer models what the renderer does.
+for (const { row, markup } of renderedCards) {
+  if (!visibleText(markup).includes(row[0])) {
+    fail(
+      `verify.mjs rendered the ${row[0]} card without its name, so its stand-in DOM no longer models what ` +
+        "renderTheme() does (or the card stopped naming its theme). Update the card checks.",
+    );
+  }
+}
+
 // The same command shown rather than copied — the cards' old `> theme <slug>`
 // prompt, the hero's `> theme deep-field`, `<code>/theme graphite</code>` —
-// teaches the same dead end. A theme's slug or name counts only as an
-// argument: right after `/theme`, or after `theme` behind the prompt glyph.
-// Prose that names a theme, such as 'Applied theme Graphite', "the theme
-// Static" or "Run /theme and choose one", stays legal.
+// teaches the same dead end. A theme's slug or name counts as an argument
+// right after `/theme`, after `theme` behind a `>` prompt glyph, after
+// `theme` anywhere inside an element that displays a command (however its
+// glyph is drawn), and a hyphenated slug after `theme` counts anywhere, since
+// it is never prose. None of these reach across a line break. Prose that
+// names a theme, such as 'Applied theme Graphite', "the theme Static", or
+// "Run /theme" with the name on the next line, stays legal.
 const themeSlugs = [...files, ...vol2Files].map((file) => file.replace(/\.json$/, ""));
-const themeArguments = [...new Set([...themeSlugs, ...renderedCards.map(({ row }) => row[0])])]
-  .sort((a, b) => b.length - a.length)
-  .map((word) => word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/ /g, "\\s+"));
-const shownCommandPattern = new RegExp(`(?:/|>)\\s*theme\\s+(${themeArguments.join("|")})(?![\\w-])`, "i");
-const readable = (where, markup) => [
-  { where, text: visibleText(markup) },
-  ...attributeValues(markup).map((text) => ({ where: `${where}, in an attribute`, text })),
+const asAlternatives = (words) =>
+  [...new Set(words)]
+    .sort((a, b) => b.length - a.length)
+    .map((word) => word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/ /g, "[^\\S\\n]+"))
+    .join("|");
+const themeArgument = `(${asAlternatives([...themeSlugs, ...renderedCards.map(({ row }) => row[0])])})(?![\\w-])`;
+const anywherePatterns = [
+  new RegExp(`(?:/|>)[^\\S\\n]*theme[^\\S\\n]+${themeArgument}`, "i"),
+  new RegExp(`\\btheme[^\\S\\n]+(${asAlternatives(themeSlugs.filter((slug) => slug.includes("-")))})(?![\\w-])`, "i"),
 ];
-for (const { where, text } of [
+const commandPattern = new RegExp(`\\btheme[^\\S\\n]+${themeArgument}`, "i");
+const readable = (where, markup) => [
+  { where, text: visibleText(markup), patterns: anywherePatterns },
+  ...attributeValues(markup).map((text) => ({ where: `${where}, in an attribute`, text, patterns: anywherePatterns })),
+  ...commandTexts(markup).map((text) => ({ where, text, patterns: [commandPattern] })),
+];
+for (const { where, text, patterns } of [
   ...readable("the page", html),
-  ...jsonLdStrings.map((text) => ({ where: "its JSON-LD", text })),
+  ...jsonLdStrings.map((text) => ({ where: "its JSON-LD", text, patterns: anywherePatterns })),
   ...renderedCards.flatMap(({ row, markup }) => readable(row[0], markup)),
 ]) {
-  const shown = text.match(shownCommandPattern);
-  if (shown) {
-    fail(
-      `index.html shows "theme ${shown[1]}" as a command (${where}). Claude Code's /theme ignores the ` +
-        "argument; show /theme and name the theme to choose.",
-    );
+  for (const pattern of patterns) {
+    const shown = text.match(pattern);
+    if (shown) {
+      fail(
+        `index.html shows "theme ${shown[1]}" as a command (${where}). Claude Code's /theme ignores the ` +
+          "argument; show /theme and name the theme to choose.",
+      );
+    }
   }
 }
 
