@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -762,4 +762,102 @@ test("rejects a hyphenated skills count in the README", { timeout: 90_000 }, asy
 
   assert.notEqual(result.code, 0, "a hyphenated skills count passed unread");
   assert.match(result.stderr, /README\.md says "Twenty-six skills" but \d+ skills ship/);
+});
+
+// A plugin directory ships whole. `claude plugin install` copies every file in
+// it and Claude Code loads any hooks, commands, skills, agents or MCP servers it
+// finds at the root or that a manifest or listing declares inline. These tests
+// pin the allowlists in verify.mjs that keep a theme pack shipping themes only.
+
+async function editJson(path, edit) {
+  const value = JSON.parse(await readFile(path, "utf8"));
+  edit(value);
+  await writeFile(path, `${JSON.stringify(value, null, 2)}\n`);
+}
+
+test("rejects a hook dropped into a theme plugin's root", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  // Reproduced against the real installer: this file made a SessionStart hook
+  // run for everyone who installed 50-dark-themes, with verify green.
+  const hooks = join(fixtureRoot, "plugins/50-dark-themes/hooks");
+  await mkdir(hooks);
+  await writeFile(
+    join(hooks, "hooks.json"),
+    JSON.stringify({ hooks: { SessionStart: [{ hooks: [{ type: "command", command: "echo stray" }] }] } }),
+  );
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "a hook shipped inside a theme plugin");
+  assert.match(result.stderr, /plugins\/50-dark-themes\/hooks\/hooks\.json is not part of the 50-dark-themes package/);
+});
+
+test("rejects a component declared inline in a marketplace entry", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  // No new file at all: the listing alone can declare an MCP server, and the
+  // manifest-agreement check only ever iterated the manifest's keys.
+  await editJson(join(fixtureRoot, ".claude-plugin/marketplace.json"), (marketplace) => {
+    const entry = marketplace.plugins.find((plugin) => plugin.name === "dark-themes-vol-2");
+    assert.equal(entry.mcpServers, undefined, "fixture must add the key, not find it");
+    entry.mcpServers = { stray: { command: "/bin/true" } };
+  });
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "an inline MCP server in a listing shipped green");
+  assert.match(result.stderr, /marketplace entry for dark-themes-vol-2 declares "mcpServers"/);
+});
+
+test("rejects a theme plugin's experimental block gaining a second component", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  // The agreement check skips "experimental" and the listing never carries it,
+  // so only the exact-value check sees an addition here.
+  await editJson(join(fixtureRoot, "plugins/50-dark-themes/.claude-plugin/plugin.json"), (manifest) => {
+    assert.deepEqual(manifest.experimental, { themes: "./themes/" });
+    manifest.experimental.commands = "./commands/";
+  });
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "an extra experimental component shipped green");
+  assert.match(result.stderr, /50-dark-themes\/\.claude-plugin\/plugin\.json must declare exactly "experimental"/);
+});
+
+test("rejects a manifest key that is not plugin metadata on the skills plugin", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  // A skills plugin whose manifest was started from a theme plugin's: the
+  // agreement check skips "experimental", the listing does not carry it, and
+  // the skills plugin is not a theme plugin, so only the manifest allowlist
+  // stands between it and installers.
+  await editJson(join(fixtureRoot, "plugins/berlin-studio-skills/.claude-plugin/plugin.json"), (manifest) => {
+    assert.equal(manifest.experimental, undefined, "fixture must add the key, not find it");
+    manifest.experimental = { themes: "./themes/" };
+  });
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "a non-metadata manifest key shipped green");
+  assert.match(result.stderr, /berlin-studio-skills\/\.claude-plugin\/plugin\.json declares "experimental"/);
+});
+
+test("rejects a symlink inside a plugin package", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  // A symlinked skills/ directory would hand installers whatever it points at.
+  await symlink("../../.claude/skills", join(fixtureRoot, "plugins/dark-themes-vol-2/skills"));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "a symlinked component directory shipped green");
+  assert.match(result.stderr, /plugins\/dark-themes-vol-2\/skills is a symlink/);
+});
+
+test("rejects a directory under plugins/ that is not a registered plugin", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  await mkdir(join(fixtureRoot, "plugins/rogue/.claude-plugin"), { recursive: true });
+  await writeFile(join(fixtureRoot, "plugins/rogue/.claude-plugin/plugin.json"), "{}\n");
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "an unregistered plugin directory shipped green");
+  assert.match(result.stderr, /plugins\/rogue is not one of the registered plugins/);
 });

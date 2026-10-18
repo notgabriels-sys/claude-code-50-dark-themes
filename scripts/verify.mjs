@@ -406,11 +406,13 @@ const shippedCounts = {
   "dark-themes-vol-2": vol2Files.length,
   "berlin-studio-skills": sourceSkills.length,
 };
+const pluginManifests = new Map();
 for (const [index, expected] of expectedPlugins.entries()) {
   const entry = marketplace.plugins[index];
   const manifest = JSON.parse(
     await readFile(new URL(`${expected.source}/.claude-plugin/plugin.json`, root), "utf8"),
   );
+  pluginManifests.set(expected.name, manifest);
   for (const [key, value] of Object.entries(manifest)) {
     if (key === "experimental") continue;
     if (JSON.stringify(entry[key]) !== JSON.stringify(value)) {
@@ -445,6 +447,125 @@ const skillsReadme = await readFile(new URL("plugins/berlin-studio-skills/README
 for (const name of sourceSkills) {
   if (!skillsReadme.includes(`\`${name}\``)) {
     fail(`plugins/berlin-studio-skills/README.md does not list the packaged skill ${name}.`);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Exactly what ships, and nothing else. `claude plugin install` copies every
+// file in a plugin's directory, and Claude Code then loads whatever components
+// it finds at the plugin root — hooks/hooks.json, commands/, agents/, skills/,
+// .mcp.json, .lsp.json, output-styles/ — plus any component a plugin.json or a
+// marketplace entry declares inline (mcpServers, hooks, commands, ...). Nothing
+// above looked at either. Reproduced 2026-10-18 against claude 2.1.302, offline
+// with a scratch HOME: a SessionStart hook dropped into
+// plugins/50-dark-themes/hooks/ shipped with verify green and ran its command
+// for the installer of a theme pack; an "mcpServers" key added to the
+// marketplace entry alone did the same with no new file at all, because the
+// agreement check above iterates the manifest's keys and never the listing's.
+//
+// Both are allowlists, deliberately. A deny-list of component paths and keys
+// goes stale the day Claude Code adds a new auto-discovered component type; an
+// allowlist fails closed. The expected file sets come from the sources of
+// truth this file already trusts — the root theme files, the Vol. 2 theme
+// files validated one by one above, and .claude/skills — never from the
+// packaged directory being checked. (For Vol. 2 the packaged directory IS the
+// source, so its themes/ set is only as strong as the per-file validation,
+// previews.json and the description count already applied to it.)
+// ---------------------------------------------------------------------------
+const PLUGIN_METADATA_KEYS = [
+  "author", "description", "displayName", "homepage", "keywords", "license",
+  "name", "repository", "version",
+];
+const LISTING_ONLY_KEYS = ["category", "source", "tags"];
+const themePluginNames = new Set(["50-dark-themes", "dark-themes-vol-2"]);
+for (const [index, expected] of expectedPlugins.entries()) {
+  const entry = marketplace.plugins[index];
+  const manifest = pluginManifests.get(expected.name);
+  const allowedManifestKeys = themePluginNames.has(expected.name)
+    ? [...PLUGIN_METADATA_KEYS, "experimental"]
+    : PLUGIN_METADATA_KEYS;
+  for (const key of Object.keys(manifest)) {
+    if (!allowedManifestKeys.includes(key)) {
+      fail(
+        `plugins/${expected.name}/.claude-plugin/plugin.json declares "${key}", which is not ` +
+          `plugin metadata. Claude Code would load it as a component for every installer.`,
+      );
+    }
+  }
+  if (themePluginNames.has(expected.name) &&
+      JSON.stringify(manifest.experimental) !== JSON.stringify({ themes: "./themes/" })) {
+    fail(
+      `plugins/${expected.name}/.claude-plugin/plugin.json must declare exactly ` +
+        `"experimental": {"themes": "./themes/"}; found ${JSON.stringify(manifest.experimental)}.`,
+    );
+  }
+  for (const key of Object.keys(entry)) {
+    if (!PLUGIN_METADATA_KEYS.includes(key) && !LISTING_ONLY_KEYS.includes(key)) {
+      fail(
+        `The marketplace entry for ${expected.name} declares "${key}", which is not listing ` +
+          `metadata. A marketplace entry can declare components inline; Claude Code would ` +
+          `load it for every installer.`,
+      );
+    }
+  }
+}
+
+// Files. Walk with lstat semantics (withFileTypes, no recursive option) so a
+// symlink is reported rather than followed, and resolve each name with
+// encodeURIComponent so a "#" or "?" in a stray name cannot redirect the walk.
+const pluginsDir = new URL("../plugins/", import.meta.url);
+const walkPackage = async (dirUrl, shownPath) => {
+  const found = [];
+  for (const entry of await readdir(dirUrl, { withFileTypes: true })) {
+    const path = `${shownPath}/${entry.name}`;
+    if (entry.isSymbolicLink()) {
+      fail(`${path} is a symlink. A plugin ships copies of real files; replace it or delete it.`);
+    } else if (entry.isDirectory()) {
+      found.push(...(await walkPackage(new URL(`${encodeURIComponent(entry.name)}/`, dirUrl), path)));
+    } else {
+      found.push(path);
+    }
+  }
+  return found;
+};
+const skillPackageFiles = [];
+for (const name of sourceSkills) {
+  for (const file of await listSkillFiles(sourceSkillDir, name)) {
+    skillPackageFiles.push(`skills/${name}/${file}`);
+  }
+}
+const packageBasics = [".claude-plugin/plugin.json", "LICENSE", "README.md"];
+const expectedPackageFiles = new Map([
+  ["50-dark-themes", [...packageBasics, ...files.map((file) => `themes/${file}`)]],
+  ["dark-themes-vol-2", [
+    ...packageBasics, "preview.png", "previews.json", ...vol2Files.map((file) => `themes/${file}`),
+  ]],
+  ["berlin-studio-skills", [...packageBasics, ...skillPackageFiles]],
+]);
+if (JSON.stringify([...expectedPackageFiles.keys()].sort()) !==
+    JSON.stringify(expectedPlugins.map((plugin) => plugin.name).sort())) {
+  fail("expectedPackageFiles in scripts/verify.mjs must name exactly the plugins in expectedPlugins.");
+}
+for (const entry of await readdir(pluginsDir, { withFileTypes: true })) {
+  if (!entry.isDirectory() || entry.isSymbolicLink() || !expectedPackageFiles.has(entry.name)) {
+    fail(
+      `plugins/${entry.name} is not one of the registered plugins ` +
+        `(${[...expectedPackageFiles.keys()].join(", ")}). Delete it, or register it in ` +
+        `.claude-plugin/marketplace.json and expectedPlugins.`,
+    );
+  }
+}
+for (const [name, expectedFiles] of expectedPackageFiles) {
+  const allowed = new Set(expectedFiles.map((file) => `plugins/${name}/${file}`));
+  for (const path of await walkPackage(new URL(`${name}/`, pluginsDir), `plugins/${name}`)) {
+    if (!allowed.has(path)) {
+      fail(
+        `${path} is not part of the ${name} package. Claude Code installs every file in a ` +
+          `plugin directory and loads any hooks, commands, skills, agents or MCP servers it ` +
+          `finds there. Delete it (an untracked .DS_Store or editor swap file included), or ` +
+          `add it to expectedPackageFiles in scripts/verify.mjs deliberately.`,
+      );
+    }
   }
 }
 // The theme counts are stated in words too — "Fifty atmospheres", "twelve new
