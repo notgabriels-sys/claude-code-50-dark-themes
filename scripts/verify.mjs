@@ -623,6 +623,19 @@ if (/\/theme \$\{|["'`]\/theme [a-z0-9][a-z0-9-]*["'`]/.test(html)) {
       "arguments, so it applies nothing. Copy /theme and name the theme to choose.",
   );
 }
+// The same command shown rather than copied — `<code>/theme deep-field</code>`,
+// or the hero's prompt `> theme deep-field` — teaches the same dead end. Keyed
+// to the real slugs, so prose like "Run /theme and choose one" stays legal.
+const themeSlugs = [...files, ...vol2Files].map((file) => file.replace(/\.json$/, ""));
+const shownCommand = html.match(
+  new RegExp(`theme(?:\\s|&nbsp;|<[^>]+>)+(${themeSlugs.join("|")})(?![a-z0-9-])`),
+);
+if (shownCommand) {
+  fail(
+    `index.html shows "theme ${shownCommand[1]}" as a command. Claude Code's /theme ignores the ` +
+      "argument; show /theme and name the theme to choose.",
+  );
+}
 
 // The install guide (its HowTo steps included) and the semantic-colours
 // article tell readers to set their terminal to "the theme's surface hex from

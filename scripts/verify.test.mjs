@@ -510,3 +510,21 @@ test("rejects a storefront Vol. 2 heading that misstates the pack size", { timeo
   assert.notEqual(result.code, 0, "the verifier accepted a stale Vol. 2 count on the storefront");
   assert.match(result.stderr, /Vol\. 2 heading says "eleven" new atmospheres; the pack ships 12/);
 });
+
+test("rejects a page that shows /theme with a theme argument as a command", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixturePage = join(fixtureRoot, "index.html");
+  const page = await readFile(fixturePage, "utf8");
+  await writeFile(
+    fixturePage,
+    page.replace(
+      '<div class="monolith-prompt"><span>&gt;</span><span>/theme</span></div>',
+      '<div class="monolith-prompt"><span>&gt;</span><span>theme deep-field</span></div>',
+    ),
+  );
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a displayed command that applies nothing");
+  assert.match(result.stderr, /shows "theme deep-field" as a command/);
+});
