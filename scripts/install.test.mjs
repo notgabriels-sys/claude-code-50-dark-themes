@@ -31,3 +31,16 @@ test("refuses a name that is not in the pack and changes nothing", (t) => {
   assert.match(result.stderr, /No theme matched: deepfield\b/);
   assert.deepEqual(installed(themes), [], "the names that did match were installed anyway");
 });
+
+test("--uninstall with names removes only those", (t) => {
+  const { home, themes } = sandbox(t);
+  run(home, []);
+  assert.equal(installed(themes).length, 50);
+
+  const result = run(home, ["--uninstall", "acid", "deep-field"]);
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /Removed 2 theme\(s\)/);
+  assert.equal(installed(themes).length, 48, "naming two themes removed a different number");
+  assert.ok(!installed(themes).includes("acid.json") && !installed(themes).includes("deep-field.json"));
+});

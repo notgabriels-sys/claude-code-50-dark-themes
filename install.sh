@@ -5,6 +5,7 @@
 #   ./install.sh acid deep-field install only those
 #   ./install.sh --list          show theme names
 #   ./install.sh --uninstall     remove every theme in the pack from the themes dir
+#   ./install.sh --uninstall ink remove only those
 #   ./install.sh --dir PATH      install somewhere else (default ~/.claude/themes)
 #
 # Existing files with the same name are backed up to <name>.json.bak once.
@@ -32,6 +33,13 @@ while [ $# -gt 0 ]; do
 done
 
 themes() { find "$SRC" -maxdepth 1 -name '*.json' -not -name 'package*.json' | sort; }
+# True when no names were given, or when $1 is one of them.
+wanted() {
+  [ ${#WANTED[@]} -eq 0 ] && return 0
+  local w
+  for w in "${WANTED[@]}"; do [ "$w" = "$1" ] && return 0; done
+  return 1
+}
 
 if [ "$MODE" = list ]; then
   themes() { find "$SRC" -maxdepth 1 -name '*.json' -not -name 'package*.json' | sort; }
@@ -64,6 +72,7 @@ if [ "$MODE" = uninstall ]; then
   removed=0
   while IFS= read -r f; do
     t="$(basename "$f")"
+    wanted "${t%.json}" || continue
     if [ -f "$DEST/$t" ]; then rm -f "$DEST/$t"; removed=$((removed+1)); fi
   done < <(themes)
   echo "Removed $removed theme(s) from $DEST"
@@ -76,11 +85,7 @@ installed=0; backed=0; skipped=0
 
 while IFS= read -r f; do
   name="$(basename "${f%.json}")"
-  if [ ${#WANTED[@]} -gt 0 ]; then
-    match=0
-    for w in "${WANTED[@]}"; do [ "$w" = "$name" ] && match=1; done
-    [ $match -eq 1 ] || { skipped=$((skipped+1)); continue; }
-  fi
+  wanted "$name" || { skipped=$((skipped+1)); continue; }
   target="$DEST/$name.json"
   if [ -f "$target" ] && ! cmp -s "$f" "$target"; then
     [ -f "$target.bak" ] || { cp "$target" "$target.bak"; backed=$((backed+1)); }

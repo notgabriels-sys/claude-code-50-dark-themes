@@ -61,7 +61,8 @@ Then run `/theme` in Claude Code and pick one.
 ```bash
 ./install.sh --list            # show the 50 names
 ./install.sh acid deep-field   # install only those
-./install.sh --uninstall       # remove them again
+./install.sh --uninstall       # remove them all again
+./install.sh --uninstall acid  # remove only those
 ```
 
 It copies into `~/.claude/themes/`, and if a file of the same name is already there with
