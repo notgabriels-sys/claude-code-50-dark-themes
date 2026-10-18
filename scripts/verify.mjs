@@ -540,6 +540,42 @@ if (!/matches by filename, not contents/i.test(installerHeader)) {
   fail("install.sh --help must say --uninstall matches by filename, not contents; without it the destructive path reads safer than it is.");
 }
 
+// Plugin themes load when Claude Code starts. Checked live on 2.1.302: after
+// `/plugin install` inside a running session ("Plugin is now active."), or
+// `claude plugin install` from a shell while a session is open, /theme lists
+// none of the pack until Claude Code restarts. So every page that hands out a
+// plugin install command must say, close to the command, to restart.
+// Tags are dropped rather than spaced, so a syntax-highlighted command
+// (`<span>50</span>-dark-themes`) still reads as one.
+for (const file of [
+  "README.md",
+  "llms.txt",
+  "plugins/50-dark-themes/README.md",
+  "plugins/dark-themes-vol-2/README.md",
+  "index.html",
+  "claude-code-theme-install-guide.html",
+]) {
+  let text = await readFile(new URL(file, root), "utf8");
+  if (file.endsWith(".html")) {
+    text = text
+      .replace(/<!--[\s\S]*?-->/g, "")
+      .replace(/<(script|style)\b[\s\S]*?<\/\1\s*>/gi, "")
+      .replace(/<[^>]+>/g, "")
+      .replace(/&nbsp;|&#160;/g, " ");
+  }
+  text = text.replace(/\s+/g, " ");
+  const commands = [...text.matchAll(/plugin install [\w-]+@notgabriels-themes/g)];
+  if (!commands.length) fail(`${file} no longer shows a plugin install command; update the restart check in verify.mjs.`);
+  for (const command of commands) {
+    if (!/restart/i.test(text.slice(command.index, command.index + 700))) {
+      fail(
+        `${file} gives "${command[0]}" without saying to restart Claude Code if it was open. Plugin themes ` +
+          "load when Claude Code starts, so a session open during the install lists none of them in /theme.",
+      );
+    }
+  }
+}
+
 // The install guide's manual fallback is a procedure people follow verbatim on
 // a page that search can land them on directly. It used to open with
 // `cp *.json ~/.claude/themes/` and never say where the files come from — the

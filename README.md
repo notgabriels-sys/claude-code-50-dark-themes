@@ -22,8 +22,9 @@ claude plugin marketplace add notgabriels-sys/claude-code-50-dark-themes
 claude plugin install 50-dark-themes@notgabriels-themes
 ```
 
-Then run `/theme` in Claude Code and pick one. The plugin keeps the pack together and makes updates
-available through the marketplace. Press `Ctrl+E` on a plugin theme if you want an editable copy in
+Then run `/theme` in Claude Code and pick one. If Claude Code was already open, restart it first:
+plugin themes load when it starts. The plugin keeps the pack together and makes updates available
+through the marketplace. Press `Ctrl+E` on a plugin theme if you want an editable copy in
 `~/.claude/themes/`.
 
 Step-by-step install, terminal background and troubleshooting guide:
@@ -38,6 +39,8 @@ Magnetite, Monsoon, Neon Noir, Ozone), held to the same contrast standards:
 ```bash
 claude plugin install dark-themes-vol-2@notgabriels-themes
 ```
+
+If Claude Code was open while you installed, restart it: plugin themes load when it starts.
 
 ## Manual install
 
@@ -139,6 +142,7 @@ or in the [gallery's expansion section](https://gabs-utilities.com/#vol2).
 claude plugin install dark-themes-vol-2@notgabriels-themes
 ```
 
+If Claude Code was open while you installed, restart it: plugin themes load when it starts.
 
 ## More dark tools
 

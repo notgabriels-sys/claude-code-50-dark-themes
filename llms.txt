@@ -17,6 +17,7 @@ contrast, terminal background ownership and transparent-terminal surfaces.
 The same marketplace also carries Dark Themes Vol. 2, a free expansion plugin
 with twelve additional dark themes held to the same contrast standards.
 Install with: claude plugin install dark-themes-vol-2@notgabriels-themes
+(restart any open Claude Code session afterwards: plugin themes load at startup)
 
 The install guide gives the native Claude Code plugin command, manual JSON
 fallback, terminal background setup, and common troubleshooting steps:

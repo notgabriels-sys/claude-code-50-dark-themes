@@ -72,7 +72,7 @@
     {
       "@type": "HowToStep",
       "name": "Choose a theme",
-      "text": "Run /theme in Claude Code and select one of the installed dark themes."
+      "text": "Start Claude Code, or restart it if it was open during the install (plugin themes load when it starts), then run /theme and select one of the installed dark themes."
     },
     {
       "@type": "HowToStep",
@@ -110,7 +110,7 @@
       "name": "What should I do if a theme does not appear in /theme?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Check that Claude Code is updated, the plugin install command completed, and manual JSON files are inside ~/.claude/themes when using the manual route. Restart Claude Code once if the themes directory was created for the first time."
+        "text": "Restart Claude Code if it was open while you installed the plugin: plugin themes load when it starts. Otherwise check that Claude Code is updated, the plugin install command completed, and manual JSON files are inside ~/.claude/themes when using the manual route. Restart Claude Code once if the themes directory was created for the first time."
       }
     }
   ]
@@ -198,7 +198,7 @@ footer{margin-top:42px;padding-top:22px;border-top:1px solid var(--hair)}
           <div class="steps">
             <article class="step"><span class="num">01</span><div><h3>Add the marketplace.</h3><p>Run the marketplace command once. It tells Claude Code where the theme plugin lives.</p></div></article>
             <article class="step"><span class="num">02</span><div><h3>Install the plugin.</h3><p>Run the plugin install command. The pack exposes the 50 dark themes through Claude Code’s theme picker.</p></div></article>
-            <article class="step"><span class="num">03</span><div><h3>Choose a theme inside Claude Code.</h3><p>Open Claude Code, run <code>/theme</code>, and select the theme you want. Use <code>Ctrl+E</code> if you want an editable copy.</p></div></article>
+            <article class="step"><span class="num">03</span><div><h3>Choose a theme inside Claude Code.</h3><p>Open Claude Code, or restart it if it was open during the install (plugin themes load when it starts), then run <code>/theme</code> and select the theme you want. Use <code>Ctrl+E</code> if you want an editable copy.</p></div></article>
           </div>
         </section>
 
@@ -209,7 +209,7 @@ footer{margin-top:42px;padding-top:22px;border-top:1px solid var(--hair)}
             <div class="code-head"><span>Terminal</span><span>Same marketplace</span></div>
 <pre><span class="syntax-command">claude</span> <span class="syntax-keyword">plugin</span> <span class="syntax-subcommand">install</span> <span class="syntax-value">dark-themes-vol-2<span class="syntax-scope">@notgabriels-themes</span></span></pre>
           </div>
-          <p>Both packs then appear together in <code>/theme</code>. Preview every Vol.&nbsp;2 palette in its own colors in the <a href="https://gabs-utilities.com/#vol2">gallery’s expansion section</a>.</p>
+          <p>Restart Claude Code if it was open, and both packs appear together in <code>/theme</code>. Preview every Vol.&nbsp;2 palette in its own colors in the <a href="https://gabs-utilities.com/#vol2">gallery’s expansion section</a>.</p>
         </section>
 
         <section class="section" id="manual">
@@ -252,7 +252,7 @@ footer{margin-top:42px;padding-top:22px;border-top:1px solid var(--hair)}
         <section class="section">
           <h2>Troubleshooting.</h2>
           <div class="steps">
-            <article class="step"><span class="num">?</span><div><h3>The themes do not appear in <code>/theme</code>.</h3><p>Update Claude Code, rerun the install command, and check that manual files are in <code>~/.claude/themes</code>. Restart once if that directory was just created.</p></div></article>
+            <article class="step"><span class="num">?</span><div><h3>The themes do not appear in <code>/theme</code>.</h3><p>If Claude Code was open while you installed the plugin, restart it: plugin themes load when it starts. Otherwise update Claude Code, rerun the install command, and check that manual files are in <code>~/.claude/themes</code>. Restart once if that directory was just created.</p></div></article>
             <article class="step"><span class="num">?</span><div><h3>The colors look different from the gallery.</h3><p>Set your terminal background to the theme surface hex. The gallery previews assume that matching surface.</p></div></article>
             <article class="step"><span class="num">?</span><div><h3>Errors or warnings look less themed than expected.</h3><p>That is intentional. The pack leaves success, error, warning and diff states on Claude Code’s base dark behavior so status meaning stays recognizable.</p></div></article>
             <article class="step"><span class="num">?</span><div><h3>You want to customize a theme.</h3><p>Use <code>Ctrl+E</code> from Claude Code’s theme picker or edit a copied JSON file. Keep the original source file as a reference.</p></div></article>

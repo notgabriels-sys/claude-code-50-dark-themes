@@ -967,3 +967,17 @@ test("accepts a <pre> transcript with the theme to choose on the next line", { t
 
   assert.equal(result.code, 0, `a <pre> line break, which a browser keeps, was read as one line:\n${result.stderr}`);
 });
+
+test("rejects a plugin install command with no word about restarting Claude Code", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const readme = join(fixtureRoot, "plugins", "dark-themes-vol-2", "README.md");
+  const text = await readFile(readme, "utf8");
+  const note = "Then restart Claude Code: plugin themes load when it starts, so the session you installed from\nwon't list them. ";
+  assert.ok(text.includes(note), "fixture anchor moved; update this test");
+  await writeFile(readme, text.replace(note, ""));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted install steps that leave a running session without the themes");
+  assert.match(result.stderr, /plugins\/dark-themes-vol-2\/README\.md gives "plugin install dark-themes-vol-2@notgabriels-themes" without saying to restart/);
+});
