@@ -38,7 +38,6 @@ const verifiedGumroadSlugs = new Set([
   "kxsfa",
   "kykega",
   "raw-techno-kick-architecture",
-  "slhbym",
   "wgtbkq",
   "wuhehk",
   "xcxeb",
