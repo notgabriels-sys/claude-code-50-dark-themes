@@ -83,8 +83,8 @@ is where the pieces live:
 - Bump the version in `plugins/dark-themes-vol-2/.claude-plugin/plugin.json` and the matching entry
   in `.claude-plugin/marketplace.json` together; the verifier requires them to match.
 - Update the numbers the public pages state, in the same change. A theme adds fourteen contrast
-  comparisons, so the role-aware check count moves, and the share card names each pack's size. Both
-  are CI-enforced — see "Numbers stated on public pages" below. Adding a theme and running
+  comparisons, so the role-aware check count moves; the share card names each pack's size, and the
+  storefront's Vol. 2 heading spells that pack's size out in words. All three are CI-enforced — see "Numbers stated on public pages" below. Adding a theme and running
   `node scripts/verify.mjs` without this step fails with, for example,
   `index.html claims 894 role-aware checks; the verifier runs 908.`
 
@@ -97,11 +97,14 @@ noticeably: render `index.html` in a headless browser and screenshot the `#vol2G
 
 ## Numbers stated on public pages
 
-The storefront, the share card and the meta descriptions state a role-aware check count and theme
-counts. These are claims to a reader, so the verifier ties them to the computed values: if a change
-moves the number of contrast comparisons or the size of either pack, the stated numbers must be
-updated in the same change or CI fails. Removing a claim fails too, so the guard cannot be silenced
-by deletion.
+The storefront and the share card state a role-aware check count; the share card states both pack
+sizes, and the storefront's Vol. 2 heading states that pack's size in words. These are claims to a
+reader, so the verifier ties each one to the computed value: if a change moves the number of contrast
+comparisons or the size of either pack, the stated numbers must be updated in the same change or CI
+fails. Removing a claim fails too, so the guard cannot be silenced by deletion.
+
+The flagship's "50" also appears throughout as the product's name. It is not checked line by line;
+it stays true because the verifier pins the flagship at exactly fifty theme files.
 
 The share card is rendered from `assets/social-preview.html`, not screenshotted from the site. Edit
 that source, then regenerate `preview.png` at 1280×720 — the declared `og:image:width` and
@@ -131,7 +134,8 @@ The command checks:
 - a fresh-machine-safe installation command;
 - the verified shop payment surfaces;
 - valid 1280×720 PNG assets for the curated developer picks;
-- that stated check and theme counts on public pages match the computed values;
+- that the stated check count, the share card's pack sizes and the storefront's Vol. 2 size match the
+  computed values;
 - that share images carry alternative text, and that one image is described one way.
 
 GitHub Actions runs the regression tests and the same repository check on every push and pull request.

@@ -498,3 +498,15 @@ test("rejects alt text that calls the share card's strip theme accents", { timeo
   assert.notEqual(result.code, 0, "the verifier accepted alt text describing colours the image does not show");
   assert.match(result.stderr, /describe the share card's strip as theme accent colours/);
 });
+
+test("rejects a storefront Vol. 2 heading that misstates the pack size", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixturePage = join(fixtureRoot, "index.html");
+  const page = await readFile(fixturePage, "utf8");
+  await writeFile(fixturePage, page.replace("Vol.&nbsp;2 — twelve new atmospheres", "Vol.&nbsp;2 — eleven new atmospheres"));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a stale Vol. 2 count on the storefront");
+  assert.match(result.stderr, /Vol\. 2 heading says "eleven" new atmospheres; the pack ships 12/);
+});

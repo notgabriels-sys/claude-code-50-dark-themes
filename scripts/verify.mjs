@@ -410,10 +410,13 @@ for (const id of verifiedPayPalIds) {
 const { roleAwareComparisonCount } = await import("./verify-contrast.mjs");
 
 // ---------------------------------------------------------------------------
-// Stated numbers are public claims. The share card shipped "726 role-aware
-// checks" for days after the real figure became 894, because nothing tied the
-// printed number to the computed one. Every surface that states a count is now
-// checked against what the verifier actually ran.
+// Stated numbers are public claims. The share card once printed "726
+// role-aware checks" after the real figure had become 894 — caught on a branch,
+// but only because someone happened to look; nothing tied the printed number to
+// the computed one. Checked here: the role-aware count on the storefront and the
+// share card, the share card's "<50> + <12> themes", and the storefront's Vol. 2
+// heading. The flagship's "50" is also the product's name throughout; it stays
+// true because the theme-file check above pins the flagship at exactly fifty.
 // ---------------------------------------------------------------------------
 const socialCard = await readFile(new URL("assets/social-preview.html", root), "utf8");
 const claimSurfaces = [
@@ -438,6 +441,19 @@ for (const [page, source] of claimSurfaces) {
       );
     }
   }
+}
+
+// The storefront's Vol. 2 heading states that pack's size in words — the one
+// count a contributor following CONTRIBUTING's add-a-theme steps would move.
+const numberWords = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten",
+  "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen", "twenty"];
+const vol2Heading = html.match(/Vol\.(?:&nbsp;|\s)2\s*—\s*([a-z]+|\d+)\s+new atmospheres/i);
+if (!vol2Heading) {
+  fail("index.html states no Vol. 2 pack size in its heading; the count guard would be inert.");
+}
+const vol2Stated = /^\d+$/.test(vol2Heading[1]) ? Number(vol2Heading[1]) : numberWords.indexOf(vol2Heading[1].toLowerCase());
+if (vol2Stated !== vol2Files.length) {
+  fail(`index.html's Vol. 2 heading says "${vol2Heading[1]}" new atmospheres; the pack ships ${vol2Files.length}.`);
 }
 
 // The share card names both pack sizes: "<50> + <12> themes".
