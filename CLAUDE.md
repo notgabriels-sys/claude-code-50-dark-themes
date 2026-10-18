@@ -128,6 +128,17 @@ below was paid for by a defect in Claude's own work in this repo. Recorded
     one, a dropped theme and dead anchors in the other — and CI stayed green.
     A byte comparison catches hand edits; content needs a second source (the
     theme files, the page's canonical link, the plugin manifest).
+13. **A guard that re-implements someone else's parser is tested against the
+    real one, and the harness is proven before its silence counts.** The
+    structured-data reader in `verify` is run differentially against Chromium:
+    generated snippets go through both, and any page Chromium builds an
+    `itemscope` element from while `verify` accepts it is a miss. The first
+    random run reported zero misses on the reader that was then known broken
+    (`<title>x<!--</title>`), so it proved nothing; a narrower vocabulary and
+    then exhaustive enumeration were needed before a clean result on the fixed
+    reader meant anything. Run the old code through the same harness first,
+    and see it fail. The harness lives in the scratchpad, not here, because CI
+    has no browser.
 
 ## Payment surfaces — read before adding any buy button
 
@@ -348,8 +359,19 @@ outright (`property` only as Open Graph on `<meta>`, `rel` only as plain link
 types), inline `<svg>`/`<math>` are refused because a browser lifts tags out of
 them that a raw-text reader skips, and every JSON-LD block must use exactly
 `"https://schema.org"` as its only `@context` and write no key twice. A regex
-over HTML is the defect class here: where the reader and a browser can
-disagree, it must read more of the page as markup, never less.
+over HTML is the defect class here.
+
+**Corrected the same day:** the paragraph above first said the safe rule was
+"where the reader and a browser can disagree, read more of the page as markup,
+never less". That is wrong, and the review of 896c4b1 proved it: the reader
+took `<title>` text as markup, so `<title>x<!--</title>` opened a comment that
+hid a real microdata list after it (a regression; the regex had caught it).
+Reading text as markup can hide markup. The reader now reads as a browser
+does, including which elements hold text, and refuses what it cannot model:
+inline `<svg>`/`<math>`, and `<!--` inside a `<script>`, where a browser's
+escaped states run the script past its `</script>` and swallowed the theme
+list (pre-existing). It is checked differentially against Chromium; see rule
+13 above.
 
 The Gumroad half now has structural guards, an existence-verified slug list and
 a price-drift table — but no verified *price* for any product. See below.

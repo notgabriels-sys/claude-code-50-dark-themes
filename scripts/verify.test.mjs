@@ -1247,21 +1247,24 @@ for (const [defect, page, from, to, message] of [
     `${markerEnd}\n<script type="application/ld+json">${wrongList
       .replace('"@context":"https://schema.org"', '"@context":["https://schema.org",{"@vocab":"http://schema.org/Item"}]')
       .replace('"@type":"ItemList"', '"@type":"List"')}</script>`,
-    /index\.html's JSON-LD block at offset \d+ must be one object whose only @context is "https:\/\/schema\.org"/],
+    /index\.html's JSON-LD block on line \d+ has @context \["https:\/\/schema\.org",\{/],
   ["an ItemList type built from a prefix term", "index.html", markerEnd,
     `${markerEnd}\n<script type="application/ld+json">${wrongList
       .replace('"@context":"https://schema.org"',
         '"@context":["https://schema.org",{"il":{"@id":"http://schema.org/Item","@prefix":true}}]')
       .replace('"@type":"ItemList"', '"@type":"il:List"')}</script>`,
-    /index\.html's JSON-LD block at offset \d+ must be one object whose only @context is "https:\/\/schema\.org"/],
+    /index\.html's JSON-LD block on line \d+ has @context \["https:\/\/schema\.org",\{/],
   ["a nested @context on another page", "claude-code-theme-install-guide.html", "</head>",
     '<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","mainEntity":' +
       '{"@context":{"@vocab":"http://schema.org/Item"},"@type":"List","name":"Dracula"}}</script>\n</head>',
-    /claude-code-theme-install-guide\.html's JSON-LD block at offset \d+ must be one object whose only @context/],
+    /claude-code-theme-install-guide\.html's JSON-LD block on line \d+ has @context "https:\/\/schema\.org" and 2 @context key\(s\)/],
+  ["a JSON-LD block that is an array", "claude-code-theme-install-guide.html", "</head>",
+    '<script type="application/ld+json">[{"@context":"https://schema.org","@type":"WebPage","name":"Dracula"}]</script>\n</head>',
+    /claude-code-theme-install-guide\.html's JSON-LD block on line \d+ is not one object/],
   ["an @context written twice", "index.html", markerEnd,
     `${markerEnd}\n<script type="application/ld+json">{"@context":{"@vocab":"http://schema.org/Item"},` +
       '"@context":"https://schema.org","@type":"List","name":"Dracula"}</script>',
-    /index\.html's JSON-LD block at offset \d+ writes 5 keys and parses to 3/],
+    /index\.html's JSON-LD block on line \d+ writes the key "@context" twice in one object/],
   ["microdata with attributes separated by slashes", "index.html", "</body>",
     '<div/itemscope/itemtype="https://schema.org/Item&#76;ist"><meta/itemprop="name"/content="Dracula"></div>\n</body>',
     /index\.html carries microdata or RDFa \("itemscope" on <div>\)/],
@@ -1289,7 +1292,7 @@ for (const [defect, page, from, to, message] of [
   ["microdata after an empty comment written <!--->", "index.html", "</body>",
     '<!---><div itemscope itemtype="https://schema.org/Item&#76;ist"></div> -->\n</body>',
     /index\.html carries microdata or RDFa \("itemscope" on <div>\)/],
-  ["RDFa typeof behind slashes", "index.html", "</body>",
+  ["RDFa vocab and typeof behind slashes", "index.html", "</body>",
     '<div/vocab="https://schema.org/"/typeof="Item&#76;ist"><meta/property="name"/content="Dracula"></div>\n</body>',
     /index\.html carries microdata or RDFa \("vocab" on <div>\)/],
   ["an RDFa prefix declared through xmlns", "index.html", "</body>",
@@ -1301,6 +1304,41 @@ for (const [defect, page, from, to, message] of [
   ["an RDFa type stated through property", "index.html", "</body>",
     '<link property="rdf:type" href="https://schema.org/Item&#76;ist">\n</body>',
     /index\.html has property="rdf:type" on <link>/],
+  ["microdata after a quoted > in single quotes", "index.html", "</body>",
+    "<div title='a>b' itemscope itemtype=\"https://schema.org/Item&#76;ist\"></div>\n</body>",
+    /index\.html carries microdata or RDFa \("itemscope" on <div>\)/],
+  ["an RDFa type stated through typeof alone", "index.html", "</body>",
+    '<div typeof="schema:Item&#76;ist"><span>Dracula</span></div>\n</body>',
+    /index\.html carries microdata or RDFa \("typeof" on <div>\)/],
+  ["an RDFa rel spelled with a character reference", "index.html", "</body>",
+    '<a rel="rdf&colon;type" href="https://schema.org/Item&#76;ist">Dracula</a>\n</body>',
+    /index\.html has rel="rdf&colon;type" on <a>/],
+  ["a default namespace other than XHTML", "index.html", "</body>",
+    '<div xmlns="http://schema.org/"><span>Dracula</span></div>\n</body>',
+    /index\.html carries microdata or RDFa \("xmlns" on <div>\)/],
+  // A browser reads a <title>'s content as text, so none of these opens
+  // anything; a reader that took it as markup hid the div that follows
+  // (Chromium's DOM, checked for all three).
+  ["microdata after a title holding a comment opener", "index.html", "</body>",
+    '<title>x<!--</title><div itemscope itemtype="https://schema.org/Item&#76;ist"></div><title>--></title>\n</body>',
+    /index\.html carries microdata or RDFa \("itemscope" on <div>\)/],
+  ["microdata after a title holding a style tag", "index.html", "</body>",
+    '<title><style></title><div itemscope itemtype="https://schema.org/Item&#76;ist"></div><title></style></title>\n</body>',
+    /index\.html carries microdata or RDFa \("itemscope" on <div>\)/],
+  ["microdata after a title holding a script tag", "index.html", "</body>",
+    '<title><script></title><div itemscope itemtype="https://schema.org/Item&#76;ist"></div><title></script></title>\n</body>',
+    /index\.html carries microdata or RDFa \("itemscope" on <div>\)/],
+  // "<!--<script>" puts a browser's script tokenizer in its escaped states,
+  // where </script> no longer ends the element: the theme list became the
+  // tail of this block's text, and no ItemList script existed (Chromium's
+  // DOM, checked). The comment keeps the open/close count balanced.
+  ["a script that swallows the theme list", "index.html", markerStart,
+    '<!-- </script> -->\n<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage",' +
+      `"name":"Dark themes <!--<script>"}</script>\n${markerStart}`,
+    /index\.html has a <script> whose text holds "<!--"/],
+  ["microdata hidden in an inline math", "index.html", "</body>",
+    '<math><style><div itemscope itemtype="https://schema.org/Item&#76;ist"></div></style></math>\n</body>',
+    /index\.html has an inline <math>/],
   // A browser lifts this div out of the svg into the page with its attributes
   // (Chromium's DOM, checked); a reader that takes <style> as raw text never
   // sees it.
@@ -1333,6 +1371,13 @@ for (const [control, page, from, to] of [
     '<div title="itemscope typeof" data-itemscope="vocab"></div>\n</body>'],
   ["plain rel link types", "index.html", "</body>",
     '<a href="impressum.html" rel="noopener noreferrer">Impressum</a>\n</body>'],
+  ["Open Graph article properties", "claude-code-theme-install-guide.html", "</head>",
+    '<meta property="article:published_time" content="2026-08-24T00:00:00+02:00">\n</head>'],
+  ["the XHTML namespace on <html>", "index.html", '<html lang="en">',
+    '<html xmlns="http://www.w3.org/1999/xhtml" lang="en">'],
+  ["one key in two objects, and braces and colons inside strings", "claude-code-theme-install-guide.html", "</head>",
+    '<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage",' +
+      '"name":"a {\\"name\\": 1, \\"name\\": 2} \\u003c!-- \\\\","about":{"@type":"Thing","name":"b"}}</script>\n</head>'],
   ["typeof in a script", "index.html", "</body>",
     '<script>if (1 <b && typeof window === "object") {}</script>\n</body>'],
 ]) {

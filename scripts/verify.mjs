@@ -1601,13 +1601,19 @@ const INERT_CONTAINER = /<(template|noscript|textarea|xmp|plaintext|iframe|noemb
 // Every start and end tag with its attributes, read as the HTML tokenizer reads
 // them: "/" separates attributes as whitespace does, a quoted value runs to its
 // own quote whatever it holds, and an attribute may follow a closing quote with
-// no space at all. Where this reader and a browser could disagree, it reads
-// more of the page as markup, never less: a comment ends at the earliest point
-// a browser could end one (<!-->, <!--->, -->, --!>), and <script> or <style>
-// text at the first matching end tag. Inline <svg> and <math> are refused
-// below, because inside them <style> is not raw text and a browser would read
-// tags this reader skips.
+// no space at all. A comment ends where a browser ends one (<!-->, <!--->, -->
+// or --!>, whichever comes first), and the elements whose content a browser
+// reads as text — <script>, <style>, <title>, <textarea> and the rest — end at
+// the first matching end tag, with nothing inside read as markup. Reading that
+// text as markup is not the safe side: the first version did so for <title>,
+// and "<title>x<!--</title>" opened a comment that hid a real microdata list
+// after it (Chromium's DOM, checked). A differential run of this reader against
+// Chromium over 20,000 generated snippets found nothing else. Inline <svg> and
+// <math> are refused below, because inside them <style> is not raw text, and a
+// <script> may not hold "<!--", from which a browser can run it past its
+// </script>.
 const HTML_SPACE = /[\t\n\f\r ]/;
+const TEXT_ELEMENTS = new Set(["script", "style", "title", "textarea", "xmp", "iframe", "noembed", "noframes"]);
 const htmlTags = (markup) => {
   const tags = [];
   let at = 0;
@@ -1616,13 +1622,10 @@ const htmlTags = (markup) => {
     while (at < markup.length && test(markup[at])) at++;
     return markup.slice(from, at);
   };
-  const skipPast = (...endings) => {
-    at = Math.min(
-      ...endings.map((ending) => {
-        const found = markup.indexOf(ending, at);
-        return found === -1 ? markup.length : found + ending.length;
-      }),
-    );
+  const skipPast = (ending) => {
+    ending.lastIndex = at;
+    const found = ending.exec(markup);
+    at = found ? found.index + found[0].length : markup.length;
   };
   while ((at = markup.indexOf("<", at)) !== -1) {
     at++;
@@ -1630,7 +1633,7 @@ const htmlTags = (markup) => {
       at += 3;
       if (markup[at] === ">") at += 1;
       else if (markup.startsWith("->", at)) at += 2;
-      else skipPast("-->", "--!>");
+      else skipPast(/--!?>/g);
       continue;
     }
     const closing = markup[at] === "/";
@@ -1638,7 +1641,7 @@ const htmlTags = (markup) => {
     if (!/[A-Za-z]/.test(markup[at] ?? "")) {
       // <!DOCTYPE …>, <?…> and </ before a non-letter run to the first ">";
       // "<" before anything else is text.
-      if (closing || markup[at] === "!" || markup[at] === "?") skipPast(">");
+      if (closing || markup[at] === "!" || markup[at] === "?") skipPast(/>/g);
       continue;
     }
     const name = readWhile((c) => !/[\t\n\f\r />]/.test(c)).toLowerCase();
@@ -1667,33 +1670,48 @@ const htmlTags = (markup) => {
       attributes.push({ name: attribute, value });
     }
     at++;
-    tags.push({ name, closing, attributes });
-    if (!closing && (name === "script" || name === "style")) {
+    const tag = { name, closing, attributes, text: "" };
+    tags.push(tag);
+    if (!closing && name === "plaintext") {
+      tag.text = markup.slice(at);
+      at = markup.length;
+    } else if (!closing && TEXT_ELEMENTS.has(name)) {
       const end = new RegExp(`</${name}[\\t\\n\\f\\r />]`, "gi");
       end.lastIndex = at;
-      at = end.exec(markup)?.index ?? markup.length;
+      const stop = end.exec(markup)?.index ?? markup.length;
+      tag.text = markup.slice(at, stop);
+      at = stop;
     }
   }
   return tags;
 };
 // Attributes that state structured data in microdata or RDFa. property and rel
 // are RDFa too, but the site needs them, so they are held to what it uses:
-// property only as Open Graph on <meta>, and rel only as plain link types,
-// since a ":" makes a rel token a CURIE or IRI ("rdf:type") and an "&" can
-// spell one ("rdf&colon;type").
+// property only for the Open Graph family on <meta> (none of those prefixes can
+// be pointed at rdf: once prefix and xmlns: are refused), and rel only as plain
+// link types, since a ":" makes a rel token a CURIE or IRI ("rdf:type") and an
+// "&" can spell one ("rdf&colon;type").
 const STRUCTURED_DATA_ATTRIBUTES = new Set([
   "itemscope", "itemtype", "itemprop", "itemid", "itemref",
   "vocab", "typeof", "prefix", "about", "resource", "rev", "inlist", "datatype",
 ]);
-// JSON-LD keys counted from the parse, and from the text as the ":" that ends
-// each key outside a string. JSON.parse keeps the last of two equal keys, and a
-// parser that keeps the first reads a different block, so the two must agree.
-const jsonKeyCount = (value) => {
-  if (Array.isArray(value)) return value.reduce((count, child) => count + jsonKeyCount(child), 0);
-  if (value === null || typeof value !== "object") return 0;
-  return Object.values(value).reduce((count, child) => count + 1 + jsonKeyCount(child), 0);
+const OPEN_GRAPH_PROPERTY = /^(og|article|book|profile|fb|twitter):[a-z_:]+$/;
+// The first key a JSON-LD block writes twice in one object, if any. JSON.parse
+// keeps the last of two equal keys, and a parser that keeps the first reads a
+// different block. Strings are consumed whole, so a brace inside one is text.
+const duplicateJsonKey = (text) => {
+  const objects = [];
+  for (const [token, key] of text.matchAll(/("(?:[^"\\]|\\.)*")(?=\s*:)|"(?:[^"\\]|\\.)*"|[{}]/g)) {
+    if (token === "{") objects.push(new Set());
+    else if (token === "}") objects.pop();
+    else if (key !== undefined) {
+      const name = JSON.parse(key);
+      if (objects.at(-1)?.has(name)) return name;
+      objects.at(-1)?.add(name);
+    }
+  }
+  return undefined;
 };
-const jsonKeysWritten = (text) => text.replace(/"(?:[^"\\]|\\.)*"/g, "").split(":").length - 1;
 const contextKeyCount = (value) => {
   if (Array.isArray(value)) return value.reduce((count, child) => count + contextKeyCount(child), 0);
   if (value === null || typeof value !== "object") return 0;
@@ -1745,20 +1763,31 @@ for (const page of publicHtmlFiles) {
     if (!tag.closing && (tag.name === "svg" || tag.name === "math")) {
       fail(
         `${page} has an inline <${tag.name}>. Inside one a <style> is not raw text, so a browser ` +
-          `reads tags there that this check cannot; use an <img> instead.`,
+          `reads tags there that this check cannot. Use <img src="icon.svg">, or for an icon that ` +
+          `follows the text colour a CSS mask-image with background-color: currentColor.`,
+      );
+    }
+    if (tag.name === "script" && tag.text.includes("<!--")) {
+      fail(
+        `${page} has a <script> whose text holds "<!--". From there a browser can run the script ` +
+          `past its </script> and swallow what follows, the theme ItemList included. Write the ` +
+          `"<" as \\u003c in JSON, or reword it.`,
       );
     }
     for (const { name, value } of tag.attributes) {
-      if (STRUCTURED_DATA_ATTRIBUTES.has(name) || name.startsWith("xmlns")) {
+      if (STRUCTURED_DATA_ATTRIBUTES.has(name) || name.startsWith("xmlns:") ||
+          (name === "xmlns" && value !== "http://www.w3.org/1999/xhtml")) {
         fail(
           `${page} carries microdata or RDFa ("${name}" on <${tag.name}>); the site's structured ` +
-            `data is JSON-LD only.`,
+            `data is JSON-LD only. Remove the attribute: Open Graph <meta property> tags need no ` +
+            `prefix or xmlns declaration.`,
         );
       }
-      if (name === "property" && !(tag.name === "meta" && /^og:[a-z_:]+$/.test(value))) {
+      if (name === "property" && !(tag.name === "meta" && OPEN_GRAPH_PROPERTY.test(value))) {
         fail(
           `${page} has property=${JSON.stringify(value)} on <${tag.name}>. RDFa reads property as ` +
-            `structured data; only Open Graph properties on <meta> are allowed.`,
+            `structured data; only Open Graph properties (og:, article:, book:, profile:, fb:, ` +
+            `twitter:) on <meta> are allowed.`,
         );
       }
       if (name === "rel" && /[:&]/.test(value)) {
@@ -1782,7 +1811,9 @@ for (const page of publicHtmlFiles) {
         `change to this check in scripts/verify.mjs.`,
     );
   }
-  jsonLdBlocks.push(...blocks.map((block) => ({ ...block, page })));
+  jsonLdBlocks.push(
+    ...blocks.map((block) => ({ ...block, page, line: markup.slice(0, block.index).split("\n").length })),
+  );
   if (page === "index.html") {
     const inside = blocks.filter((block) => block.index > itemListStart && block.index < itemListEnd);
     if (inside.length !== 1 || itemListTypeMentions(inside[0].value) !== 1) {
@@ -1893,20 +1924,24 @@ for (const [index, item] of listItems.entries()) {
 // Every JSON-LD block on every page, after the theme list's own checks so a
 // fault in that list is reported by the check written for it.
 for (const block of jsonLdBlocks) {
-  const where = `${block.page}'s JSON-LD block at offset ${block.index}`;
-  if (block.value === null || typeof block.value !== "object" || Array.isArray(block.value) ||
-      block.value["@context"] !== "https://schema.org" || contextKeyCount(block.value) !== 1) {
+  const where = `${block.page}'s JSON-LD block on line ${block.line}`;
+  if (block.value === null || typeof block.value !== "object" || Array.isArray(block.value)) {
+    fail(`${where} is not one object. Write one object, with several nodes under "@graph".`);
+  }
+  if (block.value["@context"] !== "https://schema.org" || contextKeyCount(block.value) !== 1) {
     fail(
-      `${where} must be one object whose only @context is "https://schema.org". Any other ` +
-        `context can build a type from pieces this check never sees spelled out (an @vocab ` +
-        `ending in "Item" makes "List" an ItemList).`,
+      `${where} has @context ${JSON.stringify(block.value["@context"])} and ` +
+        `${contextKeyCount(block.value)} @context key(s); it may have exactly one, at the top, ` +
+        `exactly "https://schema.org", as every block on the site does. Any other context can ` +
+        `build a type from pieces this check never sees spelled out (an @vocab ending in "Item" ` +
+        `makes "List" an ItemList).`,
     );
   }
-  if (jsonKeysWritten(block.text) !== jsonKeyCount(block.value)) {
+  const repeated = duplicateJsonKey(block.text);
+  if (repeated !== undefined) {
     fail(
-      `${where} writes ${jsonKeysWritten(block.text)} keys and parses to ` +
-        `${jsonKeyCount(block.value)}, so a key is written twice and parsers that keep the ` +
-        `first and the last of them read different blocks.`,
+      `${where} writes the key ${JSON.stringify(repeated)} twice in one object. Parsers that keep ` +
+        `the first and the last of them read different blocks; keep one.`,
     );
   }
 }
