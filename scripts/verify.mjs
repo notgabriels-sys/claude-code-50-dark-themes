@@ -628,9 +628,11 @@ if (/\/theme \$\{|["'`]\/theme [a-z0-9][a-z0-9-]*["'`]/.test(html)) {
 // The same command shown rather than copied — `<code>/theme deep-field</code>`,
 // or the hero's prompt `> theme deep-field` — teaches the same dead end. Keyed
 // to the real slugs, so prose like "Run /theme and choose one" stays legal.
+// The template counts too: the cards once rendered `theme ${themeSlug}`.
 const themeSlugs = [...files, ...vol2Files].map((file) => file.replace(/\.json$/, ""));
+const shownSeparator = "(?:\\s|&nbsp;|&#160;|&#xa0;|<[^>]+>)+";
 const shownCommand = html.match(
-  new RegExp(`theme(?:\\s|&nbsp;|<[^>]+>)+(${themeSlugs.join("|")})(?![a-z0-9-])`),
+  new RegExp(`\\btheme${shownSeparator}(\\$\\{\\w+\\}|(?:${themeSlugs.join("|")})(?![a-z0-9-]))`, "i"),
 );
 if (shownCommand) {
   fail(

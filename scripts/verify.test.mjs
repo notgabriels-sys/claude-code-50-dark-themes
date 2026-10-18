@@ -552,3 +552,15 @@ test("rejects a role=status region hidden inside a closed disclosure", { timeout
   assert.notEqual(result.code, 0, "the verifier accepted a status region no screen reader can hear while the archive is closed");
   assert.match(result.stderr, /live region \(role="status"\) inside a <details> body/);
 });
+
+test("rejects cards whose template shows `theme ${slug}` again", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixturePage = join(fixtureRoot, "index.html");
+  const page = await readFile(fixturePage, "utf8");
+  await writeFile(fixturePage, page.replace('<span class="txt">/theme</span>', '<span class="txt">theme ${themeSlug}</span>'));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted all 62 cards showing a command that applies nothing");
+  assert.match(result.stderr, /shows "theme \$\{themeSlug\}" as a command/);
+});
