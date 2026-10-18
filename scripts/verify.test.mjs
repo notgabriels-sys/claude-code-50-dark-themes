@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { chmod, cp, lstat, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join, relative, sep } from "node:path";
+import { dirname, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 
@@ -1634,3 +1634,67 @@ test("accepts a reviewed link whose query is written with &amp;", { timeout: 90_
 
   assert.equal(result.code, 0, result.stderr);
 });
+
+// Notes: GitHub Pages renders every Markdown file outside a "." or "_"
+// directory as a page on the shop's domain. Each of these rendered as a live
+// link (Jekyll 3.10.0, kramdown GFM, the Pages default plugins) while verify
+// stayed green.
+async function addFile(t, path, content) {
+  const fixtureRoot = await makeFixture(t);
+  await mkdir(dirname(join(fixtureRoot, path)), { recursive: true });
+  await writeFile(join(fixtureRoot, path), content);
+  return fixtureRoot;
+}
+for (const [defect, path, content, message] of [
+  ["a note linking an unverified PayPal checkout", "PAY_NOTE.md",
+    "Book a master: [Mastering · €45](https://www.paypal.com/ncp/payment/ZZZZZZZZZZZZZ)\n",
+    /PAY_NOTE\.md:1 \(https:\/\/www\.paypal\.com\/ncp\/payment\/ZZZZZZZZZZZZZ\) links to www\.paypal\.com from a note/],
+  ["a note autolinking another checkout", "PAY_NOTE.md", "Pay at <https://pay.example.invalid/b/1>.\n",
+    /PAY_NOTE\.md:1 \(https:\/\/pay\.example\.invalid\/b\/1\) links to pay\.example\.invalid, which is not a reviewed link host/],
+  ["a note with a raw-HTML PayPal.me link", "products/x/NOTE.md", '<a href="https://www.paypal.com/paypalme/someone/1200EUR">Pay</a>\n',
+    /products\/x\/NOTE\.md:1 \(https:\/\/www\.paypal\.com\/paypalme\/someone\/1200EUR\) links to www\.paypal\.com from a note/],
+  ["a reference definition inside a blockquote", "PAY_NOTE.md", ">    [r]: https://pay.example.invalid/x\n\n[Pay][r]\n",
+    /links to pay\.example\.invalid, which is not a reviewed link host/],
+  ["a kramdown attribute list that sets href", "PAY_NOTE.md", '[Docs](/ok){: href="https://pay.example.invalid/x"}\n',
+    /links to pay\.example\.invalid, which is not a reviewed link host/],
+  ["a note link spelled with a character reference", "PAY_NOTE.md", "[Pay](https://pay&#46;example.invalid/x)\n",
+    /spells a link with a character reference or a backslash escape/],
+  ["a note link spelled with a backslash escape", "PAY_NOTE.md", "[Pay](https://pay\\.example.invalid/x)\n",
+    /spells a link with a character reference or a backslash escape/],
+  ["a javascript: link in a note", "PAY_NOTE.md", "[Pay](javascript:void(0))\n", /is a javascript: link/],
+  ["a note link that does not resolve", "PAY_NOTE.md", "[Pay](https://[pay)\n", /is a link Jekyll would render that no browser can resolve/],
+  ["a GitHub Sponsors link in a note", "PAY_NOTE.md", "[Support](https://github.com/sponsors/someone-else)\n",
+    /goes to github\.com\/sponsors\/someone-else; github\.com may be linked only under \/notgabriels-sys\//],
+  ["a note that sets a permalink", "PAY_NOTE.md", "---\npermalink: /index.html\n---\n\n# Shop\n",
+    /PAY_NOTE\.md sets "permalink" in its front matter/],
+  ["a note whose front matter does not close", "PAY_NOTE.md", "---\nname: x\n\n# Shop\n",
+    /PAY_NOTE\.md opens with "---" but its front matter does not close/],
+  ["a Liquid expression in a note", "PAY_NOTE.md", "{{ 'https://pay' | append: '.example.invalid/x' }}\n",
+    /PAY_NOTE\.md holds a Liquid delimiter/],
+  ["a Jekyll config at the root", "_config.yml", "plugins: [jekyll-redirect-from]\n",
+    /_config\.yml changes what GitHub Pages builds/],
+]) {
+  test(`rejects ${defect}`, { timeout: 90_000 }, async (t) => {
+    const fixtureRoot = await addFile(t, path, content);
+
+    const result = await runVerifier(fixtureRoot);
+
+    assert.notEqual(result.code, 0, `${defect} shipped green`);
+    assert.match(result.stderr, message);
+  });
+}
+
+for (const [control, path, content] of [
+  // kramdown renders a bare URL as text, not a link.
+  ["a bare URL in a note's prose", "PAY_NOTE.md", "See https://pay.example.invalid/x for the details.\n"],
+  // Pages does not serve files under a "." directory.
+  ["a link in a note Pages does not serve", ".github/PAY_NOTE.md", "[Pay](https://pay.example.invalid/x)\n"],
+]) {
+  test(`accepts ${control}`, { timeout: 90_000 }, async (t) => {
+    const fixtureRoot = await addFile(t, path, content);
+
+    const result = await runVerifier(fixtureRoot);
+
+    assert.equal(result.code, 0, `${control} was rejected: ${result.stderr}`);
+  });
+}

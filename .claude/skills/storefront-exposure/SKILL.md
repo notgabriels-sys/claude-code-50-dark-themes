@@ -65,6 +65,7 @@ produces for the paid products before anything ships.
 | `README.md` | GitHub arrivals, the install path | `verify` checks the install command and Gumroad slugs |
 | `.claude-plugin/marketplace.json` | `claude plugin install` | `verify` checks all three plugins: keys, manifests and the exact files each ships |
 | Every link on every public page | visitors leaving the site | `verify` resolves each link as a browser does and holds its host to `reviewedLinkHosts`; PayPal and Gumroad only at a verified id or slug |
+| Every Markdown note (rendered by GitHub Pages as a page on the domain) | anyone who finds a note's URL | `verify` holds every link a note could render to `reviewedLinkHosts`, no payment host; front matter only `name`/`description`; no Liquid |
 
 A directory badge, a launch-site link or any other link to a host the site has
 not linked before fails `verify` until that host is added to `reviewedLinkHosts`
