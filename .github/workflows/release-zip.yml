@@ -1,0 +1,37 @@
+name: Attach themes zip to a release
+
+# Manual only. GitHub's own "Source code (zip)" on a release page is the whole
+# repository. This builds a themes-only zip from the files at the release tag
+# and attaches it, so the release page delivers the pack itself.
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag, for example themes-plugin-v1.0.1
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  attach:
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ inputs.tag }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
+          path: release-source
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Confirm the release exists
+        run: gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json tagName,isDraft,url
+      - name: Build the zip from the files at the tag
+        run: bash scripts/build-release-zip.sh release-source "$TAG" dist
+      - name: Attach the zip to the release
+        run: gh release upload "$TAG" dist/*.zip --repo "$GITHUB_REPOSITORY" --clobber
