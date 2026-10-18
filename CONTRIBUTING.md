@@ -5,7 +5,8 @@ site/documentation change per pull request.
 
 ## Prerequisites
 
-- Claude Code v2.1.118 or later
+- Claude Code v2.1.118 or later to use the themes, and v2.1.143 or later to run
+  `claude plugin validate .` below: older validators reject the manifests' `displayName` key
 - Node.js 22 or later for the repository verifier
 
 ## Changing a theme
