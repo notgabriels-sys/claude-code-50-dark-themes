@@ -719,8 +719,31 @@ if (accentClaims.length) {
 // The finder says it searches by file name. Readers meet the files as
 // `graphite.json` (the repo, the manual-install `cp *.json`), so the search
 // text must carry the real name, extension included, not just the stem.
-if (/Search by[^<]*file name/i.test(html) && !/\$\{themeSlug\}\.json/.test(html)) {
-  fail("index.html says the finder searches by file name, but cards' search text lacks ${themeSlug}.json.");
+// Check the behaviour rather than one spelling of the promise: any visible
+// mention of file names arms it; the card's search text itself must carry
+// `${themeSlug}.json`; and every real theme file must be what the page's own
+// slug() produces from the theme's name, or that search finds nothing.
+const visibleCopy = html.replace(/<!--[\s\S]*?-->/g, "").replace(/<(style|script)\b[\s\S]*?<\/\1>/gi, "");
+if (/file ?names?/i.test(visibleCopy)) {
+  const searchable = html.match(/const searchable = `([^`]*)`/);
+  if (!searchable) {
+    fail("index.html promises file-name search, but no card search text (const searchable) was found; the guard would be inert.");
+  } else if (!searchable[1].includes("${themeSlug}.json")) {
+    fail("index.html says the finder searches by file name, but the cards' search text lacks ${themeSlug}.json.");
+  }
+  const pageSlug = 'const slug = n => n.toLowerCase().replace(/ /g,"-");';
+  if (!html.includes(pageSlug)) {
+    fail("index.html's slug() changed; update the mirror in verify.mjs so file-name search is still checked.");
+  }
+  const mirrorSlug = (name) => name.toLowerCase().replace(/ /g, "-");
+  for (const [dir, list] of [[root, files], [vol2ThemesRoot, vol2Files]]) {
+    for (const file of list) {
+      const { name } = JSON.parse(await readFile(new URL(file, dir), "utf8"));
+      if (`${mirrorSlug(name)}.json` !== file) {
+        fail(`Searching "${file}" finds nothing: the page derives "${mirrorSlug(name)}.json" from "${name}".`);
+      }
+    }
+  }
 }
 
 console.log(

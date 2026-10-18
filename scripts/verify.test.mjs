@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { chmod, cp, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { chmod, cp, mkdtemp, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -581,4 +581,15 @@ test("rejects a surface hex that only an attribute carries", { timeout: 90_000 }
 
   assert.notEqual(result.code, 0, "the verifier accepted a surface hex no reader can see on the card");
   assert.match(result.stderr, /promise a surface hex in the gallery/);
+});
+
+test("rejects a theme file the finder's file-name search cannot find", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const themes = join(fixtureRoot, "plugins", "dark-themes-vol-2", "themes");
+  await rename(join(themes, "neon-noir.json"), join(themes, "neonnoir.json"));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a file name the finder derives differently");
+  assert.match(result.stderr, /Searching "neonnoir\.json" finds nothing/);
 });
