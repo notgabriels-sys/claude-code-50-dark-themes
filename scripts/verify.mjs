@@ -153,6 +153,12 @@ for (const file of vol2Files) {
   }
   vol2ThemesByName.set(theme.name, theme);
 }
+// previews.json must hold exactly the packaged themes, as CONTRIBUTING says.
+// The loop above only looks entries up, so a theme renamed or removed left its
+// old key behind and nothing noticed.
+for (const name of Object.keys(vol2Previews)) {
+  if (!vol2ThemesByName.has(name)) fail(`Vol. 2 previews.json has an entry for ${name}, which no packaged theme uses.`);
+}
 
 const marketplace = JSON.parse(await readFile(new URL(".claude-plugin/marketplace.json", root), "utf8"));
 const pluginManifest = JSON.parse(await readFile(new URL(".claude-plugin/plugin.json", pluginRoot), "utf8"));

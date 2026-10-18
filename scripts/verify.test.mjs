@@ -1009,3 +1009,15 @@ test("rejects a page that still offers the withdrawn free Gumroad download", { t
   assert.notEqual(result.code, 0, "the verifier accepted the withdrawn Gumroad route");
   assert.match(result.stderr, /claude-code-theme-install-guide\.html still offers the withdrawn free Gumroad download/);
 });
+
+test("rejects a Vol. 2 previews.json entry that no packaged theme uses", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const previewsPath = join(fixtureRoot, "plugins", "dark-themes-vol-2", "previews.json");
+  const previews = JSON.parse(await readFile(previewsPath, "utf8"));
+  await writeFile(previewsPath, `${JSON.stringify({ ...previews, Ghost: "#000000" }, null, 2)}\n`);
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a stale preview entry for a theme that does not exist");
+  assert.match(result.stderr, /previews\.json has an entry for Ghost, which no packaged theme uses/);
+});
