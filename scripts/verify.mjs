@@ -59,7 +59,6 @@ const verifiedGumroadSlugs = new Set([
   "kxsfa",
   "kykega",
   "raw-techno-kick-architecture",
-  "slhbym",
   "wgtbkq",
   "wuhehk",
   "xcxeb",
@@ -93,8 +92,9 @@ const pngSignature = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a
 // deliberate. That catches a stray keystroke or a bad merge, which is worth
 // having. It is not verification and must never be described as verification.
 //
-// price null means the product states no price: `slhbym` is the name-your-price
-// zip. `wuhehk` is the bundle, whose price is inline copy rather than a price
+// price null means the product states no price, as a name-your-price product
+// does. None is on the shop now: the free zip `slhbym` was withdrawn on main in
+// 6422979 and its row dropped here when that merged. `wuhehk` is the bundle, whose price is inline copy rather than a price
 // element, so it is recorded here like any other.
 //
 // Two rows are in USD on an otherwise-EUR page (`cfcvmy` $19, `xcxeb` $9, and
@@ -102,7 +102,6 @@ const pngSignature = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a
 // smoothed over. Do NOT resolve it by editing index.html; it is resolved by
 // reading the real products in a signed-in browser.
 const recordedGumroadPrices = [
-  { slug: "slhbym", price: null },
   { slug: "ckthsb", price: "€12" },
   { slug: "cfcvmy", price: "$19" },
   { slug: "dark-app-screens", price: "€14" },
@@ -946,8 +945,8 @@ for (const match of readme.matchAll(gumroadLinkPattern)) {
 //
 // Checked per line, because the README legitimately aggregates in a way the
 // storefront does not: one row links two products and prices them "€7 each",
-// another links two and says "from €6", and the free zip's row says "$0 is
-// fine". Demanding one exact price per line would fail on honest copy. So every
+// another links two and says "from €6", and a name-your-price row may say "$0
+// is fine". Demanding one exact price per line would fail on honest copy. So every
 // currency amount on a line must equal the recorded price of ONE of the
 // products that line links — which still rejects a number belonging to no
 // linked product, while leaving "each" and "from" phrasing free.
@@ -1251,6 +1250,100 @@ for (const file of publicHtmlFiles) {
         "an author display rule would leave hidden elements on screen. " +
         "Add [hidden]{display:none!important}.",
     );
+  }
+}
+
+// The finder must reach every theme the page renders, not just the archive's.
+// It used to select `grid.querySelectorAll(".card")`, so once Vol. 2 shipped,
+// searching "afterglow" printed "No themes match that search" while Afterglow
+// was on screen twelve cards below. Selecting document-wide on the attribute
+// the renderer writes keeps a future pack in the finder without a code change,
+// so require that shape rather than a hand-listed set of grids.
+if (/\bgrid\.querySelectorAll\(\s*["']\.card["']\s*\)/.test(html)) {
+  fail(
+    "index.html scopes the finder to one grid; themes in any other grid would " +
+      "be unreachable by search while the page claims none match. Select " +
+      '`.card[data-search]` across the document instead.',
+  );
+}
+if (!/document\.querySelectorAll\(\s*["']\.card\[data-search\]["']\s*\)/.test(html)) {
+  fail("index.html no longer selects finder cards document-wide; the finder guard would be inert.");
+}
+
+// The README tells people to clone and run `./install.sh`. That only works if
+// the file carries the executable bit in git — it shipped as mode 100644, so
+// the documented command failed with "Permission denied" on every fresh clone.
+// A mode is invisible in a diff, so assert it.
+const installerStat = await stat(new URL("install.sh", root));
+if (!(installerStat.mode & 0o111)) {
+  fail("install.sh is not executable; the README's `./install.sh` fails on a fresh clone. Run git update-index --chmod=+x install.sh.");
+}
+
+// Its --help prints the header comment block. A hardcoded line range drifts as
+// the header grows: `sed -n '2,12p'` had already slipped past the block and
+// printed `set -euo pipefail` to the user. Require the block be delimited by
+// the comments themselves.
+const installer = await readFile(new URL("install.sh", root), "utf8");
+if (/-h\|--help\)[^\n]*sed -n ['"]\d+,\d+p/.test(installer)) {
+  fail("install.sh builds --help from a fixed line range; it drifts as the header changes. Delimit the block by the comment run instead.");
+}
+
+// That same header is the only thing a user reads before running --uninstall,
+// and the uninstall branch matches by filename and rm -f's whatever it finds.
+// It has no idea what it installed, so it must not claim it does: the header
+// said "remove the ones this script installed" while deleting a hand-written
+// acid.json it never wrote, with none of the backup care the install path takes.
+const installerHeader = installer.split(/^set -euo pipefail$/m)[0];
+if (/the ones this script installed/i.test(installerHeader)) {
+  fail("install.sh --help claims --uninstall removes only what the script installed. It matches by filename and deletes a same-named file it never wrote. Say what it really does, or make the removal content-aware.");
+}
+if (!/matches by filename, not contents/i.test(installerHeader)) {
+  fail("install.sh --help must say --uninstall matches by filename, not contents; without it the destructive path reads safer than it is.");
+}
+
+// The install guide's manual fallback is a procedure people follow verbatim on
+// a page that search can land them on directly. It used to open with
+// `cp *.json ~/.claude/themes/` and never say where the files come from — the
+// page contained no clone, download, archive or curl step at all — so the copy
+// silently depended on the reader already standing in a clone. It also copied
+// only the root fifty, immediately after introducing Vol. 2 by name, leaving
+// anyone without the plugin flow no manual route to the twelve.
+const installGuide = await readFile(new URL("claude-code-theme-install-guide.html", root), "utf8");
+const manualSection = installGuide.match(/<section[^>]*id="manual"[\s\S]*?<\/section>/);
+if (!manualSection) {
+  fail("claude-code-theme-install-guide.html has no #manual section; the manual-route guard would be inert.");
+}
+if (!/git<\/span>\s*<span[^>]*>clone |git clone /.test(manualSection[0])) {
+  fail(
+    "The install guide's manual route never says how to obtain the theme files. " +
+      "Its copy commands assume a clone; state the clone step.",
+  );
+}
+if (!manualSection[0].includes("plugins/dark-themes-vol-2/themes/")) {
+  fail(
+    "The install guide's manual route copies only the root themes, so it silently " +
+      "skips Vol. 2. Copy plugins/dark-themes-vol-2/themes/*.json too.",
+  );
+}
+
+// Copy that advertises a product nobody can buy. The Claude Code Workflow Kit
+// (slug zvbti) is built but unpublished — its own PUBLISHING.md records
+// is_published: false — so it is deliberately absent from verifiedGumroadSlugs
+// above. PROMOTION_QUEUE.md scrubbed its own paste-ready copy of "workflow kits"
+// for that reason, but the DEV Community draft still listed "workflow packs" in
+// the catalog. Until the slug is verified and added to the set, no paste-ready
+// copy may mention it: the DEV draft as a whole, and PROMOTION_QUEUE.md's fenced
+// blocks (its prose legitimately explains why the kit is held back).
+if (!verifiedGumroadSlugs.has("zvbti")) {
+  const unpublishedProduct = /workflow[ -]?(kit|pack)s?/i;
+  const devDraft = await readFile(new URL("DEV_COMMUNITY_ARTICLE_DRAFT.md", root), "utf8");
+  if (unpublishedProduct.test(devDraft)) {
+    fail("DEV_COMMUNITY_ARTICLE_DRAFT.md advertises the Workflow Kit, which is unpublished (zvbti is not in verifiedGumroadSlugs). Remove it from the copy, or publish and verify the product first.");
+  }
+  const promoQueue = await readFile(new URL("PROMOTION_QUEUE.md", root), "utf8");
+  const fenced = promoQueue.match(/```[\s\S]*?```/g) ?? [];
+  if (fenced.some((block) => unpublishedProduct.test(block))) {
+    fail("PROMOTION_QUEUE.md paste-ready copy advertises the Workflow Kit, which is unpublished (zvbti is not in verifiedGumroadSlugs).");
   }
 }
 

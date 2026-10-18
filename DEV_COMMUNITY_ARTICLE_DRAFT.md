@@ -138,7 +138,7 @@ once the marketplace is added:
 claude plugin install dark-themes-vol-2@notgabriels-themes
 ```
 
-I also ended up building a wider small catalog around the same dark developer-tool direction: UI kits, templates, cheat sheets, workflow packs, palettes and wallpapers.
+I also ended up building a wider small catalog around the same dark developer-tool direction: UI kits, templates, cheat sheets, palettes and wallpapers.
 
 But the theme set is the useful entry point, and it stays free.
 

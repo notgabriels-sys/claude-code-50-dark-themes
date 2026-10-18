@@ -86,9 +86,16 @@ Gallery: https://gabs-utilities.com/#vol2
 
 ### GitHub release — Dark Themes Vol. 2 (create only after the Vol. 2 PR is merged to main)
 
-Suggested tag: `dark-themes-vol-2-v1.0.0` (do not reuse the `themes-plugin-v*`
-tags — those version the flagship 50-pack, and the storefront JSON-LD
-downloadUrl is pinned to them).
+Suggested tag: `dark-themes-vol-2-v1.0.0`. Do not reuse the `themes-plugin-v*`
+namespace — those tags version the flagship 50-pack (currently
+`themes-plugin-v1.0.1`, matching that plugin's manifest), and reusing them
+would make the release history say the flagship shipped a version it did not.
+
+The storefront's JSON-LD `downloadUrl` is **not** affected either way: it is
+`…/archive/refs/heads/main.zip`, which tracks the default branch, not any tag.
+So the download that link serves is whatever is on `main` at the time — since
+`af24eb7` that includes Vol. 2. Tag freely; just do not point that URL at a tag
+without deciding which pack it is then claiming to be.
 
 Title:
 
@@ -113,16 +120,16 @@ Preview every palette in its own colors: https://gabs-utilities.com/#vol2
 The original 50-theme pack is unchanged and stays free and MIT licensed.
 ```
 
-### Gumroad — free pack description addendum (paste into the slhbym product description; do not create a new product)
+### Free Gumroad archive — held from acquisition
 
-```text
-Update: the same Claude Code marketplace now also carries Dark Themes Vol. 2 — a free expansion plugin with 12 all-new themes (Afterglow, Aurora Borealis, Basalt, Biolume, Cryosleep, Darkroom, Gaslight, Heliotrope, Magnetite, Monsoon, Neon Noir, Ozone), held to the same contrast standards.
+Do not link, promote, or update the legacy free Gumroad archive while its public
+description and exact delivered files remain unreconciled. Use the verified
+GitHub/native-plugin route instead:
 
-Install it beside the 50:
-claude plugin install dark-themes-vol-2@notgabriels-themes
+https://github.com/notgabriels-sys/claude-code-50-dark-themes/releases/tag/themes-plugin-v1.0.1
 
-Preview all of them in their own colors: https://gabs-utilities.com/#vol2
-```
+This hold does not unpublish or delete the Gumroad product. Restoring that route
+requires a separately approved, exact-version artifact and delivery read-back.
 
 ### X launch post
 

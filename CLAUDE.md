@@ -132,10 +132,11 @@ for the wrong service.
 Current state of `index.html` (re-counted 2026-08-24, after `main` retired two
 audio products, then restyled the storefront and retired `zvbti`):
 
-- **16 distinct Gumroad products** across **17 link occurrences** in
-  `index.html` (re-counted 2026-10-18; the 2026-08-24 figure of 15 across 18
-  went stale when `main` added `dark-invoice-business-documents` and reshaped
-  the developer-picks row). All are on `notgabriel.gumroad.com/l/<slug>`; four
+- **15 distinct Gumroad products** across **16 link occurrences** in
+  `index.html` (re-counted 2026-10-18 after merging `main`, which withdrew the
+  free zip `slhbym` in `6422979`; the morning's count of 16 across 17 lasted
+  one merge, and the 2026-08-24 figure of 15 across 18 had gone stale before
+  that, when `main` added `dark-invoice-business-documents`). All are on `notgabriel.gumroad.com/l/<slug>`; four
   carry `?utm_source=...`, and only `ckthsb` appears twice. Do not trust these
   numbers either — re-derive them: `node scripts/verify.mjs` prints the
   distinct-product count in its summary, and the occurrence count is
@@ -209,7 +210,8 @@ page.
 
 **(added 2026-08-24) Gumroad page-price drift.** `recordedGumroadPrices` records
 what each product states, and `verify` fails if any stated amount changes, if a
-priced product states nothing, if the free zip grows a price, or if an
+priced product states nothing, if a no-price product grows a price (none is on the shop since the free zip
+`slhbym` was withdrawn in `6422979`), or if an
 `aria-label` reads out a number or a currency that disagrees with the visible
 one. It matches on the *number*, not the markup: main restyled the cards to
 "View product · €12" the same day, and a check pinned to `<i>€12</i>` would have
@@ -251,7 +253,7 @@ records that product's €15 EUR price as checked after a provider reload on
 2026-08-20 (clean checkout data `price_cents: 1500`, currency `eur`, and a
 zero-charge creator test purchase). That is a record left by whoever published
 the product — not a check `verify` can repeat — and it promotes nothing in the
-tables above. The other fifteen have no record at all. (Corrected 2026-10-18:
+tables above. The other fourteen have no record at all. (Corrected 2026-10-18:
 this paragraph used to say no price had ever been read back, which that file has
 contradicted since it arrived in `eabb06c`.) A price that was already wrong on the day it was recorded is copied
 faithfully into the table and the build stays green forever. Adding or changing
@@ -263,7 +265,7 @@ edited — in any of the three places the page states it — without the edit be
 deliberate. That catches a stray keystroke or a bad merge. It is not
 verification, and it must never be described as verification. The priced half
 stays unbuilt until someone reads every product in a signed-in browser
-(16 as of 2026-10-18 — the count in `verify`'s summary line is the live one).
+(15 as of 2026-10-18 — the count in `verify`'s summary line is the live one).
 
 `verify` also guards the plugin marketplace: it asserts all three plugins are
 registered with the right source paths, that every field of each plugin's
@@ -300,7 +302,7 @@ The PayPal links below were each read back from their own detail page before
 going on the shop. **Only one Gumroad product's price has a recorded
 read-back** (`industrial-tension-fx`, see the CI-tripwire section), and none
 was read back by Claude.
-The Gumroad products (16 as of 2026-10-18) are the larger half of the shop by count and carry the ordinary
+The Gumroad products (15 as of 2026-10-18) are the larger half of the shop by count and carry the ordinary
 sales income. `main` did confirm on 2026-08-24 that each product page loads a
 published product — real, and worth having — but existence is not price, and
 apart from that one publishing record nothing in this repo records a price being
