@@ -56,7 +56,8 @@ git clone https://github.com/notgabriels-sys/claude-code-50-dark-themes
 cd claude-code-50-dark-themes && ./install.sh
 ```
 
-Then run `/theme` in Claude Code and pick one.
+Then run `/theme` in Claude Code and pick one. If `~/.claude/themes/` didn't exist before,
+restart Claude Code once first; the installer tells you when.
 
 ```bash
 ./install.sh --list            # show the 50 names

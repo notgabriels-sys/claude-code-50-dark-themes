@@ -44,3 +44,17 @@ test("--uninstall with names removes only those", (t) => {
   assert.equal(installed(themes).length, 48, "naming two themes removed a different number");
   assert.ok(!installed(themes).includes("acid.json") && !installed(themes).includes("deep-field.json"));
 });
+
+// Claude Code picks up ~/.claude/themes only if the folder existed when it
+// started. Checked live on 2.1.302: installing into a folder this script
+// created left the 50 themes out of /theme until a restart.
+test("says to restart Claude Code once when it creates the themes folder", (t) => {
+  const { home } = sandbox(t);
+
+  const first = run(home, []);
+  const again = run(home, []);
+
+  assert.equal(first.status, 0, first.stderr);
+  assert.match(first.stdout, /restart Claude Code once/i);
+  assert.doesNotMatch(again.stdout, /restart/i, "the folder already existed, so no restart is needed");
+});

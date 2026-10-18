@@ -80,6 +80,10 @@ if [ "$MODE" = uninstall ]; then
   exit 0
 fi
 
+# Claude Code picks up the themes folder only if it existed when Claude Code
+# started, so a folder created here needs one restart before /theme lists it.
+created=0
+[ -d "$DEST" ] || created=1
 mkdir -p "$DEST"
 installed=0; backed=0; skipped=0
 
@@ -97,5 +101,10 @@ done < <(themes)
 echo "Installed $installed theme(s) into $DEST"
 [ $backed -gt 0 ] && echo "Backed up $backed existing file(s) as *.json.bak"
 echo
-echo "In Claude Code, run  /theme  and pick one."
+if [ $created -eq 1 ]; then
+  echo "$DEST is new: restart Claude Code once so it sees the folder."
+  echo "Then run  /theme  and pick one."
+else
+  echo "In Claude Code, run  /theme  and pick one."
+fi
 echo "Requires Claude Code v2.1.118 or later."
