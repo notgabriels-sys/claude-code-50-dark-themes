@@ -564,3 +564,21 @@ test("rejects cards whose template shows `theme ${slug}` again", { timeout: 90_0
   assert.notEqual(result.code, 0, "the verifier accepted all 62 cards showing a command that applies nothing");
   assert.match(result.stderr, /shows "theme \$\{themeSlug\}" as a command/);
 });
+
+test("rejects a surface hex that only an attribute carries", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixturePage = join(fixtureRoot, "index.html");
+  const page = await readFile(fixturePage, "utf8");
+  await writeFile(
+    fixturePage,
+    page.replace(
+      '<div class="hint">then choose &ldquo;${esc(name)}&rdquo;<br>surface&nbsp;${bg}</div>',
+      '<div class="hint" title="surface ${bg}">then choose &ldquo;${esc(name)}&rdquo;</div>',
+    ),
+  );
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a surface hex no reader can see on the card");
+  assert.match(result.stderr, /promise a surface hex in the gallery/);
+});

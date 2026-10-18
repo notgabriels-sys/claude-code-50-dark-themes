@@ -652,9 +652,13 @@ for (const file of publicHtmlFiles) {
   const source = await readFile(new URL(file, root), "utf8");
   if (/surface hex/i.test(source)) surfacePromisedBy.push(file);
 }
-// Match what renders, not one spelling: any space, &nbsp; or inline tags may
-// sit between the label and the value.
-if (surfacePromisedBy.length && !/surface(?:\s|&nbsp;|&#160;|<[^>]+>)+\$\{bg\}/.test(html)) {
+// Match what renders, not one spelling: "surface" must sit in a text node
+// (after a tag's ">", comments removed, so an attribute value or a comment
+// cannot satisfy it), then any space, colon, no-break space or inline tags
+// may sit between the label and the value.
+const htmlWithoutComments = html.replace(/<!--[\s\S]*?-->/g, "");
+const surfaceShown = />[^<]*surface:?(?:\s|&nbsp;|&#160;|&#xa0;)+(?:<[^>"]+>\s*)*\$\{bg\}/i;
+if (surfacePromisedBy.length && !surfaceShown.test(htmlWithoutComments)) {
   fail(
     `${surfacePromisedBy.join(", ")} promise a surface hex in the gallery, but the cards do not print it. ` +
       "Render ${bg} as visible text on each card.",
