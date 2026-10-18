@@ -196,10 +196,12 @@ repo has. `verify` runs on every push and **fails the build** on:
   "Every link goes to a reviewed host" below;
 - **(added 2026-10-18)** any file GitHub Pages serves whose type is not in
   `SERVED_TYPES`, an SVG or XML document outside its element and attribute
-  allowlist, a sitemap location off the site, front matter or a symlink
-  anywhere Pages serves, a page without `<!doctype html>`, a `.mjs` at or above
-  a page, and any name starting `.htaccess` — see "Every served file is one
-  `verify` reads" below;
+  allowlist (the reader's other refusals are listed there), a sitemap location
+  off the site, front matter outside a note's `name`/`description`, a symlink
+  anywhere Pages serves, a page without a doctype, a `.mjs` at or above a page,
+  a script with a `src` on any page, an active element or handler in a note,
+  and any name starting `.htaccess` — see "Every served file is one `verify`
+  reads" below;
 - the retired résumé checkout slug `notgabriel.gumroad.com/l/wmlrk`;
 - any of the three verified PayPal links going missing;
 - **(added 2026-08-24)** any of the three carrying a price other than its
@@ -277,10 +279,10 @@ goes stale and a custom checkout domain is on none. On `www.paypal.com` and
 `notgabriel.gumroad.com` the path must be a verified NCP id or Gumroad slug. A
 link off the site must be spelled `https://<host>/` exactly, with `&` written
 `&amp;` and no other character reference, so the text checks above see every
-payment link in the spelling a browser follows. `<base>` and
-`<meta http-equiv>` are refused. **Linking a new host is a deliberate edit to
+payment link in the spelling a browser follows. A `base` element and
+`meta http-equiv` are refused. **Linking a new host is a deliberate edit to
 `reviewedLinkHosts`; a checkout host never goes there before its real object
-has been read.** Not covered: inline `<script>` text, which can navigate, or
+has been read.** Not covered: inline `script` text, which can navigate, or
 load a served script as a worker, without a link; and CSS, which cannot
 navigate.
 
@@ -302,8 +304,8 @@ handlers are now refused, attributes are an allowlist (`OTHER_ATTRIBUTES`, plus
 on a payment domain must have a path rule, every served `.html` is scanned and
 payment links may sit only on the root pages the price checks read, and every
 PayPal card on every page is priced and counted. Too strict: every
-`<meta http-equiv>` (now only `refresh`), `tel:`/`sms:`, inline `data:image`,
-`<base target>`, and `srcset` split on every comma (now parsed as the HTML
+`meta http-equiv` (now only `refresh`), `tel:`/`sms:`, inline `data:image`,
+`base target`, and `srcset` split on every comma (now parsed as the HTML
 spec does). `mailto:` stays exempt on purpose: it cannot take money, and
 allowlisting the address would copy a contact email into another tracked file.
 
@@ -401,9 +403,27 @@ to a session limit and was resumed) found the `.htaccess` names (high:
 `.htaccess.svg` ran its script and `.htaccess.md` rendered a live link with
 `verify` green), the service worker (medium), quirks-mode pages and documents
 with no namespace (low). Each is fixed above. Still not covered, and the next
-step: inline `<script>` text. Holding each inline script to an allowlist of its
+step: inline `script` text. Holding each inline script to an allowlist of its
 exact text would close it, at the cost of a deliberate edit for every change to
 the gallery code.
+
+Its records lens, re-run after a session limit lifted, found more. The
+script-tag check read only the root pages, so a page in a subdirectory loaded a
+served script by `src` and Chromium followed it to a checkout; a script on any
+served page may now carry no attribute but `type="application/ld+json"`. And a
+note's raw HTML reaches the page as kramdown found it: a `script` element, an
+`onerror` handler, a `meta` refresh, an iframe `srcdoc` and an `onclick` set by
+a kramdown attribute list each sent Chromium from a rendered note to another
+host, with `verify` green. A note may now hold none of the elements that run
+script, refresh, rebase links, embed a document or carry foreign content, and no
+attribute whose name starts `on`. That is a list, not an allowlist, on purpose:
+HTML builds a name it does not know as an inert element, and notes write
+placeholders such as `<id>` and `<name>`. It is read anywhere, code included, so
+a note names those elements in words — this file writes `script`, not the tag —
+and prose like a word starting "on" followed by an equals sign reads as a
+handler. The lens also found five branches no test pinned — a capital `URL(`,
+the exact XML declaration, the attribute-name capture, `<loc>` normalisation
+and the `_` half of the segment rule — each now pinned by a test.
 
 **Sixteen failure cases were proven** by breaking `index.html`, `README.md` and
 `impressum.html` in turn and confirming the build goes red, then restoring:
@@ -510,8 +530,8 @@ through `rel`/`property`/`resource`, and a `<style>` strip fooled by two
 attribute values; `&#76;` carried each past the raw count, which never decodes
 character references. So tags are now read with the HTML tokenizer's own rules
 (`htmlTags` in `verify.mjs`), microdata and RDFa attributes are refused
-outright (`property` only as Open Graph on `<meta>`, `rel` only as plain link
-types), inline `<svg>`/`<math>` are refused because a browser lifts tags out of
+outright (`property` only as Open Graph on `meta`, `rel` only as plain link
+types), inline `svg`/`math` elements are refused because a browser lifts tags out of
 them that a raw-text reader skips, and every JSON-LD block must use exactly
 `"https://schema.org"` as its only `@context` and write no key twice. A regex
 over HTML is the defect class here.
@@ -523,7 +543,7 @@ took `<title>` text as markup, so `<title>x<!--</title>` opened a comment that
 hid a real microdata list after it (a regression; the regex had caught it).
 Reading text as markup can hide markup. The reader now reads as a browser
 does, including which elements hold text, and refuses what it cannot model:
-inline `<svg>`/`<math>`, and `<!--` inside a `<script>`, where a browser's
+inline `svg`/`math`, and `<!--` inside a `script`, where a browser's
 escaped states run the script past its `</script>` and swallowed the theme
 list (pre-existing). It is checked differentially against Chromium; see rule
 13 above.

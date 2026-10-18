@@ -147,8 +147,10 @@ The command checks:
   `description`, and holds no Liquid — and that the root has no `_config.yml` or other `_` entry;
 - that every file GitHub Pages serves is a reviewed type: a page is `.html` and a note `.md`, SVG
   artwork and the sitemap stay inside element and attribute allowlists, every page opens with
-  `<!doctype html>`, no `.mjs` sits at or above a page (keep scripts in `scripts/`), and no served
-  file opens with front matter, is a symlink or has a name starting `.htaccess` — a new type,
+  `<!doctype html>`, no `.mjs` sits at or above a page (keep scripts in `scripts/`), no script
+  carries a `src`, no note holds a script, a handler or another active element (describe them in
+  words), and no served file opens with front matter (a note's `name`/`description` aside), is a
+  symlink or has a name starting `.htaccess` — a new type,
   element or attribute is a deliberate edit to `SERVED_TYPES`, `SVG_DOCUMENT` or
   `SITEMAP_DOCUMENT` in `scripts/verify.mjs`;
 - valid 1280×720 PNG assets for the curated developer picks;

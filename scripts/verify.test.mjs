@@ -1705,23 +1705,24 @@ const SVG_OPEN = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">';
 const SITEMAP_OPEN = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
 for (const [defect, path, content, message] of [
   ["a page saved as .htm", "pay.htm", '<!doctype html><a href="https://pay.example.invalid/x">Pay</a>\n',
-    /pay\.htm is served by GitHub Pages, and verify does not read a \.htm file/],
+    /pay\.htm sits where GitHub Pages serves files, and verify does not read a \.htm file/],
   ["a page saved as .xhtml", "assets/pay.xhtml",
     '<html xmlns="http://www.w3.org/1999/xhtml"><body><a href="https://pay.example.invalid/x">Pay</a></body></html>\n',
-    /assets\/pay\.xhtml is served by GitHub Pages, and verify does not read a \.xhtml file/],
+    /assets\/pay\.xhtml sits where GitHub Pages serves files, and verify does not read a \.xhtml file/],
   ["a page saved with an uppercase extension", "pay.HTML", '<!doctype html><a href="https://pay.example.invalid/x">Pay</a>\n',
-    /pay\.HTML is served by GitHub Pages, and verify does not read a \.HTML file/],
+    /pay\.HTML sits where GitHub Pages serves files, and verify does not read a \.HTML file/],
   ["a note Jekyll renders from .markdown", "PAY_NOTE.markdown", "[Pay](https://pay.example.invalid/x)\n",
-    /PAY_NOTE\.markdown is served by GitHub Pages, and verify does not read a \.markdown file/],
+    /PAY_NOTE\.markdown sits where GitHub Pages serves files, and verify does not read a \.markdown file/],
   ["a served file of an unreviewed type", "assets/pay.pdf", "%PDF-1.4\n",
-    /assets\/pay\.pdf is served by GitHub Pages, and verify does not read a \.pdf file/],
+    /assets\/pay\.pdf sits where GitHub Pages serves files, and verify does not read a \.pdf file/],
   ["an SVG holding a link", "assets/pay.svg", `${SVG_OPEN}\n<a href="https://pay.example.invalid/x"><text y="9">Pay</text></a>\n</svg>\n`,
     /assets\/pay\.svg:2 has the element <a>, which is not in the SVG artwork allowlist/],
   ["an SVG holding a script", "assets/pay.svg", `${SVG_OPEN}<script>location.assign("https://pay.example.invalid/x")</script></svg>\n`,
     /assets\/pay\.svg:1 has the element <script>, which is not in the SVG artwork allowlist/],
   // Chromium runs this one: the prefix is bound to the SVG namespace, and a
   // name read with a character class would stop at the "ä". The scripts hold
-  // no "=", so only the element allowlist can catch them.
+  // no "=" of their own; "xmlns:ä=" is refused by the attribute allowlist too,
+  // and the next-but-one test pins that capture alone.
   ["an SVG holding a script under a non-ASCII prefix", "assets/pay.svg",
     `${SVG_OPEN}<ä:script xmlns:ä="http://www.w3.org/2000/svg">location.assign("https://pay.example.invalid/x")</ä:script></svg>\n`,
     /assets\/pay\.svg:1 has the element <ä:script>, which is not in the SVG artwork allowlist/],
@@ -1792,7 +1793,8 @@ for (const [control, path, content] of [
       '<defs><radialGradient id="r" fx="0.5" fy="0.5" gradientUnits="objectBoundingBox"><stop offset="0" stop-opacity="1"/>' +
       '</radialGradient></defs>\n<ellipse cx="9" cy="9" rx="4" ry="2" fill="url(#r)" fill-rule="evenodd"/>\n' +
       '<polyline points="0,0 9,9" stroke-dasharray="2"/><polygon points="0,0 9,0 9,9"/>\n' +
-      '<text x="1" y="9"><tspan>ok</tspan></text>\n</svg>\n'],
+      '<text x="1" y="9"><tspan>ok</tspan></text>\n<desc>Shapes</desc><rect width="1" height="1"/><circle r="1"/>' +
+      '<line x1="0" y1="0" x2="1" y2="1"/><path d="M0 0H1"/>\n</svg>\n'],
 ]) {
   test(`accepts ${control}`, { timeout: 90_000 }, async (t) => {
     const fixtureRoot = await addFile(t, path, content);
@@ -1843,6 +1845,73 @@ for (const [control, path, content] of [
     `${SVG_OPEN}<a href="https://pay.example.invalid/x"><text y="9">Pay</text></a></svg>\n`],
   // A worker's scope is its own directory, and scripts/ holds no page.
   ["a script in a directory that holds no page", "scripts/sw.mjs", "self.skipWaiting();\n"],
+]) {
+  test(`accepts ${control}`, { timeout: 90_000 }, async (t) => {
+    const fixtureRoot = await addFile(t, path, content);
+
+    const result = await runVerifier(fixtureRoot);
+
+    assert.equal(result.code, 0, `${control} was rejected: ${result.stderr}`);
+  });
+}
+
+// Found by the records review of the served-file check: what a note's raw
+// HTML or a subdirectory page can run, and branches no test pinned.
+for (const [defect, path, content, message] of [
+  ["a script element in a note", "PAY_NOTE.md", '# Pay\n\n<script>location.assign("https://pay.example.invalid/x")</script>\n',
+    /PAY_NOTE\.md:3 has "<script", which can run script or load another page from the note Pages renders/],
+  ["an event handler in a note", "PAY_NOTE.md", "# Pay\n\n<img src=\"pay.png\" alt=\"\" onerror=\"location.assign('https://pay.example.invalid/x')\">\n",
+    /PAY_NOTE\.md:3 has "onerror=", which can run script/],
+  ["a meta refresh in a note", "PAY_NOTE.md", '# Pay\n\n<meta http-equiv="refresh" content="0;url=https://pay.example.invalid/x">\n',
+    /PAY_NOTE\.md:3 has "<meta", which can run script/],
+  ["an iframe in a note", "PAY_NOTE.md",
+    "# Pay\n\n<iframe srcdoc=\"&lt;script&gt;top.location.assign('https://pay.example.invalid/x')&lt;/script&gt;\"></iframe>\n",
+    /PAY_NOTE\.md:3 has "<iframe", which can run script/],
+  // kramdown's attribute list puts the handler on the paragraph.
+  ["a handler set by a kramdown attribute list", "PAY_NOTE.md",
+    "# Pay\n\nPay now\n{: onclick=\"location.assign('https://pay.example.invalid/x')\"}\n",
+    /PAY_NOTE\.md:4 has "onclick=", which can run script/],
+  ["a script loaded by src on a page in a subdirectory", "assets/promo.html",
+    '<!doctype html>\n<html lang="en"><head><meta charset="utf-8"><title>Promo</title></head>\n' +
+      '<body><p>Promo</p><script src="../scripts/sync-plugin-themes.mjs"></script></body></html>\n',
+    /assets\/promo\.html has a <script> with src\. A script may carry no attribute but type="application\/ld\+json"/],
+  ["an SVG spelling url( in capitals", "assets/pay.svg",
+    `${SVG_OPEN}<rect width="9" height="9" fill="URL(https://pay.example.invalid/p.svg#g)"/></svg>\n`,
+    /assets\/pay\.svg:1 has "URL\("\. A url\(\) may only name an element in this file/],
+  // Only the attribute capture can catch this: the element is allowlisted, and
+  // a name read with a character class stops at the "ä".
+  ["an SVG attribute name ending in a non-ASCII letter", "assets/pay.svg",
+    `${SVG_OPEN}<rect width="9" xmlns:ä="http://www.w3.org/2000/svg"/></svg>\n`,
+    /assets\/pay\.svg:1 has the attribute xmlns:ä=, which is not in the SVG artwork allowlist/],
+  ["a sitemap opening with a stylesheet", "sitemap.xml",
+    '<?xml-stylesheet type="text/css" href="https://pay.example.invalid/s.css"?>\n' +
+      SITEMAP_OPEN.slice(SITEMAP_OPEN.indexOf("\n") + 1) + "  <url><loc>https://gabs-utilities.com/</loc></url>\n</urlset>\n",
+    /sitemap\.xml:1 has "<\?"\. A doctype, comment, CDATA section, processing instruction/],
+  ["a sitemap declaring another encoding", "sitemap.xml",
+    '<?xml version="1.0" encoding="ISO-8859-1"?>\n' +
+      SITEMAP_OPEN.slice(SITEMAP_OPEN.indexOf("\n") + 1) + "  <url><loc>https://gabs-utilities.com/</loc></url>\n</urlset>\n",
+    /sitemap\.xml:1 has "<\?"\. A doctype, comment, CDATA section, processing instruction/],
+  ["a sitemap location not written as a browser writes it", "sitemap.xml",
+    `${SITEMAP_OPEN}  <url><loc>https://gabs-utilities.com/a/../impressum.html</loc></url>\n</urlset>\n`,
+    /sitemap\.xml lists https:\/\/gabs-utilities\.com\/a\/\.\.\/impressum\.html; a sitemap lists pages on/],
+]) {
+  test(`rejects ${defect}`, { timeout: 90_000 }, async (t) => {
+    const fixtureRoot = await addFile(t, path, content);
+
+    const result = await runVerifier(fixtureRoot);
+
+    assert.notEqual(result.code, 0, `${defect} shipped green`);
+    assert.match(result.stderr, message);
+  });
+}
+
+for (const [control, path, content] of [
+  // Jekyll skips a "_" directory at any depth, as it does a "." one.
+  ["a page of an unreviewed type under a nested underscore directory", "assets/_drafts/pay.htm",
+    '<a href="https://pay.example.invalid/x">Pay</a>\n'],
+  // A name HTML does not know is an inert element; notes write placeholders.
+  ["placeholders written as tags in a note", "PAY_NOTE.md",
+    "Read the link at paypal.com/ncp/links/<ID> and put <name> on the invoice.\n"],
 ]) {
   test(`accepts ${control}`, { timeout: 90_000 }, async (t) => {
     const fixtureRoot = await addFile(t, path, content);

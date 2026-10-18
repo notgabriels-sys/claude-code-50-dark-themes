@@ -2135,6 +2135,16 @@ for (const page of linkedPages) {
   }
   for (const tag of htmlTags(markup)) {
     if (tag.closing) continue;
+    // The root pages hold scripts to two spellings above; a page in a
+    // subdirectory could load a served script by src, which nothing reads.
+    if (tag.name === "script" && !(tag.attributes.length === 0 ||
+        (tag.attributes.length === 1 && tag.attributes[0].name === "type" &&
+          tag.attributes[0].value === "application/ld+json"))) {
+      fail(
+        `${page} has a <script> with ${tag.attributes.map(({ name }) => name).join(", ")}. A script may carry ` +
+          `no attribute but type="application/ld+json": a src loads code from a file verify does not read.`,
+      );
+    }
     if (tag.name === "base" && tag.attributes.some(({ name }) => name === "href")) {
       fail(`${page} has a <base href>, which changes where every relative link goes. Remove it.`);
     }
@@ -2256,11 +2266,13 @@ for (const entry of await readdir(root)) {
     );
   }
 }
-// Every file Pages serves: Jekyll skips any path with a segment starting "."
-// or "_", and publishes everything else under its own name -- except that its
-// default include, ".htaccess", is matched as a prefix of any file or
-// directory name, so .htaccess.svg or .htaccess-shop/pay.md is published.
-// Nothing here needs one, so one is refused rather than read.
+// Every file Pages can serve. Jekyll skips any path with a segment starting
+// "." or "_" -- except that its default include, ".htaccess", is matched as a
+// prefix of any file or directory name, so .htaccess.svg or
+// .htaccess-shop/pay.md is published. Nothing here needs one, so one is
+// refused rather than read. Jekyll also skips names starting "#" or "~" or
+// ending "~" and its default excludes (node_modules, vendor/bundle, Gemfile);
+// verify reads those as served, which only refuses more.
 const servedFiles = [];
 for (const entry of await readdir(root, { recursive: true })) {
   const file = entry.split(sep).join("/");
@@ -2314,6 +2326,25 @@ const checkNote = (note, text) => {
   }
   if (/\{\{|\{%/.test(text)) {
     fail(`${note} holds a Liquid delimiter ("{{" or "{%"), which Jekyll can turn into a link verify never read.`);
+  }
+  // kramdown passes a note's raw HTML through to the page, and its attribute
+  // lists add attributes, so a note can run script without a link. Reproduced
+  // with verify green: a script element, an onerror handler, a meta refresh, an
+  // iframe srcdoc and an onclick set by a {: ...} list each sent Chromium to
+  // another host from the rendered note. HTML builds a name it does not know --
+  // the <id> and <name> placeholders notes write -- as an inert element, so
+  // this is a list of the elements that do something: run script, refresh,
+  // rebase links, embed a document, or hold foreign content that can do these.
+  // Read anywhere, code included, like links; describe them in words instead.
+  // HTML attribute names ignore case, so prose such as "Online = later" reads
+  // as a handler too: the cost of reading conservatively.
+  const active = text.match(/<(script|meta|base|iframe|frame|frameset|object|embed|applet|portal|fencedframe|svg|math)(?=[\s/>]|$)/i) ??
+    text.match(/(?:^|[\s"'/<{:;])(on[a-z]+)[\t\n\f\r ]*=/i);
+  if (active) {
+    fail(
+      `${note}:${text.slice(0, active.index).split("\n").length} has "${active[0].trim()}", which can run script or ` +
+        `load another page from the note Pages renders. Describe it in words; write "a script element", not the tag.`,
+    );
   }
   const pageUrl = `https://${cname}/${note.replace(/\.md$/, ".html")}`;
   for (const pattern of NOTE_LINK_PATTERNS) {
@@ -2494,7 +2525,7 @@ for (const file of servedFiles) {
   const reading = SERVED_TYPES.get(type);
   if (!reading) {
     fail(
-      `${file} is served by GitHub Pages, and verify does not read a .${type} file. A page must be .html and a ` +
+      `${file} sits where GitHub Pages serves files, and verify does not read a .${type} file. A page must be .html and a ` +
         `note .md -- Jekyll renders .markdown, .mkd, .mkdn, .mkdown and .MD as pages too, and a browser opens ` +
         `.htm, .xhtml and .xht as pages. Rename it, or add the type to SERVED_TYPES deliberately, once you know ` +
         `how a browser opens it.`,
