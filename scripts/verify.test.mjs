@@ -1375,9 +1375,11 @@ for (const [control, page, from, to] of [
     '<meta property="article:published_time" content="2026-08-24T00:00:00+02:00">\n</head>'],
   ["the XHTML namespace on <html>", "index.html", '<html lang="en">',
     '<html xmlns="http://www.w3.org/1999/xhtml" lang="en">'],
+  // The lone "}" in a string matters: a scanner that read it as markup would
+  // close the inner object early and find "name" twice in the outer one.
   ["one key in two objects, and braces and colons inside strings", "claude-code-theme-install-guide.html", "</head>",
     '<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage",' +
-      '"name":"a {\\"name\\": 1, \\"name\\": 2} \\u003c!-- \\\\","about":{"@type":"Thing","name":"b"}}</script>\n</head>'],
+      '"name":"a {\\"name\\": 1, \\"name\\": 2} \\u003c!-- \\\\","about":{"@type":"Thing","description":"one } brace","name":"b"}}</script>\n</head>'],
   ["typeof in a script", "index.html", "</body>",
     '<script>if (1 <b && typeof window === "object") {}</script>\n</body>'],
 ]) {
