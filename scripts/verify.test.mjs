@@ -637,3 +637,92 @@ test("accepts a surface hex styled in its own element", { timeout: 90_000 }, asy
 
   assert.equal(result.code, 0, `a visible, styled surface hex was rejected:\n${result.stderr}`);
 });
+
+test("accepts card copy that names the theme right after the word theme", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixturePage = join(fixtureRoot, "index.html");
+  const page = await readFile(fixturePage, "utf8");
+  await writeFile(
+    fixturePage,
+    page
+      .replace("Applied theme &ldquo;${esc(name)}&rdquo;", "Applied theme <b>${esc(name)}</b>")
+      .replace("then choose &ldquo;${esc(name)}&rdquo;", "then pick the theme ${esc(name)}"),
+  );
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.equal(result.code, 0, `copy naming the theme to choose was rejected as a command:\n${result.stderr}`);
+});
+
+test("rejects the dead command in a meta description", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixturePage = join(fixtureRoot, "index.html");
+  const page = await readFile(fixturePage, "utf8");
+  await writeFile(
+    fixturePage,
+    page.replace('<meta name="description" content="Browse', '<meta name="description" content="Run /theme deep-field. Browse'),
+  );
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a share description teaching a command that applies nothing");
+  assert.match(result.stderr, /shows "theme deep-field" as a command \(the page, in an attribute\)/);
+});
+
+test("accepts card renderer refactors that work in a browser", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixturePage = join(fixtureRoot, "index.html");
+  const page = await readFile(fixturePage, "utf8");
+  await writeFile(
+    fixturePage,
+    page
+      .replace(
+        'const esc = s => s.replace(/[&<>]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));',
+        'const esc = s => { const node = document.createElement("div"); node.textContent = s; return node.innerHTML; };',
+      )
+      .replace(
+        "const renderTheme = ([name,accent,shimmer,text,mute,bg]) => {",
+        "const renderTheme = ([name,accent,shimmer,text,mute,bg], index) => {",
+      )
+      .replace(
+        '<h3 class="tname">${esc(name)}</h3>',
+        '<h3 class="tname">${esc(name)}</h3><span class="n">${index + 1} / ${THEMES.length}</span>${swatch(accent)}',
+      )
+      .replace("\nconst grid = document", '\nconst swatch = hex => `<i style="background:${hex}"></i>`;\nconst grid = document')
+      .replace(/\r?\n/g, "\r\n"),
+  );
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.equal(result.code, 0, `a working renderer refactor broke the card checks:\n${result.stderr}`);
+});
+
+test("rejects a gallery the page renders without renderTheme", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixturePage = join(fixtureRoot, "index.html");
+  const page = await readFile(fixturePage, "utf8");
+  await writeFile(
+    fixturePage,
+    page.replace(
+      'grid.innerHTML = THEMES.map(renderTheme).join("");',
+      'grid.innerHTML = THEMES.map(row => renderTheme(row).replace("surface", "")).join("");',
+    ),
+  );
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier checked cards the page does not show");
+  assert.match(result.stderr, /#grid in index\.html does not hold THEMES\.map\(renderTheme\)/);
+});
+
+test("names the page script's own error when the gallery never renders", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixturePage = join(fixtureRoot, "index.html");
+  const page = await readFile(fixturePage, "utf8");
+  await writeFile(fixturePage, page.replace("\nconst grid = document", "\nconst motion = reducedMotionQuery.matches;\nconst grid = document"));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier passed a page whose script stopped before rendering the gallery");
+  assert.match(result.stderr, /The page script threw first: reducedMotionQuery is not defined/);
+});

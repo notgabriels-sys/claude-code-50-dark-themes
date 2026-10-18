@@ -1,4 +1,5 @@
 import { readdir, readFile, stat } from "node:fs/promises";
+import { createContext, Script } from "node:vm";
 
 const root = new URL("../", import.meta.url);
 const pluginRoot = new URL("../plugins/50-dark-themes/", import.meta.url);
@@ -626,42 +627,186 @@ if (/\/theme \$\{|["'`]\/theme [a-z0-9][a-z0-9-]*["'`]/.test(html)) {
       "arguments, so it applies nothing. Copy /theme and name the theme to choose.",
   );
 }
-// Card checks read what a visitor sees, not one spelling of the template:
-// three review rounds showed every regex over the template either missed a
-// refactor (`${esc(themeSlug)}`, `${slug(name)}`) or rejected correct
-// styling (`<span class="hex">`). So render each card with the page's own
-// renderTheme() and the helpers above it, then reduce it to visible text.
-// If that block moves, fail loudly rather than skip the checks.
-const rendererStart = html.indexOf("const slug = ");
-const rendererAt = html.indexOf("const renderTheme = ");
-const rendererEnd = rendererAt < 0 ? -1 : html.indexOf("\n};\n", rendererAt);
-if (rendererStart < 0 || rendererAt < rendererStart || rendererEnd < 0) {
-  fail("Could not find slug() through renderTheme() in index.html; update the card checks in verify.mjs.");
+// Card checks read what the page renders, not one spelling of its source.
+// Review rounds showed every regex over the template either missed a refactor
+// (`${esc(themeSlug)}`, `${slug(name)}`) or rejected correct styling
+// (`<span class="hex">`), and evaluating a slice of the script broke on CRLF
+// line endings, helpers defined elsewhere and browser globals. So run the
+// page's inline scripts in order, as the browser does, against a stand-in DOM
+// that records what they write, and take renderTheme, THEMES and VOL2_THEMES
+// from them. #grid and #vol2Grid must hold exactly THEMES.map(renderTheme) and
+// VOL2_THEMES.map(renderTheme); anything else fails loudly, so the cards
+// checked below are the cards the page shows.
+const standIn = (props = Object.create(null)) =>
+  new Proxy(function () {}, {
+    get(target, key) {
+      if (Object.hasOwn(props, key)) return props[key];
+      if (key === Symbol.iterator) return function* () {};
+      if (key === Symbol.toPrimitive) return () => "";
+      if (typeof key === "symbol" || key === "then") return undefined;
+      return (props[key] = standIn());
+    },
+    set(target, key, value) {
+      props[key] = value;
+      return true;
+    },
+    apply: () => standIn(),
+    construct: () => standIn(),
+  });
+const pageElements = new Map();
+const pageElement = (id) => {
+  if (!pageElements.has(id)) {
+    const props = Object.create(null);
+    pageElements.set(id, { props, element: standIn(props) });
+  }
+  return pageElements.get(id).element;
+};
+// Enough of a new element for the usual escaping idiom: set textContent, read
+// innerHTML. Without it an escaped name would render as an empty string.
+const createdElement = () => {
+  const props = Object.create(null);
+  let text = "";
+  let markup = "";
+  const textAccess = {
+    get: () => text,
+    set: (value) => {
+      text = String(value);
+      markup = text.replace(/[&<>\u00a0]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\u00a0": "&nbsp;" })[c]);
+    },
+  };
+  Object.defineProperties(props, {
+    textContent: textAccess,
+    innerText: textAccess,
+    innerHTML: { get: () => markup, set: (value) => (markup = String(value)) },
+  });
+  return standIn(props);
+};
+const pageDocument = standIn(
+  Object.assign(Object.create(null), {
+    getElementById: (id) => pageElement(String(id)),
+    createElement: createdElement,
+  }),
+);
+const pageGlobals = { document: pageDocument, console: { log() {}, info() {}, warn() {}, error() {} } };
+for (const name of ["window", "self"]) {
+  pageGlobals[name] = standIn(Object.assign(Object.create(null), { document: pageDocument }));
 }
-const renderCard = new Function(`${html.slice(rendererStart, rendererEnd + 3)}\nreturn renderTheme;`)();
+for (const name of [
+  "navigator", "location", "history", "localStorage", "sessionStorage", "matchMedia", "getComputedStyle",
+  "requestAnimationFrame", "cancelAnimationFrame", "setTimeout", "clearTimeout", "setInterval", "clearInterval",
+  "queueMicrotask", "IntersectionObserver", "ResizeObserver", "MutationObserver", "Event", "CustomEvent",
+  "HTMLElement", "Element", "Node", "fetch", "performance", "alert", "scrollTo",
+]) {
+  pageGlobals[name] = standIn();
+}
+Object.assign(pageGlobals, { URL, URLSearchParams, TextEncoder, TextDecoder, atob, btoa });
+const pageContext = createContext(pageGlobals);
+let pageScriptError;
+for (const [, attributes, source] of html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi)) {
+  const type = attributes.match(/\btype\s*=\s*["']?([^"'\s>]+)/i)?.[1];
+  if (/\bsrc\s*=/i.test(attributes) || (type && !/^(?:text|application)\/(?:java|ecma)script$/i.test(type))) continue;
+  try {
+    new Script(source, { filename: "index.html" }).runInContext(pageContext);
+  } catch (error) {
+    pageScriptError ??= error;
+  }
+}
+const pageScriptNote = pageScriptError ? ` The page script threw first: ${pageScriptError.message}.` : "";
+let cardSource;
+try {
+  cardSource = new Script("({ renderTheme, THEMES, VOL2_THEMES })").runInContext(pageContext);
+} catch (error) {
+  fail(
+    `index.html's script did not define renderTheme, THEMES and VOL2_THEMES when verify.mjs ran it ` +
+      `(${error.message}).${pageScriptNote} Update the card checks in verify.mjs.`,
+  );
+}
+const renderedCards = [];
+for (const [gridId, listName] of [["grid", "THEMES"], ["vol2Grid", "VOL2_THEMES"]]) {
+  let rows;
+  let cards;
+  try {
+    rows = [...cardSource[listName]];
+    cards = rows.map((row, index, all) => cardSource.renderTheme(row, index, all));
+  } catch (error) {
+    fail(
+      `renderTheme() could not render ${listName} when verify.mjs ran it (${error.message}). Update the card checks.`,
+    );
+  }
+  if (cards.join("") !== pageElements.get(gridId)?.props.innerHTML) {
+    fail(
+      `#${gridId} in index.html does not hold ${listName}.map(renderTheme), so verify.mjs cannot tell which ` +
+        `cards the page shows.${pageScriptNote} Update the card checks to follow the new rendering.`,
+    );
+  }
+  rows.forEach((row, index) => renderedCards.push({ row, markup: cards[index] }));
+}
+
+// Text as a reader gets it: comments, <style> and <script> removed, tags as
+// spaces, character references decoded. Attribute values are read separately,
+// because a screen reader announces an aria-label and a share card shows a
+// meta description.
+const namedEntities = {
+  nbsp: "\u00a0", thinsp: "\u2009", ensp: "\u2002", emsp: "\u2003", ldquo: "\u201c", rdquo: "\u201d",
+  lsquo: "\u2018", rsquo: "\u2019", quot: '"', apos: "'", middot: "\u00b7", mdash: "\u2014", ndash: "\u2013",
+  gt: ">", lt: "<",
+};
+const fromCodePoint = (code, reference) => (code <= 0x10ffff ? String.fromCodePoint(code) : reference);
+const decodeEntities = (text) =>
+  text
+    .replace(/&#(\d+);?/g, (reference, code) => fromCodePoint(Number(code), reference))
+    .replace(/&#x([0-9a-f]+);?/gi, (reference, code) => fromCodePoint(parseInt(code, 16), reference))
+    .replace(/&([a-z]+);/gi, (reference, name) => namedEntities[name.toLowerCase()] ?? reference)
+    .replace(/&amp;/gi, "&");
+const withoutCode = (markup) =>
+  markup.replace(/<!--[\s\S]*?-->/g, " ").replace(/<(style|script)\b[\s\S]*?<\/\1\s*>/gi, " ");
+const startTag = /<[a-z][a-z0-9-]*(?:\s+[^\s"'=/>]+(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'>]+))?)*\s*\/?>/gi;
 const visibleText = (markup) =>
-  markup
-    .replace(/<!--[\s\S]*?-->/g, " ")
-    .replace(/<(style|script)\b[\s\S]*?<\/\1>/gi, " ")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&nbsp;|&#160;|&#xa0;/gi, " ")
-    .replace(/&ldquo;|&rdquo;/g, '"')
-    .replace(/&middot;/g, "·")
-    .replace(/&amp;/g, "&")
-    .replace(/\s+/g, " ");
-const renderedCards = [...galleryThemes, ...vol2Gallery].map((row) => ({ row, text: visibleText(renderCard(row)) }));
+  decodeEntities(withoutCode(markup).replace(startTag, " ").replace(/<[^>]*>/g, " ")).replace(/\s+/g, " ");
+const attributeValues = (markup) =>
+  [...withoutCode(markup).matchAll(startTag)].flatMap(([tag]) =>
+    [...tag.matchAll(/\s[^\s"'=/>]+\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+))/g)].map((attribute) =>
+      decodeEntities(attribute[1] ?? attribute[2] ?? attribute[3]).replace(/\s+/g, " "),
+    ),
+  );
+const jsonLdStrings = [];
+const collectStrings = (value) => {
+  if (typeof value === "string") jsonLdStrings.push(value);
+  else if (value && typeof value === "object") Object.values(value).forEach(collectStrings);
+};
+const jsonLdBlock = /<script\b[^>]*\btype\s*=\s*["']?application\/ld\+json\b[^>]*>([\s\S]*?)<\/script\s*>/gi;
+for (const [, body] of html.matchAll(jsonLdBlock)) {
+  try {
+    collectStrings(JSON.parse(body));
+  } catch {
+    jsonLdStrings.push(body);
+  }
+}
 
 // The same command shown rather than copied — the cards' old `> theme <slug>`
 // prompt, the hero's `> theme deep-field`, `<code>/theme graphite</code>` —
-// teaches the same dead end. Keyed to the real slugs, so prose such as "Run
-// /theme and choose one" or 'Applied theme "Deep Field"' stays legal.
+// teaches the same dead end. A theme's slug or name counts only as an
+// argument: right after `/theme`, or after `theme` behind the prompt glyph.
+// Prose that names a theme, such as 'Applied theme Graphite', "the theme
+// Static" or "Run /theme and choose one", stays legal.
 const themeSlugs = [...files, ...vol2Files].map((file) => file.replace(/\.json$/, ""));
-const shownCommandPattern = new RegExp(`\\btheme\\s+(${themeSlugs.join("|")})(?![a-z0-9-])`, "i");
-for (const { row, text } of [{ row: ["the page"], text: visibleText(html) }, ...renderedCards]) {
+const themeArguments = [...new Set([...themeSlugs, ...renderedCards.map(({ row }) => row[0])])]
+  .sort((a, b) => b.length - a.length)
+  .map((word) => word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/ /g, "\\s+"));
+const shownCommandPattern = new RegExp(`(?:/|>)\\s*theme\\s+(${themeArguments.join("|")})(?![\\w-])`, "i");
+const readable = (where, markup) => [
+  { where, text: visibleText(markup) },
+  ...attributeValues(markup).map((text) => ({ where: `${where}, in an attribute`, text })),
+];
+for (const { where, text } of [
+  ...readable("the page", html),
+  ...jsonLdStrings.map((text) => ({ where: "its JSON-LD", text })),
+  ...renderedCards.flatMap(({ row, markup }) => readable(row[0], markup)),
+]) {
   const shown = text.match(shownCommandPattern);
   if (shown) {
     fail(
-      `index.html shows "theme ${shown[1]}" as a command (${row[0]}). Claude Code's /theme ignores the ` +
+      `index.html shows "theme ${shown[1]}" as a command (${where}). Claude Code's /theme ignores the ` +
         "argument; show /theme and name the theme to choose.",
     );
   }
@@ -681,9 +826,9 @@ for (const file of publicHtmlFiles) {
   if (/surface hex/i.test(source)) surfacePromisedBy.push(file);
 }
 if (surfacePromisedBy.length) {
-  for (const { row, text } of renderedCards) {
+  for (const { row, markup } of renderedCards) {
     const bg = row[5];
-    if (!new RegExp(`surface\\b[^#]{0,12}${bg}(?![0-9a-f])`, "i").test(text)) {
+    if (!new RegExp(`surface\\b[^#]{0,12}${bg}(?![0-9a-f])`, "i").test(visibleText(markup))) {
       fail(
         `${surfacePromisedBy.join(", ")} promise a surface hex in the gallery, but the ${row[0]} card does not ` +
           `print "surface ${bg}" as visible text.`,
