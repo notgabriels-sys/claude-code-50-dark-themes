@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { cp, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { chmod, cp, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -283,6 +283,135 @@ test("rejects a finder whose hidden cards are still painted", { timeout: 90_000 
 
   assert.notEqual(result.code, 0, "the verifier accepted a page that hides cards only in the DOM");
   assert.match(result.stderr, /toggles the hidden property but never overrides it in CSS/);
+});
+
+test("rejects a finder scoped to a single theme grid", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixtureHtml = join(fixtureRoot, "index.html");
+  const html = await readFile(fixtureHtml, "utf8");
+  await writeFile(
+    fixtureHtml,
+    html.replace('document.querySelectorAll(".card[data-search]")', 'grid.querySelectorAll(".card")'),
+  );
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a finder that cannot reach every theme on the page");
+  assert.match(result.stderr, /scopes the finder to one grid/);
+});
+
+test("rejects a finder whose document-wide selector was removed", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixtureHtml = join(fixtureRoot, "index.html");
+  const html = await readFile(fixtureHtml, "utf8");
+  await writeFile(
+    fixtureHtml,
+    html.replace('document.querySelectorAll(".card[data-search]")', 'document.querySelectorAll(".card")'),
+  );
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a page where the finder guard had gone inert");
+  assert.match(result.stderr, /no longer selects finder cards document-wide/);
+});
+
+test("rejects an installer the README cannot run", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  await chmod(join(fixtureRoot, "install.sh"), 0o644);
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a non-executable install.sh");
+  assert.match(result.stderr, /install\.sh is not executable/);
+});
+
+test("rejects installer help built from a fixed line range", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixtureInstaller = join(fixtureRoot, "install.sh");
+  const installer = await readFile(fixtureInstaller, "utf8");
+  await writeFile(
+    fixtureInstaller,
+    installer.replace(
+      /(-h\|--help\)\s*)awk[^\n]*/,
+      "$1sed -n '2,12p' \"${BASH_SOURCE[0]}\"; exit 0 ;;",
+    ),
+  );
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a --help that drifts with the header");
+  assert.match(result.stderr, /fixed line range/);
+});
+
+test("rejects an installer that claims --uninstall knows what it installed", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixtureInstaller = join(fixtureRoot, "install.sh");
+  const installer = await readFile(fixtureInstaller, "utf8");
+  await writeFile(
+    fixtureInstaller,
+    installer.replace(
+      /remove every theme in the pack from the themes dir/,
+      "remove the ones this script installed",
+    ),
+  );
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a --help that overstates what --uninstall tracks");
+  assert.match(result.stderr, /removes only what the script installed/);
+});
+
+test("rejects an installer whose help drops the filename-matching warning", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixtureInstaller = join(fixtureRoot, "install.sh");
+  const installer = await readFile(fixtureInstaller, "utf8");
+  await writeFile(
+    fixtureInstaller,
+    installer.replace(/^# --uninstall matches by filename[\s\S]*?Backups are never touched\.\n/m, ""),
+  );
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a destructive flag documented without its caveat");
+  assert.match(result.stderr, /matches by filename, not contents/);
+});
+
+test("rejects a manual install route that never says where the files come from", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixtureGuide = join(fixtureRoot, "claude-code-theme-install-guide.html");
+  const guide = await readFile(fixtureGuide, "utf8");
+  const start = guide.indexOf('<span class="syntax-command">git</span>');
+  const end = guide.indexOf('<span class="syntax-command">mkdir</span>');
+  await writeFile(fixtureGuide, guide.slice(0, start) + guide.slice(end));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a manual route with no way to obtain the files");
+  assert.match(result.stderr, /never says how to obtain the theme files/);
+});
+
+test("rejects a manual install route that silently skips Vol. 2", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixtureGuide = join(fixtureRoot, "claude-code-theme-install-guide.html");
+  const guide = await readFile(fixtureGuide, "utf8");
+  await writeFile(fixtureGuide, guide.replaceAll("plugins/dark-themes-vol-2/themes/*.json", "*.json"));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a manual route covering only the flagship pack");
+  assert.match(result.stderr, /silently\s+skips Vol\. 2/);
+});
+
+test("rejects a guide whose manual section was removed entirely", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixtureGuide = join(fixtureRoot, "claude-code-theme-install-guide.html");
+  const guide = await readFile(fixtureGuide, "utf8");
+  await writeFile(fixtureGuide, guide.replace(/<section[^>]*id="manual"[\s\S]*?<\/section>/, ""));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a guide with no manual section, leaving the guard inert");
+  assert.match(result.stderr, /has no #manual section/);
 });
 
 test("rejects a DEV draft that advertises the unpublished Workflow Kit", { timeout: 90_000 }, async (t) => {
