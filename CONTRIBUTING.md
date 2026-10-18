@@ -48,8 +48,9 @@ Rules:
   background, including on transparent terminals.
 - Keep primary text at 7:1, foreground accents and readable secondary text at 4.5:1,
   and functional borders or indicators at 3:1 against the matching gallery background.
-- Reserve `subtle` for non-essential decorative hairlines. Use `inactive` for readable secondary
-  text; do not place meaningful text or required control boundaries in `subtle`.
+- `subtle` is not contrast-checked, and the pack keeps it faint. Claude Code draws hairlines in it
+  and also a few dimmed messages (for example "User rejected Claude's plan:"), so match the
+  existing themes rather than tuning it per theme: how faint it is is a pack-wide decision.
 - Do not invent new override keys. Claude Code silently discards unknown keys.
 
 ## Updating the gallery
