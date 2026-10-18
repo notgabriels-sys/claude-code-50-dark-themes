@@ -387,10 +387,13 @@ another file — so a `url()` may name only an element in the same file, and no
 backslash is allowed, since CSS spells `url(` with escapes too. With that
 rule, over 8,768 documents that add five more `url()` spellings (`URL(`, an
 escape, quotes, a space, `stroke`), it missed none; the reader before the rule
-missed 180 there, every one a fetch. Mutation-tested (rule 5): of 21 branches,
-each gutted alone, 17 turn exactly their own tests red and four turn the real
-tree red, so none is dead. The root element must also carry its
-namespace, without which an SVG silently stops drawing. A new type, element or
+missed 180 there, every one a fetch. The root element must also carry its
+namespace, without which an SVG silently stops drawing: over 11,796 documents
+that add roots with no namespace, or with it declared only below the root, the
+final reader missed none and the one before that rule 208, every one a document
+with no namespace. Mutation-tested (rule 5): of 27 branches, each gutted alone,
+23 turn exactly their own tests red and four turn the real tree red, so none is
+dead. A new type, element or
 attribute is a deliberate edit, and never one that links, loads or runs script.
 
 The review of 1cd3984 (five lenses; the first run lost five of its eight agents
