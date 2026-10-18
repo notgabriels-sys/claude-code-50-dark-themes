@@ -24,3 +24,6 @@ products/techno-low-end-architecture/qa/
 
 # Local-only npm installs (playwright-core was swept in by accident once).
 node_modules/
+
+# Finder metadata. verify rejects any stray file under plugins/, tracked or not.
+.DS_Store

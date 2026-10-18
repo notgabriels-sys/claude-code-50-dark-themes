@@ -406,13 +406,52 @@ const shippedCounts = {
   "dark-themes-vol-2": vol2Files.length,
   "berlin-studio-skills": sourceSkills.length,
 };
-const pluginManifests = new Map();
+// Key allowlists, checked before the agreement comparison so that a component
+// key gets this message rather than the agreement check's "make them agree".
+// Why they exist is under "Exactly what ships" below.
+const PLUGIN_METADATA_KEYS = [
+  "author", "description", "displayName", "homepage", "keywords", "license",
+  "name", "repository", "version",
+];
+const LISTING_ONLY_KEYS = ["category", "source", "tags"];
+const themePluginNames = new Set(["50-dark-themes", "dark-themes-vol-2"]);
 for (const [index, expected] of expectedPlugins.entries()) {
   const entry = marketplace.plugins[index];
   const manifest = JSON.parse(
     await readFile(new URL(`${expected.source}/.claude-plugin/plugin.json`, root), "utf8"),
   );
-  pluginManifests.set(expected.name, manifest);
+  const allowedManifestKeys = themePluginNames.has(expected.name)
+    ? [...PLUGIN_METADATA_KEYS, "experimental"]
+    : PLUGIN_METADATA_KEYS;
+  for (const key of Object.keys(manifest)) {
+    if (!allowedManifestKeys.includes(key)) {
+      fail(
+        `plugins/${expected.name}/.claude-plugin/plugin.json declares "${key}", which is not in ` +
+          `PLUGIN_METADATA_KEYS. A key outside plugin metadata can declare a component (hooks, ` +
+          `mcpServers, commands, ...) that Claude Code loads for every installer. Remove it, or ` +
+          `add it to PLUGIN_METADATA_KEYS in scripts/verify.mjs deliberately once you have ` +
+          `confirmed Claude Code treats it as metadata.`,
+      );
+    }
+  }
+  if (themePluginNames.has(expected.name) &&
+      JSON.stringify(manifest.experimental) !== JSON.stringify({ themes: "./themes/" })) {
+    fail(
+      `plugins/${expected.name}/.claude-plugin/plugin.json must declare exactly ` +
+        `"experimental": {"themes": "./themes/"}; found ${JSON.stringify(manifest.experimental)}.`,
+    );
+  }
+  for (const key of Object.keys(entry)) {
+    if (!PLUGIN_METADATA_KEYS.includes(key) && !LISTING_ONLY_KEYS.includes(key)) {
+      fail(
+        `The marketplace entry for ${expected.name} declares "${key}", which is in neither ` +
+          `PLUGIN_METADATA_KEYS nor LISTING_ONLY_KEYS. A marketplace entry can declare components ` +
+          `inline (mcpServers, hooks, ...) or stand in for the manifest ("strict"), and Claude ` +
+          `Code applies them for every installer. Remove it, or add it to one of those lists in ` +
+          `scripts/verify.mjs deliberately once you have confirmed it is metadata.`,
+      );
+    }
+  }
   for (const [key, value] of Object.entries(manifest)) {
     if (key === "experimental") continue;
     if (JSON.stringify(entry[key]) !== JSON.stringify(value)) {
@@ -465,49 +504,30 @@ for (const name of sourceSkills) {
 //
 // Both are allowlists, deliberately. A deny-list of component paths and keys
 // goes stale the day Claude Code adds a new auto-discovered component type; an
-// allowlist fails closed. The expected file sets come from the sources of
-// truth this file already trusts — the root theme files, the Vol. 2 theme
-// files validated one by one above, and .claude/skills — never from the
-// packaged directory being checked. (For Vol. 2 the packaged directory IS the
-// source, so its themes/ set is only as strong as the per-file validation,
-// previews.json and the description count already applied to it.)
+// allowlist fails closed. The keys are checked in the agreement loop above.
+// The expected file sets come from the sources of truth this file already
+// trusts — the root theme files, the Vol. 2 theme files validated one by one
+// above, and .claude/skills — never from the packaged directory being checked,
+// and every expected file must be present as well as nothing else. (For Vol. 2
+// the packaged directory IS the source, so its themes/ set is only as strong as
+// the per-file validation, previews.json, the gallery parity and the count
+// checks applied to it.)
+//
+// The walk reads the checkout, and an installer does not get the checkout. A
+// git submodule is an empty directory in CI's checkout, but Claude Code's
+// marketplace clone runs `git submodule update --init` for submodules under a
+// plugin path. Reproduced 2026-10-18 by the review of this guard, offline
+// against a local git server: a submodule at plugins/50-dark-themes/hooks kept
+// verify green on a plain clone, and the installed plugin reported
+// "Hooks (1) SessionStart". So a .gitmodules file fails, and so does any empty
+// directory under plugins/ — git checks one out only as a submodule placeholder.
 // ---------------------------------------------------------------------------
-const PLUGIN_METADATA_KEYS = [
-  "author", "description", "displayName", "homepage", "keywords", "license",
-  "name", "repository", "version",
-];
-const LISTING_ONLY_KEYS = ["category", "source", "tags"];
-const themePluginNames = new Set(["50-dark-themes", "dark-themes-vol-2"]);
-for (const [index, expected] of expectedPlugins.entries()) {
-  const entry = marketplace.plugins[index];
-  const manifest = pluginManifests.get(expected.name);
-  const allowedManifestKeys = themePluginNames.has(expected.name)
-    ? [...PLUGIN_METADATA_KEYS, "experimental"]
-    : PLUGIN_METADATA_KEYS;
-  for (const key of Object.keys(manifest)) {
-    if (!allowedManifestKeys.includes(key)) {
-      fail(
-        `plugins/${expected.name}/.claude-plugin/plugin.json declares "${key}", which is not ` +
-          `plugin metadata. Claude Code would load it as a component for every installer.`,
-      );
-    }
-  }
-  if (themePluginNames.has(expected.name) &&
-      JSON.stringify(manifest.experimental) !== JSON.stringify({ themes: "./themes/" })) {
-    fail(
-      `plugins/${expected.name}/.claude-plugin/plugin.json must declare exactly ` +
-        `"experimental": {"themes": "./themes/"}; found ${JSON.stringify(manifest.experimental)}.`,
-    );
-  }
-  for (const key of Object.keys(entry)) {
-    if (!PLUGIN_METADATA_KEYS.includes(key) && !LISTING_ONLY_KEYS.includes(key)) {
-      fail(
-        `The marketplace entry for ${expected.name} declares "${key}", which is not listing ` +
-          `metadata. A marketplace entry can declare components inline; Claude Code would ` +
-          `load it for every installer.`,
-      );
-    }
-  }
+if (await stat(new URL(".gitmodules", root)).then(() => true, () => false)) {
+  fail(
+    ".gitmodules exists. Claude Code's marketplace clone fetches submodules under a plugin " +
+      "path and CI's checkout does not, so their files would ship unchecked. Vendor the " +
+      "files instead.",
+  );
 }
 
 // Files. Walk with lstat semantics (withFileTypes, no recursive option) so a
@@ -516,7 +536,23 @@ for (const [index, expected] of expectedPlugins.entries()) {
 const pluginsDir = new URL("../plugins/", import.meta.url);
 const walkPackage = async (dirUrl, shownPath) => {
   const found = [];
-  for (const entry of await readdir(dirUrl, { withFileTypes: true })) {
+  let entries;
+  try {
+    entries = await readdir(dirUrl, { withFileTypes: true });
+  } catch (error) {
+    fail(
+      `${shownPath} could not be read (${error.code}); a directory name that is not valid ` +
+        `UTF-8 does this. Rename or delete it.`,
+    );
+  }
+  if (entries.length === 0) {
+    fail(
+      `${shownPath} is an empty directory. Git checks out an empty directory only as a ` +
+        `submodule placeholder, which Claude Code fetches for installers and CI never sees. ` +
+        `Delete it.`,
+    );
+  }
+  for (const entry of entries) {
     const path = `${shownPath}/${entry.name}`;
     if (entry.isSymbolicLink()) {
       fail(`${path} is a symlink. A plugin ships copies of real files; replace it or delete it.`);
@@ -547,17 +583,27 @@ if (JSON.stringify([...expectedPackageFiles.keys()].sort()) !==
   fail("expectedPackageFiles in scripts/verify.mjs must name exactly the plugins in expectedPlugins.");
 }
 for (const entry of await readdir(pluginsDir, { withFileTypes: true })) {
-  if (!entry.isDirectory() || entry.isSymbolicLink() || !expectedPackageFiles.has(entry.name)) {
+  const path = `plugins/${entry.name}`;
+  if (entry.isSymbolicLink()) {
+    fail(`${path} is a symlink. A plugin ships copies of real files; replace it or delete it.`);
+  } else if (!entry.isDirectory()) {
+    fail(`${path} is a file; plugins/ holds only plugin directories. Delete it (a Finder .DS_Store included).`);
+  } else if (!expectedPackageFiles.has(entry.name)) {
     fail(
-      `plugins/${entry.name} is not one of the registered plugins ` +
+      `${path} is not one of the registered plugins ` +
         `(${[...expectedPackageFiles.keys()].join(", ")}). Delete it, or register it in ` +
-        `.claude-plugin/marketplace.json and expectedPlugins.`,
+        `.claude-plugin/marketplace.json and in expectedPlugins, shippedCounts and ` +
+        `expectedPackageFiles in scripts/verify.mjs (and themePluginNames if it ships themes).`,
     );
   }
 }
 for (const [name, expectedFiles] of expectedPackageFiles) {
   const allowed = new Set(expectedFiles.map((file) => `plugins/${name}/${file}`));
-  for (const path of await walkPackage(new URL(`${name}/`, pluginsDir), `plugins/${name}`)) {
+  const shipped = await walkPackage(new URL(`${name}/`, pluginsDir), `plugins/${name}`);
+  for (const path of allowed) {
+    if (!shipped.includes(path)) fail(`${path} is missing from the ${name} package.`);
+  }
+  for (const path of shipped) {
     if (!allowed.has(path)) {
       fail(
         `${path} is not part of the ${name} package. Claude Code installs every file in a ` +

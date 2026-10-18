@@ -18,7 +18,9 @@ What that reaches, and how it is done here:
   (`.claude-plugin/marketplace.json`). Adding a plugin here makes it
   installable anywhere with `claude plugin install <name>`, which is the
   route around account-level settings. Register it in the marketplace and add
-  it to `expectedPlugins` in `scripts/verify.mjs`.
+  it to `expectedPlugins`, `shippedCounts` and `expectedPackageFiles` in
+  `scripts/verify.mjs` — and to `themePluginNames` if it ships themes. Never add
+  a git submodule anywhere in this repo (see the CI-tripwire section).
 - **Hooks, permissions, env** → `.claude/settings.json`.
 
 What it genuinely cannot reach, so do not promise it: claude.ai **account-level**
@@ -291,7 +293,21 @@ symlinks and unregistered plugin directories fail. Both are allowlists on
 purpose: a list of forbidden component paths goes stale the day Claude Code adds
 one. A new packaged file (a CHANGELOG, a second preview image) needs a
 deliberate edit to `expectedPackageFiles`, and an untracked `.DS_Store` inside
-`plugins/` fails a local run until it is deleted.
+`plugins/` fails a local run until it is deleted. Every expected file must also
+be present, so a deleted LICENSE or preview fails too.
+
+How strong that is. For Vol. 2 the `themes/` set is read from the packaged
+directory itself, so it is only as strong as the theme validation,
+`previews.json`, the gallery parity and the count checks applied to it. And the
+walk reads the checkout, which is not what an installer fetches: CI's checkout
+leaves a git submodule as an empty directory, while Claude Code's marketplace
+clone runs `git submodule update --init` for any submodule under a plugin path.
+The review of this guard reproduced that on 2026-10-18, offline against a local
+git server: a submodule at `plugins/50-dark-themes/hooks` kept `verify` green on
+a plain clone, and the installed plugin reported `Hooks (1) SessionStart`. So
+`verify` fails on a `.gitmodules` file and on any empty directory under
+`plugins/` — git checks out an empty directory only as a submodule placeholder.
+The skills sync dereferences symlinks for the same reason the walk rejects them.
 
 The Gumroad half now has structural guards, an existence-verified slug list and
 a price-drift table — but no verified *price* for any product. See below.

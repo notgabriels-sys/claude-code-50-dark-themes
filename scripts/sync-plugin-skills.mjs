@@ -27,12 +27,16 @@ for (const name of packagedSkills) {
 // files that are not there. Every skill happens to be SKILL.md-only today;
 // that is the reason to fix this now rather than after the first one is not.
 // The destination copy is removed first so a file deleted at source cannot
-// survive in the package.
+// survive in the package. Symlinks are dereferenced: fs.cp otherwise rewrites
+// a relative source link into an absolute one pointing into this checkout,
+// which would ship installers a dangling link (and verify rejects any symlink
+// in a plugin).
 for (const name of sourceSkills) {
   await rm(new URL(`${name}/`, destination), { recursive: true, force: true });
   await mkdir(new URL(`${name}/`, destination), { recursive: true });
   await cp(new URL(`${name}/`, source), new URL(`${name}/`, destination), {
     recursive: true,
+    dereference: true,
   });
 }
 

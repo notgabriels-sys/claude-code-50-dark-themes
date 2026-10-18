@@ -135,7 +135,8 @@ The command checks:
 - byte-for-byte parity between root themes and the installable plugin;
 - the marketplace and all three plugin manifests, key for key, and that each plugin directory holds
   exactly the files it should ship — a stray hook, command, skill or MCP config fails, because
-  Claude Code would load it for every installer;
+  Claude Code would load it for every installer, and so does a missing file, a symlink, a
+  `.gitmodules` file or an empty directory under `plugins/` (the shape a git submodule takes);
 - a fresh-machine-safe installation command;
 - the verified shop payment surfaces;
 - valid 1280×720 PNG assets for the curated developer picks;

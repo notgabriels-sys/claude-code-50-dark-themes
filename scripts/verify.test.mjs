@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { chmod, cp, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
+import { chmod, cp, lstat, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -842,18 +842,22 @@ test("rejects a manifest key that is not plugin metadata on the skills plugin", 
 
 test("rejects a symlink inside a plugin package", { timeout: 90_000 }, async (t) => {
   const fixtureRoot = await makeFixture(t);
-  // A symlinked skills/ directory would hand installers whatever it points at.
-  await symlink("../../.claude/skills", join(fixtureRoot, "plugins/dark-themes-vol-2/skills"));
+  // At an allowed path, so only the symlink branch can catch it: the file
+  // allowlist and the presence check both accept a LICENSE entry.
+  const license = join(fixtureRoot, "plugins/berlin-studio-skills/LICENSE");
+  await rm(license);
+  await symlink("../../LICENSE", license);
 
   const result = await runVerifier(fixtureRoot);
 
-  assert.notEqual(result.code, 0, "a symlinked component directory shipped green");
-  assert.match(result.stderr, /plugins\/dark-themes-vol-2\/skills is a symlink/);
+  assert.notEqual(result.code, 0, "a symlink in a plugin package shipped green");
+  assert.match(result.stderr, /plugins\/berlin-studio-skills\/LICENSE is a symlink/);
 });
 
 test("rejects a directory under plugins/ that is not a registered plugin", { timeout: 90_000 }, async (t) => {
   const fixtureRoot = await makeFixture(t);
-  await mkdir(join(fixtureRoot, "plugins/rogue/.claude-plugin"), { recursive: true });
+  await mkdir(join(fixtureRoot, "plugins/rogue"));
+  await mkdir(join(fixtureRoot, "plugins/rogue/.claude-plugin"));
   await writeFile(join(fixtureRoot, "plugins/rogue/.claude-plugin/plugin.json"), "{}\n");
 
   const result = await runVerifier(fixtureRoot);
@@ -1015,4 +1019,58 @@ test("rejects paste-ready promotion copy that advertises the unpublished Workflo
 
   assert.notEqual(result.code, 0, "the verifier accepted paste-ready copy advertising an unpublished product");
   assert.match(result.stderr, /PROMOTION_QUEUE\.md paste-ready copy advertises the Workflow Kit/);
+});
+
+test("rejects an empty directory in a plugin, the shape a git submodule takes in CI", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  // Reproduced by the guard's review: CI's checkout leaves a submodule empty,
+  // Claude Code's marketplace clone fetches it, and the installed theme pack
+  // reported "Hooks (1) SessionStart" while verify was green.
+  await mkdir(join(fixtureRoot, "plugins/50-dark-themes/hooks"));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "an empty directory where a submodule would sit shipped green");
+  assert.match(result.stderr, /plugins\/50-dark-themes\/hooks is an empty directory/);
+});
+
+test("rejects a .gitmodules file", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const gitmodules = join(fixtureRoot, ".gitmodules");
+  await assert.rejects(lstat(gitmodules), "fixture must add .gitmodules, not find it");
+  await writeFile(
+    gitmodules,
+    '[submodule "hooks"]\n\tpath = plugins/50-dark-themes/hooks\n\turl = https://example.invalid/hooks.git\n',
+  );
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "a submodule declaration shipped green");
+  assert.match(result.stderr, /\.gitmodules exists/);
+});
+
+test("rejects a plugin missing a file it should ship", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  await rm(join(fixtureRoot, "plugins/berlin-studio-skills/LICENSE"));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "a plugin without its LICENSE shipped green");
+  assert.match(result.stderr, /plugins\/berlin-studio-skills\/LICENSE is missing from the berlin-studio-skills package/);
+});
+
+test("packages a relative symlink in a source skill as a real file", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  // Negative control for the sync. fs.cp used to rewrite a relative link into
+  // an absolute one pointing into the contributor's checkout; the sync now
+  // dereferences, so the package holds a copy and verify accepts it.
+  await symlink("../release-delivery/SKILL.md", join(fixtureRoot, ".claude/skills/freelance-admin-de/shared.md"));
+  const synced = await runNodeScript(fixtureRoot, "scripts/sync-plugin-skills.mjs");
+  assert.equal(synced.code, 0, "the sync should succeed");
+  const packaged = await lstat(join(fixtureRoot, "plugins/berlin-studio-skills/skills/freelance-admin-de/shared.md"));
+  assert.equal(packaged.isSymbolicLink(), false, "the sync packaged a symlink");
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.equal(result.code, 0, `a correctly synced skill was rejected: ${result.stderr}`);
 });
