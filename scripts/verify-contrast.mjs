@@ -58,11 +58,12 @@ const checks = [
   { token: "promptBorder", floor: 3, surfaces: ["terminal"] },
   { token: "promptBorderShimmer", floor: 3, surfaces: ["terminal"] },
   { token: "rate_limit_fill", floor: 3, surfaces: ["terminal"] },
-  // `subtle` is deliberately unchecked. The pack keeps it faint for hairlines,
-  // but Claude Code also paints a few dimmed messages in it ("User rejected
-  // Claude's plan:", "Sandbox is not enabled"), and every theme here sets it
-  // between 1.20:1 and 1.39:1. Raising it is a pack-wide design call, not a
-  // per-theme fix, so it is documented rather than silently exempted.
+  // `subtle` is deliberately unchecked, and every theme here keeps it far below
+  // the 3:1 non-text floor. Claude Code paints text in it much more than
+  // borders — rejection notices ("User rejected Claude's plan:"), sandbox and
+  // settings notices, usage statistics, key hints — so that text reads at low
+  // contrast. Raising it is a pack-wide design call, not a per-theme fix, so
+  // the cost is documented in README and CONTRIBUTING rather than hidden.
 ];
 
 const failures = [];

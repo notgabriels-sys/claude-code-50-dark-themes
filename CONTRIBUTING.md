@@ -48,9 +48,10 @@ Rules:
   background, including on transparent terminals.
 - Keep primary text at 7:1, foreground accents and readable secondary text at 4.5:1,
   and functional borders or indicators at 3:1 against the matching gallery background.
-- `subtle` is not contrast-checked, and the pack keeps it faint. Claude Code draws hairlines in it
-  and also a few dimmed messages (for example "User rejected Claude's plan:"), so match the
-  existing themes rather than tuning it per theme: how faint it is is a pack-wide decision.
+- `subtle` is not contrast-checked, and the pack keeps it very faint. Claude Code draws text in it
+  far more than borders — rejection notices ("User rejected Claude's plan:"), sandbox and settings
+  notices, usage statistics, key hints — so match the existing themes rather than tuning it per
+  theme: how faint it is is a pack-wide decision.
 - Do not invent new override keys. Claude Code silently discards unknown keys.
 
 ## Updating the gallery
@@ -68,7 +69,7 @@ Vol. 2 is the expansion pack, and the place for a new theme. It is a second plug
 marketplace, so it is not size-capped the way the flagship fifty are.
 
 A Vol. 2 theme is the same file, held to the same rules above — same override-key contract, same
-`dark` base, same six-digit hex colours, same contrast floors, same reserved `subtle`. What differs
+`dark` base, same six-digit hex colours, same contrast floors, same faint, unchecked `subtle`. What differs
 is where the pieces live:
 
 - The theme file goes in `plugins/dark-themes-vol-2/themes/`, and **only** there. Do not add it to

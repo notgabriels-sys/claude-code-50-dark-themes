@@ -79,7 +79,7 @@ different contents it is backed up once as `<name>.json.bak` before being replac
 ## What each file sets
 
 - `claude` + shimmer: brand accent (spinner, assistant label) = theme accent
-- `text` / `inactive` / `subtle`: foreground, readable secondary text, faint hairlines and a few dimmed messages
+- `text` / `inactive` / `subtle`: foreground, readable secondary text, and the faintest tier of secondary text
 - `promptBorder`, `suggestion`, `rate_limit_fill`: accent-matched
 - `permission`, `planMode`: second accent where the theme has one
 - `userMessageBackground` (+hover): raised surface, one step above the theme `bg`
@@ -89,9 +89,10 @@ so status colors stay semantically green/red/yellow in every theme.
 
 The repository verifier checks each palette against its recommended terminal background:
 AAA contrast for primary text, AA for foreground accents and readable secondary text, and the
-WCAG non-text floor for functional borders and indicators. `subtle` is not checked: these
-themes keep it faint for hairlines, but Claude Code also draws a few dimmed messages in it
-(for example "User rejected Claude's plan:"), and those read at low contrast.
+WCAG non-text floor for functional borders and indicators. `subtle` is not checked, and these
+themes keep it very faint. Claude Code draws text in it far more than borders: rejection
+notices ("User rejected Claude's plan:"), sandbox and settings notices, usage statistics and
+key hints. With this pack installed that text reads at low contrast.
 
 ## Note on backgrounds
 
