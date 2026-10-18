@@ -9,9 +9,9 @@ Requires **Claude Code v2.1.118 or later**, the release that introduced named cu
 
 **→ Visual gallery and storefront: [gabs-utilities.com](https://gabs-utilities.com/)** (all 50, plus the 12 Vol. 2 themes, previewed in their own colors).
 
-Prefer to inspect or copy the exact release files manually? Use the
-**[v1.0.1 GitHub release →](https://github.com/notgabriels-sys/claude-code-50-dark-themes/releases/tag/themes-plugin-v1.0.1)**.
-The native-plugin route below is the recommended install.
+Prefer a zip to a `git clone`? The same 50 themes are a **free download** on the
+**[v1.0.1 GitHub release →](https://github.com/notgabriels-sys/claude-code-50-dark-themes/releases/tag/themes-plugin-v1.0.1)**
+(`claude-code-dark-themes-v1.0.1.zip`). The native-plugin route below is the recommended install.
 
 ## Quick install — Claude Code plugin
 
