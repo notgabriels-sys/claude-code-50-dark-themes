@@ -1281,6 +1281,14 @@ for (const [defect, page, from, to, message] of [
   ["microdata after a comment closed with --!>", "index.html", "</body>",
     '<!-- note --!><div itemscope itemtype="https://schema.org/Item&#76;ist"></div>\n</body>',
     /index\.html carries microdata or RDFa \("itemscope" on <div>\)/],
+  // A browser ends <!--> and <!---> on the spot (Chromium's DOM, checked), so
+  // what follows is markup, not the rest of a comment.
+  ["microdata after an empty comment written <!-->", "index.html", "</body>",
+    '<!--><div itemscope itemtype="https://schema.org/Item&#76;ist"></div> -->\n</body>',
+    /index\.html carries microdata or RDFa \("itemscope" on <div>\)/],
+  ["microdata after an empty comment written <!--->", "index.html", "</body>",
+    '<!---><div itemscope itemtype="https://schema.org/Item&#76;ist"></div> -->\n</body>',
+    /index\.html carries microdata or RDFa \("itemscope" on <div>\)/],
   ["RDFa typeof behind slashes", "index.html", "</body>",
     '<div/vocab="https://schema.org/"/typeof="Item&#76;ist"><meta/property="name"/content="Dracula"></div>\n</body>',
     /index\.html carries microdata or RDFa \("vocab" on <div>\)/],
@@ -1317,8 +1325,10 @@ for (const [defect, page, from, to, message] of [
 // Negative controls: markup that only looks like structured data. A reader
 // that rejected these would be matching text, not reading tags.
 for (const [control, page, from, to] of [
+  // The ">" matters: read as anything but a comment, "<!-- 1 >" would end at
+  // it and leave the div outside.
   ["microdata inside a comment", "index.html", "</body>",
-    '<!-- <div itemscope itemtype="https://schema.org/Item&#76;ist"></div> -->\n</body>'],
+    '<!-- 1 > 0, <div itemscope itemtype="https://schema.org/Item&#76;ist"></div> -->\n</body>'],
   ["structured-data words as values and data attributes", "index.html", "</body>",
     '<div title="itemscope typeof" data-itemscope="vocab"></div>\n</body>'],
   ["plain rel link types", "index.html", "</body>",
