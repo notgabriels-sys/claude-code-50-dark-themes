@@ -132,12 +132,16 @@ for the wrong service.
 Current state of `index.html` (re-counted 2026-08-24, after `main` retired two
 audio products, then restyled the storefront and retired `zvbti`):
 
-- **15 distinct Gumroad products** across **18 link occurrences**, all on
-  `notgabriel.gumroad.com/l/<slug>`: one free zip, ten product cards, the
-  complete-kit bundle, two audio products, and a developer-picks row that
-  repeats three of the products with `?utm_source=...` parameters. Each
-  retirement was caught by the CI guard before the slug was dropped from the
-  tables, deliberately rather than to silence a red build.
+- **16 distinct Gumroad products** across **17 link occurrences** in
+  `index.html` (re-counted 2026-10-18; the 2026-08-24 figure of 15 across 18
+  went stale when `main` added `dark-invoice-business-documents` and reshaped
+  the developer-picks row). All are on `notgabriel.gumroad.com/l/<slug>`; four
+  carry `?utm_source=...`, and only `ckthsb` appears twice. Do not trust these
+  numbers either — re-derive them: `node scripts/verify.mjs` prints the
+  distinct-product count in its summary, and the occurrence count is
+  `grep -o 'notgabriel.gumroad.com/l/' index.html | wc -l`. Each retirement
+  was caught by the CI guard before the slug was dropped from the tables,
+  deliberately rather than to silence a red build.
 - **Prices are stated in three places** and the guard checks all three: an `<i>`
   on the grid cards, a `<span>` on the developer-picks cards, and words in those
   cards' `aria-label` ("for 12 euros"). A screen-reader label that disagrees
@@ -251,10 +255,13 @@ change, appear, disappear or point at another host, and no stated price can be
 edited — in any of the three places the page states it — without the edit being
 deliberate. That catches a stray keystroke or a bad merge. It is not
 verification, and it must never be described as verification. The priced half
-stays unbuilt until someone reads the 15 products in a signed-in browser.
+stays unbuilt until someone reads every product in a signed-in browser
+(16 as of 2026-10-18 — the count in `verify`'s summary line is the live one).
 
-`verify` also guards the plugin marketplace: it asserts both plugins are
-registered with the right source paths, that every skill in `.claude/skills/`
+`verify` also guards the plugin marketplace: it asserts all three plugins are
+registered with the right source paths, that every field of each plugin's
+`plugin.json` matches its marketplace entry, that each description's opening
+count matches what ships, that every skill in `.claude/skills/`
 is byte-identical to its packaged copy under
 `plugins/berlin-studio-skills/skills/`, and that each skill has YAML
 frontmatter with a name and description. Drift means an installer silently gets
@@ -268,7 +275,7 @@ a price-drift table — but no verified *price* for any product. See below.
 
 The PayPal links below were each read back from their own detail page before
 going on the shop. **No Gumroad product's price has ever had that treatment.**
-The 15 products are the larger half of the shop by count and carry the ordinary
+The Gumroad products (16 as of 2026-10-18) are the larger half of the shop by count and carry the ordinary
 sales income. `main` did confirm on 2026-08-24 that each product page loads a
 published product — real, and worth having — but existence is not price, and
 nothing in this repo records a single price being read off a Gumroad product.
