@@ -20,7 +20,7 @@ Reusable checklists, prompts, and handoff templates for cleaner Claude Code sess
 
 ## After publishing
 
-- Add the Gumroad URL to the storefront's “More dark tools” section, and add `zvbti` to
+- Add the Gumroad URL to the storefront's “The wider edition.” section (`#tools`), and add `zvbti` to
   `verifiedGumroadSlugs` in `scripts/verify.mjs` after a buyer-side read-back (CI rejects any
   storefront slug missing from that set).
 - Add the Gumroad URL to the README paid tools table.
