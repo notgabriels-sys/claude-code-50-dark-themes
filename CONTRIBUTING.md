@@ -69,8 +69,8 @@ Vol. 2 is the expansion pack, and the place for a new theme. It is a second plug
 marketplace, so it is not size-capped the way the flagship fifty are.
 
 A Vol. 2 theme is the same file, held to the same rules above — same override-key contract, same
-`dark` base, same six-digit hex colours, same contrast floors, same faint, unchecked `subtle`. What differs
-is where the pieces live:
+`dark` base, same six-digit hex colours, same contrast floors, same faint, unchecked `subtle`.
+What differs is where the pieces live:
 
 - The theme file goes in `plugins/dark-themes-vol-2/themes/`, and **only** there. Do not add it to
   the repository root; the root is the flagship fifty, and the verifier fails if that count moves.
@@ -104,9 +104,9 @@ noticeably: render `index.html` in a headless browser and screenshot the `#vol2G
 
 The storefront and the share card state a role-aware check count; the share card states both pack
 sizes, and the storefront's Vol. 2 heading states that pack's size in words. These are claims to a
-reader, so the verifier ties each one to the computed value: if a change moves the number of contrast
-comparisons or the size of either pack, the stated numbers must be updated in the same change or CI
-fails. Removing a claim fails too, so the guard cannot be silenced by deletion.
+reader, so the verifier ties each one to the computed value: if a change moves the number of
+contrast comparisons or the size of either pack, the stated numbers must be updated in the same
+change or CI fails. Removing a claim fails too, so the guard cannot be silenced by deletion.
 
 The flagship's "50" also appears throughout as the product's name. It is not checked line by line;
 it stays true because the verifier pins the flagship at exactly fifty theme files.
@@ -139,8 +139,8 @@ The command checks:
 - a fresh-machine-safe installation command;
 - the verified shop payment surfaces;
 - valid 1280×720 PNG assets for the curated developer picks;
-- that the stated check count, the share card's pack sizes and the storefront's Vol. 2 size match the
-  computed values;
+- that the stated check count, the share card's pack sizes and the storefront's Vol. 2 size match
+  the computed values;
 - that share images carry alternative text, and that one image is described one way.
 
 GitHub Actions runs the regression tests and the same repository check on every push and pull request.
