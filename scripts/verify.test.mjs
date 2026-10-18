@@ -528,3 +528,15 @@ test("rejects a page that shows /theme with a theme argument as a command", { ti
   assert.notEqual(result.code, 0, "the verifier accepted a displayed command that applies nothing");
   assert.match(result.stderr, /shows "theme deep-field" as a command/);
 });
+
+test("rejects a finder that promises file-name search without the file names", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixturePage = join(fixtureRoot, "index.html");
+  const page = await readFile(fixturePage, "utf8");
+  await writeFile(fixturePage, page.replace("${themeSlug}.json ${accent}", "${themeSlug} ${accent}"));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a search promise the finder cannot keep");
+  assert.match(result.stderr, /says the finder searches by file name/);
+});

@@ -805,7 +805,7 @@ const familyOf = hex => {
 const renderTheme = ([name,accent,shimmer,text,mute,bg]) => {
   const themeSlug = slug(name);
   const family = familyOf(accent);
-  const searchable = `${name} ${themeSlug} ${accent} ${family}`.toLowerCase();
+  const searchable = `${name} ${themeSlug}.json ${accent} ${family}`.toLowerCase();
   return `
   <article class="card" data-family="${family}" data-search="${esc(searchable)}" style="--bg:${bg};--a:${accent};--sh:${shimmer};--fg:${text};--mut:${mute}">
     <div class="titlebar">

@@ -696,6 +696,13 @@ if (accentClaims.length) {
   }
 }
 
+// The finder says it searches by file name. Readers meet the files as
+// `graphite.json` (the repo, the manual-install `cp *.json`), so the search
+// text must carry the real name, extension included, not just the stem.
+if (/Search by[^<]*file name/i.test(html) && !/\$\{themeSlug\}\.json/.test(html)) {
+  fail("index.html says the finder searches by file name, but cards' search text lacks ${themeSlug}.json.");
+}
+
 console.log(
   `Verified ${files.length} themes, ${pluginFiles.length} plugin themes, ${vol2Files.length} Vol. 2 themes, ` +
     `${galleryThemes.length} gallery cards, ` +
