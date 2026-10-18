@@ -482,7 +482,7 @@ test("rejects a live region hidden inside a closed disclosure", { timeout: 90_00
   const result = await runVerifier(fixtureRoot);
 
   assert.notEqual(result.code, 0, "the verifier accepted an announcement no screen reader can hear while the archive is closed");
-  assert.match(result.stderr, /live region \(aria-live=\) inside a <details> body/);
+  assert.match(result.stderr, /puts a live region inside a <details> body/);
 });
 
 test("rejects alt text that calls the share card's strip theme accents", { timeout: 90_000 }, async (t) => {
@@ -550,7 +550,7 @@ test("rejects a role=status region hidden inside a closed disclosure", { timeout
   const result = await runVerifier(fixtureRoot);
 
   assert.notEqual(result.code, 0, "the verifier accepted a status region no screen reader can hear while the archive is closed");
-  assert.match(result.stderr, /live region \(role="status"\) inside a <details> body/);
+  assert.match(result.stderr, /puts a live region inside a <details> body[^\n]*role="status"/);
 });
 
 test("rejects cards whose template shows `theme ${slug}` again", { timeout: 90_000 }, async (t) => {
@@ -592,4 +592,22 @@ test("rejects a theme file the finder's file-name search cannot find", { timeout
 
   assert.notEqual(result.code, 0, "the verifier accepted a file name the finder derives differently");
   assert.match(result.stderr, /Searching "neonnoir\.json" finds nothing/);
+});
+
+test("rejects a live region on a nested summary inside a closed disclosure", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixturePage = join(fixtureRoot, "index.html");
+  const page = await readFile(fixturePage, "utf8");
+  await writeFile(
+    fixturePage,
+    page.replace(
+      '<div class="grid" id="grid"></div>',
+      "<div class=\"grid\" id=\"grid\"></div><details><summary role='status'>x</summary>y</details>",
+    ),
+  );
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a status region nested inside the closed archive");
+  assert.match(result.stderr, /puts a live region inside a <details> body[^\n]*role='status'/);
 });

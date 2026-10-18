@@ -678,17 +678,24 @@ for (const file of publicHtmlFiles) {
   const markup = source.replace(/<!--[\s\S]*?-->/g, "").replace(/<(style|script)\b[\s\S]*?<\/\1>/gi, "");
   let depth = 0;
   let inSummary = 0;
-  for (const [token] of markup.matchAll(
-    /<\/?details\b[^>]*>|<\/?summary\b[^>]*>|aria-live=|role="(?:status|alert|log)"|<output\b/gi,
-  )) {
-    const tag = token.toLowerCase();
-    if (tag.startsWith("<details")) depth += 1;
-    else if (tag.startsWith("</details")) depth = Math.max(0, depth - 1);
-    else if (tag.startsWith("<summary")) inSummary += 1;
-    else if (tag.startsWith("</summary")) inSummary = Math.max(0, inSummary - 1);
-    else if (depth > 1 || (depth === 1 && !inSummary)) {
-      fail(`${file} puts a live region (${token}) inside a <details> body; it is silent whenever the disclosure is closed.`);
+  // Every start tag's attributes are inspected, <details> and <summary> included:
+  // a region on a nested <summary> inside the closed body is just as silent.
+  for (const [tagText, closing, tagName, attrs] of markup.matchAll(/<(\/?)([a-z][a-z0-9-]*)\b([^>]*)>/gi)) {
+    const tag = tagName.toLowerCase();
+    if (closing) {
+      if (tag === "details") depth = Math.max(0, depth - 1);
+      if (tag === "summary") inSummary = Math.max(0, inSummary - 1);
+      continue;
     }
+    if (tag === "summary") inSummary += 1;
+    const live =
+      tag === "output" ||
+      /\baria-live\s*=\s*["']?(?!off\b)[a-z]/i.test(attrs) ||
+      /\brole\s*=\s*["']?(?:status|alert|log)\b/i.test(attrs);
+    if (live && (depth > 1 || (depth === 1 && !inSummary))) {
+      fail(`${file} puts a live region inside a <details> body, silent whenever the disclosure is closed: ${tagText}`);
+    }
+    if (tag === "details") depth += 1;
   }
 }
 
