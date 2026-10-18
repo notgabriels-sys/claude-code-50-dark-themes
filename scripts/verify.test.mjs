@@ -482,7 +482,7 @@ test("rejects a live region hidden inside a closed disclosure", { timeout: 90_00
   const result = await runVerifier(fixtureRoot);
 
   assert.notEqual(result.code, 0, "the verifier accepted an announcement no screen reader can hear while the archive is closed");
-  assert.match(result.stderr, /aria-live region inside a <details> body/);
+  assert.match(result.stderr, /live region \(aria-live=\) inside a <details> body/);
 });
 
 test("rejects alt text that calls the share card's strip theme accents", { timeout: 90_000 }, async (t) => {
@@ -539,4 +539,16 @@ test("rejects a finder that promises file-name search without the file names", {
 
   assert.notEqual(result.code, 0, "the verifier accepted a search promise the finder cannot keep");
   assert.match(result.stderr, /says the finder searches by file name/);
+});
+
+test("rejects a role=status region hidden inside a closed disclosure", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixturePage = join(fixtureRoot, "index.html");
+  const page = await readFile(fixturePage, "utf8");
+  await writeFile(fixturePage, page.replace('<div class="grid" id="grid"></div>', '<div class="grid" id="grid"></div><p role="status"></p>'));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a status region no screen reader can hear while the archive is closed");
+  assert.match(result.stderr, /live region \(role="status"\) inside a <details> body/);
 });

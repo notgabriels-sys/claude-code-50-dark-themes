@@ -661,13 +661,25 @@ if (surfacePromisedBy.length && !/surface(?:\s|&nbsp;|&#160;|<[^>]+>)+\$\{bg\}/.
 // body of a closed <details> is not. The copy confirmation lived inside the
 // closed-by-default theme archive, so copying from a Vol. 2 card — which sits
 // outside the archive and is always visible — announced nothing at all.
-// A <summary> renders while closed, so live regions there are fine.
+// A <summary> renders while closed, so a live region in a top-level summary is
+// fine. role="status|alert|log" and <output> are live regions too. Walk the
+// markup (comments, <style> and <script> removed) so nesting is counted
+// properly and a "<details>" mentioned in CSS or JS cannot trip the check.
 for (const file of publicHtmlFiles) {
   const source = await readFile(new URL(file, root), "utf8");
-  for (const block of source.match(/<details\b[\s\S]*?<\/details>/g) ?? []) {
-    const body = block.replace(/<summary\b[\s\S]*?<\/summary>/, "");
-    if (/aria-live=/.test(body)) {
-      fail(`${file} puts an aria-live region inside a <details> body; it is silent whenever the disclosure is closed.`);
+  const markup = source.replace(/<!--[\s\S]*?-->/g, "").replace(/<(style|script)\b[\s\S]*?<\/\1>/gi, "");
+  let depth = 0;
+  let inSummary = 0;
+  for (const [token] of markup.matchAll(
+    /<\/?details\b[^>]*>|<\/?summary\b[^>]*>|aria-live=|role="(?:status|alert|log)"|<output\b/gi,
+  )) {
+    const tag = token.toLowerCase();
+    if (tag.startsWith("<details")) depth += 1;
+    else if (tag.startsWith("</details")) depth = Math.max(0, depth - 1);
+    else if (tag.startsWith("<summary")) inSummary += 1;
+    else if (tag.startsWith("</summary")) inSummary = Math.max(0, inSummary - 1);
+    else if (depth > 1 || (depth === 1 && !inSummary)) {
+      fail(`${file} puts a live region (${token}) inside a <details> body; it is silent whenever the disclosure is closed.`);
     }
   }
 }
