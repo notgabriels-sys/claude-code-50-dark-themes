@@ -86,6 +86,13 @@ is where the pieces live:
   are CI-enforced — see "Numbers stated on public pages" below. Adding a theme and running
   `node scripts/verify.mjs` without this step fails with, for example,
   `index.html claims 894 role-aware checks; the verifier runs 908.`
+- The pack's size is also stated in words, and those move too. The description in
+  `plugins/dark-themes-vol-2/.claude-plugin/plugin.json` opens with the count ("Twelve new …"), the
+  marketplace entry must repeat it exactly, and the pages say "twelve new atmospheres", "twelve
+  additional themes", "twelve all-new palettes" — on `index.html`, the install guide, `llms.txt`,
+  `README.md` and the Vol. 2 README. The verifier reads the number back from what ships and names
+  each stale sentence, starting with
+  `dark-themes-vol-2 describes itself as shipping 12 but 13 ship.`
 
 `scripts/sync-plugin-themes.mjs` does not apply here — it mirrors the root fifty into their plugin,
 and a Vol. 2 theme is authored in its plugin directly.
@@ -126,11 +133,14 @@ The command checks:
 - role-aware contrast against each theme's recommended terminal background, for both packs;
 - palette parity between theme files and gallery cards, for both packs;
 - byte-for-byte parity between root themes and the installable plugin;
-- the marketplace and both plugin manifests used by Claude Code;
+- the marketplace and all three plugin manifests, key for key, and that each plugin directory holds
+  exactly the files it should ship — a stray hook, command, skill or MCP config fails, because
+  Claude Code would load it for every installer;
 - a fresh-machine-safe installation command;
 - the verified shop payment surfaces;
 - valid 1280×720 PNG assets for the curated developer picks;
-- that stated check and theme counts on public pages match the computed values;
+- that stated check and theme counts on public pages, plugin descriptions and the READMEs match the
+  computed values, in digits or in words;
 - that share images carry alternative text, and that one image is described one way.
 
 GitHub Actions runs the regression tests and the same repository check on every push and pull request.
