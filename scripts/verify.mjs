@@ -472,6 +472,23 @@ for (const file of publicHtmlFiles) {
   }
 }
 
+// The finder must reach every theme the page renders, not just the archive's.
+// It used to select `grid.querySelectorAll(".card")`, so once Vol. 2 shipped,
+// searching "afterglow" printed "No themes match that search" while Afterglow
+// was on screen twelve cards below. Selecting document-wide on the attribute
+// the renderer writes keeps a future pack in the finder without a code change,
+// so require that shape rather than a hand-listed set of grids.
+if (/\bgrid\.querySelectorAll\(\s*["']\.card["']\s*\)/.test(html)) {
+  fail(
+    "index.html scopes the finder to one grid; themes in any other grid would " +
+      "be unreachable by search while the page claims none match. Select " +
+      '`.card[data-search]` across the document instead.',
+  );
+}
+if (!/document\.querySelectorAll\(\s*["']\.card\[data-search\]["']\s*\)/.test(html)) {
+  fail("index.html no longer selects finder cards document-wide; the finder guard would be inert.");
+}
+
 // One image, one description. preview.png is shared by every public page; it
 // was described three different ways, two of them as "a gallery preview" of a
 // card that has never been a gallery. Alt text drifts silently because nobody
