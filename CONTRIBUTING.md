@@ -79,8 +79,9 @@ What differs is where the pieces live:
 - Add a matching row to the `VOL2_THEMES` array near the bottom of `index.html`, in the same
   `[name, claude, claudeShimmer, text, inactive, terminal]` shape as the flagship gallery. The
   verifier requires the array, the packaged themes and `previews.json` to agree exactly.
-- Display names must be unique across **both** packs. The two plugins can be installed together, so
-  two themes named the same would be indistinguishable in `/theme`.
+- Display names must be unique across **both** packs. The two plugins can be installed together, and
+  `/theme` would then list two rows with the same name, told apart only by their small
+  "from <plugin>" label.
 - Bump the version in `plugins/dark-themes-vol-2/.claude-plugin/plugin.json` and the matching entry
   in `.claude-plugin/marketplace.json` together; the verifier requires them to match.
 - Update the numbers the public pages state, in the same change. A theme adds fourteen contrast
