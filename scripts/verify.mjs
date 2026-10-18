@@ -778,7 +778,8 @@ const runnableMarkup = html.replace(/<!--[\s\S]*?-->/g, "").replace(/<template\b
 for (const [, attributes, source] of runnableMarkup.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi)) {
   const type = attributes.match(/\btype\s*=\s*["']?([^"'\s>]+)/i)?.[1];
   if (/\bsrc\s*=/i.test(attributes) || (type && !/^(?:text|application)\/(?:java|ecma)script$/i.test(type))) continue;
-  pageScriptError ??= runInPage(source).error;
+  const { error } = runInPage(source);
+  pageScriptError ??= error;
 }
 pageGlobals.__fireLoadListeners = () => {
   for (const listener of loadListeners.splice(0)) {
@@ -789,7 +790,8 @@ pageGlobals.__fireLoadListeners = () => {
     }
   }
 };
-pageScriptError ??= runInPage("__fireLoadListeners()").error;
+const listenerRun = runInPage("__fireLoadListeners()");
+pageScriptError ??= listenerRun.error;
 await new Promise((resolve) => setImmediate(resolve));
 process.off("unhandledRejection", recordPageRejection);
 const pageScriptNote = pageScriptError
@@ -828,8 +830,10 @@ for (const [gridId, listName] of [["grid", "THEMES"], ["vol2Grid", "VOL2_THEMES"
 
 // Text as a reader gets it: comments, <style> and <script> removed, block
 // boundaries as line breaks, other tags as spaces, character references
-// decoded. Attribute values are read separately, because a screen reader
-// announces an aria-label and a share card shows a meta description.
+// decoded, and source whitespace collapsed as a browser collapses it, so a
+// newline in the HTML source never counts as a line break. Attribute values
+// are read separately, because a screen reader announces an aria-label and a
+// share card shows a meta description.
 const namedEntities = {
   nbsp: "\u00a0", thinsp: "\u2009", ensp: "\u2002", emsp: "\u2003", ldquo: "\u201c", rdquo: "\u201d",
   lsquo: "\u2018", rsquo: "\u2019", quot: '"', apos: "'", middot: "\u00b7", mdash: "\u2014", ndash: "\u2013",
@@ -850,14 +854,15 @@ const blockTag = new RegExp(
     "footer|form|h[1-6]|header|hr|li|main|nav|ol|p|pre|section|summary|table|tbody|td|tfoot|th|thead|tr|ul)$",
   "i",
 );
+const blockBreak = "\u0000";
 const visibleText = (markup) =>
   decodeEntities(
     withoutCode(markup)
-      .replace(anyTag, (tag, closing, name) => (blockTag.test(name) ? "\n" : " "))
+      .replace(anyTag, (tag, closing, name) => (blockTag.test(name) ? blockBreak : " "))
       .replace(/<![^>]*>/g, " "),
   )
-    .replace(/[^\S\n]+/g, " ")
-    .replace(/ ?\n[\s]*/g, "\n");
+    .replace(/\s+/g, " ")
+    .replace(/ ?\u0000[\s\u0000]*/g, "\n");
 const startTag = /<[a-z][a-z0-9-]*(?:\s+[^\s"'=/>]+(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'>]+))?)*\s*\/?>/gi;
 const attributeValues = (markup) =>
   [...withoutCode(markup).matchAll(startTag)].flatMap(([tag]) =>
@@ -911,7 +916,7 @@ for (const { row, markup } of renderedCards) {
   if (!visibleText(markup).includes(row[0])) {
     fail(
       `verify.mjs rendered the ${row[0]} card without its name, so its stand-in DOM no longer models what ` +
-        "renderTheme() does (or the card stopped naming its theme). Update the card checks.",
+        `renderTheme() does (or the card stopped naming its theme).${pageScriptNote} Update the card checks.`,
     );
   }
 }
@@ -919,12 +924,14 @@ for (const { row, markup } of renderedCards) {
 // The same command shown rather than copied — the cards' old `> theme <slug>`
 // prompt, the hero's `> theme deep-field`, `<code>/theme graphite</code>` —
 // teaches the same dead end. A theme's slug or name counts as an argument
-// right after `/theme`, after `theme` behind a `>` prompt glyph, after
-// `theme` anywhere inside an element that displays a command (however its
-// glyph is drawn), and a hyphenated slug after `theme` counts anywhere, since
-// it is never prose. None of these reach across a line break. Prose that
-// names a theme, such as 'Applied theme Graphite', "the theme Static", or
-// "Run /theme" with the name on the next line, stays legal.
+// right after `/theme`, after `theme` behind a `>` prompt glyph, and a
+// hyphenated slug after `theme` counts anywhere, since it is never prose.
+// Inside an element that displays a command, a slug as typed (lowercase)
+// after `theme` counts however the prompt glyph is drawn; a capitalised
+// name there is a label ("Save theme Absinthe"), not a command. None of
+// these reach across a line break. Prose that names a theme, such as
+// 'Applied theme Graphite', "the theme Static", or "Run /theme" with the
+// name on the next line, stays legal.
 const themeSlugs = [...files, ...vol2Files].map((file) => file.replace(/\.json$/, ""));
 const asAlternatives = (words) =>
   [...new Set(words)]
@@ -936,7 +943,7 @@ const anywherePatterns = [
   new RegExp(`(?:/|>)[^\\S\\n]*theme[^\\S\\n]+${themeArgument}`, "i"),
   new RegExp(`\\btheme[^\\S\\n]+(${asAlternatives(themeSlugs.filter((slug) => slug.includes("-")))})(?![\\w-])`, "i"),
 ];
-const commandPattern = new RegExp(`\\btheme[^\\S\\n]+${themeArgument}`, "i");
+const commandPattern = new RegExp(`\\b(?:theme|Theme|THEME)[^\\S\\n]+(${asAlternatives(themeSlugs)})(?![\\w-])`);
 const readable = (where, markup) => [
   { where, text: visibleText(markup), patterns: anywherePatterns },
   ...attributeValues(markup).map((text) => ({ where: `${where}, in an attribute`, text, patterns: anywherePatterns })),
@@ -952,7 +959,7 @@ for (const { where, text, patterns } of [
     if (shown) {
       fail(
         `index.html shows "theme ${shown[1]}" as a command (${where}). Claude Code's /theme ignores the ` +
-          "argument; show /theme and name the theme to choose.",
+          `argument; show /theme and name the theme to choose.${pageScriptNote}`,
       );
     }
   }
@@ -977,7 +984,7 @@ if (surfacePromisedBy.length) {
     if (!new RegExp(`surface\\b[^#]{0,12}${bg}(?![0-9a-f])`, "i").test(visibleText(markup))) {
       fail(
         `${surfacePromisedBy.join(", ")} promise a surface hex in the gallery, but the ${row[0]} card does not ` +
-          `print "surface ${bg}" as visible text.`,
+          `print "surface ${bg}" as visible text.${pageScriptNote}`,
       );
     }
   }

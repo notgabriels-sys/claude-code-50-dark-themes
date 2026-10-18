@@ -875,3 +875,78 @@ test("accepts createTextNode escaping and favourites read from localStorage", { 
 
   assert.equal(result.code, 0, `a working page was rejected:\n${result.stderr}`);
 });
+
+test("rejects the dead command when a source line break splits it", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixturePage = join(fixtureRoot, "index.html");
+  const page = await readFile(fixturePage, "utf8");
+  await writeFile(
+    fixturePage,
+    page.replace(
+      '<span class="txt">/theme</span>',
+      '<span class="txt">/theme</span>\n        <span class="arg">${themeSlug}</span>',
+    ),
+  );
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "a newline in the HTML source hid the dead command, though a browser shows one line");
+  assert.match(result.stderr, /shows "theme absinthe" as a command \(Absinthe\)/);
+});
+
+test("keeps running the page's scripts after one of them throws", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixturePage = join(fixtureRoot, "index.html");
+  const page = await readFile(fixturePage, "utf8");
+  const analytics =
+    '<script async src="https://www.googletagmanager.com/gtag/js?id=G-ABC123"></script>' +
+    "<script>window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);}" +
+    ' gtag("js", new Date()); gtag("config", "G-ABC123");</script>' +
+    '<script>FeedbackWidget.init({ site: "gabs-utilities" });</script>';
+  await writeFile(fixturePage, page.replace("</head>", `${analytics}\n</head>`));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.equal(result.code, 0, `one throwing head script stopped the gallery script from running:\n${result.stderr}`);
+});
+
+test("accepts prose naming the theme inside a button or a prompt-styled line", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixturePage = join(fixtureRoot, "index.html");
+  const page = await readFile(fixturePage, "utf8");
+  await writeFile(
+    fixturePage,
+    page
+      .replace(
+        '<h3 class="tname">${esc(name)}</h3>',
+        '<h3 class="tname">${esc(name)}</h3><button class="fav" type="button" aria-pressed="false">' +
+          '<span aria-hidden="true">☆</span><span class="sr-only">Save theme ${esc(name)}</span></button>',
+      )
+      .replace(
+        "Run <code>/theme</code> and choose one.",
+        'Run <code>/theme</code> and choose one.</p><p class="vol2-prompt">Not sure where to start? ' +
+          "Try the theme Graphite, then Ink.</p><p>",
+      ),
+  );
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.equal(result.code, 0, `a label naming the theme was read as a command:\n${result.stderr}`);
+});
+
+test("names the page script's error when a card loses its name", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixturePage = join(fixtureRoot, "index.html");
+  const page = await readFile(fixturePage, "utf8");
+  await writeFile(
+    fixturePage,
+    page
+      .replace(pageEsc, 'const esc = s => { const div = document.createElement("div"); div.prepend(s); return div.innerHTML; };')
+      .replace("\nupdateFinder();\n", "\nupdateFinder();\nconst motion = reducedMotionQuery.matches;\n"),
+  );
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier checked blank cards a browser never shows");
+  assert.match(result.stderr, /rendered the Absinthe card without its name[^\n]*failed first: reducedMotionQuery is not defined/);
+});
