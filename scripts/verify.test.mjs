@@ -439,3 +439,18 @@ test("rejects paste-ready promotion copy that advertises the unpublished Workflo
   assert.notEqual(result.code, 0, "the verifier accepted paste-ready copy advertising an unpublished product");
   assert.match(result.stderr, /PROMOTION_QUEUE\.md paste-ready copy advertises the Workflow Kit/);
 });
+
+test("rejects gallery cards that copy /theme with a theme argument", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixturePage = join(fixtureRoot, "index.html");
+  const page = await readFile(fixturePage, "utf8");
+  await writeFile(
+    fixturePage,
+    page.replace('const command = "/theme";', "const command = `/theme ${button.dataset.themeName}`;"),
+  );
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a copied command Claude Code ignores the argument of");
+  assert.match(result.stderr, /copies a \/theme command with a theme argument/);
+});

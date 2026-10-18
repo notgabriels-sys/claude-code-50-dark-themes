@@ -594,6 +594,18 @@ for (const file of publicHtmlFiles) {
   if (!seen) sharedImageAlts.set(image[1], { file, alt: ogAlt[1] });
 }
 
+// Claude Code's /theme takes no argument. Run live on 2.1.302 with the pack
+// installed, `/theme deep-field` opened the same picker as `/theme`, left the
+// current theme ticked and saved nothing. Every gallery card still copied
+// `/theme <slug>` under 'Applied theme "<Name>"' — sixty-two buttons handing out
+// a command that applies nothing. Copy the bare command; name the theme to pick.
+if (/\/theme \$\{|["'`]\/theme [a-z0-9][a-z0-9-]*["'`]/.test(html)) {
+  fail(
+    "index.html copies a /theme command with a theme argument. Claude Code's /theme ignores " +
+      "arguments, so it applies nothing. Copy /theme and name the theme to choose.",
+  );
+}
+
 console.log(
   `Verified ${files.length} themes, ${pluginFiles.length} plugin themes, ${vol2Files.length} Vol. 2 themes, ` +
     `${galleryThemes.length} gallery cards, ` +

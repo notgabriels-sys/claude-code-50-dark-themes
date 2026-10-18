@@ -533,7 +533,7 @@
     </div>
     <div class="theme-finder" role="search" aria-labelledby="finder-title">
       <p class="finder-label" id="finder-title">Find a working atmosphere</p>
-      <p class="finder-copy">Search by name, <code>/theme</code> command or accent hex; refine by palette family. Press <kbd>/</kbd> to focus.</p>
+      <p class="finder-copy">Search by name, file name or accent hex; refine by palette family. Press <kbd>/</kbd> to focus.</p>
       <div class="finder-controls">
         <label class="finder-search">
           <span>Search</span>
@@ -549,7 +549,7 @@
           <button class="filter" type="button" data-family="neutral" aria-pressed="false">Neutral</button>
         </div>
       </div>
-      <p class="sr-only" id="finder-help">Search by theme name, slash command, or accent hex. Press Escape to clear the search.</p>
+      <p class="sr-only" id="finder-help">Search by theme name, file name, or accent hex. Press Escape to clear the search.</p>
     </div>
     <details class="theme-archive">
       <summary><strong>Open the full collection</strong><span class="archive-meta"><span id="count" aria-live="polite">50 themes</span><span class="disclosure-mark" aria-hidden="true"><span class="is-closed">+</span><span class="is-open">−</span></span></span></summary>
@@ -805,7 +805,7 @@ const familyOf = hex => {
 const renderTheme = ([name,accent,shimmer,text,mute,bg]) => {
   const themeSlug = slug(name);
   const family = familyOf(accent);
-  const searchable = `${name} ${themeSlug} /theme ${themeSlug} ${accent} ${family}`.toLowerCase();
+  const searchable = `${name} ${themeSlug} ${accent} ${family}`.toLowerCase();
   return `
   <article class="card" data-family="${family}" data-search="${esc(searchable)}" style="--bg:${bg};--a:${accent};--sh:${shimmer};--fg:${text};--mut:${mute}">
     <div class="titlebar">
@@ -817,10 +817,10 @@ const renderTheme = ([name,accent,shimmer,text,mute,bg]) => {
       <div class="row"><span class="acc">✻</span> <span class="sh">Claude Code</span> <span class="mut">· ${esc(name.toLowerCase())}</span></div>
       <div class="row"><span class="acc">●</span> <span class="fg">Applied theme &ldquo;${esc(name)}&rdquo;</span></div>
       <div class="row"><span class="mut">&nbsp;&nbsp;3 files changed · staged</span></div>
-      <button class="prompt-box theme-command" type="button" data-copy-theme="${themeSlug}" aria-label="Copy /theme ${themeSlug} command">
-        <span class="gt">&gt;</span><span class="txt">theme ${themeSlug}</span><span class="caret" aria-hidden="true"></span><span class="copy-label">Copy command</span>
+      <button class="prompt-box theme-command" type="button" data-theme-name="${esc(name)}" aria-label="Copy /theme, then choose ${esc(name)} in Claude Code">
+        <span class="gt">&gt;</span><span class="txt">/theme</span><span class="caret" aria-hidden="true"></span><span class="copy-label">Copy command</span>
       </button>
-      <div class="hint">/theme &nbsp;·&nbsp; ⏎ send &nbsp;·&nbsp; esc to interrupt</div>
+      <div class="hint">then choose &ldquo;${esc(name)}&rdquo;</div>
     </div>
   </article>`;
 };
@@ -905,15 +905,19 @@ document.addEventListener("keydown", event => {
 const copyThemeCommand = async event => {
   const button = event.target.closest(".theme-command");
   if (!button) return;
-  const command = `/theme ${button.dataset.copyTheme}`;
+  // Claude Code's /theme takes no argument: a theme name typed after it opens
+  // the same picker as the bare command and applies nothing (2.1.302, run live
+  // with the pack installed). So copy the command that works, name the theme.
+  const command = "/theme";
+  const name = button.dataset.themeName;
   const label = button.querySelector(".copy-label");
   try {
     await navigator.clipboard.writeText(command);
     label.textContent = "Copied";
-    themeCopyStatus.textContent = `${command} copied to clipboard.`;
+    themeCopyStatus.textContent = `${command} copied to clipboard. In Claude Code, run it and choose ${name}.`;
   } catch {
     label.textContent = "Copy failed";
-    themeCopyStatus.textContent = `Could not copy ${command}. Select it manually.`;
+    themeCopyStatus.textContent = `Could not copy ${command}. Type it in Claude Code and choose ${name}.`;
   }
   clearTimeout(button._copyReset);
   button._copyReset = setTimeout(() => label.textContent = "Copy command", 1400);
