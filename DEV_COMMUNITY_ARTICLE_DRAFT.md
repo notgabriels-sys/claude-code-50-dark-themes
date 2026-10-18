@@ -1,6 +1,6 @@
 # DEV Community article draft
 
-Status: ready to paste into DEV Community once Gabriel is signed in. Do not
+Status: ready to paste into DEV Community once the owner is signed in. Do not
 auto-publish without checking the preview and account identity first. The
 canonical URL points to the owned article, and the post links both the public
 gallery and the install guide.

@@ -52,7 +52,7 @@ Claude Code, themes, dark mode, developer tools, terminal, UI kit, templates, ac
 Maker note:
 
 ```text
-Built by Gabriel / NotGabriels under the neutral Gabs Utilities developer-product identity.
+Built under the Gabs Utilities developer-product identity.
 ```
 
 Developer-specific supporting asset:
@@ -94,7 +94,7 @@ Sources checked 2026-08-24:
 Prepared first comment:
 
 ```text
-Hey, I’m Gabriel.
+Maker here.
 
 This started as a practical thing for myself: I wanted a set of dark Claude Code themes that stayed readable and did not destroy semantic colors like errors, warnings, success states, and diffs.
 
@@ -174,7 +174,7 @@ Gabs Utilities is a small dark-tool catalog built around 50 free Claude Code the
 
 Fit: medium. It can provide discovery and a backlink, but current public guidance says the free queue is several months out as of August 2026, while faster options are paid.
 
-Do not pay without Gabriel's explicit approval.
+Do not pay without the owner's explicit approval.
 
 Use the same Product name, URL, tagline, and long description above.
 
@@ -247,13 +247,13 @@ Use this order. It favors relevance and avoids low-quality spam-directory energy
 
 5. Launch/startup directories
    - Use only if they have a clear developer-tools category and a free submission path.
-   - Avoid paid placement unless Gabriel explicitly approves the exact price and benefit.
+   - Avoid paid placement unless the owner explicitly approves the exact price and benefit.
    - Avoid adding multiple directory badges to the storefront footer unless the directory is genuinely relevant.
 
 ## Not suitable right now
 
 - Hacker News / Show HN: currently blocked by HN `showlim`.
-- Reddit: Gabriel is permabanned, and circumventing that would be wrong.
+- Reddit: the owner's account is permanently banned, and circumventing that would be wrong.
 - Paid directory fast-tracks: no purchase without explicit approval.
 - Generic SaaS review sites: weak fit until there are users/customers and a clearer SaaS-style product.
 

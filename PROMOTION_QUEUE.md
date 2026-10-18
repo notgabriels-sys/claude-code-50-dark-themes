@@ -66,7 +66,7 @@ description above previously said the catalog includes "workflow kits" — the
 posts, the Product Hunt comment, and the directory descriptions — which would
 have advertised a product nobody can buy. Those mentions are removed.
 
-When Gabriel publishes it: verify the live product page buyer-side first, add
+When the kit is published: verify the live product page buyer-side first, add
 the slug to `verifiedGumroadSlugs`, then put it back in the copy.
 
 ## Ready-to-post copy
@@ -170,7 +170,7 @@ I’d especially like feedback on whether the install flow and theme gallery are
 ### Product Hunt maker comment
 
 ```text
-Hey, I’m Gabriel.
+Maker here.
 
 This started as a practical thing for myself: I wanted a set of dark Claude Code themes that stayed readable and did not destroy semantic colors like errors, warnings, success states, and diffs.
 
@@ -288,4 +288,4 @@ Use the result to improve positioning before posting again elsewhere.
 | 2026-08-24 | Owned install guide | `https://gabs-utilities.com/claude-code-theme-install-guide.html` is live with HTTP 200, linked from the homepage and sitemap, and submitted to IndexNow with the verified `79F35EFA-F66B-4757-848A-FB1A9029E1BA` key | Use it as the first support link when people ask how to install the free Claude Code themes; pair it with the semantic-colors article for DEV/community posts |
 | 2026-08-24 | TheDevToolsDir | Initial read at 06:40 CEST returned 404 while publication was processing; at 06:57 CEST the exact listing URL returned HTTP 200 and the public title, description, website, Standard tier, categories and tags read back correctly | Listing is independently verified live; keep the required footer badge while the Standard listing remains active and monitor useful referral traffic |
 | 2026-08-24 | DevHunt | The new-tool route redirected to “Log in to your account”; no DevHunt account email was found | Keep the prepared developer-tool fields, but do not create an account merely to add another listing |
-| 2026-08-24 | DEV Community | Paste-ready article draft created in `DEV_COMMUNITY_ARTICLE_DRAFT.md`; browser path not signed in | Preview and publish manually from Gabriel's DEV account, or reopen when signed in for final action-time confirmation |
+| 2026-08-24 | DEV Community | Paste-ready article draft created in `DEV_COMMUNITY_ARTICLE_DRAFT.md`; browser path not signed in | Preview and publish manually from the owner's DEV account, or reopen when signed in for final action-time confirmation |
