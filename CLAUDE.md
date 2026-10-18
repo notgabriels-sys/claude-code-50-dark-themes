@@ -245,8 +245,15 @@ promote one by reading it as another.**
 | `verifiedGumroadSlugs` | a human loaded the product page and it is a published product | anything about its price, currency or contents |
 | `recordedGumroadPrices` | this is what `index.html` said on 2026-08-24 | anything at all about Gumroad |
 
-No Gumroad product's **price** has ever been read back by anyone working in this
-repo. A price that was already wrong on the day it was recorded is copied
+Claude has read back no Gumroad product's **price** in this repo, and only one
+product has any recorded read-back at all: `products/industrial-tension-fx/PUBLISHING.md`
+records that product's €15 EUR price as checked after a provider reload on
+2026-08-20 (clean checkout data `price_cents: 1500`, currency `eur`, and a
+zero-charge creator test purchase). That is a record left by whoever published
+the product — not a check `verify` can repeat — and it promotes nothing in the
+tables above. The other fifteen have no record at all. (Corrected 2026-10-18:
+this paragraph used to say no price had ever been read back, which that file has
+contradicted since it arrived in `eabb06c`.) A price that was already wrong on the day it was recorded is copied
 faithfully into the table and the build stays green forever. Adding or changing
 a row silences the guard; it verifies nothing.
 
@@ -268,17 +275,36 @@ frontmatter with a name and description. Drift means an installer silently gets
 a different skill than a contributor reads, so it fails the build — the same
 contract the themes already had.
 
+**(added 2026-10-18) A plugin ships exactly its expected files and keys.**
+`claude plugin install` copies a plugin's whole directory, and Claude Code loads
+any hooks, commands, skills, agents or MCP servers it finds there, or that a
+`plugin.json` or a marketplace entry declares inline. Before this guard a stray
+SessionStart hook in a theme pack, or an `mcpServers` key in a marketplace entry
+alone, shipped to installers with `verify` green — reproduced against the real
+installer, which ran the hook. Now every `plugin.json` key and every
+marketplace-entry key must be metadata, the theme plugins' `experimental` must
+be exactly `{"themes": "./themes/"}`, and every file under `plugins/` must be in
+a set built from the root themes, the Vol. 2 theme files and `.claude/skills`;
+symlinks and unregistered plugin directories fail. Both are allowlists on
+purpose: a list of forbidden component paths goes stale the day Claude Code adds
+one. A new packaged file (a CHANGELOG, a second preview image) needs a
+deliberate edit to `expectedPackageFiles`, and an untracked `.DS_Store` inside
+`plugins/` fails a local run until it is deleted.
+
 The Gumroad half now has structural guards, an existence-verified slug list and
 a price-drift table — but no verified *price* for any product. See below.
 
 ## Gumroad — the unverified half of the shop
 
 The PayPal links below were each read back from their own detail page before
-going on the shop. **No Gumroad product's price has ever had that treatment.**
+going on the shop. **Only one Gumroad product's price has a recorded
+read-back** (`industrial-tension-fx`, see the CI-tripwire section), and none
+was read back by Claude.
 The Gumroad products (16 as of 2026-10-18) are the larger half of the shop by count and carry the ordinary
 sales income. `main` did confirm on 2026-08-24 that each product page loads a
 published product — real, and worth having — but existence is not price, and
-nothing in this repo records a single price being read off a Gumroad product.
+apart from that one publishing record nothing in this repo records a price being
+read off a Gumroad product.
 
 Two things found by static read on 2026-08-24, both needing Gabriel:
 
@@ -294,6 +320,14 @@ editing the page.** Read the products first.
 above"; main's restyle now reads "view bundle · $39" and makes no explicit
 contents claim on the page. What the bundle actually contains is still a fact
 about a Gumroad product, not about this file, and nobody here has read it.
+
+**Found 2026-10-18, also needing Gabriel: a product file contradicts the shop.**
+`products/raw-techno-kicks/PUBLISHING.md` opens with status `RENDERED — QC
+INCOMPLETE`, says price and refund approval and every live-store gate remain,
+and ends "No public product exists." Yet `raw-techno-kick-architecture` is
+linked on `index.html` at €15 and sits in `verifiedGumroadSlugs`. One of the two
+is out of date. Which one is a fact about the Gumroad product and Gabriel's
+approvals, not about this repo — do not edit either to make them agree.
 
 **Verification route, same discipline as PayPal:** sign in at `gumroad.com`,
 open the products list, and read each product's own page — price, currency, and

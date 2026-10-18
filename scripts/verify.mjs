@@ -81,9 +81,10 @@ const pngSignature = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a
 //                            published product."  (existence, not price.)
 //   recordedGumroadPrices = "this is what index.html said on 2026-08-24."
 //
-// The third asserts NOTHING about Gumroad. No Gumroad product's price has ever
-// been read back by anyone working in this repo -- see CLAUDE.md, "Gumroad --
-// the unverified half of the shop". A price that was already wrong on the day
+// The third asserts NOTHING about Gumroad. Claude has read back no Gumroad
+// price in this repo; the only recorded read-back is industrial-tension-fx's
+// EUR 15, in products/industrial-tension-fx/PUBLISHING.md, and it promotes
+// nothing here -- see CLAUDE.md, "Gumroad -- the unverified half of the shop". A price that was already wrong on the day
 // it was recorded is copied faithfully into this table and the build stays
 // green forever.
 //
