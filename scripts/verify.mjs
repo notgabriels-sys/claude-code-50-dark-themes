@@ -540,6 +540,33 @@ if (!/matches by filename, not contents/i.test(installerHeader)) {
   fail("install.sh --help must say --uninstall matches by filename, not contents; without it the destructive path reads safer than it is.");
 }
 
+// The themes, the plugins and the installer are MIT, but the repository is not:
+// every product folder ships its own licence, and those forbid resale or
+// redistribution. The article's FAQ structured data said "The complete theme
+// set and source repository are free under the MIT license" while its visible
+// answer named only the MIT parts. Wherever a product licence is not MIT, no
+// public page (structured data included) may call the repository MIT.
+const productLicences = [];
+for (const entry of await readdir(new URL("products/", root), { withFileTypes: true })) {
+  if (!entry.isDirectory()) continue;
+  const licence = new URL(`products/${entry.name}/LICENSE.txt`, root);
+  try {
+    if (!/^\s*MIT License/.test(await readFile(licence, "utf8"))) productLicences.push(entry.name);
+  } catch {}
+}
+if (productLicences.length) {
+  for (const file of [...publicHtmlFiles, "README.md", "llms.txt", "plugins/50-dark-themes/README.md", "plugins/dark-themes-vol-2/README.md"]) {
+    const text = (await readFile(new URL(file, root), "utf8")).replace(/<[^>]+>/g, "").replace(/\s+/g, " ");
+    const claim = text.match(/repositor(?:y|ies)\b[^.]{0,40}\bMIT\b|\bMIT\b[^.]{0,40}\brepositor(?:y|ies)\b/i);
+    if (claim) {
+      fail(
+        `${file} says the repository is MIT ("${claim[0]}"), but products/${productLicences[0]} and ` +
+          `${productLicences.length - 1} other product folder(s) carry their own non-MIT licences. Name the MIT parts instead.`,
+      );
+    }
+  }
+}
+
 // Plugin themes load when Claude Code starts. Checked live on 2.1.302: after
 // `/plugin install` inside a running session ("Plugin is now active."), or
 // `claude plugin install` from a shell while a session is open, /theme lists

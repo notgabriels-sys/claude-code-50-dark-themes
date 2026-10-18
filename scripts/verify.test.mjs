@@ -981,3 +981,17 @@ test("rejects a plugin install command with no word about restarting Claude Code
   assert.notEqual(result.code, 0, "the verifier accepted install steps that leave a running session without the themes");
   assert.match(result.stderr, /plugins\/dark-themes-vol-2\/README\.md gives "plugin install dark-themes-vol-2@notgabriels-themes" without saying to restart/);
 });
+
+test("rejects a page that calls the repository MIT while products carry other licences", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const article = join(fixtureRoot, "semantic-terminal-colors.html");
+  const text = await readFile(article, "utf8");
+  const answer = "Yes. The 50-theme set, the Vol. 2 expansion, both plugin packages and the installer are public under the MIT license.";
+  assert.ok(text.includes(answer), "fixture anchor moved; update this test");
+  await writeFile(article, text.replace(answer, "Yes. The complete theme set and source repository are free under the MIT license."));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted an MIT claim for a repository holding restrictively licensed products");
+  assert.match(result.stderr, /semantic-terminal-colors\.html says the repository is MIT/);
+});
