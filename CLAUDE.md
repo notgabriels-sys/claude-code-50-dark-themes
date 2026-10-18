@@ -186,7 +186,12 @@ file.**
 Undocumented here until 2026-08-24, and it is the strongest protection this
 repo has. `verify` runs on every push and **fails the build** on:
 
-- any occurrence of `stripe` (case-insensitive) anywhere in `index.html`;
+- any occurrence of `stripe` (case-insensitive) on any public page, in
+  `README.md` or in `llms.txt` (until 2026-10-18 it read `index.html` alone);
+- **(added 2026-10-18)** any link a browser can follow from a public page to a
+  host outside `reviewedLinkHosts`, or to `www.paypal.com` or
+  `notgabriel.gumroad.com` anywhere but a verified NCP id or Gumroad slug — see
+  "Every link goes to a reviewed host" below;
 - the retired résumé checkout slug `notgabriel.gumroad.com/l/wmlrk`;
 - any of the three verified PayPal links going missing;
 - **(added 2026-08-24)** any of the three carrying a price other than its
@@ -249,6 +254,26 @@ still `bqgfvX` and still fails.
 **A Gumroad URL outside an `<a>` fails the build too.** The price checks read
 anchors, so a URL printed as plain text would slip past them; `verify` counts
 raw Gumroad URLs against anchors found and fails on a mismatch.
+
+**(added 2026-10-18) Every link goes to a reviewed host.** The checks above all
+read text, so each saw only the spelling it was written for. Reproduced with
+`verify` green: a Stripe link on `impressum.html`; `buy.&#115;tripe.com`,
+`buy.%73tripe.com` and `buy&period;stripe.com` on `index.html`, which Chromium
+all resolves to `https://buy.stripe.com/`; a checkout on another provider; a
+PayPal.me link and a PayPal donate button, which are PayPal payment links
+outside the NCP path the PayPal table guards; and an unverified NCP id and an
+unverified, priced Gumroad slug behind `&period;`. Now every URL attribute on
+every public page is read with `htmlTags`, resolved by the URL parser, and held
+to `reviewedLinkHosts` — an allowlist, because a list of forbidden providers
+goes stale and a custom checkout domain is on none. On `www.paypal.com` and
+`notgabriel.gumroad.com` the path must be a verified NCP id or Gumroad slug. A
+link off the site must be spelled `https://<host>/` exactly, with `&` written
+`&amp;` and no other character reference, so the text checks above see every
+payment link in the spelling a browser follows. `<base>` and
+`<meta http-equiv>` are refused. **Linking a new host is a deliberate edit to
+`reviewedLinkHosts`; a checkout host never goes there before its real object
+has been read.** Not covered: inline `<script>` text that navigates, and CSS,
+which cannot.
 
 **Sixteen failure cases were proven** by breaking `index.html`, `README.md` and
 `impressum.html` in turn and confirming the build goes red, then restoring:

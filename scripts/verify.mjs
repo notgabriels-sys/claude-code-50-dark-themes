@@ -1946,6 +1946,107 @@ for (const block of jsonLdBlocks) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Every link a browser can follow from a public page goes to a reviewed host,
+// and a link to a payment host goes to a verified object on it.
+//
+// The Stripe ban above reads index.html as text, and the PayPal and Gumroad
+// allowlists read every page as text, so each saw only the spelling it was
+// written for. Reproduced 2026-10-18, each with verify green: a Stripe link on
+// impressum.html; "buy.&#115;tripe.com", "buy.%73tripe.com" and
+// "buy&period;stripe.com" on index.html, all of which Chromium resolves to
+// https://buy.stripe.com/; a checkout on any other provider; a PayPal.me link
+// and a PayPal donate button, which are PayPal payment links outside the NCP
+// path the PayPal table guards; and an unverified NCP id and an unverified
+// Gumroad slug, priced, behind "&period;". The last two are the EUR1,200 shape
+// again: a payment link nobody read back, live on the shop.
+//
+// So links are read the way a browser reads them -- tags by htmlTags, each URL
+// attribute resolved by the URL parser against the page's own address -- and
+// the host is held to an allowlist, the house pattern: a list of forbidden
+// providers goes stale the day a new one is used, and a custom checkout domain
+// is on no list at all. A link off the site must also be spelled out as
+// "https://<host>/" exactly, with "&" written "&amp;" and no other character
+// reference, so the text-based price and slug checks above read every payment
+// link in the spelling a browser follows. What this does not cover: inline
+// script that navigates (a <script> may only be the bare tag, but its text is
+// not read for URLs), and CSS, which cannot navigate.
+// ---------------------------------------------------------------------------
+const URL_ATTRIBUTES = new Set([
+  "href", "src", "action", "formaction", "srcset", "poster", "data", "ping", "cite",
+  "longdesc", "background", "manifest", "codebase", "icon",
+]);
+const paymentPath = {
+  "www.paypal.com": (url) =>
+    url.search === "" && url.hash === "" &&
+    verifiedPayPalIds.some((id) => url.pathname === `/ncp/payment/${id}`),
+  "notgabriel.gumroad.com": (url) => {
+    const slug = url.pathname.match(/^\/l\/([^/]+)$/)?.[1];
+    return slug !== undefined && verifiedGumroadSlugs.has(slug);
+  },
+};
+const reviewedLinkHosts = new Set([
+  cname, `audio.${cname}`, `tools.${cname}`, "github.com", "raw.githubusercontent.com",
+  "notgabriels-sys.github.io", "opensource.org", "thedevtoolsdir.com", "www.producthunt.com",
+  ...Object.keys(paymentPath),
+]);
+for (const page of publicHtmlFiles) {
+  const markup = page === "index.html" ? html : await readFile(new URL(page, root), "utf8");
+  if (/stripe/i.test(markup)) fail(`${page} mentions Stripe. No Stripe link is verified for this site.`);
+  for (const tag of htmlTags(markup)) {
+    if (tag.closing) continue;
+    if (tag.name === "base") fail(`${page} has a <base>, which changes where every relative link goes. Remove it.`);
+    if (tag.name === "meta" && tag.attributes.some(({ name }) => name === "http-equiv")) {
+      fail(`${page} has a <meta http-equiv>, which can send the visitor somewhere. Remove it.`);
+    }
+    for (const { name, value } of tag.attributes) {
+      if (!URL_ATTRIBUTES.has(name)) continue;
+      const written = name === "srcset" || name === "ping"
+        ? value.split(name === "srcset" ? "," : /[\t\n\f\r ]+/).map((part) => part.trim().split(/[\t\n\f\r ]+/)[0])
+        : [value];
+      for (const raw of written.filter(Boolean)) {
+        const where = `${page} <${tag.name} ${name}="${raw}">`;
+        const spelled = raw.replaceAll("&amp;", "&");
+        if (raw.replaceAll("&amp;", "").includes("&")) {
+          fail(`${where} spells its URL with a character reference. Write "&" as "&amp;" and every other character as itself.`);
+        }
+        let url;
+        try {
+          url = new URL(spelled, `https://${cname}/${page}`);
+        } catch {
+          fail(`${where} is not a URL a browser can resolve.`);
+        }
+        if (url.protocol === "mailto:") continue;
+        if (url.protocol !== "https:") fail(`${where} uses ${url.protocol}; links on the site are https: or mailto: only.`);
+        if (url.host !== cname && !(spelled === `https://${url.host}` || spelled.startsWith(`https://${url.host}/`))) {
+          fail(
+            `${where} reaches ${url.host} but does not spell it out as "https://${url.host}/". A link off the ` +
+              `site is written in the form a browser follows, so the price and slug checks read it.`,
+          );
+        }
+        if (!reviewedLinkHosts.has(url.host)) {
+          fail(
+            `${where} links to ${url.host}, which is not a reviewed link host. A checkout on any provider is a ` +
+              `payment surface and goes on the site only after its real object is read (CLAUDE.md, Payment ` +
+              `surfaces). For an ordinary link, add the host to reviewedLinkHosts in scripts/verify.mjs.`,
+          );
+        }
+        if (paymentPath[url.host] && !paymentPath[url.host](url)) {
+          fail(
+            `${where} goes to ${url.host}${url.pathname}, which is not a verified payment object on it. ` +
+              `${url.host} may be linked only at a verified PayPal NCP id or Gumroad slug.`,
+          );
+        }
+      }
+    }
+  }
+}
+for (const text of ["README.md", "llms.txt"]) {
+  if (/stripe/i.test(await readFile(new URL(text, root), "utf8"))) {
+    fail(`${text} mentions Stripe. No Stripe link is verified for this site.`);
+  }
+}
+
 console.log(
   `Verified ${files.length} themes, ${pluginFiles.length} plugin themes, ${vol2Files.length} Vol. 2 themes, ` +
     `${galleryThemes.length} gallery cards, ` +

@@ -64,6 +64,13 @@ produces for the paid products before anything ships.
 | `themes.json` | tools, aggregators and agents consuming the 50 themes | `verify` rebuilds and byte-compares, and checks the content against the theme files |
 | `README.md` | GitHub arrivals, the install path | `verify` checks the install command and Gumroad slugs |
 | `.claude-plugin/marketplace.json` | `claude plugin install` | `verify` checks all three plugins: keys, manifests and the exact files each ships |
+| Every link on every public page | visitors leaving the site | `verify` resolves each link as a browser does and holds its host to `reviewedLinkHosts`; PayPal and Gumroad only at a verified id or slug |
+
+A directory badge, a launch-site link or any other link to a host the site has
+not linked before fails `verify` until that host is added to `reviewedLinkHosts`
+in `scripts/verify.mjs`. Add it deliberately, for an ordinary link only. A
+checkout or payment host never goes on that list from exposure work; it is a
+payment surface (see CLAUDE.md).
 
 Adding a public page means adding it to **both** `sitemap.xml` and `llms.txt`.
 Neither is generated, so neither notices a page that was never listed.

@@ -139,6 +139,9 @@ The command checks:
   `.gitmodules` file or an empty directory under `plugins/` (the shape a git submodule takes);
 - a fresh-machine-safe installation command;
 - the verified shop payment surfaces;
+- that every link a browser can follow from a public page goes to a host in `reviewedLinkHosts`,
+  spelled out as `https://<host>/`, and reaches PayPal or Gumroad only at a verified id or slug —
+  a link to a new host is a deliberate edit to that list in `scripts/verify.mjs`;
 - valid 1280×720 PNG assets for the curated developer picks;
 - that stated check and theme counts on public pages, plugin descriptions and the READMEs match the
   computed values, in digits or in words;

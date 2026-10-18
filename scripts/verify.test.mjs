@@ -1461,3 +1461,63 @@ for (const [spelling, tag] of [
     assert.equal(result.code, 0, `an equivalent canonical link was rejected: ${result.stderr}`);
   });
 }
+
+// Links a browser follows. Each of the first nine shipped with verify green on
+// 2026-10-18; Chromium resolves the three spellings of buy.stripe.com to the
+// same checkout. The provider and its ids are made up.
+const payLink = (href) => `<p><a href="${href}">Pay</a></p>\n</body>`;
+for (const [defect, page, from, to, message] of [
+  ["a Stripe link on another public page", "impressum.html", "</body>", payLink("https://buy.stripe.com/test_0"),
+    /impressum\.html mentions Stripe/],
+  ["a checkout host spelled with a numeric character reference", "index.html", "</body>",
+    payLink("https://buy.&#115;tripe.com/test_0"), /spells its URL with a character reference/],
+  ["a checkout host spelled with percent-encoding", "index.html", "</body>",
+    payLink("https://buy.%73tripe.com/test_0"), /reaches buy\.stripe\.com but does not spell it out/],
+  ["a checkout on an unreviewed provider", "index.html", "</body>",
+    payLink("https://checkout.example-pay.invalid/b/0"),
+    /links to checkout\.example-pay\.invalid, which is not a reviewed link host/],
+  ["a PayPal.me link", "index.html", "</body>", payLink("https://www.paypal.com/paypalme/someone/1200EUR"),
+    /goes to www\.paypal\.com\/paypalme\/someone\/1200EUR, which is not a verified payment object/],
+  ["a PayPal donate button", "index.html", "</body>", payLink("https://www.paypal.com/donate/?hosted_button_id=ZZZZ"),
+    /goes to www\.paypal\.com\/donate\/, which is not a verified payment object/],
+  ["an unverified PayPal NCP id behind a named reference", "index.html", "</body>",
+    payLink("https://www.paypal&period;com/ncp/payment/ZZZZZZZZZZZZZ"), /spells its URL with a character reference/],
+  ["an unverified Gumroad slug behind a named reference", "index.html", "</body>",
+    '<p><a href="https://notgabriel&period;gumroad.com/l/evilslug">Buy · €1200</a></p>\n</body>',
+    /spells its URL with a character reference/],
+  ["a Gumroad link off the product path", "index.html", "</body>", payLink("https://notgabriel.gumroad.com/x/bqgfv"),
+    /goes to notgabriel\.gumroad\.com\/x\/bqgfv, which is not a verified payment object/],
+  ["a protocol-relative link off the site", "index.html", "</body>", payLink("//pay.example.invalid/b/0"),
+    /reaches pay\.example\.invalid but does not spell it out/],
+  ["a javascript: link", "index.html", "</body>", payLink("javascript:void(0)"), /uses javascript:/],
+  ["a link that does not resolve", "index.html", "</body>", payLink("https://[pay"), /is not a URL a browser can resolve/],
+  ["an unreviewed host as the second srcset candidate", "index.html", "</body>",
+    '<img alt="" srcset="assets/a.png 1x, https://img.example.invalid/b.png 2x">\n</body>',
+    /links to img\.example\.invalid, which is not a reviewed link host/],
+  ["a form posting to an unreviewed host", "index.html", "</body>",
+    '<form action="https://pay.example.invalid/charge"><button>Pay</button></form>\n</body>',
+    /links to pay\.example\.invalid, which is not a reviewed link host/],
+  ["a base element", "index.html", "</head>", '<base href="https://pay.example.invalid/">\n</head>', /index\.html has a <base>/],
+  ["a meta refresh", "index.html", "</head>", '<meta http-equiv="refresh" content="0;url=https://pay.example.invalid/">\n</head>',
+    /index\.html has a <meta http-equiv>/],
+  ["Stripe in the README", "README.md", "# 50 dark themes for Claude Code", "# 50 dark themes for Claude Code\n\nPay with Stripe.",
+    /README\.md mentions Stripe/],
+]) {
+  test(`rejects ${defect}`, { timeout: 90_000 }, async (t) => {
+    const fixtureRoot = await editPage(t, page, from, to);
+
+    const result = await runVerifier(fixtureRoot);
+
+    assert.notEqual(result.code, 0, `${defect} shipped green`);
+    assert.match(result.stderr, message);
+  });
+}
+
+test("accepts a reviewed link whose query is written with &amp;", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await editPage(t, "index.html", "</body>",
+    '<p><a href="https://github.com/notgabriels-sys/claude-code-50-dark-themes/issues?q=is%3Aopen&amp;sort=new">Issues</a></p>\n</body>');
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.equal(result.code, 0, result.stderr);
+});
