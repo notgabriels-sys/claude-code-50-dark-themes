@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { spawn } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { chmod, cp, lstat, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, relative, sep } from "node:path";
@@ -7,6 +7,19 @@ import { fileURLToPath } from "node:url";
 import test from "node:test";
 
 const projectRoot = fileURLToPath(new URL("../", import.meta.url));
+// verify reads a fixture as a plain tree, since it has no .git, so a fixture
+// holds only what git would commit: a sample pack a product's generator wrote
+// (ignored) must not turn the suite red, as it does not turn verify red.
+let ignoredPaths = [];
+try {
+  ignoredPaths = execFileSync("git", ["ls-files", "-z", "--others", "--ignored", "--exclude-standard", "--directory"], {
+    cwd: projectRoot,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "ignore"],
+  }).split("\0").filter(Boolean).map((path) => path.replace(/\/$/, ""));
+} catch {
+  ignoredPaths = [];
+}
 const coverPath = "assets/products/dark-ui-kit.png";
 const previewImagePath = "assets/products/dark-ui-kit-components.png";
 
@@ -21,7 +34,9 @@ async function makeFixture(t) {
       const isExcludedDirectory = [".git", ".worktrees"].some(
         (directory) => pathFromRoot === directory || pathFromRoot.startsWith(`${directory}${sep}`),
       );
-      return !isExcludedDirectory;
+      const path = pathFromRoot.split(sep).join("/");
+      const isIgnored = ignoredPaths.some((ignored) => path === ignored || path.startsWith(`${ignored}/`));
+      return !isExcludedDirectory && !isIgnored;
     },
   });
 
@@ -1921,3 +1936,71 @@ for (const [control, path, content] of [
     assert.equal(result.code, 0, `${control} was rejected: ${result.stderr}`);
   });
 }
+
+// Found by the false-refusals review: what git ignores, ordinary images and
+// declarations, a stylesheet, and a note's title.
+const inRepository = async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  execFileSync("git", ["init", "-q"], { cwd: fixtureRoot });
+  return fixtureRoot;
+};
+test("accepts a generated file git ignores, in a repository", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await inRepository(t);
+  // products/*/pack/ is in .gitignore: what a product's generator writes.
+  await mkdir(join(fixtureRoot, "products", "raw-techno-kicks", "pack", "01_Deep"), { recursive: true });
+  await writeFile(join(fixtureRoot, "products", "raw-techno-kicks", "pack", "01_Deep", "kick.wav"), "RIFF");
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.equal(result.code, 0, `an ignored file was read as served: ${result.stderr}`);
+});
+
+test("rejects an untracked page of an unreviewed type, in a repository", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await inRepository(t);
+  await writeFile(join(fixtureRoot, "pay.htm"), '<a href="https://pay.example.invalid/x">Pay</a>\n');
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "an untracked .htm page shipped green");
+  assert.match(result.stderr, /pay\.htm sits where GitHub Pages serves files, and verify does not read a \.htm file/);
+});
+
+test("rejects a stylesheet, which a page could load", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await addFile(t, "assets/site.css", '@import "https://pay.example.invalid/x.css";\n');
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "a stylesheet shipped green");
+  assert.match(result.stderr, /assets\/site\.css is a stylesheet\. A page here may load one, and CSS makes requests/);
+});
+
+for (const [control, path, content] of [
+  ["an image whose extension is in capitals", "assets/products/IMG_0001.JPG", "not really a jpeg\n"],
+  ["an audio preview", "assets/audio/kick-preview.mp3", "ID3\n"],
+  ["a sitemap declaration in single quotes and lower case", "sitemap.xml",
+    "<?xml version='1.0' encoding='utf-8'?>\n" +
+      '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n  <url><loc>https://gabs-utilities.com/</loc></url>\n</urlset>\n'],
+  ["an SVG declaring itself standalone", "assets/plain.svg",
+    `<?xml version="1.0" encoding="UTF-8" standalone="no"?>\n${SVG_OPEN}<rect width="9" height="9"/></svg>\n`],
+  ["a note with a title in its front matter", "docs/PALETTE_NOTES.md", "---\ntitle: Palette notes\ndescription: How the palettes were tuned.\n---\n\nNotes.\n"],
+]) {
+  test(`accepts ${control}`, { timeout: 90_000 }, async (t) => {
+    const fixtureRoot = await addFile(t, path, content);
+
+    const result = await runVerifier(fixtureRoot);
+
+    assert.equal(result.code, 0, `${control} was rejected: ${result.stderr}`);
+  });
+}
+
+test("accepts a tracked file deleted from the working tree, in a repository", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await inRepository(t);
+  // git still lists it, but nothing is there to serve.
+  await writeFile(join(fixtureRoot, "gone.txt"), "soon gone\n");
+  execFileSync("git", ["add", "gone.txt"], { cwd: fixtureRoot });
+  await rm(join(fixtureRoot, "gone.txt"));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.equal(result.code, 0, `a deleted file stopped verify: ${result.stderr}`);
+});

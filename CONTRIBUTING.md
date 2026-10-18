@@ -143,13 +143,13 @@ The command checks:
   spelled out as `https://<host>/`, and reaches PayPal or Gumroad only at a verified id or slug —
   a link to a new host is a deliberate edit to that list in `scripts/verify.mjs`;
 - that every Markdown note GitHub Pages serves as a page (any `.md` outside a `.` or `_` directory) links
-  only to reviewed hosts and never to a payment host, sets no front matter beyond `name` and
-  `description`, and holds no Liquid — and that the root has no `_config.yml` or other `_` entry;
+  only to reviewed hosts and never to a payment host, sets no front matter beyond `name`,
+  `title` and `description`, and holds no Liquid — and that the root has no `_config.yml` or other `_` entry;
 - that every file GitHub Pages serves is a reviewed type: a page is `.html` and a note `.md`, SVG
   artwork and the sitemap stay inside element and attribute allowlists, every page opens with
   `<!doctype html>`, no `.mjs` sits at or above a page (keep scripts in `scripts/`), no script
   carries a `src`, no note holds a script, a handler or another active element (describe them in
-  words), and no served file opens with front matter (a note's `name`/`description` aside), is a
+  words), and no served file opens with front matter (a note's `name`/`title`/`description` aside), is a
   symlink or has a name starting `.htaccess` — a new type,
   element or attribute is a deliberate edit to `SERVED_TYPES`, `SVG_DOCUMENT` or
   `SITEMAP_DOCUMENT` in `scripts/verify.mjs`;

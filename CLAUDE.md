@@ -197,7 +197,7 @@ repo has. `verify` runs on every push and **fails the build** on:
 - **(added 2026-10-18)** any file GitHub Pages serves whose type is not in
   `SERVED_TYPES`, an SVG or XML document outside its element and attribute
   allowlist (the reader's other refusals are listed there), a sitemap location
-  off the site, front matter outside a note's `name`/`description`, a symlink
+  off the site, front matter outside a note's `name`/`title`/`description`, a symlink
   anywhere Pages serves, a page without a doctype, a `.mjs` at or above a page,
   a script with a `src` on any page, an active element or handler in a note,
   and any name starting `.htaccess` — see "Every served file is one `verify`
@@ -330,7 +330,7 @@ must stay on the site or reach a reviewed host, and never a payment host
 only adds candidates; it cannot hide one. The cost is that a note cannot quote
 an angle-bracket autolink or a link destination even in code; describe it in
 words, as this paragraph does. A served note may carry front matter
-only as `name` and `description` (a `permalink` of `/index.html` would replace
+only as `name`, `title` and `description` (a `permalink` of `/index.html` would replace
 the storefront), no Liquid delimiters, and the root no `_` entry
 (`_config.yml`, `_layouts`, `_includes`) that would reshape the build.
 Differentially tested against kramdown (rule 13): 18,900 generated notes — 23
@@ -424,6 +424,23 @@ and prose like a word starting "on" followed by an equals sign reads as a
 handler. The lens also found five branches no test pinned — a capital `URL(`,
 the exact XML declaration, the attribute-name capture, `<loc>` normalisation
 and the `_` half of the segment rule — each now pinned by a test.
+
+Its false-refusals lens found the check too strict in ways that would get it
+weakened. It read files git ignores as served, so running a product's own
+generator (which writes the ignored `products/*/pack/`) turned local `verify` and
+the suite red; the served set is now what git would commit — tracked files and
+untracked ones it does not ignore — read with `git ls-files`, falling back to a
+walk where there is no repository, and the test fixtures copy only that set.
+`.jpg`, `.jpeg`, `.webp`, `.gif`, `.ico` and `.mp3` are now inert like `.png`,
+with an image's extension allowed in capitals (a page's or a note's still not);
+the XML declaration may use either quote and `utf-8` in any case; a note may
+set `title`, which the Pages SEO tag sanitises as it does `description`; and a
+`.css` file gets its own refusal, because a page may load a stylesheet and CSS
+makes requests — the generic message had asked only how a browser opens a file,
+which would have let a contributor add `.css` as inert. Still open, and the next
+step: the SVG allowlist refuses what Figma, Illustrator, Inkscape and SVGO
+export (clip paths, comments, `data-*`), and widening it needs its own
+differential run.
 
 **Sixteen failure cases were proven** by breaking `index.html`, `README.md` and
 `impressum.html` in turn and confirming the build goes red, then restoring:

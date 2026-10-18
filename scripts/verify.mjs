@@ -1,6 +1,8 @@
+import { execFileSync } from "node:child_process";
 import { lstat, readdir, readFile, stat } from "node:fs/promises";
 
 import { sep } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import {
   ITEMLIST_END,
@@ -2254,7 +2256,7 @@ for (const text of ["README.md", "llms.txt"]) stripeBan(text, await readFile(new
 // as links cannot hide a link). Each must stay on the site or reach a reviewed
 // host, and never a payment host: the price checks do not read notes. Jekyll
 // can also change pages wholesale, so a served note may carry front matter only
-// as name and description (a permalink of /index.html would replace the
+// as name, title and description (a permalink of /index.html would replace the
 // storefront), no Liquid delimiters, and the root no "_" entry (_config.yml,
 // _layouts, _includes) that would reshape the build.
 // ---------------------------------------------------------------------------
@@ -2273,8 +2275,28 @@ for (const entry of await readdir(root)) {
 // refused rather than read. Jekyll also skips names starting "#" or "~" or
 // ending "~" and its default excludes (node_modules, vendor/bundle, Gemfile);
 // verify reads those as served, which only refuses more.
+//
+// Pages builds from what is committed, so a file git ignores never reaches it:
+// running a product's generator writes products/*/pack/, which is ignored, and
+// must not turn a local run red. Where the tree is a repository it is read as
+// git would commit it -- tracked files, and untracked ones git does not ignore,
+// so a file about to be added is read too. Without one (the test fixtures,
+// which copy only that set), or if git cannot run, it is walked whole, which
+// only refuses more.
+const committable = async () => {
+  if (!(await stat(new URL(".git", root)).then(() => true, () => false))) return null;
+  try {
+    return execFileSync("git", ["ls-files", "-z", "--cached", "--others", "--exclude-standard"], {
+      cwd: fileURLToPath(root),
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).split("\0").filter(Boolean);
+  } catch {
+    return null;
+  }
+};
 const servedFiles = [];
-for (const entry of await readdir(root, { recursive: true })) {
+for (const entry of (await committable()) ?? (await readdir(root, { recursive: true }))) {
   const file = entry.split(sep).join("/");
   const parts = file.split("/");
   if (parts.some((part) => /^[._]/.test(part) && !part.startsWith(".htaccess"))) continue;
@@ -2284,7 +2306,9 @@ for (const entry of await readdir(root, { recursive: true })) {
         `starts with it, although other names starting with "." are skipped. Rename it.`,
     );
   }
-  const info = await lstat(new URL(file.split("/").map(encodeURIComponent).join("/"), root));
+  // A file git still tracks may be gone from the working tree; it is not served.
+  const info = await lstat(new URL(file.split("/").map(encodeURIComponent).join("/"), root)).catch(() => null);
+  if (!info) continue;
   if (info.isSymbolicLink()) {
     fail(
       `${file} is a symlink. Jekyll publishes what a link points at under the link's own name, so a visitor ` +
@@ -2317,10 +2341,10 @@ const checkNote = (note, text) => {
     fail(`${note} opens with "---" but its front matter does not close; Jekyll reads it differently from verify.`);
   }
   for (const key of (frontMatter?.[1] ?? "").matchAll(/^([^\s#:][^:]*):/gm)) {
-    if (!["name", "description"].includes(key[1].trim())) {
+    if (!["name", "title", "description"].includes(key[1].trim())) {
       fail(
         `${note} sets "${key[1].trim()}" in its front matter. Pages builds the note through Jekyll, and keys ` +
-          `like permalink or layout change what the site serves; a note may set only name and description.`,
+          `like permalink or layout change what the site serves; a note may set only name, title and description.`,
       );
     }
   }
@@ -2411,7 +2435,14 @@ const SERVED_TYPES = new Map([
   ["md", "note"],
   ["svg", "svg"],
   ["xml", "sitemap"],
+  // Images and audio a browser shows or plays, and never reads as markup.
   ["png", "inert"],
+  ["jpg", "inert"],
+  ["jpeg", "inert"],
+  ["webp", "inert"],
+  ["gif", "inert"],
+  ["ico", "inert"],
+  ["mp3", "inert"],
   ["json", "inert"],
   ["txt", "inert"],
   // text/javascript, shown as text when opened. A page loads it only through
@@ -2467,7 +2498,11 @@ const checkXmlDocument = (file, bytes, allowed) => {
   } catch {
     fail(`${file} is not UTF-8. A browser decodes it by its own rules, which verify does not follow; save it as UTF-8.`);
   }
-  const declaration = text.match(/^<\?xml version="1\.0" encoding="UTF-8"\?>/)?.[0] ?? "";
+  // The declaration as tools write it, quotes and case varying, and nothing
+  // else: another encoding is refused below as "<?".
+  const declaration = text.match(
+    /^<\?xml[\t\n\r ]+version=(["'])1\.0\1(?:[\t\n\r ]+encoding=(["'])[Uu][Tt][Ff]-8\2)?(?:[\t\n\r ]+standalone=(["'])(?:yes|no)\3)?[\t\n\r ]*\?>/,
+  )?.[0] ?? "";
   const body = text.slice(declaration.length);
   const lineOf = (index) => text.slice(0, declaration.length + index).split("\n").length;
   const hidden = body.match(/<[!?]|&(?!(?:amp|lt|gt|quot|apos);)/);
@@ -2475,7 +2510,7 @@ const checkXmlDocument = (file, bytes, allowed) => {
     fail(
       `${file}:${lineOf(hidden.index)} has "${hidden[0]}". A doctype, comment, CDATA section, processing ` +
         `instruction or character reference can make a browser build markup verify did not read; remove it ` +
-        `(the only declaration allowed is <?xml version="1.0" encoding="UTF-8"?>, first).`,
+        `(the only declaration allowed is <?xml version="1.0" encoding="UTF-8"?>, first, quoted either way).`,
     );
   }
   // Chromium fetches a paint server in another file, fill="url(https://...)",
@@ -2522,13 +2557,22 @@ const checkXmlDocument = (file, bytes, allowed) => {
 for (const file of servedFiles) {
   const name = file.slice(file.lastIndexOf("/") + 1);
   const type = name.includes(".") ? name.slice(name.lastIndexOf(".") + 1) : "";
-  const reading = SERVED_TYPES.get(type);
+  // An image's extension may be written in capitals (IMG_0001.JPG); a page's
+  // or a note's may not, because .HTML and .MD are what this check refuses.
+  const reading = SERVED_TYPES.get(type) ??
+    (SERVED_TYPES.get(type.toLowerCase()) === "inert" ? "inert" : undefined);
+  if (type.toLowerCase() === "css") {
+    fail(
+      `${file} is a stylesheet. A page here may load one, and CSS makes requests (@import, url()) verify does ` +
+        `not read; keep styles in the page's own <style>.`,
+    );
+  }
   if (!reading) {
     fail(
       `${file} sits where GitHub Pages serves files, and verify does not read a .${type} file. A page must be .html and a ` +
         `note .md -- Jekyll renders .markdown, .mkd, .mkdn, .mkdown and .MD as pages too, and a browser opens ` +
         `.htm, .xhtml and .xht as pages. Rename it, or add the type to SERVED_TYPES deliberately, once you know ` +
-        `how a browser opens it.`,
+        `both how a browser opens it and whether a page here can load it (as a stylesheet, image, media or script).`,
     );
   }
   // A service worker controls every URL under the directory of its script, and
