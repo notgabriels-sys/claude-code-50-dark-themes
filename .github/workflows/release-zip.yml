@@ -1,0 +1,44 @@
+name: Attach themes zip to a release
+
+# Manual only. GitHub's own "Source code (zip)" on a release page is the whole
+# repository. This builds a themes-only zip from the files at the release tag
+# and attaches it, so the release page delivers the pack itself.
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag, for example themes-plugin-v1.0.1
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  attach:
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ inputs.tag }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Check the tag name before anything reads it
+        run: |
+          if [[ ! "$TAG" =~ ^themes-plugin-v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo "Unexpected tag '$TAG'; expected themes-plugin-vMAJOR.MINOR.PATCH." >&2
+            exit 1
+          fi
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          # refs/tags/ so a branch that happens to share the tag's name is never packed instead.
+          ref: refs/tags/${{ inputs.tag }}
+          path: release-source
+          persist-credentials: false
+      - name: Confirm the release exists
+        run: gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json tagName,isDraft,url
+      - name: Build the zip from the files at the tag
+        run: bash scripts/build-release-zip.sh release-source "$TAG" dist
+      - name: Attach the zip to the release
+        run: gh release upload "$TAG" dist/*.zip --repo "$GITHUB_REPOSITORY" --clobber
