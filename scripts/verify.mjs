@@ -626,20 +626,45 @@ if (/\/theme \$\{|["'`]\/theme [a-z0-9][a-z0-9-]*["'`]/.test(html)) {
       "arguments, so it applies nothing. Copy /theme and name the theme to choose.",
   );
 }
-// The same command shown rather than copied — `<code>/theme deep-field</code>`,
-// or the hero's prompt `> theme deep-field` — teaches the same dead end. Keyed
-// to the real slugs, so prose like "Run /theme and choose one" stays legal.
-// The template counts too: the cards once rendered `theme ${themeSlug}`.
+// Card checks read what a visitor sees, not one spelling of the template:
+// three review rounds showed every regex over the template either missed a
+// refactor (`${esc(themeSlug)}`, `${slug(name)}`) or rejected correct
+// styling (`<span class="hex">`). So render each card with the page's own
+// renderTheme() and the helpers above it, then reduce it to visible text.
+// If that block moves, fail loudly rather than skip the checks.
+const rendererStart = html.indexOf("const slug = ");
+const rendererAt = html.indexOf("const renderTheme = ");
+const rendererEnd = rendererAt < 0 ? -1 : html.indexOf("\n};\n", rendererAt);
+if (rendererStart < 0 || rendererAt < rendererStart || rendererEnd < 0) {
+  fail("Could not find slug() through renderTheme() in index.html; update the card checks in verify.mjs.");
+}
+const renderCard = new Function(`${html.slice(rendererStart, rendererEnd + 3)}\nreturn renderTheme;`)();
+const visibleText = (markup) =>
+  markup
+    .replace(/<!--[\s\S]*?-->/g, " ")
+    .replace(/<(style|script)\b[\s\S]*?<\/\1>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;|&#160;|&#xa0;/gi, " ")
+    .replace(/&ldquo;|&rdquo;/g, '"')
+    .replace(/&middot;/g, "·")
+    .replace(/&amp;/g, "&")
+    .replace(/\s+/g, " ");
+const renderedCards = [...galleryThemes, ...vol2Gallery].map((row) => ({ row, text: visibleText(renderCard(row)) }));
+
+// The same command shown rather than copied — the cards' old `> theme <slug>`
+// prompt, the hero's `> theme deep-field`, `<code>/theme graphite</code>` —
+// teaches the same dead end. Keyed to the real slugs, so prose such as "Run
+// /theme and choose one" or 'Applied theme "Deep Field"' stays legal.
 const themeSlugs = [...files, ...vol2Files].map((file) => file.replace(/\.json$/, ""));
-const shownSeparator = "(?:\\s|&nbsp;|&#160;|&#xa0;|<[^>]+>)+";
-const shownCommand = html.match(
-  new RegExp(`\\btheme${shownSeparator}(\\$\\{\\w+\\}|(?:${themeSlugs.join("|")})(?![a-z0-9-]))`, "i"),
-);
-if (shownCommand) {
-  fail(
-    `index.html shows "theme ${shownCommand[1]}" as a command. Claude Code's /theme ignores the ` +
-      "argument; show /theme and name the theme to choose.",
-  );
+const shownCommandPattern = new RegExp(`\\btheme\\s+(${themeSlugs.join("|")})(?![a-z0-9-])`, "i");
+for (const { row, text } of [{ row: ["the page"], text: visibleText(html) }, ...renderedCards]) {
+  const shown = text.match(shownCommandPattern);
+  if (shown) {
+    fail(
+      `index.html shows "theme ${shown[1]}" as a command (${row[0]}). Claude Code's /theme ignores the ` +
+        "argument; show /theme and name the theme to choose.",
+    );
+  }
 }
 
 // The install guide (its HowTo steps included) and the semantic-colours
@@ -647,23 +672,24 @@ if (shownCommand) {
 // the gallery". The cards only ever printed the accent hex; the surface value
 // lived in an inline style nobody can read without devtools, so a reader
 // following the steps would paint their terminal in a bright accent colour.
-// Wherever a public page promises it, the card template must print it.
+// Wherever a public page promises it, every rendered card must show
+// "surface" followed closely by that card's own surface hex, as visible text
+// (an attribute or a comment does not count; any styling around it does).
 const surfacePromisedBy = [];
 for (const file of publicHtmlFiles) {
   const source = await readFile(new URL(file, root), "utf8");
   if (/surface hex/i.test(source)) surfacePromisedBy.push(file);
 }
-// Match what renders, not one spelling: "surface" must sit in a text node
-// (after a tag's ">", comments removed, so an attribute value or a comment
-// cannot satisfy it), then any space, colon, no-break space or inline tags
-// may sit between the label and the value.
-const htmlWithoutComments = html.replace(/<!--[\s\S]*?-->/g, "");
-const surfaceShown = />[^<]*surface:?(?:\s|&nbsp;|&#160;|&#xa0;)+(?:<[^>"]+>\s*)*\$\{bg\}/i;
-if (surfacePromisedBy.length && !surfaceShown.test(htmlWithoutComments)) {
-  fail(
-    `${surfacePromisedBy.join(", ")} promise a surface hex in the gallery, but the cards do not print it. ` +
-      "Render ${bg} as visible text on each card.",
-  );
+if (surfacePromisedBy.length) {
+  for (const { row, text } of renderedCards) {
+    const bg = row[5];
+    if (!new RegExp(`surface\\b[^#]{0,12}${bg}(?![0-9a-f])`, "i").test(text)) {
+      fail(
+        `${surfacePromisedBy.join(", ")} promise a surface hex in the gallery, but the ${row[0]} card does not ` +
+          `print "surface ${bg}" as visible text.`,
+      );
+    }
+  }
 }
 
 // A live region only announces while it is in the accessibility tree, and the

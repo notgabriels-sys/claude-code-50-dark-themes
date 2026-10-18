@@ -562,7 +562,7 @@ test("rejects cards whose template shows `theme ${slug}` again", { timeout: 90_0
   const result = await runVerifier(fixtureRoot);
 
   assert.notEqual(result.code, 0, "the verifier accepted all 62 cards showing a command that applies nothing");
-  assert.match(result.stderr, /shows "theme \$\{themeSlug\}" as a command/);
+  assert.match(result.stderr, /shows "theme absinthe" as a command \(Absinthe\)/);
 });
 
 test("rejects a surface hex that only an attribute carries", { timeout: 90_000 }, async (t) => {
@@ -610,4 +610,30 @@ test("rejects a live region on a nested summary inside a closed disclosure", { t
 
   assert.notEqual(result.code, 0, "the verifier accepted a status region nested inside the closed archive");
   assert.match(result.stderr, /puts a live region inside a <details> body[^\n]*role='status'/);
+});
+
+test("rejects cards that show the slug through any template expression", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixturePage = join(fixtureRoot, "index.html");
+  const page = await readFile(fixturePage, "utf8");
+  await writeFile(fixturePage, page.replace('<span class="txt">/theme</span>', '<span class="txt">theme ${esc(slug(name))}</span>'));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a refactored template that still shows the dead command");
+  assert.match(result.stderr, /shows "theme absinthe" as a command/);
+});
+
+test("accepts a surface hex styled in its own element", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixturePage = join(fixtureRoot, "index.html");
+  const page = await readFile(fixturePage, "utf8");
+  await writeFile(
+    fixturePage,
+    page.replace("<br>surface&nbsp;${bg}</div>", '<br><span class="mut">surface</span> <span class="hex">${bg}</span></div>'),
+  );
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.equal(result.code, 0, `a visible, styled surface hex was rejected:\n${result.stderr}`);
 });
