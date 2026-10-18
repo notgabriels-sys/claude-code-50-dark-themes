@@ -995,3 +995,17 @@ test("rejects a page that calls the repository MIT while products carry other li
   assert.notEqual(result.code, 0, "the verifier accepted an MIT claim for a repository holding restrictively licensed products");
   assert.match(result.stderr, /semantic-terminal-colors\.html says the repository is MIT/);
 });
+
+test("rejects a page that still offers the withdrawn free Gumroad download", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const guide = join(fixtureRoot, "claude-code-theme-install-guide.html");
+  const text = await readFile(guide, "utf8");
+  const answer = "The exact release files are also on the v1.0.1 GitHub release.";
+  assert.ok(text.includes(answer), "fixture anchor moved; update this test");
+  await writeFile(guide, text.replace(answer, "The Gumroad ZIP can be downloaded for zero by choosing the free price."));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted the withdrawn Gumroad route");
+  assert.match(result.stderr, /claude-code-theme-install-guide\.html still offers the withdrawn free Gumroad download/);
+});

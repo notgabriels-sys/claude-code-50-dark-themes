@@ -397,6 +397,19 @@ for (const file of publicHtmlFiles) {
     }
   }
 }
+// The free Gumroad ZIP of the themes was withdrawn as unverified (#53), along
+// with its slug above. A sentence offering it with no link slips past the link
+// check: the install guide's FAQ structured data still said "The Gumroad ZIP can
+// be downloaded for zero by choosing the free price." No page may offer it.
+for (const file of [...publicHtmlFiles, "README.md", "llms.txt"]) {
+  const text = (await readFile(new URL(file, root), "utf8")).replace(/<[^>]+>/g, "").replace(/\s+/g, " ");
+  const offer = text.match(
+    /gumroad[^.]{0,80}(?:for zero|free price|\$0|name your price|free download)|(?:for zero|free price|\$0|name your price|free download)[^.]{0,80}gumroad/i,
+  );
+  if (offer) {
+    fail(`${file} still offers the withdrawn free Gumroad download ("${offer[0]}"). Point to the GitHub release instead.`);
+  }
+}
 for (const match of readme.matchAll(/https:\/\/notgabriel\.gumroad\.com\/l\/([a-z0-9-]+)/g)) {
   const slug = match[1];
   if (!verifiedGumroadSlugs.has(slug)) {
