@@ -1968,7 +1968,11 @@ for (const block of jsonLdBlocks) {
 // is on no list at all. A link off the site must also be spelled out as
 // "https://<host>/" exactly, with "&" written "&amp;" and no other character
 // reference, so the text-based price and slug checks above read every payment
-// link in the spelling a browser follows. What this does not cover: inline
+// link in the spelling a browser follows. The URL parser also removes a tab or
+// line break anywhere in a URL, which the text checks stop at: a verified NCP
+// link followed by a tab and "?amount=1200" passed the PayPal table and is
+// followed by Chromium as that id with that query, so a PayPal link may carry
+// no query or fragment at all. What this does not cover: inline
 // script that navigates (a <script> may only be the bare tag, but its text is
 // not read for URLs), and CSS, which cannot navigate.
 // ---------------------------------------------------------------------------
@@ -2033,7 +2037,8 @@ for (const page of publicHtmlFiles) {
         }
         if (paymentPath[url.host] && !paymentPath[url.host](url)) {
           fail(
-            `${where} goes to ${url.host}${url.pathname}, which is not a verified payment object on it. ` +
+            `${where} goes to ${url.host}${url.pathname}${url.search}${url.hash}, which is not a verified ` +
+              `payment object on it. ` +
               `${url.host} may be linked only at a verified PayPal NCP id or Gumroad slug.`,
           );
         }

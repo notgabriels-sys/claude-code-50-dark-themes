@@ -1479,12 +1479,18 @@ for (const [defect, page, from, to, message] of [
   ["a PayPal.me link", "index.html", "</body>", payLink("https://www.paypal.com/paypalme/someone/1200EUR"),
     /goes to www\.paypal\.com\/paypalme\/someone\/1200EUR, which is not a verified payment object/],
   ["a PayPal donate button", "index.html", "</body>", payLink("https://www.paypal.com/donate/?hosted_button_id=ZZZZ"),
-    /goes to www\.paypal\.com\/donate\/, which is not a verified payment object/],
+    /goes to www\.paypal\.com\/donate\/\?hosted_button_id=ZZZZ, which is not a verified payment object/],
   ["an unverified PayPal NCP id behind a named reference", "index.html", "</body>",
     payLink("https://www.paypal&period;com/ncp/payment/ZZZZZZZZZZZZZ"), /spells its URL with a character reference/],
   ["an unverified Gumroad slug behind a named reference", "index.html", "</body>",
     '<p><a href="https://notgabriel&period;gumroad.com/l/evilslug">Buy · €1200</a></p>\n</body>',
     /spells its URL with a character reference/],
+  // A browser drops the tab and follows the verified id with the query; the
+  // PayPal table's text capture stopped at the tab and read only the id.
+  ["a verified PayPal NCP id with a query behind a tab", "index.html", "</body>",
+    '<p><a class="tool" href="https://www.paypal.com/ncp/payment/3SWZ64EXW9C8W\t?amount=1200"><b>Mastering</b> ' +
+      '<span>€45</span></a></p>\n</body>',
+    /goes to www\.paypal\.com\/ncp\/payment\/3SWZ64EXW9C8W\?amount=1200, which is not a verified payment object/],
   ["a Gumroad link off the product path", "index.html", "</body>", payLink("https://notgabriel.gumroad.com/x/bqgfv"),
     /goes to notgabriel\.gumroad\.com\/x\/bqgfv, which is not a verified payment object/],
   ["a protocol-relative link off the site", "index.html", "</body>", payLink("//pay.example.invalid/b/0"),
