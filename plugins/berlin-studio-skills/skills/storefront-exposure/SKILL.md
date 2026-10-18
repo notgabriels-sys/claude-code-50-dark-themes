@@ -56,14 +56,14 @@ produces for the paid products before anything ships.
 
 | Surface | Serves | Guarded by |
 |---|---|---|
-| `index.html` head — meta, OG, Twitter, canonical | humans sharing links, social unfurls | — |
-| `index.html` JSON-LD | search engines; free plugin only | — |
+| `index.html` head — meta, OG, Twitter, canonical | humans sharing links, social unfurls | `verify` requires share-image alt text and exactly one canonical link, equal to the `CNAME` domain |
+| `index.html` JSON-LD | search engines; free plugin only | `verify` checks the plugin's version and download URL, allows one script-tag spelling, and requires exactly one ItemList on the site, checked against the theme files |
 | `sitemap.xml` | crawler discovery of the four public pages | — |
 | `robots.txt` | crawl permission; points at the sitemap | — |
 | `llms.txt` | agents and LLM crawlers reading the catalog | — |
-| `themes.json` | tools, aggregators and agents consuming the 50 themes | `verify` rebuilds and byte-compares |
+| `themes.json` | tools, aggregators and agents consuming the 50 themes | `verify` rebuilds and byte-compares, and checks the content against the theme files |
 | `README.md` | GitHub arrivals, the install path | `verify` checks the install command and Gumroad slugs |
-| `.claude-plugin/marketplace.json` | `claude plugin install` | `verify` checks both plugins are registered |
+| `.claude-plugin/marketplace.json` | `claude plugin install` | `verify` checks all three plugins: keys, manifests and the exact files each ships |
 
 Adding a public page means adding it to **both** `sitemap.xml` and `llms.txt`.
 Neither is generated, so neither notices a page that was never listed.

@@ -1551,11 +1551,28 @@ if (!html.includes(expectedItemList)) {
 // files; this holds the crawlable list to the same standard.
 //
 // Every expected value below comes from somewhere other than the generator:
-// the root theme files (names and ids, in file order), the page's canonical
-// link (the base URL) and the plugin manifest (the list's name). Each url is
+// the root theme files (names and ids, in file order), CNAME (the domain the
+// site is served from) and the plugin manifest (the list's name). Each url is
 // pinned to #theme-<file id>, and the deep-link check above already requires
 // every file id's anchor to exist in the gallery, so a pinned url cannot land
 // on a card that is not there.
+//
+// The first version of this check was reviewed adversarially the day it
+// landed and leaked in seven ways, each reproduced with a crawler's view of
+// the page (Chromium's DOM) showing a wrong list while verify stayed green: a
+// second ItemList whose script tag was spelled any other way (quotes, an id,
+// case, a newline, an entity); an ItemList nested under hasPart or mainEntity,
+// or typed as an IRI or CURIE; generator bugs that ADD keys (a ListItem "item"
+// pointing at another product, the list's own url); microdata or RDFa; a wrong
+// list on another public page; the real block hidden inside a moved </style>
+// or a <template>; and a canonical link that was never tied to the domain. So
+// this is an allowlist again, the house pattern: one exact spelling of a
+// script tag, no microdata, no inert containers, exactly one ItemList type
+// across every public page's parsed JSON-LD (keys and IRIs included) and in
+// the raw text (duplicate keys that JSON.parse drops), exact keys on the list
+// and its items, and the canonical link equal to the CNAME domain. A second,
+// legitimate list (Vol. 2, say) is a deliberate change to this check, not
+// something it should wave through.
 const countOf = (needle) => html.split(needle).length - 1;
 if (countOf(ITEMLIST_START) !== 1 || countOf(ITEMLIST_END) !== 1 ||
     html.indexOf(ITEMLIST_START) > html.indexOf(ITEMLIST_END)) {
@@ -1566,61 +1583,170 @@ if (countOf(ITEMLIST_START) !== 1 || countOf(ITEMLIST_END) !== 1 ||
 }
 const itemListStart = html.indexOf(ITEMLIST_START);
 const itemListEnd = html.indexOf(ITEMLIST_END);
-const ldNodes = (value) => {
-  if (Array.isArray(value)) return value.flatMap(ldNodes);
-  if (value === null || typeof value !== "object") return [];
-  return [value, ...ldNodes(value["@graph"] ?? [])];
+const ALLOWED_SCRIPT_TAGS = new Set(['<script type="application/ld+json">', "<script>"]);
+const INERT_CONTAINER = /<(template|noscript|textarea|xmp|plaintext|iframe|noembed|noframes)\b/i;
+const MICRODATA_ATTRIBUTE = /<[a-z][^>]*\s(itemscope|itemtype|itemprop|typeof|vocab)\b/i;
+const isItemListType = (value) => typeof value === "string" && /(^|[/:#])ItemList$/i.test(value);
+const itemListTypeMentions = (value) => {
+  if (Array.isArray(value)) return value.reduce((count, child) => count + itemListTypeMentions(child), 0);
+  if (value === null || typeof value !== "object") return isItemListType(value) ? 1 : 0;
+  return Object.entries(value).reduce(
+    (count, [key, child]) => count + (isItemListType(key) ? 1 : 0) + itemListTypeMentions(child),
+    0,
+  );
 };
-const isItemList = (node) => [node["@type"]].flat().includes("ItemList");
-const itemListPlacements = [];
-for (const block of html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)) {
-  let parsed;
-  try {
-    parsed = JSON.parse(block[1]);
-  } catch {
-    fail(`index.html has a JSON-LD block that does not parse, at offset ${block.index}.`);
+const ldJsonBlocks = (page, markup) =>
+  [...markup.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)].map((block) => {
+    try {
+      return { index: block.index, text: block[1], value: JSON.parse(block[1]) };
+    } catch {
+      fail(`${page} has a JSON-LD block that does not parse, at offset ${block.index}.`);
+    }
+  });
+let markedBlock;
+for (const page of publicHtmlFiles) {
+  const markup = page === "index.html" ? html : await readFile(new URL(page, root), "utf8");
+  for (const [tag] of markup.matchAll(/<script\b[^>]*>/gi)) {
+    if (!ALLOWED_SCRIPT_TAGS.has(tag)) {
+      fail(
+        `${page} has a script tag spelled ${JSON.stringify(tag)}. Only <script type="application/ld+json"> ` +
+          `and <script> are allowed, so every JSON-LD block a crawler reads is one this check reads.`,
+      );
+    }
   }
-  const inside = block.index > itemListStart && block.index < itemListEnd;
-  for (const node of ldNodes(parsed)) {
-    if (isItemList(node)) itemListPlacements.push({ node, inside });
+  for (const [tag] of markup.matchAll(/<\/script\b[^>]*>/gi)) {
+    if (tag !== "</script>") fail(`${page} closes a script with ${JSON.stringify(tag)}; write </script>.`);
+  }
+  const container = markup.match(INERT_CONTAINER);
+  if (container) {
+    fail(
+      `${page} uses <${container[1]}>, which can hide structured data from crawlers or carry markup ` +
+        `this check does not read. Nothing on the site needs one; remove it.`,
+    );
+  }
+  const microdata = markup.replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1>/gi, "").match(MICRODATA_ATTRIBUTE);
+  if (microdata) {
+    fail(`${page} carries microdata or RDFa ("${microdata[1]}"); the site's structured data is JSON-LD only.`);
+  }
+  const blocks = ldJsonBlocks(page, markup);
+  const expected = page === "index.html" ? 1 : 0;
+  const parsedMentions = blocks.reduce((count, block) => count + itemListTypeMentions(block.value), 0);
+  const rawMentions = (markup.match(/ItemList/g) ?? []).length;
+  if (parsedMentions !== expected || rawMentions !== expected) {
+    fail(
+      `${page} mentions the ItemList type ${parsedMentions} time(s) in its parsed JSON-LD and ` +
+        `${rawMentions} time(s) in its text; it may carry ${expected === 1 ? "exactly one, the " +
+        "generated theme list inside the theme-itemlist markers" : "none"}. A second list ` +
+        `would hand crawlers two answers for what the gallery holds; adding one is a deliberate ` +
+        `change to this check in scripts/verify.mjs.`,
+    );
+  }
+  if (page === "index.html") {
+    const inside = blocks.filter((block) => block.index > itemListStart && block.index < itemListEnd);
+    if (inside.length !== 1 || itemListTypeMentions(inside[0].value) !== 1) {
+      fail("The theme-itemlist markers must hold exactly one JSON-LD block, the theme ItemList.");
+    }
+    markedBlock = inside[0];
   }
 }
-if (itemListPlacements.length === 0) {
-  fail("index.html carries no ItemList: the crawlable theme list is missing or no longer typed ItemList.");
-} else if (itemListPlacements.length > 1 || !itemListPlacements[0].inside) {
+// Nothing may swallow the block: a <style> or <script> left open before the
+// start marker turns it into raw text a crawler never parses as JSON-LD.
+const beforeList = html.slice(0, itemListStart);
+for (const element of ["style", "script"]) {
+  const opened = (beforeList.match(new RegExp(`<${element}\\b`, "gi")) ?? []).length;
+  const closed = (beforeList.match(new RegExp(`</${element}\\b`, "gi")) ?? []).length;
+  if (opened !== closed) {
+    fail(`A <${element}> is still open where the theme ItemList starts, so crawlers would read it as ${element} text.`);
+  }
+}
+const crawlableList = markedBlock.value;
+if (JSON.stringify(crawlableList) !== markedBlock.text) {
   fail(
-    `index.html must carry exactly one ItemList, inside the theme-itemlist markers; found ` +
-      `${itemListPlacements.length}, ${itemListPlacements.filter((p) => p.inside).length} of them inside. ` +
-      `A second list would hand crawlers two answers for what the gallery holds.`,
+    "The theme ItemList block is not exactly the compact JSON its own parse produces (a duplicate " +
+      "key, or formatting the generator does not emit); one parser could read a different list.",
   );
 }
-const crawlableList = itemListPlacements[0].node;
-const canonicalUrl = html.match(/<link rel="canonical" href="([^"]+)">/)?.[1];
-if (!canonicalUrl) fail("index.html has no canonical link to build the theme anchors from.");
+const cname = (await readFile(new URL("CNAME", root), "utf8")).trim();
+const siteUrl = `https://${cname}/`;
+const canonicalLinks = [...html.replace(/<!--[\s\S]*?-->/g, "").matchAll(/<link\b[^>]*>/gi)]
+  .map(([tag]) => tag)
+  .filter((tag) => /\brel\s*=\s*["']?[^"'>]*\bcanonical\b/i.test(tag));
+if (canonicalLinks.length !== 1) {
+  fail(`index.html must carry exactly one canonical link; found ${canonicalLinks.length}.`);
+}
+const canonicalHref = canonicalLinks[0].match(/\bhref\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+))/i);
+let canonicalUrl;
+try {
+  canonicalUrl = new URL(canonicalHref?.[1] ?? canonicalHref?.[2] ?? canonicalHref?.[3]).href;
+} catch {
+  fail(`index.html's canonical link has no usable href: ${canonicalLinks[0]}`);
+}
+if (canonicalUrl !== siteUrl) {
+  fail(`index.html's canonical link is ${canonicalUrl}, but CNAME serves the site at ${siteUrl}.`);
+}
 const rootThemeNames = [...rootNames];
 const rootThemeIds = files.map((file) => file.replace(/\.json$/, ""));
-const listItems = Array.isArray(crawlableList.itemListElement) ? crawlableList.itemListElement : [];
+if (crawlableList === null || typeof crawlableList !== "object" || Array.isArray(crawlableList)) {
+  fail("The theme ItemList block must hold the ItemList object itself, as the generator emits it.");
+}
+if (crawlableList["@type"] !== "ItemList") {
+  fail(`The theme ItemList's @type is ${JSON.stringify(crawlableList["@type"])}, not "ItemList".`);
+}
 if (crawlableList["@context"] !== "https://schema.org") {
   fail(`The theme ItemList's @context is ${JSON.stringify(crawlableList["@context"])}, not "https://schema.org".`);
 }
-if (crawlableList.name !== pluginManifest.displayName) {
-  fail(`The theme ItemList is named "${crawlableList.name}"; the plugin it lists is "${pluginManifest.displayName}".`);
+const LIST_KEYS = ["@context", "@type", "itemListElement", "name", "numberOfItems"];
+const LIST_ITEM_KEYS = ["@type", "name", "position", "url"];
+const keysOf = (value) => JSON.stringify(Object.keys(value).sort());
+if (keysOf(crawlableList) !== JSON.stringify(LIST_KEYS)) {
+  fail(
+    `The theme ItemList carries keys ${keysOf(crawlableList)}; it may carry exactly ` +
+      `${JSON.stringify(LIST_KEYS)}. An extra key (a url, an @id, a description) tells crawlers ` +
+      `something about the list that nothing here checks.`,
+  );
 }
+if (crawlableList.name !== pluginManifest.displayName) {
+  fail(
+    `The theme ItemList is named ${JSON.stringify(crawlableList.name)}; the plugin it lists is ` +
+      `"${pluginManifest.displayName}". The list's name comes from scripts/build-theme-index.mjs.`,
+  );
+}
+const listItems = Array.isArray(crawlableList.itemListElement) ? crawlableList.itemListElement : [];
 if (crawlableList.numberOfItems !== files.length || listItems.length !== files.length) {
   fail(
-    `The theme ItemList says numberOfItems ${crawlableList.numberOfItems} and lists ${listItems.length}; ` +
-      `${files.length} theme files ship.`,
+    `The theme ItemList says numberOfItems ${JSON.stringify(crawlableList.numberOfItems)} and lists ` +
+      `${listItems.length}; ${files.length} theme files ship.`,
   );
+}
+const listedNames = listItems.map((item) => item?.name);
+if (JSON.stringify(listedNames) !== JSON.stringify(rootThemeNames) &&
+    JSON.stringify([...listedNames].sort()) === JSON.stringify([...rootThemeNames].sort())) {
+  fail("The theme ItemList names every theme, but not in theme-file order, which is the order it is generated in.");
 }
 for (const [index, item] of listItems.entries()) {
   const where = `Theme ItemList element ${index + 1}`;
-  const expectedUrl = `${canonicalUrl}#theme-${rootThemeIds[index]}`;
+  if (item === null || typeof item !== "object" || Array.isArray(item)) {
+    fail(`${where} is ${JSON.stringify(item)}, not a ListItem object.`);
+  }
   if (item["@type"] !== "ListItem") fail(`${where} is a ${JSON.stringify(item["@type"])}, not a ListItem.`);
+  if (keysOf(item) !== JSON.stringify(LIST_ITEM_KEYS)) {
+    fail(
+      `${where} carries keys ${keysOf(item)}; a ListItem here may carry exactly ` +
+        `${JSON.stringify(LIST_ITEM_KEYS)}. An "item" or "sameAs" would point crawlers somewhere nothing checks.`,
+    );
+  }
   if (item.position !== index + 1) fail(`${where} has position ${JSON.stringify(item.position)}; positions run 1..${files.length}.`);
   if (item.name !== rootThemeNames[index]) {
     fail(`${where} is named ${JSON.stringify(item.name)}; theme file ${files[index]} is "${rootThemeNames[index]}".`);
   }
-  if (item.url !== expectedUrl) fail(`${where} ("${item.name}") links ${JSON.stringify(item.url)}, not ${expectedUrl}.`);
+  const expectedUrl = new URL(`#theme-${rootThemeIds[index]}`, siteUrl).href;
+  let listedUrl;
+  try {
+    listedUrl = new URL(item.url).href;
+  } catch {
+    fail(`${where} ("${item.name}") has url ${JSON.stringify(item.url)}, which is not an absolute URL.`);
+  }
+  if (listedUrl !== expectedUrl) fail(`${where} ("${item.name}") links ${JSON.stringify(item.url)}, not ${expectedUrl}.`);
 }
 
 console.log(

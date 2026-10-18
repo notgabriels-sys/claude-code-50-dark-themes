@@ -320,10 +320,20 @@ The skills sync dereferences symlinks for the same reason the walk rejects them.
 `themes.json` and the JSON-LD ItemList in `index.html` are both written by
 `scripts/build-theme-index.mjs`. `verify` checks each twice: byte for byte
 against a fresh build (which catches a hand edit), and by content against the
-theme files, the canonical link and the plugin manifest (which catches a
-generator bug). For the ItemList it also requires one marker pair and exactly
-one ItemList on the page, because the generator rewrites only the first pair and
-a stale second block would survive regeneration.
+theme files, `CNAME` and the plugin manifest (which catches a generator bug).
+
+The ItemList check's first version (2f70fbd) was reviewed the day it landed and
+leaked in seven ways a crawler could see — a second list behind any other
+script-tag spelling, a list nested under `hasPart` or typed as an IRI, extra
+keys from the generator, microdata, a list on another page, the block hidden in
+a moved `</style>` or a `<template>`, and a canonical link tied to nothing.
+(This paragraph claimed "exactly one ItemList on the page" before that was
+true.) It is now an allowlist across every public page: one script-tag
+spelling, no microdata or inert containers, exactly one ItemList type in the
+parsed JSON-LD and in the raw text (one catches `\u` escapes, the other
+duplicate keys), exact keys on the list and its items, nothing left open
+around the block, and the canonical link equal to the `CNAME` domain. A second
+legitimate list, for Vol. 2 say, is a deliberate change to that check.
 
 The Gumroad half now has structural guards, an existence-verified slug list and
 a price-drift table — but no verified *price* for any product. See below.
