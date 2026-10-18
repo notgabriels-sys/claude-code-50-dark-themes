@@ -89,9 +89,11 @@ What differs is where the pieces live:
   "Numbers stated on public pages" below. Adding a theme and running `node scripts/verify.mjs`
   without this step fails with, for example,
   `index.html claims 894 role-aware checks; the verifier runs 908.`
-  The Vol. 2 size also appears in prose that CI does not check — README.md, the install guide
-  (`claude-code-theme-install-guide.html`), `PROMOTION_QUEUE.md` and
-  `DEV_COMMUNITY_ARTICLE_DRAFT.md` — as "twelve" or "12". Search for both and update them by hand.
+  The Vol. 2 size also appears in prose that CI does not check, in a dozen or so files — among them
+  README.md, both public articles, `llms.txt`, both plugin descriptions, the Vol. 2 plugin's README
+  and the planning docs — spelled "twelve", "Twelve" or "12". Find every one with
+  `grep -rIniwE 'twelve|12' --exclude-dir=.git --exclude-dir=products --exclude-dir=scripts .`
+  and update them by hand; skip the unrelated hits (prices, CSS sizes).
 
 `scripts/sync-plugin-themes.mjs` does not apply here — it mirrors the root fifty into their plugin,
 and a Vol. 2 theme is authored in its plugin directly.
