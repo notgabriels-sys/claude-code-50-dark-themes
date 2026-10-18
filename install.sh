@@ -43,6 +43,23 @@ if [ "$MODE" = list ]; then
   exit 0
 fi
 
+# Every name given must be a theme in the pack, or nothing changes. A typo used
+# to be skipped silently: `./install.sh acid deepfield` installed acid alone
+# and reported success.
+if [ ${#WANTED[@]} -gt 0 ]; then
+  unknown=()
+  for w in "${WANTED[@]}"; do
+    found=0
+    while IFS= read -r f; do [ "$(basename "${f%.json}")" = "$w" ] && found=1; done < <(themes)
+    [ $found -eq 1 ] || unknown+=("$w")
+  done
+  if [ ${#unknown[@]} -gt 0 ]; then
+    echo "No theme matched: ${unknown[*]}" >&2
+    echo "Run ./install.sh --list to see the names. Nothing was changed." >&2
+    exit 1
+  fi
+fi
+
 if [ "$MODE" = uninstall ]; then
   removed=0
   while IFS= read -r f; do
@@ -71,12 +88,6 @@ while IFS= read -r f; do
   cp "$f" "$target"
   installed=$((installed+1))
 done < <(themes)
-
-if [ ${#WANTED[@]} -gt 0 ] && [ $installed -eq 0 ]; then
-  echo "No theme matched: ${WANTED[*]}" >&2
-  echo "Run ./install.sh --list to see the names." >&2
-  exit 1
-fi
 
 echo "Installed $installed theme(s) into $DEST"
 [ $backed -gt 0 ] && echo "Backed up $backed existing file(s) as *.json.bak"

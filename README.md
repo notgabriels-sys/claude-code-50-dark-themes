@@ -66,7 +66,8 @@ Then run `/theme` in Claude Code and pick one.
 
 It copies into `~/.claude/themes/`, and if a file of the same name is already there with
 different contents it is backed up once as `<name>.json.bak` before being replaced.
-`--uninstall` removes the themes and leaves the backups alone.
+`--uninstall` removes the themes and leaves the backups alone. A name that isn't in the
+pack stops the run before anything changes.
 
 ## Install (step by step)
 
