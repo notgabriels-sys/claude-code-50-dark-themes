@@ -1,4 +1,4 @@
-import { readdir, readFile, stat } from "node:fs/promises";
+import { lstat, readdir, readFile, stat } from "node:fs/promises";
 
 import { sep } from "node:path";
 
@@ -2251,10 +2251,24 @@ for (const entry of await readdir(root)) {
     );
   }
 }
-const servedNotes = (await readdir(root, { recursive: true }))
-  .map((file) => file.split(sep).join("/"))
-  .filter((file) => file.endsWith(".md") && !file.split("/").some((part) => /^[._]/.test(part)))
-  .sort();
+// Every file Pages serves: Jekyll skips any path with a segment starting "."
+// or "_", and publishes everything else under its own name.
+const servedFiles = [];
+for (const entry of await readdir(root, { recursive: true })) {
+  const file = entry.split(sep).join("/");
+  if (file.split("/").some((part) => /^[._]/.test(part))) continue;
+  const info = await lstat(new URL(file.split("/").map(encodeURIComponent).join("/"), root));
+  if (info.isSymbolicLink()) {
+    fail(
+      `${file} is a symlink. Jekyll publishes what a link points at under the link's own name, so a visitor ` +
+        `gets a file verify did not read there. Replace it with a copy.`,
+    );
+  }
+  if (info.isDirectory()) continue;
+  servedFiles.push(file);
+}
+servedFiles.sort();
+const servedNotes = servedFiles.filter((file) => file.endsWith(".md"));
 const NOTE_LINK_PATTERNS = [
   // [text](url) and ![alt](url), with or without <...> around the url.
   /\]\(\s*<?([^\s)>]+)/g,
@@ -2325,6 +2339,163 @@ const checkNote = (note, text) => {
 };
 for (const note of servedNotes) {
   checkNote(note, await readFile(new URL(note.split("/").map(encodeURIComponent).join("/"), root), "utf8"));
+}
+
+// ---------------------------------------------------------------------------
+// Every file Pages serves is one verify reads, or one no browser opens as a
+// page. The link check reads .html and the note check .md, and Pages serves
+// more. Reproduced 2026-10-18 with verify green, each linking a checkout:
+// pay.htm, pay.xhtml and pay.HTML; pay.markdown, which Jekyll renders to
+// pay.html (so do .mkd, .mkdn, .mkdown and .MD); favicon.svg holding an <a> or
+// a <script>; sitemap.xml turned into an HTML page by an <?xml-stylesheet?>; an
+// XHTML page saved as .xml; and an SVG opening with front matter, which Jekyll
+// runs through Liquid like any other file -- Liquid wrote an <a href> into it.
+// Read back through Firecrawl the same day: Pages serves favicon.svg as
+// image/svg+xml, a document a browser renders, links and scripts included;
+// install.sh as application/x-sh, scripts/verify.mjs as text/javascript, and
+// LICENSE and a .swift file as application/octet-stream.
+//
+// So served types are an allowlist: a page is .html and a note .md, both read
+// above; an SVG or XML document is read below against allowlists of its own;
+// every other type is one a browser shows as an image or as text, or saves. A
+// new type is a deliberate edit here, once you know how a browser opens it.
+// ---------------------------------------------------------------------------
+const SERVED_TYPES = new Map([
+  ["html", "page"],
+  ["md", "note"],
+  ["svg", "svg"],
+  ["xml", "sitemap"],
+  ["png", "inert"],
+  ["json", "inert"],
+  ["txt", "inert"],
+  // text/javascript, shown as text; a page cannot load it, because the
+  // script-tag check above allows no src.
+  ["mjs", "inert"],
+  ["zip", "inert"],
+  ["sh", "inert"],
+  ["swift", "inert"],
+  // No extension: LICENSE, served as application/octet-stream.
+  ["", "inert"],
+]);
+// An SVG or XML file is a document when a browser opens it, with the links,
+// scripts and stylesheets XML allows. verify does not parse it. It refuses
+// every construct that lets the markup a browser builds differ from the text:
+// another encoding, a doctype (whose entities expand into markup), a comment or
+// CDATA section, a processing instruction (an <?xml-stylesheet?> turns the file
+// into another document), a character reference. What is left has no text a
+// parser skips, so every "<name" and every "name=" anywhere in the file is held
+// to an allowlist; a candidate in text a parser would read as data only refuses
+// more. Prefixed names (xlink:href, xmlns:h) are in no allowlist, and xmlns
+// must name the document's own namespace, so nothing from XHTML gets in.
+const SVG_DOCUMENT = {
+  label: "SVG artwork",
+  namespace: "http://www.w3.org/2000/svg",
+  elements: new Set([
+    "svg", "g", "defs", "title", "desc", "path", "rect", "circle", "ellipse", "line", "polyline", "polygon",
+    "text", "tspan", "linearGradient", "radialGradient", "stop",
+  ]),
+  attributes: new Set([
+    "xmlns", "viewBox", "preserveAspectRatio", "width", "height", "x", "y", "x1", "y1", "x2", "y2", "cx", "cy",
+    "r", "rx", "ry", "fx", "fy", "d", "points", "transform", "fill", "fill-opacity", "fill-rule", "stroke",
+    "stroke-width", "stroke-linecap", "stroke-linejoin", "stroke-opacity", "stroke-dasharray", "opacity",
+    "font-family", "font-size", "font-weight", "letter-spacing", "text-anchor", "offset", "stop-color",
+    "stop-opacity", "gradientUnits", "gradientTransform", "id", "role", "aria-label", "aria-labelledby",
+  ]),
+};
+const SITEMAP_DOCUMENT = {
+  label: "sitemap",
+  namespace: "http://www.sitemaps.org/schemas/sitemap/0.9",
+  elements: new Set(["urlset", "url", "loc", "lastmod", "changefreq", "priority"]),
+  attributes: new Set(["xmlns"]),
+};
+const XML_NAME = /[^\t\n\r <>"'=/]*/.source;
+const checkXmlDocument = (file, bytes, allowed) => {
+  let text;
+  try {
+    // A leading UTF-8 byte-order mark is dropped, as a browser drops it.
+    text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  } catch {
+    fail(`${file} is not UTF-8. A browser decodes it by its own rules, which verify does not follow; save it as UTF-8.`);
+  }
+  const declaration = text.match(/^<\?xml version="1\.0" encoding="UTF-8"\?>/)?.[0] ?? "";
+  const body = text.slice(declaration.length);
+  const lineOf = (index) => text.slice(0, declaration.length + index).split("\n").length;
+  const hidden = body.match(/<[!?]|&(?!(?:amp|lt|gt|quot|apos);)/);
+  if (hidden) {
+    fail(
+      `${file}:${lineOf(hidden.index)} has "${hidden[0]}". A doctype, comment, CDATA section, processing ` +
+        `instruction or character reference can make a browser build markup verify did not read; remove it ` +
+        `(the only declaration allowed is <?xml version="1.0" encoding="UTF-8"?>, first).`,
+    );
+  }
+  // Chromium fetches a paint server in another file, fill="url(https://...)",
+  // so a url() may only point into this one. CSS reads an escape in a function
+  // name ("\75rl(") and ignores its case, so no backslash is allowed at all.
+  const reference = body.match(/\\|url\((?!#[^)\t\n\r "'\\]*\))/i);
+  if (reference) {
+    fail(
+      `${file}:${lineOf(reference.index)} has "${reference[0]}". A url() may only name an element in this ` +
+        `file, as url(#id); one naming another file is a request a browser makes when it opens this one.`,
+    );
+  }
+  for (const match of body.matchAll(new RegExp(`</?(${XML_NAME})`, "g"))) {
+    if (!allowed.elements.has(match[1])) {
+      fail(
+        `${file}:${lineOf(match.index)} has the element <${match[1]}>, which is not in the ${allowed.label} ` +
+          `allowlist in scripts/verify.mjs. A browser opens this file as a document, so an element that links, ` +
+          `runs script or embeds is a page verify does not read; add a new element deliberately.`,
+      );
+    }
+  }
+  for (const match of body.matchAll(new RegExp(`(${XML_NAME})[\t\n\r ]*=`, "g"))) {
+    if (!allowed.attributes.has(match[1])) {
+      fail(
+        `${file}:${lineOf(match.index)} has the attribute ${match[1]}=, which is not in the ${allowed.label} ` +
+          `allowlist in scripts/verify.mjs. Add a new attribute deliberately, never one that links, loads or ` +
+          `runs script.`,
+      );
+    }
+  }
+  for (const match of body.matchAll(/xmlns[\t\n\r ]*=[\t\n\r ]*(?:"([^"]*)"|'([^']*)'|())/g)) {
+    const value = match[1] ?? match[2] ?? "";
+    if (value !== allowed.namespace) {
+      fail(`${file}:${lineOf(match.index)} sets xmlns to ${JSON.stringify(value)}; it must be ${allowed.namespace}.`);
+    }
+  }
+  return body;
+};
+for (const file of servedFiles) {
+  const name = file.slice(file.lastIndexOf("/") + 1);
+  const type = name.includes(".") ? name.slice(name.lastIndexOf(".") + 1) : "";
+  const reading = SERVED_TYPES.get(type);
+  if (!reading) {
+    fail(
+      `${file} is served by GitHub Pages, and verify does not read a .${type} file. A page must be .html and a ` +
+        `note .md -- Jekyll renders .markdown, .mkd, .mkdn, .mkdown and .MD as pages too, and a browser opens ` +
+        `.htm, .xhtml and .xht as pages. Rename it, or add the type to SERVED_TYPES deliberately, once you know ` +
+        `how a browser opens it.`,
+    );
+  }
+  const bytes = await readFile(new URL(file.split("/").map(encodeURIComponent).join("/"), root));
+  if (reading !== "note" && /^(\uFEFF)?---/.test(bytes.toString("utf8", 0, 8))) {
+    fail(
+      `${file} opens with "---". Jekyll runs any file with front matter through Liquid, so the file Pages ` +
+        `serves is not the one verify read. Remove the front matter.`,
+    );
+  }
+  if (reading === "svg") checkXmlDocument(file, bytes, SVG_DOCUMENT);
+  if (reading === "sitemap") {
+    const body = checkXmlDocument(file, bytes, SITEMAP_DOCUMENT);
+    const locations = [...body.matchAll(/<loc>([^<]*)<\/loc>/g)];
+    if (locations.length !== (body.match(/<loc\b/g) ?? []).length) {
+      fail(`${file} has a <loc> verify cannot read; write each as <loc>https://${cname}/...</loc>.`);
+    }
+    for (const [, location] of locations) {
+      if (!location.startsWith(`https://${cname}/`) || new URL(location).href !== location) {
+        fail(`${file} lists ${location}; a sitemap lists pages on https://${cname}/, written as a browser writes them.`);
+      }
+    }
+  }
 }
 
 console.log(

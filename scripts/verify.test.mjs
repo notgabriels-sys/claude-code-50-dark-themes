@@ -1698,3 +1698,107 @@ for (const [control, path, content] of [
     assert.equal(result.code, 0, `${control} was rejected: ${result.stderr}`);
   });
 }
+
+// Pages serves every file outside a "." or "_" directory, and a browser opens
+// some types as documents that the page and note checks never read.
+const SVG_OPEN = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">';
+const SITEMAP_OPEN = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
+for (const [defect, path, content, message] of [
+  ["a page saved as .htm", "pay.htm", '<!doctype html><a href="https://pay.example.invalid/x">Pay</a>\n',
+    /pay\.htm is served by GitHub Pages, and verify does not read a \.htm file/],
+  ["a page saved as .xhtml", "assets/pay.xhtml",
+    '<html xmlns="http://www.w3.org/1999/xhtml"><body><a href="https://pay.example.invalid/x">Pay</a></body></html>\n',
+    /assets\/pay\.xhtml is served by GitHub Pages, and verify does not read a \.xhtml file/],
+  ["a page saved with an uppercase extension", "pay.HTML", '<!doctype html><a href="https://pay.example.invalid/x">Pay</a>\n',
+    /pay\.HTML is served by GitHub Pages, and verify does not read a \.HTML file/],
+  ["a note Jekyll renders from .markdown", "PAY_NOTE.markdown", "[Pay](https://pay.example.invalid/x)\n",
+    /PAY_NOTE\.markdown is served by GitHub Pages, and verify does not read a \.markdown file/],
+  ["a served file of an unreviewed type", "assets/pay.pdf", "%PDF-1.4\n",
+    /assets\/pay\.pdf is served by GitHub Pages, and verify does not read a \.pdf file/],
+  ["an SVG holding a link", "assets/pay.svg", `${SVG_OPEN}\n<a href="https://pay.example.invalid/x"><text y="9">Pay</text></a>\n</svg>\n`,
+    /assets\/pay\.svg:2 has the element <a>, which is not in the SVG artwork allowlist/],
+  ["an SVG holding a script", "assets/pay.svg", `${SVG_OPEN}<script>location.assign("https://pay.example.invalid/x")</script></svg>\n`,
+    /assets\/pay\.svg:1 has the element <script>, which is not in the SVG artwork allowlist/],
+  // Chromium runs this one: the prefix is bound to the SVG namespace, and a
+  // name read with a character class would stop at the "ä". The scripts hold
+  // no "=", so only the element allowlist can catch them.
+  ["an SVG holding a script under a non-ASCII prefix", "assets/pay.svg",
+    `${SVG_OPEN}<ä:script xmlns:ä="http://www.w3.org/2000/svg">location.assign("https://pay.example.invalid/x")</ä:script></svg>\n`,
+    /assets\/pay\.svg:1 has the element <ä:script>, which is not in the SVG artwork allowlist/],
+  ["an SVG with an event handler", "assets/pay.svg", `${SVG_OPEN}<rect width="9" height="9" onclick="location = 'x'"/></svg>\n`,
+    /assets\/pay\.svg:1 has the attribute onclick=, which is not in the SVG artwork allowlist/],
+  // Chromium fetches a paint server in another file when the SVG is opened.
+  ["an SVG whose fill fetches another file", "assets/pay.svg",
+    `${SVG_OPEN}<rect width="9" height="9" fill="url(https://pay.example.invalid/p.svg#g)"/></svg>\n`,
+    /assets\/pay\.svg:1 has "url\("\. A url\(\) may only name an element in this file/],
+  // CSS reads "\75" as "u", so this is url( too.
+  ["an SVG spelling url( with a CSS escape", "assets/pay.svg",
+    `${SVG_OPEN}<rect width="9" height="9" fill="\\75rl(https://pay.example.invalid/p.svg#g)"/></svg>\n`,
+    /assets\/pay\.svg:1 has "\\"\. A url\(\) may only name an element in this file/],
+  ["an SVG in the XHTML namespace", "assets/pay.svg", '<svg xmlns="http://www.w3.org/1999/xhtml"><rect width="9"/></svg>\n',
+    /assets\/pay\.svg:1 sets xmlns to "http:\/\/www\.w3\.org\/1999\/xhtml"; it must be http:\/\/www\.w3\.org\/2000\/svg/],
+  ["an SVG with a doctype that declares markup", "assets/pay.svg",
+    `<!DOCTYPE svg [<!ENTITY pay "<a href='https://pay.example.invalid/x'>Pay</a>">]>\n${SVG_OPEN}&pay;</svg>\n`,
+    /assets\/pay\.svg:1 has "<!"\. A doctype, comment, CDATA section/],
+  ["an SVG with a character reference", "assets/pay.svg", `${SVG_OPEN}<text>&#60;</text></svg>\n`,
+    /assets\/pay\.svg:1 has "&"\. A doctype, comment, CDATA section/],
+  ["an SVG saved as UTF-16", "assets/pay.svg",
+    Buffer.concat([Buffer.from([0xff, 0xfe]), Buffer.from(`${SVG_OPEN}<rect width="9"/></svg>\n`, "utf16le")]),
+    /assets\/pay\.svg is not UTF-8/],
+  ["an SVG that opens with front matter", "assets/pay.svg", `---\n---\n${SVG_OPEN}<rect width="9"/></svg>\n`,
+    /assets\/pay\.svg opens with "---"\. Jekyll runs any file with front matter through Liquid/],
+  ["a sitemap styled into a page", "sitemap.xml",
+    SITEMAP_OPEN.replace("\n", '\n<?xml-stylesheet type="text/xsl" href="sitemap.xsl"?>\n') +
+      "  <url><loc>https://gabs-utilities.com/</loc></url>\n</urlset>\n",
+    /sitemap\.xml:2 has "<\?"\. A doctype, comment, CDATA section, processing instruction/],
+  ["an XHTML page saved as .xml", "assets/pay.xml",
+    '<html xmlns="http://www.w3.org/1999/xhtml"><body><a href="https://pay.example.invalid/x">Pay</a></body></html>\n',
+    /assets\/pay\.xml:1 has the element <html>, which is not in the sitemap allowlist/],
+  ["a sitemap listing a page off the site", "sitemap.xml",
+    `${SITEMAP_OPEN}  <url><loc>https://pay.example.invalid/x</loc></url>\n</urlset>\n`,
+    /sitemap\.xml lists https:\/\/pay\.example\.invalid\/x; a sitemap lists pages on https:\/\/gabs-utilities\.com\//],
+  ["a sitemap location verify cannot read", "sitemap.xml",
+    `${SITEMAP_OPEN}  <url><loc >https://pay.example.invalid/x</loc></url>\n</urlset>\n`,
+    /sitemap\.xml has a <loc> verify cannot read/],
+]) {
+  test(`rejects ${defect}`, { timeout: 90_000 }, async (t) => {
+    const fixtureRoot = await addFile(t, path, content);
+
+    const result = await runVerifier(fixtureRoot);
+
+    assert.notEqual(result.code, 0, `${defect} shipped green`);
+    assert.match(result.stderr, message);
+  });
+}
+
+test("rejects a symlink Pages serves", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  // To a plain-text file, so only the symlink branch can catch it.
+  await symlink("../llms.txt", join(fixtureRoot, "assets", "pay.txt"));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "a served symlink shipped green");
+  assert.match(result.stderr, /assets\/pay\.txt is a symlink\. Jekyll publishes what a link points at/);
+});
+
+for (const [control, path, content] of [
+  // text/plain: a browser shows the markup as text.
+  ["a link in a served text file", "assets/pay.txt", '<a href="https://pay.example.invalid/x">Pay</a>\n'],
+  // Pages does not serve files under a "." directory.
+  ["a page of an unreviewed type Pages does not serve", ".github/pay.htm", '<a href="https://pay.example.invalid/x">Pay</a>\n'],
+  ["an SVG using the declaration, predefined entities and every allowlisted shape", "assets/shapes.svg",
+    `<?xml version="1.0" encoding="UTF-8"?>\n${SVG_OPEN}\n<title>R&amp;B &lt;3</title>\n` +
+      '<defs><radialGradient id="r" fx="0.5" fy="0.5" gradientUnits="objectBoundingBox"><stop offset="0" stop-opacity="1"/>' +
+      '</radialGradient></defs>\n<ellipse cx="9" cy="9" rx="4" ry="2" fill="url(#r)" fill-rule="evenodd"/>\n' +
+      '<polyline points="0,0 9,9" stroke-dasharray="2"/><polygon points="0,0 9,0 9,9"/>\n' +
+      '<text x="1" y="9"><tspan>ok</tspan></text>\n</svg>\n'],
+]) {
+  test(`accepts ${control}`, { timeout: 90_000 }, async (t) => {
+    const fixtureRoot = await addFile(t, path, content);
+
+    const result = await runVerifier(fixtureRoot);
+
+    assert.equal(result.code, 0, `${control} was rejected: ${result.stderr}`);
+  });
+}

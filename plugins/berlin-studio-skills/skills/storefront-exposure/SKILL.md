@@ -58,7 +58,7 @@ produces for the paid products before anything ships.
 |---|---|---|
 | `index.html` head — meta, OG, Twitter, canonical | humans sharing links, social unfurls | `verify` requires share-image alt text and exactly one canonical link, equal to the `CNAME` domain |
 | `index.html` JSON-LD | search engines; free plugin only | `verify` checks the plugin's version and download URL, allows one script-tag spelling and only the plain schema.org context, refuses microdata and RDFa, and requires exactly one ItemList on the site, checked against the theme files |
-| `sitemap.xml` | crawler discovery of the four public pages | — |
+| `sitemap.xml` | crawler discovery of the four public pages | `verify` holds it to a sitemap element allowlist, with no stylesheet, and every `<loc>` to the site |
 | `robots.txt` | crawl permission; points at the sitemap | — |
 | `llms.txt` | agents and LLM crawlers reading the catalog | — |
 | `themes.json` | tools, aggregators and agents consuming the 50 themes | `verify` rebuilds and byte-compares, and checks the content against the theme files |
@@ -66,6 +66,7 @@ produces for the paid products before anything ships.
 | `.claude-plugin/marketplace.json` | `claude plugin install` | `verify` checks all three plugins: keys, manifests and the exact files each ships |
 | Every link on every public page | visitors leaving the site | `verify` resolves each link as a browser does and holds its host to `reviewedLinkHosts`; PayPal and Gumroad only at a verified id or slug |
 | Every Markdown note (rendered by GitHub Pages as a page on the domain) | anyone who finds a note's URL | `verify` holds every link a note could render to `reviewedLinkHosts`, no payment host; front matter only `name`/`description`; no Liquid |
+| Every other file Pages serves | anyone who opens its URL | `verify` allows only reviewed types (`SERVED_TYPES`); an SVG, opened directly, is a document, so SVG artwork is held to an element and attribute allowlist with no link or script |
 
 A directory badge, a launch-site link or any other link to a host the site has
 not linked before fails `verify` until that host is added to `reviewedLinkHosts`

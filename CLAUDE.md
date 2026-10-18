@@ -194,6 +194,10 @@ repo has. `verify` runs on every push and **fails the build** on:
   host outside `reviewedLinkHosts`, or to `www.paypal.com` or
   `notgabriel.gumroad.com` anywhere but a verified NCP id or Gumroad slug — see
   "Every link goes to a reviewed host" below;
+- **(added 2026-10-18)** any file GitHub Pages serves whose type is not in
+  `SERVED_TYPES`, an SVG or XML document outside its element and attribute
+  allowlist, a sitemap location off the site, and front matter or a symlink
+  anywhere Pages serves — see "Every served file is one `verify` reads" below;
 - the retired résumé checkout slug `notgabriel.gumroad.com/l/wmlrk`;
 - any of the three verified PayPal links going missing;
 - **(added 2026-08-24)** any of the three carrying a price other than its
@@ -332,6 +336,44 @@ pattern gave misses at the first depth. The harness lives in the scratchpad.
 
 **Still Gabriel's call:** a `.nojekyll` would make Pages serve exactly the files
 `verify` reads, but every rendered note would disappear from the live site.
+
+**(added 2026-10-18) Every served file is one `verify` reads, or one no browser
+opens as a page.** The link check read `.html` and the note check `.md`, and
+Pages serves every file outside a `.` or `_` directory. Reproduced with
+`verify` green, each linking a checkout: `pay.htm`, `pay.xhtml` and `pay.HTML`;
+`pay.markdown`, which Jekyll renders to `pay.html` (so do `.mkd`, `.mkdn`,
+`.mkdown` and `.MD` — the match ignores case); `favicon.svg` holding a link or a
+script; `sitemap.xml` turned into an HTML page by an XSLT processing
+instruction; an XHTML page saved as `.xml`; and an SVG opening with front
+matter, into which Liquid wrote a link — Jekyll runs Liquid on any file with
+front matter, whatever its type. Read back through Firecrawl: Pages serves
+`favicon.svg` as `image/svg+xml`, which a browser renders as a document with
+live links and scripts; `install.sh` as `application/x-sh`,
+`scripts/verify.mjs` as `text/javascript`, and `LICENSE` and the `.swift` file
+as `application/octet-stream` (`CNAME` is not served).
+
+So served types are an allowlist, `SERVED_TYPES`. `.html` and `.md` are read as
+pages and notes; `.svg` is held to `SVG_DOCUMENT` and `.xml` to
+`SITEMAP_DOCUMENT`, each an element and attribute allowlist; every other type
+is one a browser shows as an image or as text, or saves. No served file may open
+with front matter (a note is held to its own rule) or be a symlink. The SVG and
+XML reader does not parse. It refuses whatever lets a browser build markup the
+text does not spell — another encoding, a doctype, a comment or CDATA section,
+a processing instruction, a character reference — and then holds every element
+name and every attribute name anywhere in the file to the allowlist, each
+captured to a delimiter: Chromium runs a `script` element whose prefix is `ä`,
+and a capture by character class reads straight past it. Differentially tested
+against Chromium (rule 13): 8,008 generated SVG and sitemap documents — doctype
+entities, stylesheets, other encodings, prefixed and non-ASCII names, handlers,
+XHTML inside `foreignObject`, each in eight contexts — loaded with Pages'
+content type; a miss is a document `verify` accepts while Chromium builds an
+element, attribute or processing instruction outside the allowlist, or makes
+any request. No check missed 6,293; a capture by character class, 250; this
+reader before its `url()` rule, 30, Chromium fetching a paint server from
+another file — so a `url()` may name only an element in the same file, and no
+backslash is allowed, since CSS spells `url(` with escapes too. A new type,
+element or attribute is a deliberate edit, and never one that links, loads or
+runs script.
 
 **Sixteen failure cases were proven** by breaking `index.html`, `README.md` and
 `impressum.html` in turn and confirming the build goes red, then restoring:

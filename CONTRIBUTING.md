@@ -145,6 +145,10 @@ The command checks:
 - that every Markdown note GitHub Pages serves as a page (any `.md` outside a `.` or `_` directory) links
   only to reviewed hosts and never to a payment host, sets no front matter beyond `name` and
   `description`, and holds no Liquid — and that the root has no `_config.yml` or other `_` entry;
+- that every file GitHub Pages serves is a reviewed type: a page is `.html` and a note `.md`, SVG
+  artwork and the sitemap stay inside element and attribute allowlists, and no served file opens
+  with front matter or is a symlink — a new type, element or attribute is a deliberate edit to
+  `SERVED_TYPES`, `SVG_DOCUMENT` or `SITEMAP_DOCUMENT` in `scripts/verify.mjs`;
 - valid 1280×720 PNG assets for the curated developer picks;
 - that stated check and theme counts on public pages, plugin descriptions and the READMEs match the
   computed values, in digits or in words;
