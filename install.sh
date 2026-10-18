@@ -4,10 +4,12 @@
 #   ./install.sh                 install all 50
 #   ./install.sh acid deep-field install only those
 #   ./install.sh --list          show theme names
-#   ./install.sh --uninstall     remove the ones this script installed
+#   ./install.sh --uninstall     remove every theme in the pack from the themes dir
 #   ./install.sh --dir PATH      install somewhere else (default ~/.claude/themes)
 #
 # Existing files with the same name are backed up to <name>.json.bak once.
+# --uninstall matches by filename, not contents: a theme you edited yourself,
+# or wrote under a pack name, is removed too. Backups are never touched.
 set -euo pipefail
 
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -20,7 +22,10 @@ while [ $# -gt 0 ]; do
     --list)      MODE=list; shift ;;
     --uninstall) MODE=uninstall; shift ;;
     --dir)       DEST="${2:?--dir needs a path}"; shift 2 ;;
-    -h|--help)   sed -n '2,12p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    # Print the header comment block: everything after the shebang up to the
+    # first line that is not a comment. A fixed line range drifts — '2,12p'
+    # had already slipped past the block and printed `set -euo pipefail`.
+    -h|--help)   awk 'NR==1{next} !/^#/{exit} {sub(/^# ?/,""); print}' "${BASH_SOURCE[0]}"; exit 0 ;;
     -*)          echo "unknown option: $1" >&2; exit 2 ;;
     *)           WANTED+=("${1%.json}"); shift ;;
   esac
