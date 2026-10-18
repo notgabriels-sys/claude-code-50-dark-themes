@@ -198,7 +198,3 @@ a ⭐ helps other people find them.
 
 Contributions are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) before adding or changing a theme;
 the repository verifies the theme schema, gallery parity, installation command and payment links on every push.
-
----
-
-**[Gabriel — Audio Tools + Code →](https://gabriel-tools-and-code.notgabriels960914.chatgpt.site)**
