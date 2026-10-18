@@ -459,7 +459,7 @@ test("rejects cards that hide the surface hex the guides promise", { timeout: 90
   const fixtureRoot = await makeFixture(t);
   const fixturePage = join(fixtureRoot, "index.html");
   const page = await readFile(fixturePage, "utf8");
-  await writeFile(fixturePage, page.replace(" &nbsp;·&nbsp; surface ${bg}</div>", "</div>"));
+  await writeFile(fixturePage, page.replace("<br>surface&nbsp;${bg}</div>", "</div>"));
 
   const result = await runVerifier(fixtureRoot);
 
