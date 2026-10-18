@@ -3,6 +3,8 @@ import { readdir, readFile, stat } from "node:fs/promises";
 import { sep } from "node:path";
 
 import {
+  ITEMLIST_END,
+  ITEMLIST_START,
   buildThemeIndex,
   isThemeFile,
   serializeThemeIndex,
@@ -1533,6 +1535,92 @@ if (!html.includes(expectedItemList)) {
       "hand-edited. Regenerate it with `node scripts/build-theme-index.mjs` " +
       "— do not edit it directly.",
   );
+}
+
+// The byte comparison above proves the block matches what the generator
+// produces now — not that the generator is right. Its expected value comes from
+// serializeThemeItemList, the function that wrote the block, so a generator bug
+// regenerates into a block that agrees with itself. Reproduced 2026-10-18 by
+// mutating the generator and regenerating, each with verify green: a dropped
+// theme, positions from 0, a numberOfItems disagreeing with the list, names and
+// urls swapped, dead anchors, slugs as names, a duplicated theme, "@type":
+// "List". So did a stale second ItemList block after the real one (the
+// generator rewrites only the first marker pair, so it survives regeneration)
+// and an unmarked extra ItemList. The same self-agreement let a partial
+// palette into themes.json until its content was checked against the theme
+// files; this holds the crawlable list to the same standard.
+//
+// Every expected value below comes from somewhere other than the generator:
+// the root theme files (names and ids, in file order), the page's canonical
+// link (the base URL) and the plugin manifest (the list's name). Each url is
+// pinned to #theme-<file id>, and the deep-link check above already requires
+// every file id's anchor to exist in the gallery, so a pinned url cannot land
+// on a card that is not there.
+const countOf = (needle) => html.split(needle).length - 1;
+if (countOf(ITEMLIST_START) !== 1 || countOf(ITEMLIST_END) !== 1 ||
+    html.indexOf(ITEMLIST_START) > html.indexOf(ITEMLIST_END)) {
+  fail(
+    `index.html must carry exactly one theme-itemlist marker pair, start before end; found ` +
+      `${countOf(ITEMLIST_START)} start and ${countOf(ITEMLIST_END)} end marker(s).`,
+  );
+}
+const itemListStart = html.indexOf(ITEMLIST_START);
+const itemListEnd = html.indexOf(ITEMLIST_END);
+const ldNodes = (value) => {
+  if (Array.isArray(value)) return value.flatMap(ldNodes);
+  if (value === null || typeof value !== "object") return [];
+  return [value, ...ldNodes(value["@graph"] ?? [])];
+};
+const isItemList = (node) => [node["@type"]].flat().includes("ItemList");
+const itemListPlacements = [];
+for (const block of html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)) {
+  let parsed;
+  try {
+    parsed = JSON.parse(block[1]);
+  } catch {
+    fail(`index.html has a JSON-LD block that does not parse, at offset ${block.index}.`);
+  }
+  const inside = block.index > itemListStart && block.index < itemListEnd;
+  for (const node of ldNodes(parsed)) {
+    if (isItemList(node)) itemListPlacements.push({ node, inside });
+  }
+}
+if (itemListPlacements.length === 0) {
+  fail("index.html carries no ItemList: the crawlable theme list is missing or no longer typed ItemList.");
+} else if (itemListPlacements.length > 1 || !itemListPlacements[0].inside) {
+  fail(
+    `index.html must carry exactly one ItemList, inside the theme-itemlist markers; found ` +
+      `${itemListPlacements.length}, ${itemListPlacements.filter((p) => p.inside).length} of them inside. ` +
+      `A second list would hand crawlers two answers for what the gallery holds.`,
+  );
+}
+const crawlableList = itemListPlacements[0].node;
+const canonicalUrl = html.match(/<link rel="canonical" href="([^"]+)">/)?.[1];
+if (!canonicalUrl) fail("index.html has no canonical link to build the theme anchors from.");
+const rootThemeNames = [...rootNames];
+const rootThemeIds = files.map((file) => file.replace(/\.json$/, ""));
+const listItems = Array.isArray(crawlableList.itemListElement) ? crawlableList.itemListElement : [];
+if (crawlableList["@context"] !== "https://schema.org") {
+  fail(`The theme ItemList's @context is ${JSON.stringify(crawlableList["@context"])}, not "https://schema.org".`);
+}
+if (crawlableList.name !== pluginManifest.displayName) {
+  fail(`The theme ItemList is named "${crawlableList.name}"; the plugin it lists is "${pluginManifest.displayName}".`);
+}
+if (crawlableList.numberOfItems !== files.length || listItems.length !== files.length) {
+  fail(
+    `The theme ItemList says numberOfItems ${crawlableList.numberOfItems} and lists ${listItems.length}; ` +
+      `${files.length} theme files ship.`,
+  );
+}
+for (const [index, item] of listItems.entries()) {
+  const where = `Theme ItemList element ${index + 1}`;
+  const expectedUrl = `${canonicalUrl}#theme-${rootThemeIds[index]}`;
+  if (item["@type"] !== "ListItem") fail(`${where} is a ${JSON.stringify(item["@type"])}, not a ListItem.`);
+  if (item.position !== index + 1) fail(`${where} has position ${JSON.stringify(item.position)}; positions run 1..${files.length}.`);
+  if (item.name !== rootThemeNames[index]) {
+    fail(`${where} is named ${JSON.stringify(item.name)}; theme file ${files[index]} is "${rootThemeNames[index]}".`);
+  }
+  if (item.url !== expectedUrl) fail(`${where} ("${item.name}") links ${JSON.stringify(item.url)}, not ${expectedUrl}.`);
 }
 
 console.log(
