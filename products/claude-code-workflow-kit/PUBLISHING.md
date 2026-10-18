@@ -20,8 +20,10 @@ Reusable checklists, prompts, and handoff templates for cleaner Claude Code sess
 
 ## After publishing
 
-- Gumroad URL added to the 50 Dark Themes gallery under “More dark tools.”
-- Gumroad URL added to README paid tools table.
+- Add the Gumroad URL to the storefront's “More dark tools” section, and add `zvbti` to
+  `verifiedGumroadSlugs` in `scripts/verify.mjs` after a buyer-side read-back (CI rejects any
+  storefront slug missing from that set).
+- Add the Gumroad URL to the README paid tools table.
 - Post a soft launch reply under the 50 Dark Themes Product Hunt/X thread only if useful.
 - Do not claim it improves revenue until Gumroad shows actual paid sales.
 
