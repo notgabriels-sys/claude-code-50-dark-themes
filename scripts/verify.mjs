@@ -1038,30 +1038,6 @@ for (const { id, price } of verifiedPayPalLinks) {
   if (!html.includes(`href="${href}"`)) {
     fail(`Verified PayPal link ${id} is missing.`);
   }
-  const card = html.match(
-    new RegExp(`<a[^>]*href="${href}"[^>]*>([\\s\\S]*?)</a>`),
-  );
-  if (!card) {
-    fail(`Could not read the card wrapping PayPal link ${id}.`);
-    continue;
-  }
-  // Every currency amount inside the card must be the verified one, rather than
-  // one exact price element. Main restyled these cards to "View checkout · EUR45"
-  // on 2026-08-24; a check pinned to `<i>EUR45</i>` would have gone red for a
-  // wording change while still passing a card that showed a second, wrong number
-  // somewhere else in the same anchor. This fails on the number, not the markup.
-  const stated = statedAmounts(card[1]);
-  if (stated.length === 0) {
-    fail(`PayPal link ${id} must charge ${price}; its card states no price at all.`);
-  }
-  for (const amount of stated) {
-    if (amount !== price) {
-      fail(
-        `PayPal link ${id} must charge ${price} per the verified rate card; ` +
-          `its card on the page states ${amount}.`,
-      );
-    }
-  }
 }
 
 // The checks above prove the three verified links are present and correctly
@@ -1100,6 +1076,47 @@ for (const { label, source } of payPalSources) {
           `paypal.com/ncp/links/${id} and add it to verifiedPayPalLinks first.`,
       );
     }
+  }
+}
+// After the id check above, so an unverified id is reported by the check
+// written for it. Every card for every verified id, on every public page,
+// states that id's price -- not only the first card on index.html, which is all
+// this read until 2026-10-18: a second "Mastering EUR45" card linking the EUR190 id, or the
+// same card on impressum.html, was never price-checked. Every currency amount
+// inside a card must be the verified one, rather than one exact price element:
+// main restyled these cards to "View checkout · EUR45" on 2026-08-24, and a
+// check pinned to `<i>EUR45</i>` would have passed a card that showed a second,
+// wrong number elsewhere in the same anchor. And every NCP URL on a page must be
+// the href of a card read here, or a link written another way (single quotes,
+// no quotes, outside an anchor) would never be priced -- the same count the
+// Gumroad cards already have.
+const escapeRegExp = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+for (const { label, source } of payPalSources.filter(({ label }) => label.endsWith(".html"))) {
+  let cardsRead = 0;
+  for (const { id, price } of verifiedPayPalLinks) {
+    const href = escapeRegExp(`https://www.paypal.com/ncp/payment/${id}`);
+    for (const card of source.matchAll(new RegExp(`<a[^>]*href="${href}"[^>]*>([\\s\\S]*?)</a>`, "g"))) {
+      cardsRead += 1;
+      const stated = statedAmounts(card[1]);
+      if (stated.length === 0) {
+        fail(`PayPal link ${id} on ${label} must charge ${price}; its card states no price at all.`);
+      }
+      for (const amount of stated) {
+        if (amount !== price) {
+          fail(
+            `PayPal link ${id} must charge ${price} per the verified rate card; ` +
+              `its card on ${label} states ${amount}.`,
+          );
+        }
+      }
+    }
+  }
+  const urlsWritten = [...source.matchAll(payPalLinkPattern)].length;
+  if (urlsWritten !== cardsRead) {
+    fail(
+      `${label} has ${urlsWritten} PayPal NCP URL(s) but only ${cardsRead} of them are the href="..." ` +
+        `of an <a> the price check reads.`,
+    );
   }
 }
 
@@ -1972,47 +1989,189 @@ for (const block of jsonLdBlocks) {
 // line break anywhere in a URL, which the text checks stop at: a verified NCP
 // link followed by a tab and "?amount=1200" passed the PayPal table and is
 // followed by Chromium as that id with that query, so a PayPal link may carry
-// no query or fragment at all. What this does not cover: inline
-// script that navigates (a <script> may only be the bare tag, but its text is
-// not read for URLs), and CSS, which cannot navigate.
+// no query or fragment at all.
+//
+// The review of the first version found the rest, each reproduced with verify
+// green: a line break, backslash or "./" after "https://notgabriel.gumroad.com/"
+// resolved to a verified slug while the text checks, which need the literal
+// "gumroad.com/l/", never priced the card -- so a link off the site must be
+// written exactly as the URL parser writes it back; a GET form or an <img
+// ismap> appended a query to a verified NCP link at click time, so forms,
+// formaction and ismap are refused (no page uses them); an onclick handler
+// navigated anywhere, and attributionsrc fetched anywhere, so both are refused;
+// imagesrcset fetched from any host; a GitHub Sponsors page is a checkout for
+// any account, so github.com is held to this repo's owner; and a page that
+// opens with front matter goes through Jekyll's Liquid on GitHub Pages, which
+// assembled an unverified NCP link from pieces verify read as a relative path,
+// so no public page may open with it. What this does not cover: a <script>'s
+// text (it may only be the bare tag, but what it runs is not read), and CSS,
+// which can fetch from any host but cannot navigate.
 // ---------------------------------------------------------------------------
 const URL_ATTRIBUTES = new Set([
   "href", "src", "action", "formaction", "srcset", "poster", "data", "ping", "cite",
-  "longdesc", "background", "manifest", "codebase", "icon",
+  "longdesc", "background", "manifest", "codebase", "icon", "imagesrcset",
 ]);
+// Every other attribute a page may carry, besides data-* and aria-*. An
+// allowlist, so an attribute that sends a request and is on no list yet
+// (attributionsrc was one, until the review found it) fails closed.
+const OTHER_ATTRIBUTES = new Set([
+  "alt", "as", "autocomplete", "charset", "class", "colspan", "content", "crossorigin", "datetime",
+  "decoding", "dir", "download", "fetchpriority", "for", "headers", "height", "hidden", "hreflang",
+  "http-equiv", "id", "integrity", "label", "lang", "loading", "media", "name", "open", "placeholder",
+  "property", "referrerpolicy", "rel", "role", "rowspan", "scope", "sizes", "spellcheck", "style",
+  "tabindex", "target", "title", "translate", "type", "value", "width", "xmlns",
+]);
+// Domains that sell things. Each reviewed host on one must say which paths on
+// it are verified objects, so adding a sibling host (paypal.me, www.gumroad.com)
+// to the list below cannot open a payment path nobody checks.
+const PAYMENT_DOMAIN = /(^|\.)(paypal\.com|paypal\.me|gumroad\.com|stripe\.com)$/;
 const paymentPath = {
-  "www.paypal.com": (url) =>
-    url.search === "" && url.hash === "" &&
-    verifiedPayPalIds.some((id) => url.pathname === `/ncp/payment/${id}`),
-  "notgabriel.gumroad.com": (url) => {
-    const slug = url.pathname.match(/^\/l\/([^/]+)$/)?.[1];
-    return slug !== undefined && verifiedGumroadSlugs.has(slug);
+  "www.paypal.com": {
+    rule: "at /ncp/payment/<id> for an id in verifiedPayPalLinks, with no query or fragment",
+    allows: (url) =>
+      url.search === "" && url.hash === "" &&
+      verifiedPayPalIds.some((id) => url.pathname === `/ncp/payment/${id}`),
+  },
+  "notgabriel.gumroad.com": {
+    rule: "at /l/<slug> for a slug in verifiedGumroadSlugs; its other pages, the storefront included, " +
+      "sell products whose prices nobody has read back",
+    allows: (url) => {
+      const slug = url.pathname.match(/^\/l\/([^/]+)$/)?.[1];
+      return slug !== undefined && verifiedGumroadSlugs.has(slug);
+    },
   },
 };
+// Hosts that are not payment hosts but serve a checkout on some paths: GitHub
+// Sponsors takes money for any account at github.com/sponsors/<name>.
+const ownerPath = {
+  rule: "under /notgabriels-sys/; elsewhere on it a path can be any account's Sponsors checkout",
+  allows: (url) => url.pathname.startsWith("/notgabriels-sys/"),
+};
+const hostPath = { ...paymentPath, "github.com": ownerPath, "raw.githubusercontent.com": ownerPath };
 const reviewedLinkHosts = new Set([
   cname, `audio.${cname}`, `tools.${cname}`, "github.com", "raw.githubusercontent.com",
   "notgabriels-sys.github.io", "opensource.org", "thedevtoolsdir.com", "www.producthunt.com",
   ...Object.keys(paymentPath),
 ]);
-for (const page of publicHtmlFiles) {
-  const markup = page === "index.html" ? html : await readFile(new URL(page, root), "utf8");
-  if (/stripe/i.test(markup)) fail(`${page} mentions Stripe. No Stripe link is verified for this site.`);
+for (const host of reviewedLinkHosts) {
+  if (PAYMENT_DOMAIN.test(host) && !paymentPath[host]) {
+    fail(`${host} is a reviewed link host on a payment domain with no entry in paymentPath saying which paths are verified.`);
+  }
+}
+// Every HTML file Pages can serve, not only the root pages: a link on
+// assets/social-preview.html reaches visitors too. Payment links belong only
+// on the root pages, the ones the price checks read.
+const linkedPages = [
+  ...publicHtmlFiles,
+  ...(await readdir(root, { recursive: true }))
+    .map((file) => file.split(sep).join("/"))
+    .filter((file) => file.endsWith(".html") && file.includes("/") && !file.startsWith(".git/"))
+    .sort(),
+];
+// Schemes that reach no web page, and image data an <img> or a poster shows
+// but cannot follow.
+const NO_WEB_HOST = new Set(["mailto:", "tel:", "sms:"]);
+const IMAGE_ATTRIBUTES = new Set(["img src", "img srcset", "source src", "source srcset", "video poster"]);
+// The URLs in a srcset, as the HTML "parse a srcset attribute" steps find
+// them: a URL may hold commas (an image CDN's "w-640,h-480"), and only a comma
+// after a URL's descriptors, outside parentheses, starts the next candidate.
+const srcsetUrls = (value) => {
+  const urls = [];
+  let at = 0;
+  for (;;) {
+    while (at < value.length && /[\t\n\f\r ,]/.test(value[at])) at++;
+    if (at >= value.length) return urls;
+    const from = at;
+    while (at < value.length && !HTML_SPACE.test(value[at])) at++;
+    const url = value.slice(from, at);
+    urls.push(url.replace(/,+$/, ""));
+    if (url.endsWith(",")) continue;
+    let inParens = false;
+    while (at < value.length && (inParens || value[at] !== ",")) {
+      if (value[at] === "(") inParens = true;
+      else if (value[at] === ")") inParens = false;
+      at++;
+    }
+  }
+};
+// Why a link off the site is not written as "https://<host>/", in words a
+// contributor can act on.
+const spellingProblem = (spelled, host) => {
+  if (spelled !== spelled.trim()) return "it starts or ends with whitespace";
+  if (/[\t\n\r]/.test(spelled)) return "it holds a tab or line break, which a browser removes";
+  if (!/^https:\/\//.test(spelled)) return `it does not start with "https://"`;
+  const written = spelled.slice("https://".length).split(/[/?#]/)[0];
+  if (written.includes("@")) return "it carries a user name before the host";
+  if (/:\d*$/.test(written)) return "it names a port";
+  if (written.toLowerCase() !== host) return `the host is written "${written}"`;
+  if (!spelled.startsWith(`https://${host}/`)) return `"/" must follow the host`;
+  return `a browser normalises it to ${new URL(spelled).href}; write that`;
+};
+const stripeLine = (text) => {
+  const at = text.search(/stripe/i);
+  if (at === -1) return null;
+  const word = text.slice(0, at).match(/\w*$/)[0] + text.slice(at).match(/^\w*/)[0];
+  return { line: text.slice(0, at).split("\n").length, word };
+};
+const stripeBan = (file, text) => {
+  const found = stripeLine(text);
+  if (found) {
+    fail(
+      `${file}:${found.line} contains "${found.word}". No Stripe link is verified for this site, and the ban is ` +
+        `a case-insensitive substring match because a Stripe checkout can be named in many ways; reword it.`,
+    );
+  }
+};
+for (const page of linkedPages) {
+  const markup = page === "index.html"
+    ? html
+    : await readFile(new URL(page.split("/").map(encodeURIComponent).join("/"), root), "utf8");
+  stripeBan(page, markup);
+  if (/^\uFEFF?---/.test(markup)) {
+    fail(
+      `${page} opens with "---". GitHub Pages runs a page with front matter through Jekyll's Liquid, so the ` +
+        `page it serves is not the file verify read. Remove the front matter.`,
+    );
+  }
   for (const tag of htmlTags(markup)) {
     if (tag.closing) continue;
-    if (tag.name === "base") fail(`${page} has a <base>, which changes where every relative link goes. Remove it.`);
-    if (tag.name === "meta" && tag.attributes.some(({ name }) => name === "http-equiv")) {
-      fail(`${page} has a <meta http-equiv>, which can send the visitor somewhere. Remove it.`);
+    if (tag.name === "base" && tag.attributes.some(({ name }) => name === "href")) {
+      fail(`${page} has a <base href>, which changes where every relative link goes. Remove it.`);
+    }
+    if (tag.name === "meta" &&
+        tag.attributes.some(({ name, value }) => name === "http-equiv" && value.trim().toLowerCase() === "refresh")) {
+      fail(`${page} has a <meta http-equiv="refresh">, which sends the visitor somewhere. Link to the page instead.`);
+    }
+    if (tag.name === "form") {
+      fail(`${page} has a <form>, which sends its fields to its action as a query. Nothing on the site needs one.`);
     }
     for (const { name, value } of tag.attributes) {
+      if (name.startsWith("on") || ["formaction", "ismap", "attributionsrc"].includes(name)) {
+        fail(
+          `${page} has ${name} on <${tag.name}>, which can send the visitor or a request somewhere this check ` +
+            `does not read. Nothing on the site needs it; use a plain link.`,
+        );
+      }
+      if (!URL_ATTRIBUTES.has(name) && !OTHER_ATTRIBUTES.has(name) &&
+          !name.startsWith("data-") && !name.startsWith("aria-")) {
+        fail(
+          `${page} has ${name} on <${tag.name}>, an attribute this check does not know. Some attributes send a ` +
+            `request (attributionsrc did); once you have checked this one sends none, add it to ` +
+            `OTHER_ATTRIBUTES in scripts/verify.mjs.`,
+        );
+      }
       if (!URL_ATTRIBUTES.has(name)) continue;
-      const written = name === "srcset" || name === "ping"
-        ? value.split(name === "srcset" ? "," : /[\t\n\f\r ]+/).map((part) => part.trim().split(/[\t\n\f\r ]+/)[0])
+      const written = name === "srcset" || name === "imagesrcset" ? srcsetUrls(value)
+        : name === "ping" ? value.split(/[\t\n\f\r ]+/).filter(Boolean)
         : [value];
-      for (const raw of written.filter(Boolean)) {
-        const where = `${page} <${tag.name} ${name}="${raw}">`;
+      for (const raw of written) {
+        const where = `${page} <${tag.name} ${name}="${name.endsWith("srcset") ? value : raw}">`;
         const spelled = raw.replaceAll("&amp;", "&");
         if (raw.replaceAll("&amp;", "").includes("&")) {
-          fail(`${where} spells its URL with a character reference. Write "&" as "&amp;" and every other character as itself.`);
+          fail(
+            `${where} has an "&" not written "&amp;". In an attribute "&" can start a character reference that ` +
+              `changes the URL a browser follows; write every "&" as "&amp;" and spell every other character out.`,
+          );
         }
         let url;
         try {
@@ -2020,12 +2179,20 @@ for (const page of publicHtmlFiles) {
         } catch {
           fail(`${where} is not a URL a browser can resolve.`);
         }
-        if (url.protocol === "mailto:") continue;
-        if (url.protocol !== "https:") fail(`${where} uses ${url.protocol}; links on the site are https: or mailto: only.`);
-        if (url.host !== cname && !(spelled === `https://${url.host}` || spelled.startsWith(`https://${url.host}/`))) {
+        if (NO_WEB_HOST.has(url.protocol)) continue;
+        if (url.protocol === "data:" && IMAGE_ATTRIBUTES.has(`${tag.name} ${name}`) &&
+            /^data:image\//i.test(spelled.trim())) continue;
+        if (url.protocol !== "https:") {
           fail(
-            `${where} reaches ${url.host} but does not spell it out as "https://${url.host}/". A link off the ` +
-              `site is written in the form a browser follows, so the price and slug checks read it.`,
+            `${where} uses ${url.protocol}. Links on the site are https:, mailto:, tel: or sms:; save an image ` +
+              `under assets/ and reference it by a relative path.`,
+          );
+        }
+        if (url.host !== cname && spelled !== url.href) {
+          fail(
+            `${where} reaches ${url.host}, but ${spellingProblem(spelled, url.host)}. A link off the site is ` +
+              `written exactly "https://${url.host}/...", the form a browser follows, so the price and slug ` +
+              `checks read it.`,
           );
         }
         if (!reviewedLinkHosts.has(url.host)) {
@@ -2035,22 +2202,21 @@ for (const page of publicHtmlFiles) {
               `surfaces). For an ordinary link, add the host to reviewedLinkHosts in scripts/verify.mjs.`,
           );
         }
-        if (paymentPath[url.host] && !paymentPath[url.host](url)) {
+        if (paymentPath[url.host] && !publicHtmlFiles.includes(page)) {
+          fail(`${where} links to ${url.host} from a page the price checks do not read. Put payment links on a root page.`);
+        }
+        const path = hostPath[url.host];
+        if (path && !path.allows(url)) {
           fail(
             `${where} goes to ${url.host}${url.pathname}${url.search}${url.hash}, which is not a verified ` +
-              `payment object on it. ` +
-              `${url.host} may be linked only at a verified PayPal NCP id or Gumroad slug.`,
+              `payment object. ${url.host} may be linked only ${path.rule}.`,
           );
         }
       }
     }
   }
 }
-for (const text of ["README.md", "llms.txt"]) {
-  if (/stripe/i.test(await readFile(new URL(text, root), "utf8"))) {
-    fail(`${text} mentions Stripe. No Stripe link is verified for this site.`);
-  }
-}
+for (const text of ["README.md", "llms.txt"]) stripeBan(text, await readFile(new URL(text, root), "utf8"));
 
 console.log(
   `Verified ${files.length} themes, ${pluginFiles.length} plugin themes, ${vol2Files.length} Vol. 2 themes, ` +

@@ -1468,11 +1468,11 @@ for (const [spelling, tag] of [
 const payLink = (href) => `<p><a href="${href}">Pay</a></p>\n</body>`;
 for (const [defect, page, from, to, message] of [
   ["a Stripe link on another public page", "impressum.html", "</body>", payLink("https://buy.stripe.com/test_0"),
-    /impressum\.html mentions Stripe/],
+    /impressum\.html:\d+ contains "stripe"\. No Stripe link is verified/],
   ["a checkout host spelled with a numeric character reference", "index.html", "</body>",
-    payLink("https://buy.&#115;tripe.com/test_0"), /spells its URL with a character reference/],
+    payLink("https://buy.&#115;tripe.com/test_0"), /has an "&" not written "&amp;"/],
   ["a checkout host spelled with percent-encoding", "index.html", "</body>",
-    payLink("https://buy.%73tripe.com/test_0"), /reaches buy\.stripe\.com but does not spell it out/],
+    payLink("https://buy.%73tripe.com/test_0"), /reaches buy\.stripe\.com, but the host is written "buy\.%73tripe\.com"/],
   ["a checkout on an unreviewed provider", "index.html", "</body>",
     payLink("https://checkout.example-pay.invalid/b/0"),
     /links to checkout\.example-pay\.invalid, which is not a reviewed link host/],
@@ -1481,20 +1481,21 @@ for (const [defect, page, from, to, message] of [
   ["a PayPal donate button", "index.html", "</body>", payLink("https://www.paypal.com/donate/?hosted_button_id=ZZZZ"),
     /goes to www\.paypal\.com\/donate\/\?hosted_button_id=ZZZZ, which is not a verified payment object/],
   ["an unverified PayPal NCP id behind a named reference", "index.html", "</body>",
-    payLink("https://www.paypal&period;com/ncp/payment/ZZZZZZZZZZZZZ"), /spells its URL with a character reference/],
+    payLink("https://www.paypal&period;com/ncp/payment/ZZZZZZZZZZZZZ"), /has an "&" not written "&amp;"/],
   ["an unverified Gumroad slug behind a named reference", "index.html", "</body>",
     '<p><a href="https://notgabriel&period;gumroad.com/l/evilslug">Buy · €1200</a></p>\n</body>',
-    /spells its URL with a character reference/],
+    /has an "&" not written "&amp;"/],
   // A browser drops the tab and follows the verified id with the query; the
-  // PayPal table's text capture stopped at the tab and read only the id.
+  // PayPal table's text capture stopped at the tab and read only the id. The
+  // card count catches it now, before the canonical-spelling rule would.
   ["a verified PayPal NCP id with a query behind a tab", "index.html", "</body>",
     '<p><a class="tool" href="https://www.paypal.com/ncp/payment/3SWZ64EXW9C8W\t?amount=1200"><b>Mastering</b> ' +
       '<span>€45</span></a></p>\n</body>',
-    /goes to www\.paypal\.com\/ncp\/payment\/3SWZ64EXW9C8W\?amount=1200, which is not a verified payment object/],
+    /index\.html has 4 PayPal NCP URL\(s\) but only 3 of them are the href="\.\.\." of an <a> the price check reads/],
   ["a Gumroad link off the product path", "index.html", "</body>", payLink("https://notgabriel.gumroad.com/x/bqgfv"),
     /goes to notgabriel\.gumroad\.com\/x\/bqgfv, which is not a verified payment object/],
   ["a protocol-relative link off the site", "index.html", "</body>", payLink("//pay.example.invalid/b/0"),
-    /reaches pay\.example\.invalid but does not spell it out/],
+    /reaches pay\.example\.invalid, but it does not start with "https:\/\/"/],
   ["a javascript: link", "index.html", "</body>", payLink("javascript:void(0)"), /uses javascript:/],
   ["a link that does not resolve", "index.html", "</body>", payLink("https://[pay"), /is not a URL a browser can resolve/],
   ["an unreviewed host as the second srcset candidate", "index.html", "</body>",
@@ -1502,12 +1503,12 @@ for (const [defect, page, from, to, message] of [
     /links to img\.example\.invalid, which is not a reviewed link host/],
   ["a form posting to an unreviewed host", "index.html", "</body>",
     '<form action="https://pay.example.invalid/charge"><button>Pay</button></form>\n</body>',
-    /links to pay\.example\.invalid, which is not a reviewed link host/],
-  ["a base element", "index.html", "</head>", '<base href="https://pay.example.invalid/">\n</head>', /index\.html has a <base>/],
+    /index\.html has a <form>, which sends its fields to its action as a query/],
+  ["a base element", "index.html", "</head>", '<base href="https://pay.example.invalid/">\n</head>', /index\.html has a <base href>/],
   ["a meta refresh", "index.html", "</head>", '<meta http-equiv="refresh" content="0;url=https://pay.example.invalid/">\n</head>',
-    /index\.html has a <meta http-equiv>/],
+    /index\.html has a <meta http-equiv="refresh">/],
   ["Stripe in the README", "README.md", "# 50 dark themes for Claude Code", "# 50 dark themes for Claude Code\n\nPay with Stripe.",
-    /README\.md mentions Stripe/],
+    /README\.md:\d+ contains "Stripe"/],
 ]) {
   test(`rejects ${defect}`, { timeout: 90_000 }, async (t) => {
     const fixtureRoot = await editPage(t, page, from, to);
@@ -1518,6 +1519,112 @@ for (const [defect, page, from, to, message] of [
     assert.match(result.stderr, message);
   });
 }
+
+for (const [control, page, from, to] of [
+  ["a Content-Security-Policy meta", "index.html", "</head>",
+    `<meta http-equiv="Content-Security-Policy" content="img-src 'self' https:">\n</head>`],
+  ["a tel: link", "impressum.html", "</body>", '<p><a href="tel:+4930000000">Telefon</a></p>\n</body>'],
+  ["a <base> that only sets a target", "index.html", "</head>", '<base target="_blank">\n</head>'],
+  // Split on every comma, this URL's second half read as the scheme "h-480:".
+  ["a srcset URL with a comma in it", "index.html", "</body>",
+    '<img alt="" srcset="https://github.com/notgabriels-sys/tr:w-640,h-480:rt-90/a.png 1x">\n</body>'],
+  ["an inline image", "index.html", "</body>", '<img alt="" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=">\n</body>'],
+]) {
+  test(`accepts ${control}`, { timeout: 90_000 }, async (t) => {
+    const fixtureRoot = await editPage(t, page, from, to);
+
+    const result = await runVerifier(fixtureRoot);
+
+    assert.equal(result.code, 0, `${control} was rejected: ${result.stderr}`);
+  });
+}
+
+// The review of the first version of the link check: each shipped with verify
+// green, and Chromium followed each to a payment page.
+const card = (href, price) => `<p><a class="tool" href="${href}"><b>Mastering</b><i>View checkout · ${price}</i></a></p>\n</body>`;
+for (const [defect, page, from, to, message] of [
+  ["a Gumroad path with a line break in it", "index.html", "</body>",
+    '<p><a href="https://notgabriel.gumroad.com/\nl/wuhehk">View product <span>€5</span></a></p>\n</body>',
+    /reaches notgabriel\.gumroad\.com, but it holds a tab or line break, which a browser removes/],
+  ["a Gumroad path with a backslash in it", "index.html", "</body>",
+    '<p><a href="https://notgabriel.gumroad.com/l\\wuhehk">View product <span>€5</span></a></p>\n</body>',
+    /reaches notgabriel\.gumroad\.com, but a browser normalises it to https:\/\/notgabriel\.gumroad\.com\/l\/wuhehk/],
+  ["a Gumroad path with a dot segment", "index.html", "</body>",
+    '<p><a href="https://notgabriel.gumroad.com/./l/wuhehk">View product <span>€5</span></a></p>\n</body>',
+    /reaches notgabriel\.gumroad\.com, but a browser normalises it to https:\/\/notgabriel\.gumroad\.com\/l\/wuhehk/],
+  ["a page that opens with front matter", "index.html", "<!doctype html>", "---\n---\n<!doctype html>",
+    /index\.html opens with "---"/],
+  ["an image map", "index.html", "</body>",
+    '<a href="https://www.paypal.com/ncp/payment/3SWZ64EXW9C8W"><img ismap alt="pay" src="favicon.svg"> €45</a>\n</body>',
+    /index\.html has ismap on <img>/],
+  ["a formaction", "index.html", "</body>", '<button formaction="impressum.html">Go</button>\n</body>',
+    /index\.html has formaction on <button>/],
+  ["an event handler", "index.html", "</body>",
+    `<p><a href="#" onclick="location.href='https://pay.example.invalid/';return false">Pay €45</a></p>\n</body>`,
+    /index\.html has onclick on <a>/],
+  ["an attributionsrc", "index.html", "</body>",
+    '<img alt="" src="favicon.svg" attributionsrc="https://pay.example.invalid/register">\n</body>',
+    /index\.html has attributionsrc on <img>/],
+  ["an unreviewed host in a preload imagesrcset", "index.html", "</head>",
+    '<link rel="preload" as="image" imagesrcset="https://img.example.invalid/a.png 1x">\n</head>',
+    /<link imagesrcset="https:\/\/img\.example\.invalid\/a\.png 1x"> links to img\.example\.invalid/],
+  ["a GitHub Sponsors checkout for another account", "index.html", "</body>",
+    payLink("https://github.com/sponsors/someone-else"),
+    /goes to github\.com\/sponsors\/someone-else, which is not a verified payment object\. github\.com may be linked only under \/notgabriels-sys\//],
+  ["a second PayPal card stating another id's price", "index.html", "</body>",
+    card("https://www.paypal.com/ncp/payment/QW8V53WWM2P7E", "€45"),
+    /PayPal link QW8V53WWM2P7E must charge €190 per the verified rate card; its card on index\.html states €45/],
+  ["a PayPal card on another page stating another id's price", "impressum.html", "</body>",
+    card("https://www.paypal.com/ncp/payment/QW8V53WWM2P7E", "€45"),
+    /PayPal link QW8V53WWM2P7E must charge €190 per the verified rate card; its card on impressum\.html states €45/],
+  ["a PayPal card whose href is in single quotes", "index.html", "</body>",
+    "<p><a class=\"tool\" href='https://www.paypal.com/ncp/payment/QW8V53WWM2P7E'><b>Mastering</b><i>€45</i></a></p>\n</body>",
+    /index\.html has 4 PayPal NCP URL\(s\) but only 3 of them are the href="\.\.\." of an <a> the price check reads/],
+  ["an unreviewed host as the second ping", "index.html", "</body>",
+    '<p><a href="/" ping="assets/ok https://pay.example.invalid/p">Home</a></p>\n</body>',
+    /links to pay\.example\.invalid, which is not a reviewed link host/],
+  ["an attribute nobody has checked", "index.html", "</body>",
+    '<img alt="" src="favicon.svg" newsrc="https://pay.example.invalid/x">\n</body>',
+    /index\.html has newsrc on <img>, an attribute this check does not know/],
+  ["a Stripe link on a page outside the root", "assets/social-preview.html", "</body>",
+    payLink("https://buy.stripe.com/test_0"), /assets\/social-preview\.html:\d+ contains "stripe"/],
+  ["a verified PayPal card on a page the price checks do not read", "assets/social-preview.html", "</body>",
+    card("https://www.paypal.com/ncp/payment/3SWZ64EXW9C8W", "€1200"),
+    /links to www\.paypal\.com from a page the price checks do not read/],
+  ["a srcset URL whose host follows a comma", "index.html", "</body>",
+    '<img alt="" srcset="https://github.com,x@img.example.invalid/b.png 1x">\n</body>',
+    /links to img\.example\.invalid, which is not a reviewed link host/],
+]) {
+  test(`rejects ${defect}`, { timeout: 90_000 }, async (t) => {
+    const fixtureRoot = await editPage(t, page, from, to);
+
+    const result = await runVerifier(fixtureRoot);
+
+    assert.notEqual(result.code, 0, `${defect} shipped green`);
+    assert.match(result.stderr, message);
+  });
+}
+
+test("rejects a payment-domain host reviewed without a path rule", { timeout: 90_000 }, async (t) => {
+  // paypal.me is PayPal's own payment product; listed as an ordinary host, any
+  // path on it would pass.
+  const fixtureRoot = await editPage(t, "scripts/verify.mjs", '"www.producthunt.com",', '"www.producthunt.com", "paypal.me",');
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "an unrestricted paypal.me shipped green");
+  assert.match(result.stderr, /paypal\.me is a reviewed link host on a payment domain with no entry in paymentPath/);
+});
+
+test("rejects a data: link", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await editPage(t, "index.html", "</body>",
+    '<p><a href="data:text/html,%3Ca%20href%3Dhttps://pay.example.invalid%3EPay%3C/a%3E">Pay</a></p>\n</body>');
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "a data: link shipped green");
+  assert.match(result.stderr, /uses data:\. Links on the site are https:, mailto:, tel: or sms:/);
+});
 
 test("accepts a reviewed link whose query is written with &amp;", { timeout: 90_000 }, async (t) => {
   const fixtureRoot = await editPage(t, "index.html", "</body>",
