@@ -466,3 +466,21 @@ test("rejects cards that hide the surface hex the guides promise", { timeout: 90
   assert.notEqual(result.code, 0, "the verifier accepted cards that never show the surface hex readers are sent to find");
   assert.match(result.stderr, /promise a surface hex in the gallery/);
 });
+
+test("rejects a live region hidden inside a closed disclosure", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixturePage = join(fixtureRoot, "index.html");
+  const page = await readFile(fixturePage, "utf8");
+  await writeFile(
+    fixturePage,
+    page.replace(
+      '      <div class="grid" id="grid"></div>\n    </details>\n    <p class="sr-only" id="themeCopyStatus" aria-live="polite"></p>\n',
+      '      <div class="grid" id="grid"></div>\n      <p class="sr-only" id="themeCopyStatus" aria-live="polite"></p>\n    </details>\n',
+    ),
+  );
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted an announcement no screen reader can hear while the archive is closed");
+  assert.match(result.stderr, /aria-live region inside a <details> body/);
+});

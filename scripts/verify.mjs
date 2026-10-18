@@ -624,6 +624,21 @@ if (surfacePromisedBy.length && !/>[^<]*surface \$\{bg\}/.test(html)) {
   );
 }
 
+// A live region only announces while it is in the accessibility tree, and the
+// body of a closed <details> is not. The copy confirmation lived inside the
+// closed-by-default theme archive, so copying from a Vol. 2 card — which sits
+// outside the archive and is always visible — announced nothing at all.
+// A <summary> renders while closed, so live regions there are fine.
+for (const file of publicHtmlFiles) {
+  const source = await readFile(new URL(file, root), "utf8");
+  for (const block of source.match(/<details\b[\s\S]*?<\/details>/g) ?? []) {
+    const body = block.replace(/<summary\b[\s\S]*?<\/summary>/, "");
+    if (/aria-live=/.test(body)) {
+      fail(`${file} puts an aria-live region inside a <details> body; it is silent whenever the disclosure is closed.`);
+    }
+  }
+}
+
 console.log(
   `Verified ${files.length} themes, ${pluginFiles.length} plugin themes, ${vol2Files.length} Vol. 2 themes, ` +
     `${galleryThemes.length} gallery cards, ` +
