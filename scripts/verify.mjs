@@ -114,8 +114,9 @@ async function validateThemeFile(file, fileUrl) {
 for (const file of files) {
   await validateThemeFile(file, new URL(file, root));
 }
-// The storefront gallery covers the flagship 50; Vol. 2 names validated below
-// share the uniqueness set but are not gallery cards.
+// The storefront's flagship gallery covers these 50. Vol. 2 names, validated
+// below, join the same uniqueness set and have their own storefront section,
+// checked against VOL2_THEMES further down.
 const rootNames = new Set(names);
 
 const pluginFiles = (await readdir(pluginThemesRoot))
@@ -581,7 +582,8 @@ if (!verifiedGumroadSlugs.has("zvbti")) {
   }
 }
 
-// One image, one description. preview.png is shared by every public page; it
+// One image, one description. preview.png is shared by every public page that
+// carries a share image (impressum.html carries none); it
 // was described three different ways, two of them as "a gallery preview" of a
 // card that has never been a gallery. Alt text drifts silently because nobody
 // sees it — so pages that share an image must state the same alt, and a page

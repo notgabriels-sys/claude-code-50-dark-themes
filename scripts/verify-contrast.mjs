@@ -68,11 +68,11 @@ const checks = [
 const failures = [];
 let comparisons = 0;
 
-function cssColour(variable, source = html) {
+function cssColour(variable, source = html, page = "index.html") {
   const variableMatch = source.match(
     new RegExp(`--${variable}\\s*:\\s*(#[0-9a-f]{6})\\s*;`, "i"),
   );
-  if (!variableMatch) throw new Error(`Could not find --${variable} in index.html.`);
+  if (!variableMatch) throw new Error(`Could not find --${variable} in ${page}.`);
   return variableMatch[1];
 }
 
@@ -90,8 +90,9 @@ for (const surfaceName of ["ground", "ground-2"]) {
 
 // The storefront's syntax sample is also the shared personal coding palette.
 // Every semantic foreground must remain readable as normal text across the
-// terminal canvas, page canvas, and raised install panel—not merely look
-// distinct in one screenshot.
+// terminal canvas, the page canvas, and --ground-2, the raised surface behind
+// the featured product cards and footer badge — not merely look distinct in
+// one screenshot.
 const semanticTokens = [
   "syntax-purple",
   "syntax-light-purple",
@@ -125,7 +126,7 @@ for (const page of [
   const pageHtml = await readFile(new URL(page, root), "utf8");
   for (const token of sharedPaletteTokens) {
     const expected = cssColour(token).toLowerCase();
-    const actual = cssColour(token, pageHtml).toLowerCase();
+    const actual = cssColour(token, pageHtml, page).toLowerCase();
     if (actual !== expected) {
       failures.push(`${page}: --${token} ${actual} does not match storefront ${expected}`);
     }
@@ -188,8 +189,9 @@ for (const file of themes) {
   }
 }
 
-// Dark Themes Vol. 2 has no storefront gallery yet; its preview terminal
-// colours live in the plugin's previews.json and are held to the same floors.
+// Dark Themes Vol. 2 has its own storefront section (VOL2_THEMES in index.html);
+// its preview terminal colours come from the plugin's previews.json, which
+// verify.mjs holds equal to that section, and meet the same floors.
 const vol2Root = new URL("../plugins/dark-themes-vol-2/", import.meta.url);
 const vol2Themes = (await readdir(new URL("themes/", vol2Root)))
   .filter((file) => file.endsWith(".json"))
