@@ -2215,6 +2215,11 @@ for (const page of linkedPages) {
       }
     }
   }
+  // A page without a doctype renders in quirks mode, where Chromium applies a
+  // served .txt or .json as a stylesheet, and that CSS can fetch from any host.
+  if (!/^\uFEFF?<!doctype html>/i.test(markup)) {
+    fail(`${page} must open with <!doctype html>. Without it the page renders in quirks mode, which loads text files as CSS.`);
+  }
 }
 for (const text of ["README.md", "llms.txt"]) stripeBan(text, await readFile(new URL(text, root), "utf8"));
 
@@ -2252,11 +2257,21 @@ for (const entry of await readdir(root)) {
   }
 }
 // Every file Pages serves: Jekyll skips any path with a segment starting "."
-// or "_", and publishes everything else under its own name.
+// or "_", and publishes everything else under its own name -- except that its
+// default include, ".htaccess", is matched as a prefix of any file or
+// directory name, so .htaccess.svg or .htaccess-shop/pay.md is published.
+// Nothing here needs one, so one is refused rather than read.
 const servedFiles = [];
 for (const entry of await readdir(root, { recursive: true })) {
   const file = entry.split(sep).join("/");
-  if (file.split("/").some((part) => /^[._]/.test(part))) continue;
+  const parts = file.split("/");
+  if (parts.some((part) => /^[._]/.test(part) && !part.startsWith(".htaccess"))) continue;
+  if (parts.some((part) => part.startsWith(".htaccess"))) {
+    fail(
+      `${file} is published by GitHub Pages: Jekyll's default include, ".htaccess", matches any name that ` +
+        `starts with it, although other names starting with "." are skipped. Rename it.`,
+    );
+  }
   const info = await lstat(new URL(file.split("/").map(encodeURIComponent).join("/"), root));
   if (info.isSymbolicLink()) {
     fail(
@@ -2368,8 +2383,10 @@ const SERVED_TYPES = new Map([
   ["png", "inert"],
   ["json", "inert"],
   ["txt", "inert"],
-  // text/javascript, shown as text; a page cannot load it, because the
-  // script-tag check above allows no src.
+  // text/javascript, shown as text when opened. A page loads it only through
+  // inline script (an import, a worker, a service worker), and inline script
+  // text is not covered -- so one is refused where a service worker
+  // registered from it would control a page; see below.
   ["mjs", "inert"],
   ["zip", "inert"],
   ["sh", "inert"],
@@ -2389,6 +2406,7 @@ const SERVED_TYPES = new Map([
 // must name the document's own namespace, so nothing from XHTML gets in.
 const SVG_DOCUMENT = {
   label: "SVG artwork",
+  root: "svg",
   namespace: "http://www.w3.org/2000/svg",
   elements: new Set([
     "svg", "g", "defs", "title", "desc", "path", "rect", "circle", "ellipse", "line", "polyline", "polygon",
@@ -2404,6 +2422,7 @@ const SVG_DOCUMENT = {
 };
 const SITEMAP_DOCUMENT = {
   label: "sitemap",
+  root: "urlset",
   namespace: "http://www.sitemaps.org/schemas/sitemap/0.9",
   elements: new Set(["urlset", "url", "loc", "lastmod", "changefreq", "priority"]),
   attributes: new Set(["xmlns"]),
@@ -2462,6 +2481,11 @@ const checkXmlDocument = (file, bytes, allowed) => {
       fail(`${file}:${lineOf(match.index)} sets xmlns to ${JSON.stringify(value)}; it must be ${allowed.namespace}.`);
     }
   }
+  // Without its namespace on the root, a browser builds elements that nothing
+  // renders: harmless, but an SVG that silently stops drawing.
+  if (!new RegExp(`^[\\t\\n\\r ]*<${allowed.root}[\\t\\n\\r ][^<>]*xmlns[\\t\\n\\r ]*=`).test(body)) {
+    fail(`${file} must open with <${allowed.root} xmlns="${allowed.namespace}">, its root element in its own namespace.`);
+  }
   return body;
 };
 for (const file of servedFiles) {
@@ -2475,6 +2499,20 @@ for (const file of servedFiles) {
         `.htm, .xhtml and .xht as pages. Rename it, or add the type to SERVED_TYPES deliberately, once you know ` +
         `how a browser opens it.`,
     );
+  }
+  // A service worker controls every URL under the directory of its script, and
+  // keeps serving them after the script and the line that registered it are
+  // gone. Pages sends no Service-Worker-Allowed header to widen that.
+  if (type === "mjs") {
+    const scope = file.slice(0, file.lastIndexOf("/") + 1);
+    const pages = servedFiles.filter((other) => other.endsWith(".html") && other.startsWith(scope));
+    const page = pages.find((other) => !other.slice(scope.length).includes("/")) ?? pages[0];
+    if (page) {
+      fail(
+        `${file} is a script in a directory at or above ${page}. Registered as a service worker, it would serve ` +
+          `that page from text verify never reads, and keep doing so after it is removed. Move it under scripts/.`,
+      );
+    }
   }
   const bytes = await readFile(new URL(file.split("/").map(encodeURIComponent).join("/"), root));
   if (reading !== "note" && /^(\uFEFF)?---/.test(bytes.toString("utf8", 0, 8))) {

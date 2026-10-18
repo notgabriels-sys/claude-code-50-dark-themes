@@ -196,8 +196,10 @@ repo has. `verify` runs on every push and **fails the build** on:
   "Every link goes to a reviewed host" below;
 - **(added 2026-10-18)** any file GitHub Pages serves whose type is not in
   `SERVED_TYPES`, an SVG or XML document outside its element and attribute
-  allowlist, a sitemap location off the site, and front matter or a symlink
-  anywhere Pages serves — see "Every served file is one `verify` reads" below;
+  allowlist, a sitemap location off the site, front matter or a symlink
+  anywhere Pages serves, a page without `<!doctype html>`, a `.mjs` at or above
+  a page, and any name starting `.htaccess` — see "Every served file is one
+  `verify` reads" below;
 - the retired résumé checkout slug `notgabriel.gumroad.com/l/wmlrk`;
 - any of the three verified PayPal links going missing;
 - **(added 2026-08-24)** any of the three carrying a price other than its
@@ -278,8 +280,9 @@ link off the site must be spelled `https://<host>/` exactly, with `&` written
 payment link in the spelling a browser follows. `<base>` and
 `<meta http-equiv>` are refused. **Linking a new host is a deliberate edit to
 `reviewedLinkHosts`; a checkout host never goes there before its real object
-has been read.** Not covered: inline `<script>` text that navigates, and CSS,
-which cannot.
+has been read.** Not covered: inline `<script>` text, which can navigate, or
+load a served script as a worker, without a link; and CSS, which cannot
+navigate.
 
 The review of that first version (same day, three lenses, findings re-run by
 second reviewers) found the guard both too loose and too strict. Too loose,
@@ -339,7 +342,9 @@ pattern gave misses at the first depth. The harness lives in the scratchpad.
 
 **(added 2026-10-18) Every served file is one `verify` reads, or one no browser
 opens as a page.** The link check read `.html` and the note check `.md`, and
-Pages serves every file outside a `.` or `_` directory. Reproduced with
+Pages serves every file outside a `.` or `_` directory — and, through Jekyll's
+default include, any file or directory whose name starts `.htaccess`, at any
+depth, since that include is matched as a prefix. Reproduced with
 `verify` green, each linking a checkout: `pay.htm`, `pay.xhtml` and `pay.HTML`;
 `pay.markdown`, which Jekyll renders to `pay.html` (so do `.mkd`, `.mkdn`,
 `.mkdown` and `.MD` — the match ignores case); `favicon.svg` holding a link or a
@@ -356,7 +361,15 @@ So served types are an allowlist, `SERVED_TYPES`. `.html` and `.md` are read as
 pages and notes; `.svg` is held to `SVG_DOCUMENT` and `.xml` to
 `SITEMAP_DOCUMENT`, each an element and attribute allowlist; every other type
 is one a browser shows as an image or as text, or saves. No served file may open
-with front matter (a note is held to its own rule) or be a symlink. The SVG and
+with front matter (a note is held to its own rule) or be a symlink, and a name
+starting `.htaccess` is refused outright. Every served page must open with
+`<!doctype html>`: in quirks mode Chromium applies a served `.txt` or `.json` as
+a stylesheet. A `.mjs` is shown as text when opened, but a page's inline script
+can load it as a module, a worker or a service worker, and a service worker
+serves every URL under its script's directory from text `verify` never read —
+reproduced: it kept serving every page a fake checkout after the registering
+line and the script were both removed. So a served `.mjs` is refused in any
+directory at or above a served page; `scripts/` holds none. The SVG and
 XML reader does not parse. It refuses whatever lets a browser build markup the
 text does not spell — another encoding, a doctype, a comment or CDATA section,
 a processing instruction, a character reference — and then holds every element
@@ -371,9 +384,23 @@ element, attribute or processing instruction outside the allowlist, or makes
 any request. No check missed 6,293; a capture by character class, 250; this
 reader before its `url()` rule, 30, Chromium fetching a paint server from
 another file — so a `url()` may name only an element in the same file, and no
-backslash is allowed, since CSS spells `url(` with escapes too. A new type,
-element or attribute is a deliberate edit, and never one that links, loads or
-runs script.
+backslash is allowed, since CSS spells `url(` with escapes too. With that
+rule, over 8,768 documents that add five more `url()` spellings (`URL(`, an
+escape, quotes, a space, `stroke`), it missed none; the reader before the rule
+missed 180 there, every one a fetch. Mutation-tested (rule 5): of 22 branches,
+each gutted alone, 18 turn exactly their own tests red and four turn the real
+tree red, so none is dead. The root element must also carry its
+namespace, without which an SVG silently stops drawing. A new type, element or
+attribute is a deliberate edit, and never one that links, loads or runs script.
+
+The review of 1cd3984 (five lenses; the first run lost five of its eight agents
+to a session limit and was resumed) found the `.htaccess` names (high:
+`.htaccess.svg` ran its script and `.htaccess.md` rendered a live link with
+`verify` green), the service worker (medium), quirks-mode pages and documents
+with no namespace (low). Each is fixed above. Still not covered, and the next
+step: inline `<script>` text. Holding each inline script to an allowlist of its
+exact text would close it, at the cost of a deliberate edit for every change to
+the gallery code.
 
 **Sixteen failure cases were proven** by breaking `index.html`, `README.md` and
 `impressum.html` in turn and confirming the build goes red, then restoring:

