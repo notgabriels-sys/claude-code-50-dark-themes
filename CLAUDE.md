@@ -335,6 +335,22 @@ duplicate keys), exact keys on the list and its items, nothing left open
 around the block, and the canonical link equal to the `CNAME` domain. A second
 legitimate list, for Vol. 2 say, is a deliberate change to that check.
 
+That allowlist was re-attacked the same day and leaked seven more ways, each a
+second list a conformant reader saw (jsonld.js, Chromium's DOM, pyRdfa3) with
+`verify` green: a JSON-LD context that builds the type from halves the text
+never spells (`@vocab` ending in `Item` plus `"@type": "List"`, or a prefix
+term), microdata after `/` attribute separators or after a quoted `>`, RDFa
+through `rel`/`property`/`resource`, and a `<style>` strip fooled by two
+attribute values; `&#76;` carried each past the raw count, which never decodes
+character references. So tags are now read with the HTML tokenizer's own rules
+(`htmlTags` in `verify.mjs`), microdata and RDFa attributes are refused
+outright (`property` only as Open Graph on `<meta>`, `rel` only as plain link
+types), inline `<svg>`/`<math>` are refused because a browser lifts tags out of
+them that a raw-text reader skips, and every JSON-LD block must use exactly
+`"https://schema.org"` as its only `@context` and write no key twice. A regex
+over HTML is the defect class here: where the reader and a browser can
+disagree, it must read more of the page as markup, never less.
+
 The Gumroad half now has structural guards, an existence-verified slug list and
 a price-drift table — but no verified *price* for any product. See below.
 

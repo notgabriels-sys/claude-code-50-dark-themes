@@ -1573,6 +1573,19 @@ if (!html.includes(expectedItemList)) {
 // and its items, and the canonical link equal to the CNAME domain. A second,
 // legitimate list (Vol. 2, say) is a deliberate change to this check, not
 // something it should wave through.
+//
+// Re-attacked the same day, that allowlist leaked seven more ways, each a
+// second list a conformant reader (jsonld.js 8.3.3, Chromium's DOM, pyRdfa3)
+// read while verify stayed green. JSON-LD can assemble the type from halves
+// the text never spells: an @vocab ending in "Item" with "@type": "List", or a
+// prefix term with "il:List". And the microdata regex was a regex: HTML takes
+// "/" as an attribute separator (<div/itemscope/…>), a quoted value may hold
+// ">" (title="a>b" itemscope), RDFa can state a type with rel, property and
+// resource, and stripping <style>…</style> before matching deleted a real list
+// between two attribute values that merely spelled those tags. "&#76;" kept
+// each one past the raw "ItemList" count, which never decodes references. So
+// JSON-LD may now use the plain schema.org context and nothing else, with no
+// key written twice, and tags are read with the HTML tokenizer's own rules.
 const countOf = (needle) => html.split(needle).length - 1;
 if (countOf(ITEMLIST_START) !== 1 || countOf(ITEMLIST_END) !== 1 ||
     html.indexOf(ITEMLIST_START) > html.indexOf(ITEMLIST_END)) {
@@ -1585,7 +1598,110 @@ const itemListStart = html.indexOf(ITEMLIST_START);
 const itemListEnd = html.indexOf(ITEMLIST_END);
 const ALLOWED_SCRIPT_TAGS = new Set(['<script type="application/ld+json">', "<script>"]);
 const INERT_CONTAINER = /<(template|noscript|textarea|xmp|plaintext|iframe|noembed|noframes)\b/i;
-const MICRODATA_ATTRIBUTE = /<[a-z][^>]*\s(itemscope|itemtype|itemprop|typeof|vocab)\b/i;
+// Every start and end tag with its attributes, read as the HTML tokenizer reads
+// them: "/" separates attributes as whitespace does, a quoted value runs to its
+// own quote whatever it holds, and an attribute may follow a closing quote with
+// no space at all. Where this reader and a browser could disagree, it reads
+// more of the page as markup, never less: a comment ends at the earliest point
+// a browser could end one (<!-->, <!--->, -->, --!>), and <script> or <style>
+// text at the first matching end tag. Inline <svg> and <math> are refused
+// below, because inside them <style> is not raw text and a browser would read
+// tags this reader skips.
+const HTML_SPACE = /[\t\n\f\r ]/;
+const htmlTags = (markup) => {
+  const tags = [];
+  let at = 0;
+  const readWhile = (test) => {
+    const from = at;
+    while (at < markup.length && test(markup[at])) at++;
+    return markup.slice(from, at);
+  };
+  const skipPast = (...endings) => {
+    at = Math.min(
+      ...endings.map((ending) => {
+        const found = markup.indexOf(ending, at);
+        return found === -1 ? markup.length : found + ending.length;
+      }),
+    );
+  };
+  while ((at = markup.indexOf("<", at)) !== -1) {
+    at++;
+    if (markup.startsWith("!--", at)) {
+      at += 3;
+      if (markup[at] === ">") at += 1;
+      else if (markup.startsWith("->", at)) at += 2;
+      else skipPast("-->", "--!>");
+      continue;
+    }
+    const closing = markup[at] === "/";
+    if (closing) at++;
+    if (!/[A-Za-z]/.test(markup[at] ?? "")) {
+      // <!DOCTYPE …>, <?…> and </ before a non-letter run to the first ">";
+      // "<" before anything else is text.
+      if (closing || markup[at] === "!" || markup[at] === "?") skipPast(">");
+      continue;
+    }
+    const name = readWhile((c) => !/[\t\n\f\r />]/.test(c)).toLowerCase();
+    const attributes = [];
+    while (at < markup.length && markup[at] !== ">") {
+      if (/[\t\n\f\r /]/.test(markup[at])) {
+        at++;
+        continue;
+      }
+      // A name may begin with "=" and runs to a space, "/", ">" or "=".
+      const attribute = (markup[at++] + readWhile((c) => !/[\t\n\f\r />=]/.test(c))).toLowerCase();
+      readWhile((c) => HTML_SPACE.test(c));
+      let value = "";
+      if (markup[at] === "=") {
+        at++;
+        readWhile((c) => HTML_SPACE.test(c));
+        const quote = markup[at];
+        if (quote === '"' || quote === "'") {
+          at++;
+          value = readWhile((c) => c !== quote);
+          at++;
+        } else {
+          value = readWhile((c) => !/[\t\n\f\r >]/.test(c));
+        }
+      }
+      attributes.push({ name: attribute, value });
+    }
+    at++;
+    tags.push({ name, closing, attributes });
+    if (!closing && (name === "script" || name === "style")) {
+      const end = new RegExp(`</${name}[\\t\\n\\f\\r />]`, "gi");
+      end.lastIndex = at;
+      at = end.exec(markup)?.index ?? markup.length;
+    }
+  }
+  return tags;
+};
+// Attributes that state structured data in microdata or RDFa. property and rel
+// are RDFa too, but the site needs them, so they are held to what it uses:
+// property only as Open Graph on <meta>, and rel only as plain link types,
+// since a ":" makes a rel token a CURIE or IRI ("rdf:type") and an "&" can
+// spell one ("rdf&colon;type").
+const STRUCTURED_DATA_ATTRIBUTES = new Set([
+  "itemscope", "itemtype", "itemprop", "itemid", "itemref",
+  "vocab", "typeof", "prefix", "about", "resource", "rev", "inlist", "datatype",
+]);
+// JSON-LD keys counted from the parse, and from the text as the ":" that ends
+// each key outside a string. JSON.parse keeps the last of two equal keys, and a
+// parser that keeps the first reads a different block, so the two must agree.
+const jsonKeyCount = (value) => {
+  if (Array.isArray(value)) return value.reduce((count, child) => count + jsonKeyCount(child), 0);
+  if (value === null || typeof value !== "object") return 0;
+  return Object.values(value).reduce((count, child) => count + 1 + jsonKeyCount(child), 0);
+};
+const jsonKeysWritten = (text) => text.replace(/"(?:[^"\\]|\\.)*"/g, "").split(":").length - 1;
+const contextKeyCount = (value) => {
+  if (Array.isArray(value)) return value.reduce((count, child) => count + contextKeyCount(child), 0);
+  if (value === null || typeof value !== "object") return 0;
+  return Object.entries(value).reduce(
+    (count, [key, child]) => count + (key === "@context" ? 1 : 0) + contextKeyCount(child),
+    0,
+  );
+};
 const isItemListType = (value) => typeof value === "string" && /(^|[/:#])ItemList$/i.test(value);
 const itemListTypeMentions = (value) => {
   if (Array.isArray(value)) return value.reduce((count, child) => count + itemListTypeMentions(child), 0);
@@ -1604,6 +1720,7 @@ const ldJsonBlocks = (page, markup) =>
     }
   });
 let markedBlock;
+const jsonLdBlocks = [];
 for (const page of publicHtmlFiles) {
   const markup = page === "index.html" ? html : await readFile(new URL(page, root), "utf8");
   for (const [tag] of markup.matchAll(/<script\b[^>]*>/gi)) {
@@ -1624,9 +1741,33 @@ for (const page of publicHtmlFiles) {
         `this check does not read. Nothing on the site needs one; remove it.`,
     );
   }
-  const microdata = markup.replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1>/gi, "").match(MICRODATA_ATTRIBUTE);
-  if (microdata) {
-    fail(`${page} carries microdata or RDFa ("${microdata[1]}"); the site's structured data is JSON-LD only.`);
+  for (const tag of htmlTags(markup)) {
+    if (!tag.closing && (tag.name === "svg" || tag.name === "math")) {
+      fail(
+        `${page} has an inline <${tag.name}>. Inside one a <style> is not raw text, so a browser ` +
+          `reads tags there that this check cannot; use an <img> instead.`,
+      );
+    }
+    for (const { name, value } of tag.attributes) {
+      if (STRUCTURED_DATA_ATTRIBUTES.has(name) || name.startsWith("xmlns")) {
+        fail(
+          `${page} carries microdata or RDFa ("${name}" on <${tag.name}>); the site's structured ` +
+            `data is JSON-LD only.`,
+        );
+      }
+      if (name === "property" && !(tag.name === "meta" && /^og:[a-z_:]+$/.test(value))) {
+        fail(
+          `${page} has property=${JSON.stringify(value)} on <${tag.name}>. RDFa reads property as ` +
+            `structured data; only Open Graph properties on <meta> are allowed.`,
+        );
+      }
+      if (name === "rel" && /[:&]/.test(value)) {
+        fail(
+          `${page} has rel=${JSON.stringify(value)} on <${tag.name}>. A rel token with a ":" is an ` +
+            `RDFa CURIE or IRI that can state a type; use plain link types, written out.`,
+        );
+      }
+    }
   }
   const blocks = ldJsonBlocks(page, markup);
   const expected = page === "index.html" ? 1 : 0;
@@ -1641,6 +1782,7 @@ for (const page of publicHtmlFiles) {
         `change to this check in scripts/verify.mjs.`,
     );
   }
+  jsonLdBlocks.push(...blocks.map((block) => ({ ...block, page })));
   if (page === "index.html") {
     const inside = blocks.filter((block) => block.index > itemListStart && block.index < itemListEnd);
     if (inside.length !== 1 || itemListTypeMentions(inside[0].value) !== 1) {
@@ -1747,6 +1889,26 @@ for (const [index, item] of listItems.entries()) {
     fail(`${where} ("${item.name}") has url ${JSON.stringify(item.url)}, which is not an absolute URL.`);
   }
   if (listedUrl !== expectedUrl) fail(`${where} ("${item.name}") links ${JSON.stringify(item.url)}, not ${expectedUrl}.`);
+}
+// Every JSON-LD block on every page, after the theme list's own checks so a
+// fault in that list is reported by the check written for it.
+for (const block of jsonLdBlocks) {
+  const where = `${block.page}'s JSON-LD block at offset ${block.index}`;
+  if (block.value === null || typeof block.value !== "object" || Array.isArray(block.value) ||
+      block.value["@context"] !== "https://schema.org" || contextKeyCount(block.value) !== 1) {
+    fail(
+      `${where} must be one object whose only @context is "https://schema.org". Any other ` +
+        `context can build a type from pieces this check never sees spelled out (an @vocab ` +
+        `ending in "Item" makes "List" an ItemList).`,
+    );
+  }
+  if (jsonKeysWritten(block.text) !== jsonKeyCount(block.value)) {
+    fail(
+      `${where} writes ${jsonKeysWritten(block.text)} keys and parses to ` +
+        `${jsonKeyCount(block.value)}, so a key is written twice and parsers that keep the ` +
+        `first and the last of them read different blocks.`,
+    );
+  }
 }
 
 console.log(

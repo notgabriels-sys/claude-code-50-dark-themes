@@ -57,7 +57,7 @@ produces for the paid products before anything ships.
 | Surface | Serves | Guarded by |
 |---|---|---|
 | `index.html` head — meta, OG, Twitter, canonical | humans sharing links, social unfurls | `verify` requires share-image alt text and exactly one canonical link, equal to the `CNAME` domain |
-| `index.html` JSON-LD | search engines; free plugin only | `verify` checks the plugin's version and download URL, allows one script-tag spelling, and requires exactly one ItemList on the site, checked against the theme files |
+| `index.html` JSON-LD | search engines; free plugin only | `verify` checks the plugin's version and download URL, allows one script-tag spelling and only the plain schema.org context, refuses microdata and RDFa, and requires exactly one ItemList on the site, checked against the theme files |
 | `sitemap.xml` | crawler discovery of the four public pages | — |
 | `robots.txt` | crawl permission; points at the sitemap | — |
 | `llms.txt` | agents and LLM crawlers reading the catalog | — |

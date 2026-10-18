@@ -1240,6 +1240,65 @@ for (const [defect, page, from, to, message] of [
   ["an ItemList hidden behind a duplicate @type key", "index.html", markerEnd,
     `${markerEnd}\n<script type="application/ld+json">${wrongList.slice(0, -1)},"@type":"WebPage"}</script>`,
     /index\.html mentions the ItemList type 1 time\(s\) in its parsed JSON-LD and 2 time\(s\) in its text/],
+  // The re-attack of the allowlist: each of these was a second list a
+  // conformant reader saw while verify stayed green. "&#76;" is an "L" that
+  // the raw "ItemList" count never decodes.
+  ["an ItemList type built from an @vocab", "index.html", markerEnd,
+    `${markerEnd}\n<script type="application/ld+json">${wrongList
+      .replace('"@context":"https://schema.org"', '"@context":["https://schema.org",{"@vocab":"http://schema.org/Item"}]')
+      .replace('"@type":"ItemList"', '"@type":"List"')}</script>`,
+    /index\.html's JSON-LD block at offset \d+ must be one object whose only @context is "https:\/\/schema\.org"/],
+  ["an ItemList type built from a prefix term", "index.html", markerEnd,
+    `${markerEnd}\n<script type="application/ld+json">${wrongList
+      .replace('"@context":"https://schema.org"',
+        '"@context":["https://schema.org",{"il":{"@id":"http://schema.org/Item","@prefix":true}}]')
+      .replace('"@type":"ItemList"', '"@type":"il:List"')}</script>`,
+    /index\.html's JSON-LD block at offset \d+ must be one object whose only @context is "https:\/\/schema\.org"/],
+  ["a nested @context on another page", "claude-code-theme-install-guide.html", "</head>",
+    '<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebPage","mainEntity":' +
+      '{"@context":{"@vocab":"http://schema.org/Item"},"@type":"List","name":"Dracula"}}</script>\n</head>',
+    /claude-code-theme-install-guide\.html's JSON-LD block at offset \d+ must be one object whose only @context/],
+  ["an @context written twice", "index.html", markerEnd,
+    `${markerEnd}\n<script type="application/ld+json">{"@context":{"@vocab":"http://schema.org/Item"},` +
+      '"@context":"https://schema.org","@type":"List","name":"Dracula"}</script>',
+    /index\.html's JSON-LD block at offset \d+ writes 5 keys and parses to 3/],
+  ["microdata with attributes separated by slashes", "index.html", "</body>",
+    '<div/itemscope/itemtype="https://schema.org/Item&#76;ist"><meta/itemprop="name"/content="Dracula"></div>\n</body>',
+    /index\.html carries microdata or RDFa \("itemscope" on <div>\)/],
+  ["microdata after a quoted >", "index.html", "</body>",
+    '<div title="a>b" itemscope itemtype="https://schema.org/Item&#76;ist"></div>\n</body>',
+    /index\.html carries microdata or RDFa \("itemscope" on <div>\)/],
+  ["microdata in capitals", "index.html", "</body>",
+    '<DIV ITEMSCOPE ITEMTYPE="https://schema.org/Item&#76;ist"></DIV>\n</body>',
+    /index\.html carries microdata or RDFa \("itemscope" on <div>\)/],
+  ["microdata straight after a closing quote", "index.html", "</body>",
+    '<div title="x"itemscope itemtype="https://schema.org/Item&#76;ist"></div>\n</body>',
+    /index\.html carries microdata or RDFa \("itemscope" on <div>\)/],
+  ["microdata between attribute values that spell style tags", "index.html", "</body>",
+    '<span title="<style>"></span><div itemscope itemtype="https://schema.org/Item&#76;ist"></div>' +
+      '<span title="</style>"></span>\n</body>',
+    /index\.html carries microdata or RDFa \("itemscope" on <div>\)/],
+  ["microdata after a comment closed with --!>", "index.html", "</body>",
+    '<!-- note --!><div itemscope itemtype="https://schema.org/Item&#76;ist"></div>\n</body>',
+    /index\.html carries microdata or RDFa \("itemscope" on <div>\)/],
+  ["RDFa typeof behind slashes", "index.html", "</body>",
+    '<div/vocab="https://schema.org/"/typeof="Item&#76;ist"><meta/property="name"/content="Dracula"></div>\n</body>',
+    /index\.html carries microdata or RDFa \("vocab" on <div>\)/],
+  ["an RDFa prefix declared through xmlns", "index.html", "</body>",
+    '<div xmlns:s="https://schema.org/Item"><span>Dracula</span></div>\n</body>',
+    /index\.html carries microdata or RDFa \("xmlns:s" on <div>\)/],
+  ["an RDFa type stated through rel", "index.html", "</body>",
+    '<a rel="rdf:type" href="https://schema.org/Item&#76;ist">Dracula</a>\n</body>',
+    /index\.html has rel="rdf:type" on <a>/],
+  ["an RDFa type stated through property", "index.html", "</body>",
+    '<link property="rdf:type" href="https://schema.org/Item&#76;ist">\n</body>',
+    /index\.html has property="rdf:type" on <link>/],
+  // A browser lifts this div out of the svg into the page with its attributes
+  // (Chromium's DOM, checked); a reader that takes <style> as raw text never
+  // sees it.
+  ["microdata hidden in an inline svg", "index.html", "</body>",
+    '<svg><style><div itemscope itemtype="https://schema.org/Item&#76;ist"></div></style></svg>\n</body>',
+    /index\.html has an inline <svg>/],
   ["two canonical links", "index.html", canonicalTag, `${canonicalTag}\n${canonicalTag}`,
     /index\.html must carry exactly one canonical link; found 2/],
   ["a canonical link with no usable href", "index.html", canonicalTag, '<link rel="canonical" href="">',
@@ -1252,6 +1311,27 @@ for (const [defect, page, from, to, message] of [
 
     assert.notEqual(result.code, 0, `${defect} shipped green`);
     assert.match(result.stderr, message);
+  });
+}
+
+// Negative controls: markup that only looks like structured data. A reader
+// that rejected these would be matching text, not reading tags.
+for (const [control, page, from, to] of [
+  ["microdata inside a comment", "index.html", "</body>",
+    '<!-- <div itemscope itemtype="https://schema.org/Item&#76;ist"></div> -->\n</body>'],
+  ["structured-data words as values and data attributes", "index.html", "</body>",
+    '<div title="itemscope typeof" data-itemscope="vocab"></div>\n</body>'],
+  ["plain rel link types", "index.html", "</body>",
+    '<a href="impressum.html" rel="noopener noreferrer">Impressum</a>\n</body>'],
+  ["typeof in a script", "index.html", "</body>",
+    '<script>if (1 <b && typeof window === "object") {}</script>\n</body>'],
+]) {
+  test(`accepts ${control}`, { timeout: 90_000 }, async (t) => {
+    const fixtureRoot = await editPage(t, page, from, to);
+
+    const result = await runVerifier(fixtureRoot);
+
+    assert.equal(result.code, 0, `${control} was rejected: ${result.stderr}`);
   });
 }
 
