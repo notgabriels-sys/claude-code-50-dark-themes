@@ -393,9 +393,9 @@ missed 180 there, every one a fetch. The root element must also carry its
 namespace, without which an SVG silently stops drawing: over 11,796 documents
 that add roots with no namespace, or with it declared only below the root, the
 final reader missed none and the one before that rule 208, every one a document
-with no namespace. Mutation-tested (rule 5): of 27 branches, each gutted alone,
-23 turn exactly their own tests red and four turn the real tree red, so none is
-dead. A new type, element or
+with no namespace. Mutation-tested (rule 5), through the review's fixes below:
+of 42 branches, each gutted alone, 38 turn exactly their own tests red and four
+turn the real tree red, so none is dead. A new type, element or
 attribute is a deliberate edit, and never one that links, loads or runs script.
 
 The review of 1cd3984 (five lenses; the first run lost five of its eight agents
