@@ -398,6 +398,7 @@ const NUMBER_WORDS = Object.fromEntries(
     "seventeen", "eighteen", "nineteen", "twenty",
   ].map((word, value) => [word, value]).concat([
     ["thirty", 30], ["forty", 40], ["fifty", 50], ["sixty", 60],
+    ["seventy", 70], ["eighty", 80], ["ninety", 90],
   ]),
 );
 // "sixty-two" is a number word too; the storefront already writes
@@ -406,9 +407,34 @@ const NUMBER_WORDS = Object.fromEntries(
 const numberWordValue = (word) => {
   const lower = word.toLowerCase();
   if (lower in NUMBER_WORDS) return NUMBER_WORDS[lower];
-  const parts = /^(twenty|thirty|forty|fifty|sixty)-(one|two|three|four|five|six|seven|eight|nine)$/.exec(lower);
+  const parts = /^(twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)-(one|two|three|four|five|six|seven|eight|nine)$/.exec(lower);
   return parts ? NUMBER_WORDS[parts[1]] + NUMBER_WORDS[parts[2]] : undefined;
 };
+const numberWordPattern =
+  "(?:twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)-(?:one|two|three|four|five|six|seven|eight|nine)|" +
+  Object.keys(NUMBER_WORDS).join("|");
+// "<number> <noun>", with up to three words between that are not themselves
+// numbers: in "one of my 50 themes" the count bound to "themes" is 50, not
+// one. Any whitespace separates the words, line breaks included: pages and
+// notes wrap their lines, and "the 50" at the end of one line of llms.txt
+// and "free Claude Code themes" on the next went unread while this matched
+// spaces and tabs only.
+const countPattern = (nouns) =>
+  new RegExp(
+    `(?<![\\w.&;-])(${numberWordPattern}|\\d{1,3})((?:\\s+(?!(?:${numberWordPattern}|\\d+)\\b)[\\w-]+){0,3})\\s+(${nouns})\\b`,
+    "gi",
+  );
+// The words a reader reads: a tag drops out (its line breaks stay, so a match
+// can name its line), a no-break space reads as a space, and Markdown's
+// emphasis and code marks drop out, since "**13** palettes" renders as
+// "13 palettes". Dropping a mark only joins text: a number joined to a word
+// before it is not read as a count.
+const proseText = (raw) =>
+  raw
+    .replace(/<[^>]+>/g, (tag) => ` ${tag.replace(/[^\n]/g, "")}`)
+    .replace(/&nbsp;|&#160;/gi, " ")
+    .replace(/[*_`~]+/g, "");
+const lineAt = (text, index) => text.slice(0, index).split("\n").length;
 const statedCount = (text) => {
   const match = /^([A-Za-z]+(?:-[A-Za-z]+)?)\b/.exec(text.trim());
   return match ? numberWordValue(match[1]) : undefined;
@@ -482,13 +508,20 @@ for (const [index, expected] of expectedPlugins.entries()) {
 }
 // The same count is stated in prose in the READMEs. Any "<number> skills"
 // there must be the shipped number, not the number on the day it was written.
-const skillCountPattern = /\b([A-Za-z]+(?:-[A-Za-z]+)?) (?:Claude Code )?skills\b/g;
+// The number may be a digit: this read words only, so "5 skills" passed.
+// Only the READMEs state the count that ships; measured 2026-10-19, every
+// other "<number> skills" on a served file counts another set ("Five skills
+// referenced but missing", in the dated tooling audit).
+const skillCountPattern = countPattern("skills");
 for (const readme of ["README.md", "plugins/berlin-studio-skills/README.md"]) {
-  const text = await readFile(new URL(readme, root), "utf8");
+  const text = proseText(await readFile(new URL(readme, root), "utf8"));
   for (const match of text.matchAll(skillCountPattern)) {
-    const stated = numberWordValue(match[1]);
-    if (stated !== undefined && stated !== sourceSkills.length) {
-      fail(`${readme} says "${match[0]}" but ${sourceSkills.length} skills ship.`);
+    const stated = /^\d/.test(match[1]) ? Number(match[1]) : numberWordValue(match[1]);
+    if (stated !== sourceSkills.length) {
+      fail(
+        `${readme}:${lineAt(text, match.index)} says "${match[0].replace(/\s+/g, " ")}" but ` +
+          `${sourceSkills.length} skills ship.`,
+      );
     }
   }
 }
@@ -628,7 +661,8 @@ for (const [name, expectedFiles] of expectedPackageFiles) {
 }
 // The theme counts are stated in words too — "Fifty atmospheres", "twelve new
 // atmospheres", "twelve additional dark themes", "twelve all-new palettes" —
-// across the storefront, llms.txt and the READMEs, and the description guard
+// across the storefront, llms.txt, the READMEs and the notes Pages renders, and
+// the description guard
 // above reads only the plugin descriptions. That is the exact shape of the
 // "Five skills" rot: when the pack grows, the description is forced to move
 // and the prose is not. So every "<number> … themes|palettes|atmospheres"
@@ -637,25 +671,10 @@ for (const [name, expectedFiles] of expectedPackageFiles) {
 // is not a count — and a digit directly after "Vol." is an edition number,
 // not a count ("Vol. 2 themes"), which a bare digit scan reads as 2 themes.
 const shippedThemeCounts = new Set([files.length, vol2Files.length, files.length + vol2Files.length]);
-const numberWordPattern =
-  "(?:twenty|thirty|forty|fifty|sixty)-(?:one|two|three|four|five|six|seven|eight|nine)|" +
-  Object.keys(NUMBER_WORDS).join("|");
-const themeCountPattern = new RegExp(
-  // The intervening words may not themselves be numbers: in "one of my 50
-  // themes" the count bound to "themes" is 50, not one.
-  `(?<![\\w.&;-])(${numberWordPattern}|\\d{1,3})((?:[ \\t]+(?!(?:${numberWordPattern}|\\d+)\\b)[\\w-]+){0,3})[ \\t]+(themes|palettes|atmospheres)\\b`,
-  "gi",
-);
-const themeCountSurfaces = [
-  ...(await readdir(root)).filter((file) => file.endsWith(".html")).sort(),
-  "llms.txt",
-  "README.md",
-  "plugins/50-dark-themes/README.md",
-  "plugins/dark-themes-vol-2/README.md",
-];
-for (const surface of themeCountSurfaces) {
-  const raw = await readFile(new URL(surface, root), "utf8");
-  const text = raw.replace(/&nbsp;/g, " ").replace(/<[^>]+>/g, " ");
+const themeCountPattern = countPattern("themes|palettes|atmospheres");
+// Read below, once the served set is known, on every page, note and text file
+// Pages serves.
+const themeCountFailure = (surface, text) => {
   for (const match of text.matchAll(themeCountPattern)) {
     const before = text.slice(Math.max(0, match.index - 8), match.index);
     if (/Vol\.\s*$/i.test(before)) continue;
@@ -663,13 +682,15 @@ for (const surface of themeCountSurfaces) {
     if (/\bVS Code\b/i.test(match[2])) continue;
     const stated = /^\d/.test(match[1]) ? Number(match[1]) : numberWordValue(match[1]);
     if (!shippedThemeCounts.has(stated)) {
-      fail(
-        `${surface} says "${match[0].replace(/\s+/g, " ")}" but the packs ship ` +
-          `${files.length} + ${vol2Files.length} themes.`,
+      return (
+        `${surface}:${lineAt(text, match.index)} says "${match[0].replace(/\s+/g, " ")}" but the packs ship ` +
+        `${files.length} + ${vol2Files.length} themes. If it counts something else, write it without a ` +
+        `number before the noun.`
       );
     }
   }
-}
+  return undefined;
+};
 
 const html = await readFile(new URL("index.html", root), "utf8");
 const readme = await readFile(new URL("README.md", root), "utf8");
@@ -2421,6 +2442,28 @@ for (const entry of (await committable()) ?? (await readdir(root, { recursive: t
 }
 servedFiles.sort();
 const servedNotes = servedFiles.filter((file) => file.endsWith(".md"));
+// Stated counts, on everything Pages serves for a person to read: every page,
+// every note it renders and every text file (llms.txt, a product's
+// README.txt). Scripts and data are not prose and are not read. Measured
+// 2026-10-19: the theme scan read five named files while nine notes stated the
+// same counts -- the posting drafts, a skill that ships to installers -- and
+// the role-aware count, read on the storefront and the share card, was stated
+// in PROMOTION_QUEUE.md as well. Each was edited to a wrong number with verify
+// green.
+for (const surface of servedFiles.filter((file) => /\.(html|md|txt)$/i.test(file))) {
+  const text = proseText(await readFile(fileUrl(surface), "utf8"));
+  const stale = themeCountFailure(surface, text);
+  if (stale) fail(stale);
+  for (const match of text.matchAll(/(\d[\d,]*)\s*role-aware/gi)) {
+    const value = Number.parseInt(match[1].replace(/,/g, ""), 10);
+    if (value !== roleAwareComparisonCount) {
+      fail(
+        `${surface}:${lineAt(text, match.index)} claims ${value} role-aware checks; the verifier runs ` +
+          `${roleAwareComparisonCount}.`,
+      );
+    }
+  }
+}
 const NOTE_LINK_PATTERNS = [
   // [text](url) and ![alt](url), with or without <...> around the url.
   /\]\(\s*<?([^\s)>]+)/g,

@@ -817,7 +817,7 @@ test("rejects a public page whose prose theme count drifts from what ships", { t
   const result = await runVerifier(fixtureRoot);
 
   assert.notEqual(result.code, 0, "a stale prose theme count shipped green");
-  assert.match(result.stderr, /README\.md says "eleven all-new palettes" but the packs ship \d+ \+ \d+ themes/);
+  assert.match(result.stderr, /README\.md:\d+ says "eleven all-new palettes" but the packs ship \d+ \+ \d+ themes/);
 });
 
 test("accepts an edition number, a foreign product's count, a count bound to a later number and a hyphenated total", { timeout: 90_000 }, async (t) => {
@@ -856,7 +856,7 @@ test("rejects a hyphenated prose count as the whole word, not its last half", { 
   const result = await runVerifier(fixtureRoot);
 
   assert.notEqual(result.code, 0, "a wrong hyphenated count shipped green");
-  assert.match(result.stderr, /README\.md says "sixty-three palettes" but the packs ship/);
+  assert.match(result.stderr, /README\.md:\d+ says "sixty-three palettes" but the packs ship/);
 });
 
 test("rejects a hyphenated skills count in the README", { timeout: 90_000 }, async (t) => {
@@ -869,7 +869,152 @@ test("rejects a hyphenated skills count in the README", { timeout: 90_000 }, asy
   const result = await runVerifier(fixtureRoot);
 
   assert.notEqual(result.code, 0, "a hyphenated skills count passed unread");
-  assert.match(result.stderr, /README\.md says "Twenty-six skills" but \d+ skills ship/);
+  assert.match(result.stderr, /README\.md:\d+ says "Twenty-six skills" but \d+ skills ship/);
+});
+
+test("rejects a digit skills count in the README", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  // The skills scan read number words only, so "5 skills" passed.
+  const readmePath = join(fixtureRoot, "README.md");
+  const readme = await readFile(readmePath, "utf8");
+  assert.equal(readme.split("Six skills for running").length, 2, "fixture anchor must be unique");
+  await writeFile(readmePath, readme.replace("Six skills for running", "5 skills for running"));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "a digit skills count passed unread");
+  assert.match(result.stderr, /README\.md:\d+ says "5 skills" but \d+ skills ship/);
+});
+
+test("rejects a stale theme count in any note Pages renders, at its line", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  // The theme scan read five named files while nine notes stated the same
+  // counts, among them the drafts in PROMOTION_QUEUE.md that get posted
+  // elsewhere. Each could be edited to a wrong number with verify green.
+  const notePath = join(fixtureRoot, "PROMOTION_QUEUE.md");
+  const note = await readFile(notePath, "utf8");
+  const anchor = "12 all-new dark themes";
+  assert.equal(note.split(anchor).length, 2, "fixture anchor must be unique");
+  const line = note.slice(0, note.indexOf(anchor)).split("\n").length;
+  await writeFile(notePath, note.replace(anchor, "13 all-new dark themes"));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "a stale theme count in a served note shipped green");
+  assert.match(
+    result.stderr,
+    new RegExp(`PROMOTION_QUEUE\\.md:${line} says "13 all-new dark themes" but the packs ship`),
+  );
+});
+
+test("rejects a stale theme count written across a line break", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  // llms.txt wraps "the 50" and "free Claude Code themes" onto two lines; the
+  // scan matched spaces and tabs only, so the count went unread there.
+  const llmsPath = join(fixtureRoot, "llms.txt");
+  const llms = await readFile(llmsPath, "utf8");
+  const anchor = "the 50\nfree Claude Code themes";
+  assert.equal(llms.split(anchor).length, 2, "fixture anchor must be unique");
+  await writeFile(llmsPath, llms.replace(anchor, "the 51\nfree Claude Code themes"));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "a line-wrapped stale count shipped green");
+  assert.match(result.stderr, /llms\.txt:\d+ says "51 free Claude Code themes" but the packs ship/);
+});
+
+test("rejects a stale theme count however Markdown or HTML spells it", { timeout: 300_000 }, async (t) => {
+  // Each renders as "thirteen all-new palettes", and each passed while the
+  // scan read the raw text.
+  for (const spelling of [
+    "**thirteen** all-new palettes",
+    "_thirteen_ all-new palettes",
+    "`thirteen` all-new palettes",
+    "thirteen&#160;all-new palettes",
+  ]) {
+    const fixtureRoot = await makeFixture(t);
+    const readmePath = join(fixtureRoot, "README.md");
+    const readme = await readFile(readmePath, "utf8");
+    assert.equal(readme.split("twelve all-new palettes").length, 2, "fixture anchor must be unique");
+    await writeFile(readmePath, readme.replace("twelve all-new palettes", spelling));
+
+    const result = await runVerifier(fixtureRoot);
+
+    assert.notEqual(result.code, 0, `${spelling} shipped green`);
+    assert.match(result.stderr, /README\.md:\d+ says "thirteen all-new palettes" but the packs ship/, spelling);
+  }
+});
+
+test("names the line of a count after a tag that spans lines", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  // A tag drops out of the text, but its line breaks stay, so the line named
+  // is the line the count is on.
+  const readmePath = join(fixtureRoot, "README.md");
+  const readme = await readFile(readmePath, "utf8");
+  assert.equal(readme.split("twelve all-new palettes").length, 2, "fixture anchor must be unique");
+  const edited = readme.replace(
+    "twelve all-new palettes",
+    '<span\n  title="x"></span>thirteen all-new palettes',
+  );
+  const line = edited.slice(0, edited.indexOf("thirteen all-new")).split("\n").length;
+  await writeFile(readmePath, edited);
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "a stale count after a multi-line tag shipped green");
+  assert.match(result.stderr, new RegExp(`README\\.md:${line} says "thirteen all-new palettes"`));
+});
+
+test("reads number words past sixty", { timeout: 200_000 }, async (t) => {
+  // A third pack would put the total past seventy, and the table stopped at
+  // sixty: "seventy-four themes" was not read as a count at all.
+  for (const stated of ["seventy palettes", "seventy-four palettes", "ninety-nine palettes"]) {
+    const fixtureRoot = await makeFixture(t);
+    const readmePath = join(fixtureRoot, "README.md");
+    const readme = await readFile(readmePath, "utf8");
+    assert.equal(readme.split("twelve all-new palettes").length, 2, "fixture anchor must be unique");
+    await writeFile(readmePath, readme.replace("twelve all-new palettes", stated));
+
+    const result = await runVerifier(fixtureRoot);
+
+    assert.notEqual(result.code, 0, `${stated} passed unread`);
+    assert.match(result.stderr, new RegExp(`README\\.md:\\d+ says "${stated}" but the packs ship`));
+  }
+});
+
+test("rejects a stale role-aware count in any note Pages renders", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  // The count was read on the storefront and the share card; PROMOTION_QUEUE.md
+  // states it too, in the stat row it asks to be posted.
+  const notePath = join(fixtureRoot, "PROMOTION_QUEUE.md");
+  const note = await readFile(notePath, "utf8");
+  const claims = [...note.matchAll(/(\d+) role-aware checks/g)];
+  assert.equal(claims.length, 1, "fixture anchor must be unique");
+  const stale = Number(claims[0][1]) + 1;
+  await writeFile(notePath, note.replace(claims[0][0], `${stale} role-aware checks`));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "a stale role-aware count in a served note shipped green");
+  assert.match(result.stderr, new RegExp(`PROMOTION_QUEUE\\.md:\\d+ claims ${stale} role-aware checks; the verifier runs`));
+});
+
+test("accepts a correct count across a line break, in emphasis and in a note", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  // Negative control for the three readings above: a count that agrees with
+  // what ships passes however it is spelled, and so does a sentence about two
+  // things that are not the packs, written without a number before the noun.
+  const readmePath = join(fixtureRoot, "README.md");
+  const readme = await readFile(readmePath, "utf8");
+  assert.equal(readme.split("twelve all-new palettes").length, 2, "fixture anchor must be unique");
+  await writeFile(readmePath, readme.replace("twelve all-new palettes", "**twelve**\nall-new palettes"));
+  const notePath = join(fixtureRoot, "PROMOTION_QUEUE.md");
+  const note = await readFile(notePath, "utf8");
+  await writeFile(notePath, `${note}\nThe _fifty_ themes and the twelve\npalettes; a name used twice; sixty-two themes.\n`);
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.equal(result.code, 0, `a correct count was rejected: ${result.stderr}`);
 });
 
 // A plugin directory ships whole. `claude plugin install` copies every file in

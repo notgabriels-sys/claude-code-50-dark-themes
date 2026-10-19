@@ -89,7 +89,7 @@ is where the pieces live:
   `[name, claude, claudeShimmer, text, inactive, terminal]` shape as the flagship gallery. The
   verifier requires the array, the packaged themes and `previews.json` to agree exactly.
 - Display names must be unique across **both** packs. The two plugins can be installed together, so
-  two themes named the same would be indistinguishable in `/theme`.
+  a name used twice would be indistinguishable in `/theme`.
 - The `VOL2_THEMES` row is part of the page's inline script, so it changes the script's hash: replace
   the hash `verify` prints in `reviewedInlineScripts`, and paste the policy it prints into `index.html`
   (see "Updating the gallery" above).
@@ -98,14 +98,15 @@ is where the pieces live:
 - Update the numbers the public pages state, in the same change. A theme adds fourteen contrast
   comparisons, so the role-aware check count moves, and the share card names each pack's size. Both
   are CI-enforced — see "Numbers stated on public pages" below. Adding a theme and running
-  `node scripts/verify.mjs` without this step fails with, for example,
-  `index.html claims 894 role-aware checks; the verifier runs 908.`
+  `node scripts/verify.mjs` without this step fails with a message naming the page, the count it
+  states and the count the verifier ran: `index.html claims <stated> role-aware checks; the verifier
+  runs <ran>.`
 - The pack's size is also stated in words, and those move too. The description in
   `plugins/dark-themes-vol-2/.claude-plugin/plugin.json` opens with the count ("Twelve new …"), the
   marketplace entry must repeat it exactly, and the pages say "twelve new atmospheres", "twelve
   additional themes", "twelve all-new palettes" — on `index.html`, the install guide, `llms.txt`,
-  `README.md` and the Vol. 2 README. The verifier reads the number back from what ships and names
-  each stale sentence, starting with
+  the READMEs and the promotion drafts. The verifier reads the number back from what ships and
+  names each stale sentence and its line, starting with
   `dark-themes-vol-2 describes itself as shipping 12 but 13 ship.`
 
 `scripts/sync-plugin-themes.mjs` does not apply here — it mirrors the root fifty into their plugin,
@@ -120,8 +121,14 @@ noticeably: render `index.html` in a headless browser and screenshot the `#vol2G
 The storefront, the share card and the meta descriptions state a role-aware check count and theme
 counts. These are claims to a reader, so the verifier ties them to the computed values: if a change
 moves the number of contrast comparisons or the size of either pack, the stated numbers must be
-updated in the same change or CI fails. Removing a claim fails too, so the guard cannot be silenced
-by deletion.
+updated in the same change or CI fails. Removing a claim from the storefront or the share card fails
+too, so the guard cannot be silenced by deletion.
+
+Every page, note and text file GitHub Pages serves is read for those counts, as a reader sees it:
+a count wrapped across two lines, inside `**emphasis**` or a code span, or spelled out as a word
+("seventy-four") is still a count. A theme, palette or atmosphere count must be one pack's size or
+the two together. A sentence that counts something else — two plugins, a name used twice — must not
+put a number right before "themes", "palettes" or "atmospheres"; reword it rather than the check.
 
 The share card is rendered from `assets/social-preview.html`, not screenshotted from the site. Edit
 that source, then regenerate `preview.png` at 1280×720 — the declared `og:image:width` and

@@ -733,6 +733,32 @@ ItemList's own subtypes (`BreadcrumbList`, `OfferCatalog`, `HowToSection`,
 `HowToStep`), which a crawler may read as lists. The harness lives in the
 scratchpad.
 
+**(measured 2026-10-19) Every stated count is read where Pages serves it.**
+The theme-count scan read the root pages, `llms.txt` and three READMEs, and
+the role-aware count was read on the storefront and the share card. Run over
+every served page, note and text file (rule 4), the theme scan found 34
+counts in nine notes it never read — the promotion drafts, a skill that ships
+to installers, a product's publishing notes — and `PROMOTION_QUEUE.md`
+states the role-aware count in the stat row it asks to be posted. All agreed
+with what ships that day, and each could be edited to a wrong number with
+`verify` green. So could counts on files it did read, spelled another way: a
+count wrapped across two lines of `llms.txt`, a number in Markdown emphasis
+or a code span, `&#160;` for the space, a digit before "skills" (the skills
+scan read number words only), and any number word past sixty, though a third
+pack would put the total past seventy. Both scans now read every served page,
+note and text file as a reader sees it — tags, Markdown marks and no-break
+spaces dropped, any whitespace between the words — and name the line. The
+real tree had one sentence counting something else (a display name used by
+both packs, in `CONTRIBUTING.md`), now worded without a number before the
+noun, and one example message quoting that day's role-aware count, now
+written with placeholders. Measured and left alone: the skills scan reads
+only the two READMEs, the only files that state the count that ships; every
+other number-before-"skills" on a served file counts another set, in the
+dated tooling audit. The products' own counts — 64, 48, 48 and 40 WAV files,
+10 templates and 2 examples — agree with each product's `verify-audio.mjs`
+or its committed zip, which already pin them, and a product does not grow
+the way a theme pack does.
+
 The Gumroad half now has structural guards, an existence-verified slug list and
 a price-drift table — but no verified *price* for any product. See below.
 
