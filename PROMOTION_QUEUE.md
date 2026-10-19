@@ -71,17 +71,25 @@ the slug to `verifiedGumroadSlugs`, then put it back in the copy.
 
 ## Ready-to-post copy
 
-### X — Dark Themes Vol. 2 announcement (post once the Vol. 2 PR is merged and live)
+### X — Dark Themes Vol. 2 announcement (Vol. 2 is live; posting is Gabriel's)
+
+A two-post thread. As one post it ran to 352 characters by X's count (a link
+counts as 23), over the 280 limit, and its single command failed on any
+machine that had not added the marketplace. Measured 2026-10-19: 268 and 184.
 
 ```text
 Shipped a free expansion to my Claude Code theme pack: Dark Themes Vol. 2.
 
-12 all-new dark themes — Afterglow, Neon Noir, Cryosleep, Biolume and more — same semantic status colors, same WCAG contrast floors as the original 50.
-
-Same marketplace, one command:
-claude plugin install dark-themes-vol-2@notgabriels-themes
+12 all-new dark themes — Afterglow, Neon Noir, Cryosleep, Biolume and more — with the same semantic status colors and WCAG contrast floors as the original 50.
 
 Gallery: https://gabs-utilities.com/#vol2
+```
+
+```text
+Install it from the same marketplace (add it once):
+
+claude plugin marketplace add notgabriels-sys/claude-code-50-dark-themes
+claude plugin install dark-themes-vol-2@notgabriels-themes
 ```
 
 ### GitHub release — Dark Themes Vol. 2 (create only after the Vol. 2 PR is merged to main)

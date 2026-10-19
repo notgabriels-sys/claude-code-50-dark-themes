@@ -154,8 +154,9 @@ or in the [gallery's expansion section](https://gabs-utilities.com/#vol2).
 claude plugin install dark-themes-vol-2@notgabriels-themes
 ```
 
-Building something on top of these? Every theme's id, name and key palette
-roles are published as one generated JSON file:
+Building something on top of these? The id, display name and key palette roles
+of each of the original 50 themes are published as one generated JSON file
+(Vol. 2 is not in it yet):
 
 **[gabs-utilities.com/themes.json](https://gabs-utilities.com/themes.json)**
 

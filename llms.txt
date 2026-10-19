@@ -11,10 +11,20 @@ and technical creators.
 - [Every theme, one page each](https://gabs-utilities.com/theme/)
 - [Impressum](https://gabs-utilities.com/impressum.html)
 
+## Install
+
+Requires Claude Code v2.1.118 or later. Add the marketplace once, then install
+either free pack, or both:
+
+    claude plugin marketplace add notgabriels-sys/claude-code-50-dark-themes
+    claude plugin install 50-dark-themes@notgabriels-themes
+    claude plugin install dark-themes-vol-2@notgabriels-themes
+
 ## Machine-readable theme index
 
-Every theme in the free plugin is listed, with its id, display name and key
-palette roles, in a single generated JSON file:
+Every theme in the free 50-theme plugin is listed, with its id, display name
+and key palette roles, in a single generated JSON file (Vol. 2 is not in it
+yet):
 
 [https://gabs-utilities.com/themes.json](https://gabs-utilities.com/themes.json)
 
@@ -27,8 +37,8 @@ free Claude Code themes, including preserved status colors, role-specific
 contrast, terminal background ownership and transparent-terminal surfaces.
 
 The same marketplace also carries Dark Themes Vol. 2, a free expansion plugin
-with twelve additional dark themes held to the same contrast standards.
-Install with: claude plugin install dark-themes-vol-2@notgabriels-themes
+with twelve additional dark themes held to the same contrast standards; the
+last command under Install adds it.
 
 Every theme in both packs has its own page at https://gabs-utilities.com/theme/<slug>/
 (index: https://gabs-utilities.com/theme/), listing its thirteen palette overrides and

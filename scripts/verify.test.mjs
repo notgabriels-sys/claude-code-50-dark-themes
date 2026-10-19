@@ -1519,6 +1519,28 @@ test("rejects an installer whose help drops the filename-matching warning", { ti
   assert.match(result.stderr, /matches by filename, not contents/);
 });
 
+// An install from this marketplace fails on a fresh machine until the
+// marketplace is added, so a reader-facing file that shows one shows the add
+// first: one file with no add at all, and one whose add comes only later.
+for (const [where, page, from, to, message] of [
+  ["with no marketplace add in the file", "llms.txt",
+    "    claude plugin marketplace add notgabriels-sys/claude-code-50-dark-themes\n", "",
+    /llms\.txt:\d+ installs 50-dark-themes@notgabriels-themes before the marketplace is added/],
+  ["before the file's first marketplace add", "PROMOTION_QUEUE.md",
+    "Install it from the same marketplace (add it once):\n\nclaude plugin marketplace add notgabriels-sys/claude-code-50-dark-themes\n",
+    "Install it from the same marketplace:\n\n",
+    /PROMOTION_QUEUE\.md:\d+ installs dark-themes-vol-2@notgabriels-themes before the marketplace is added/],
+]) {
+  test(`rejects an install ${where}`, { timeout: 90_000 }, async (t) => {
+    const fixtureRoot = await editPage(t, page, from, to);
+
+    const result = await runVerifier(fixtureRoot);
+
+    assert.notEqual(result.code, 0, `an install ${where} shipped green`);
+    assert.match(result.stderr, message);
+  });
+}
+
 // The repository root holds themes.json, the published index, beside the 50
 // theme files; installing it put a 51st "theme" named after the pack in
 // /theme. The installer reads the pack's packaged directory instead, and the

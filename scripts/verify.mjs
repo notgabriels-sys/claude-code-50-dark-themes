@@ -2792,9 +2792,27 @@ const statedCountFailures = (surface, texts) => {
   }
   return failures;
 };
+// An install from this marketplace works only once the marketplace is added:
+// on a fresh machine "claude plugin install dark-themes-vol-2@notgabriels-themes"
+// alone fails. llms.txt, which an agent reads and runs, gave exactly that, and
+// so did the DEV draft and the Vol. 2 X post. So wherever a reader-facing file
+// shows such an install, the marketplace add comes first in the same file.
+const MARKETPLACE_ADD = /claude\s+plugin\s+marketplace\s+add\s+notgabriels-sys\/claude-code-50-dark-themes(?![\w-]|\.[\w-])/;
+const MARKETPLACE_INSTALL = /claude\s+plugin\s+install\s+([^\s@]+)@notgabriels-themes/g;
 for (const surface of servedFiles.filter(countSurface)) {
-  for (const failure of statedCountFailures(surface, proseText(await readFile(fileUrl(surface), "utf8")))) {
+  const texts = proseText(await readFile(fileUrl(surface), "utf8"));
+  for (const failure of statedCountFailures(surface, texts)) {
     fail(failure);
+  }
+  const added = texts[0].search(MARKETPLACE_ADD);
+  for (const install of texts[0].matchAll(MARKETPLACE_INSTALL)) {
+    if (added < 0 || added > install.index) {
+      fail(
+        `${surface}:${lineAt(texts[0], install.index)} installs ${install[1]}@notgabriels-themes before the ` +
+          "marketplace is added, which fails on a fresh machine. Put \"claude plugin marketplace add " +
+          'notgabriels-sys/claude-code-50-dark-themes" before it in the same file.',
+      );
+    }
   }
 }
 // The plugin manifests are not served, but installers read their

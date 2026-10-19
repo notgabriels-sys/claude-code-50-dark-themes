@@ -67,7 +67,11 @@ export async function buildThemeIndex() {
     license: "https://opensource.org/license/mit",
     homepage: `${SITE}/`,
     repository: REPO,
-    install: "claude plugin install 50-dark-themes@notgabriels-themes",
+    // The install only works once the marketplace is added; a consumer that
+    // runs this string on a fresh machine must get a working command.
+    install:
+      "claude plugin marketplace add notgabriels-sys/claude-code-50-dark-themes && " +
+      "claude plugin install 50-dark-themes@notgabriels-themes",
     count: themes.length,
     themes,
   };
