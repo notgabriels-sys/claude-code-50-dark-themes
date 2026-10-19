@@ -874,7 +874,9 @@ Fixed: `verify`'s own message for a Gumroad link off its product path called
 a slug in `verifiedGumroadSlugs` "a verified payment object" and said the
 account's other pages sell products "whose prices nobody has read back"
 (one is recorded) — each payment host now names what its table actually
-asserts; `CONTRIBUTING.md` listed "the verified shop payment surfaces"
+asserts, and five mutations of that wording (each host's object swapped,
+the Gumroad price caveat dropped, the message ignoring the object) each
+turn only the tests for that host red; `CONTRIBUTING.md` listed "the verified shop payment surfaces"
 among the checks; `docs/TOOLING_AUDIT.md` said no Gumroad price had been
 checked against anything but itself; a test name called a recorded price
 "correct"; and in this file "the last two" pointed at the wrong bullets once
