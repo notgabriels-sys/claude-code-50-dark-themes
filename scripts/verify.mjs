@@ -415,6 +415,16 @@ for (const file of [...publicHtmlFiles, "README.md", "llms.txt"]) {
   if (offer) {
     fail(`${file} still offers the withdrawn free Gumroad download ("${offer[0]}"). Point to the GitHub release instead.`);
   }
+  // The terminal app owns its background; README and both articles say so, and
+  // tell the reader to set it. The storefront card for the paid Agensi setup
+  // assistant said the skill "sets your terminal background", though its own
+  // listing says it tells you the hex to set and changes no terminal config
+  // unless asked. Telling the reader to set it ("Set your terminal background")
+  // stays legal; saying a theme, plugin or skill sets it does not.
+  const setsBackground = text.match(/\b(?:sets|changes|configures)\s+(?:your|the)\s+terminal(?:'s|’s)?\s+(?:application'?s?\s+)?background/i);
+  if (setsBackground) {
+    fail(`${file} claims a tool "${setsBackground[0]}". Only the terminal app sets its background; say what to set it to instead.`);
+  }
 }
 for (const match of readme.matchAll(/https:\/\/notgabriel\.gumroad\.com\/l\/([a-z0-9-]+)/g)) {
   const slug = match[1];

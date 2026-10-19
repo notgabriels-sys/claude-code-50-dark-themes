@@ -1197,3 +1197,33 @@ test("rejects a stale below-AA sentence once every theme holds permission and pl
   assert.notEqual(result.code, 0, "the verifier kept a below-AA sentence no theme supports");
   assert.match(result.stderr, /README\.md says some `permission`\/`planMode` text is below AA, but every theme now holds it at 4\.5:1/);
 });
+
+// The terminal app owns its background. Telling the reader to set it is fine;
+// saying a theme, plugin or skill sets it is not.
+test("rejects a storefront card that says a skill sets the terminal background", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const page = join(fixtureRoot, "index.html");
+  const html = await readFile(page, "utf8");
+  const card = "gives you the terminal background to set";
+  assert.ok(html.includes(card), "fixture anchor moved; update this test");
+  await writeFile(page, html.replace(card, "sets your terminal background"));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a card promising what only the terminal app can do");
+  assert.match(result.stderr, /index\.html claims a tool "sets your terminal background"/);
+});
+
+test("rejects a README that says the plugin changes the terminal background", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const readme = join(fixtureRoot, "README.md");
+  const text = await readFile(readme, "utf8");
+  const anchor = "The plugin keeps the pack together";
+  assert.ok(text.includes(anchor), "fixture anchor moved; update this test");
+  await writeFile(readme, text.replace(anchor, "The plugin changes the terminal background and keeps the pack together"));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a README promising what only the terminal app can do");
+  assert.match(result.stderr, /README\.md claims a tool "changes the terminal background"/);
+});
