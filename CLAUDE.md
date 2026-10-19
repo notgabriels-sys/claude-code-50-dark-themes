@@ -446,6 +446,22 @@ makes requests — the generic message had asked only how a browser opens a file
 which would have let a contributor add `.css` as inert. The SVG allowlist,
 which refused ordinary design-tool exports, was widened next; see below.
 
+**(added 2026-10-19) A name from disk reaches a URL as text.** The scripts
+turned file names into URLs with a bare `new URL(name, base)`, where a `#` or
+`?` ends the path and a `%2e%2e` segment means `..`. Reproduced, each in a
+scratch copy: a root page named `index.html#2.html`, `%69ndex.html` or
+`index.html?.html` carried a EUR1 card for a EUR8 product with `verify` green,
+because the price checks read `index.html` while the link check read the page;
+the skills sync, given a stale packaged directory named `%2e%2e`, deleted the
+whole `berlin-studio-skills` plugin directory; and a theme file with a `#` in
+its name was indexed and contrast-checked as another file, or crashed the
+theme sync. Every script now builds such a URL through a helper that encodes
+each segment (`fileUrl` and `urlPath` in `verify.mjs`, a local `fileUrl` in the
+others), and a name from disk never goes to `new URL` raw. Eight tests cover
+it. Mutation-tested: `verify.mjs`'s helper made the identity, its Gumroad price
+read reverted alone, and each of the seven sites in the other scripts reverted
+alone each turn exactly their own tests red.
+
 **(added 2026-10-19) SVG artwork from design tools.** The allowlist refused the
 clip paths, filters, comments, public doctype and layer names that Figma,
 Illustrator, Inkscape and potrace write, so an ordinary export failed and the

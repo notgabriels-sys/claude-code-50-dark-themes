@@ -17,6 +17,13 @@ import {
 const root = new URL("../", import.meta.url);
 const pluginRoot = new URL("../plugins/50-dark-themes/", import.meta.url);
 const pluginThemesRoot = new URL("../plugins/50-dark-themes/themes/", import.meta.url);
+// A path from disk as a URL: each segment encoded, so the name reaches the URL
+// parser as text. Passed raw, a "#", "?", "%" or "\" in a name points at
+// another file — a root page named "index.html#2.html" was read as index.html,
+// so the price checks read the storefront while the link check read the page,
+// and a EUR1 card for an EUR8 product shipped green.
+const urlPath = (path) => path.split("/").map(encodeURIComponent).join("/");
+const fileUrl = (path, base = root) => new URL(urlPath(path), base);
 const requiredOverrideKeys = [
   "claude",
   "claudeShimmer",
@@ -167,7 +174,7 @@ function fail(message) {
 async function verifyPng(imagePath, { label, width, height }) {
   let imageData;
   try {
-    imageData = await readFile(new URL(imagePath, root));
+    imageData = await readFile(fileUrl(imagePath));
   } catch {
     fail(`${label} is missing: ${imagePath}.`);
   }
@@ -225,7 +232,7 @@ async function validateThemeFile(file, fileUrl) {
 }
 
 for (const file of files) {
-  await validateThemeFile(file, new URL(file, root));
+  await validateThemeFile(file, fileUrl(file));
 }
 // The storefront gallery covers the flagship 50; Vol. 2 names validated below
 // share the uniqueness set but are not gallery cards.
@@ -238,8 +245,8 @@ if (pluginFiles.join(",") !== files.join(",")) {
   fail("The installable plugin theme list is not identical to the root theme list. Run node scripts/sync-plugin-themes.mjs.");
 }
 for (const file of files) {
-  const source = await readFile(new URL(file, root), "utf8");
-  const packaged = await readFile(new URL(file, pluginThemesRoot), "utf8");
+  const source = await readFile(fileUrl(file), "utf8");
+  const packaged = await readFile(fileUrl(file, pluginThemesRoot), "utf8");
   if (source !== packaged) {
     fail(`${file} differs from its plugin copy. Run node scripts/sync-plugin-themes.mjs.`);
   }
@@ -257,7 +264,7 @@ if (vol2Files.length === 0) fail("Dark Themes Vol. 2 must package at least one t
 const vol2Previews = JSON.parse(await readFile(new URL("previews.json", vol2Root), "utf8"));
 const vol2ThemesByName = new Map();
 for (const file of vol2Files) {
-  const theme = await validateThemeFile(`dark-themes-vol-2/${file}`, new URL(file, vol2ThemesRoot));
+  const theme = await validateThemeFile(`dark-themes-vol-2/${file}`, fileUrl(file, vol2ThemesRoot));
   const preview = vol2Previews[theme.name];
   if (typeof preview !== "string" || !/^#[0-9a-f]{6}$/i.test(preview)) {
     fail(`Vol. 2 theme ${theme.name} needs a six-digit hex preview terminal colour in previews.json.`);
@@ -336,10 +343,10 @@ if (sourceSkills.join("\u0000") !== packagedSkills.join("\u0000")) {
 // Every skill is SKILL.md-only today; the check is scoped to the rule so that
 // stops being load-bearing.
 const listSkillFiles = async (dir, name) => {
-  const skillRoot = new URL(`${name}/`, dir);
+  const skillRoot = fileUrl(`${name}/`, dir);
   const found = [];
   for (const relative of await readdir(skillRoot, { recursive: true })) {
-    const entry = await stat(new URL(relative, skillRoot));
+    const entry = await stat(fileUrl(relative.split(sep).join("/"), skillRoot));
     if (entry.isFile()) found.push(relative.split(sep).join("/"));
   }
   return found.sort();
@@ -357,8 +364,8 @@ for (const name of sourceSkills) {
     fail(`Skill ${name} has no SKILL.md.`);
   }
   for (const file of sourceFiles) {
-    const a = await readFile(new URL(`${name}/${file}`, sourceSkillDir), "utf8");
-    const b = await readFile(new URL(`${name}/${file}`, packagedSkillDir), "utf8");
+    const a = await readFile(fileUrl(`${name}/${file}`, sourceSkillDir), "utf8");
+    const b = await readFile(fileUrl(`${name}/${file}`, packagedSkillDir), "utf8");
     if (a !== b) {
       fail(
         `Skill ${name}/${file} differs from its plugin copy. ` +
@@ -366,7 +373,7 @@ for (const name of sourceSkills) {
       );
     }
   }
-  const original = await readFile(new URL(`${name}/SKILL.md`, sourceSkillDir), "utf8");
+  const original = await readFile(fileUrl(`${name}/SKILL.md`, sourceSkillDir), "utf8");
   if (!/^---\r?\n[\s\S]*?\bname:\s*\S/m.test(original)) {
     fail(`Skill ${name} is missing YAML frontmatter with a name.`);
   }
@@ -562,7 +569,7 @@ const walkPackage = async (dirUrl, shownPath) => {
     if (entry.isSymbolicLink()) {
       fail(`${path} is a symlink. A plugin ships copies of real files; replace it or delete it.`);
     } else if (entry.isDirectory()) {
-      found.push(...(await walkPackage(new URL(`${encodeURIComponent(entry.name)}/`, dirUrl), path)));
+      found.push(...(await walkPackage(fileUrl(`${entry.name}/`, dirUrl), path)));
     } else {
       found.push(path);
     }
@@ -604,7 +611,7 @@ for (const entry of await readdir(pluginsDir, { withFileTypes: true })) {
 }
 for (const [name, expectedFiles] of expectedPackageFiles) {
   const allowed = new Set(expectedFiles.map((file) => `plugins/${name}/${file}`));
-  const shipped = await walkPackage(new URL(`${name}/`, pluginsDir), `plugins/${name}`);
+  const shipped = await walkPackage(fileUrl(`${name}/`, pluginsDir), `plugins/${name}`);
   for (const path of allowed) {
     if (!shipped.includes(path)) fail(`${path} is missing from the ${name} package.`);
   }
@@ -845,7 +852,7 @@ const truncatingCapture = new RegExp(
 );
 const truncatingSites = [];
 for (const name of scriptFiles) {
-  const code = blankComments(await readFile(new URL(`scripts/${name}`, root), "utf8"));
+  const code = blankComments(await readFile(fileUrl(`scripts/${name}`), "utf8"));
   for (const hit of code.matchAll(truncatingCapture)) {
     truncatingSites.push(`scripts/${name}:${code.slice(0, hit.index).split("\n").length}`);
   }
@@ -968,7 +975,7 @@ if (/stripe/i.test(html)) {
 // the same defect that let a EUR1,200 PayPal lookalike pass this file's own
 // guard. Do not narrow this back to a character class.
 for (const file of publicHtmlFiles) {
-  const source = await readFile(new URL(file, root), "utf8");
+  const source = await readFile(fileUrl(file), "utf8");
   if (!source.includes('rel="icon" type="image/svg+xml" href="favicon.svg"')) {
     fail(`${file} must expose the first-party SVG favicon.`);
   }
@@ -1066,7 +1073,7 @@ const payPalSources = [
   ...(await Promise.all(
     publicHtmlFiles.map(async (file) => ({
       label: file,
-      source: await readFile(new URL(file, root), "utf8"),
+      source: await readFile(fileUrl(file), "utf8"),
     })),
   )),
   { label: "README.md", source: readme },
@@ -1157,7 +1164,7 @@ const gumroadCardPattern =
   /<a\b([^>]*)href="https:\/\/notgabriel\.gumroad\.com\/l\/([^"'\s<>]+)"([^>]*)>([\s\S]*?)<\/a>/g;
 const gumroadCardsByFile = new Map();
 for (const file of publicHtmlFiles) {
-  const source = file === "index.html" ? html : await readFile(new URL(file, root), "utf8");
+  const source = file === "index.html" ? html : await readFile(fileUrl(file), "utf8");
   const cards = [...source.matchAll(gumroadCardPattern)].map((match) => ({
     slug: gumroadSlugOf(match[2]),
     attrs: `${match[1]} ${match[3]}`,
@@ -1310,7 +1317,7 @@ if (Number(cardThemeCounts[1]) !== files.length || Number(cardThemeCounts[2]) !=
 // the empty-state message above all fifty cards. Assert the override is present
 // on any page whose script toggles the property.
 for (const file of publicHtmlFiles) {
-  const source = await readFile(new URL(file, root), "utf8");
+  const source = await readFile(fileUrl(file), "utf8");
   if (!/\.hidden\s*=/.test(source)) continue;
   if (!/\[hidden\]\s*\{[^}]*display\s*:\s*none\s*!important/.test(source)) {
     fail(
@@ -1422,7 +1429,7 @@ if (!verifiedGumroadSlugs.has("zvbti")) {
 // that ships an og:image without alt text fails.
 const sharedImageAlts = new Map();
 for (const file of publicHtmlFiles) {
-  const source = await readFile(new URL(file, root), "utf8");
+  const source = await readFile(fileUrl(file), "utf8");
   const image = source.match(/<meta property="og:image" content="([^"]+)">/);
   if (!image) continue;
   const ogAlt = source.match(/<meta property="og:image:alt" content="([^"]+)">/);
@@ -1484,7 +1491,7 @@ if (parsedThemeIndex.themes.length !== files.length) {
   );
 }
 for (const entry of parsedThemeIndex.themes) {
-  const source = JSON.parse(await readFile(new URL(`${entry.id}.json`, root), "utf8"));
+  const source = JSON.parse(await readFile(fileUrl(`${entry.id}.json`), "utf8"));
   if (entry.name !== source.name) {
     fail(`themes.json calls ${entry.id} "${entry.name}"; the theme file says "${source.name}".`);
   }
@@ -1770,7 +1777,7 @@ const linkedPages = [
 ];
 const readPage = (page) => page === "index.html"
   ? html
-  : readFile(new URL(page.split("/").map(encodeURIComponent).join("/"), root), "utf8");
+  : readFile(fileUrl(page), "utf8");
 // The rules that keep htmlTags reading what a browser builds hold on every
 // served page, not only the root ones: on assets/social-preview.html an inline
 // <svg> decoded a script's text before Chromium hashed it, and a <!-- in a
@@ -2222,7 +2229,7 @@ for (const page of linkedPages) {
         }
         let url;
         try {
-          url = new URL(spelled, `https://${cname}/${page}`);
+          url = new URL(spelled, `https://${cname}/${urlPath(page)}`);
         } catch {
           fail(`${where} is not a URL a browser can resolve.`);
         }
@@ -2392,7 +2399,7 @@ for (const entry of (await committable()) ?? (await readdir(root, { recursive: t
     );
   }
   // A file git still tracks may be gone from the working tree; it is not served.
-  const info = await lstat(new URL(file.split("/").map(encodeURIComponent).join("/"), root)).catch(() => null);
+  const info = await lstat(fileUrl(file)).catch(() => null);
   if (!info) continue;
   if (info.isSymbolicLink()) {
     fail(
@@ -2455,7 +2462,7 @@ const checkNote = (note, text) => {
         `load another page from the note Pages renders. Describe it in words; write "a script element", not the tag.`,
     );
   }
-  const pageUrl = `https://${cname}/${note.replace(/\.md$/, ".html")}`;
+  const pageUrl = `https://${cname}/${urlPath(note.replace(/\.md$/, ".html"))}`;
   for (const pattern of NOTE_LINK_PATTERNS) {
     for (const match of text.matchAll(pattern)) {
       const raw = match.slice(1).find((group) => group !== undefined);
@@ -2493,7 +2500,7 @@ const checkNote = (note, text) => {
   }
 };
 for (const note of servedNotes) {
-  checkNote(note, await readFile(new URL(note.split("/").map(encodeURIComponent).join("/"), root), "utf8"));
+  checkNote(note, await readFile(fileUrl(note), "utf8"));
 }
 
 // ---------------------------------------------------------------------------
@@ -2734,7 +2741,7 @@ for (const file of servedFiles) {
       );
     }
   }
-  const bytes = await readFile(new URL(file.split("/").map(encodeURIComponent).join("/"), root));
+  const bytes = await readFile(fileUrl(file));
   if (reading !== "note" && /^(\uFEFF)?---/.test(bytes.toString("utf8", 0, 8))) {
     fail(
       `${file} opens with "---". Jekyll runs any file with front matter through Liquid, so the file Pages ` +

@@ -41,7 +41,7 @@ export async function buildThemeIndex() {
 
   const themes = [];
   for (const file of files) {
-    const theme = JSON.parse(await readFile(new URL(file, root), "utf8"));
+    const theme = JSON.parse(await readFile(new URL(encodeURIComponent(file), root), "utf8"));
     const id = file.replace(/\.json$/, "");
     const palette = {};
     for (const role of SUMMARY_ROLES) {

@@ -7,6 +7,9 @@ const destination = new URL(
 );
 
 await mkdir(destination, { recursive: true });
+// A name from disk as a URL, each segment encoded: passed raw, a "#" or "?"
+// cuts the name short and a "%2e%2e" segment reads as "..".
+const fileUrl = (path, base) => new URL(path.split("/").map(encodeURIComponent).join("/"), base);
 
 const sourceSkills = (await readdir(source, { withFileTypes: true }))
   .filter((entry) => entry.isDirectory())
@@ -18,7 +21,7 @@ const packagedSkills = (await readdir(destination, { withFileTypes: true }))
 
 for (const name of packagedSkills) {
   if (!sourceSkills.includes(name)) {
-    await rm(new URL(`${name}/`, destination), { recursive: true });
+    await rm(fileUrl(`${name}/`, destination), { recursive: true });
   }
 }
 // Copy the whole skill directory, not just SKILL.md. A skill may carry
@@ -32,9 +35,9 @@ for (const name of packagedSkills) {
 // which would ship installers a dangling link (and verify rejects any symlink
 // in a plugin).
 for (const name of sourceSkills) {
-  await rm(new URL(`${name}/`, destination), { recursive: true, force: true });
-  await mkdir(new URL(`${name}/`, destination), { recursive: true });
-  await cp(new URL(`${name}/`, source), new URL(`${name}/`, destination), {
+  await rm(fileUrl(`${name}/`, destination), { recursive: true, force: true });
+  await mkdir(fileUrl(`${name}/`, destination), { recursive: true });
+  await cp(fileUrl(`${name}/`, source), fileUrl(`${name}/`, destination), {
     recursive: true,
     dereference: true,
   });

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawn } from "node:child_process";
 import { createHash } from "node:crypto";
-import { chmod, cp, lstat, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
+import { chmod, cp, lstat, mkdir, mkdtemp, readdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -446,6 +446,24 @@ test("accepts the correct recorded price on a page other than index.html", { tim
   assert.equal(result.code, 0, `the verifier rejected a correctly priced card: ${result.stderr}`);
 });
 
+// A name from disk reaches the URL parser as text, or a "#", "%" or "?" in it
+// points at another file: each of these pages was read as index.html, so the
+// price check never saw its card while the link check allowed it on a root page.
+for (const name of ["index.html#2.html", "%69ndex.html", "index.html?.html"]) {
+  test(`rejects a wrong price on a root page named ${name}`, { timeout: 90_000 }, async (t) => {
+    const fixtureRoot = await makeFixture(t);
+    const html = await readFile(join(fixtureRoot, "impressum.html"), "utf8");
+    assert.equal(html.split("</body>").length, 2);
+    const card = '<a href="https://notgabriel.gumroad.com/l/bqgfv">Dark UI Kit — €1</a>';
+    await writeFile(join(fixtureRoot, name), html.replace("</body>", `${card}\n</body>`));
+
+    const result = await runVerifier(fixtureRoot);
+
+    assert.notEqual(result.code, 0, `a €1 card on ${name} shipped green`);
+    assert.match(result.stderr, new RegExp(`Gumroad card bqgfv on ${name.replace(/[.?]/g, "\\$&")} states €1; recordedGumroadPrices says €8`));
+  });
+}
+
 test("rejects a README price that drifts from the recorded one", { timeout: 90_000 }, async (t) => {
   const fixtureRoot = await makeFixture(t);
   const readmePath = join(fixtureRoot, "README.md");
@@ -672,6 +690,80 @@ test("packages a skill's supporting files and detects tampering in them", { time
 
   assert.notEqual(result.code, 0, "a tampered supporting file was accepted");
   assert.match(result.stderr, /freelance-admin-de\/references\/kleinunternehmer\.md differs from its plugin copy/);
+});
+
+// The syncs, the index generator and the contrast check take names from disk.
+// Passed to the URL parser raw, a "#" cut a name short and a "%2e%2e" segment
+// read as "..": the skills sync then deleted the whole plugin directory.
+test("removes a stale packaged skill named %2e%2e without leaving its directory", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const stale = join(fixtureRoot, "plugins/berlin-studio-skills/skills/%2e%2e");
+  await mkdir(stale, { recursive: true });
+  await writeFile(join(stale, "x"), "stale\n");
+
+  const synced = await runNodeScript(fixtureRoot, "scripts/sync-plugin-skills.mjs");
+
+  assert.equal(synced.code, 0, `the sync failed: ${synced.stderr}`);
+  await lstat(join(fixtureRoot, "plugins/berlin-studio-skills/LICENSE"));
+  await assert.rejects(lstat(stale), "the stale directory survived the sync");
+});
+
+test("syncs and removes theme files whose names hold a \"#\"", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const ember = JSON.parse(await readFile(join(fixtureRoot, "ember.json"), "utf8"));
+  const odd = `${JSON.stringify({ ...ember, name: "Hash Name" }, null, 2)}\n`;
+  await writeFile(join(fixtureRoot, "ember.json#x.json"), odd);
+  await writeFile(join(fixtureRoot, "plugins/50-dark-themes/themes/stale#.json"), "{}\n");
+
+  const synced = await runNodeScript(fixtureRoot, "scripts/sync-plugin-themes.mjs");
+
+  assert.equal(synced.code, 0, `the sync failed: ${synced.stderr}`);
+  assert.equal(await readFile(join(fixtureRoot, "plugins/50-dark-themes/themes/ember.json#x.json"), "utf8"), odd);
+  await assert.rejects(lstat(join(fixtureRoot, "plugins/50-dark-themes/themes/stale#.json")));
+});
+
+test("indexes and contrast-checks a theme file whose name holds a \"#\"", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const ember = JSON.parse(await readFile(join(fixtureRoot, "ember.json"), "utf8"));
+  await writeFile(join(fixtureRoot, "ember.json#x.json"), `${JSON.stringify({ ...ember, name: "Hash Name" }, null, 2)}\n`);
+
+  const built = await runNodeScript(fixtureRoot, "scripts/build-theme-index.mjs");
+  assert.equal(built.code, 0, `the generator failed: ${built.stderr}`);
+  const index = JSON.parse(await readFile(join(fixtureRoot, "themes.json"), "utf8"));
+  assert.equal(index.themes.find((theme) => theme.id === "ember.json#x")?.name, "Hash Name");
+
+  const contrast = await runContrastVerifier(fixtureRoot);
+
+  assert.notEqual(contrast.code, 0);
+  assert.match(contrast.stderr, /ember\.json#x\.json: missing gallery row/);
+});
+
+test("contrast-checks a Vol. 2 theme file whose name holds a \"#\"", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const themes = join(fixtureRoot, "plugins/dark-themes-vol-2/themes");
+  const [first] = (await readdir(themes)).filter((file) => file.endsWith(".json")).sort();
+  const theme = JSON.parse(await readFile(join(themes, first), "utf8"));
+  await writeFile(join(themes, `${first}#x.json`), `${JSON.stringify({ ...theme, name: "Hash Name" }, null, 2)}\n`);
+
+  const contrast = await runContrastVerifier(fixtureRoot);
+
+  assert.notEqual(contrast.code, 0);
+  assert.match(contrast.stderr, new RegExp(`dark-themes-vol-2/${first.replace(".", "\\.")}#x\\.json: missing preview terminal colour`));
+});
+
+test("packages a source skill whose directory name holds a \"#\"", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const skill = join(fixtureRoot, ".claude/skills/hash#name");
+  await mkdir(skill, { recursive: true });
+  await writeFile(join(skill, "SKILL.md"), "---\nname: hash-name\ndescription: A test skill.\n---\n\n# Hash name\n");
+
+  const synced = await runNodeScript(fixtureRoot, "scripts/sync-plugin-skills.mjs");
+
+  assert.equal(synced.code, 0, `the sync failed: ${synced.stderr}`);
+  assert.equal(
+    await readFile(join(fixtureRoot, "plugins/berlin-studio-skills/skills/hash#name/SKILL.md"), "utf8"),
+    await readFile(join(skill, "SKILL.md"), "utf8"),
+  );
 });
 
 test("rejects a marketplace listing that disagrees with the plugin's own manifest", { timeout: 90_000 }, async (t) => {
