@@ -851,11 +851,15 @@ const updateFinder = ({reveal = false} = {}) => {
   let archiveVisible = 0;
   let totalVisible = 0;
   let queryMatches = 0;
+  const matchFamilies = new Set();
   finderCards().forEach(card => {
     const matchesQuery = !query || card.dataset.search.includes(query);
     const matchesFamily = activeFamily === "all" || card.dataset.family === activeFamily;
     const show = matchesQuery && matchesFamily;
-    if (matchesQuery) queryMatches += 1;
+    if (matchesQuery) {
+      queryMatches += 1;
+      matchFamilies.add(card.dataset.family);
+    }
     card.hidden = !show;
     if (!show) return;
     totalVisible += 1;
@@ -866,12 +870,14 @@ const updateFinder = ({reveal = false} = {}) => {
   // The empty note makes a claim about the whole page, so it waits for the whole page.
   // With a family selected it must not blame the search: "acid" under Green
   // matched Acid, which is warm, and the note said no theme matched at all.
+  // When every match sits in one other family, the note names it.
   finderEmpty.hidden = totalVisible !== 0;
   const family = activeFamily === "all" ? "" : `${activeFamily} `;
+  const elsewhere = matchFamilies.size === 1 ? `the ${[...matchFamilies][0]} family` : "other families";
   finderEmptyText.textContent = !query
     ? `No ${family}themes.`
     : family && queryMatches
-      ? `No ${family}themes match that search; ${queryMatches === 1 ? "1 in another family does" : `${queryMatches} in other families do`}.`
+      ? `No ${family}themes match that search; ${queryMatches} in ${elsewhere} ${queryMatches === 1 ? "does" : "do"}.`
       : "No themes match that search.";
   if (reveal && (query || activeFamily !== "all")) themeArchive.open = true;
 };
