@@ -217,7 +217,9 @@ repo has. `verify` runs on every push and **fails the build** on:
   one recorded in `recordedGumroadPrices` — drift only, see the warning below
   about how much weaker that table is than the PayPal one.
 
-The last two close the hole that mattered. The original check only asserted the
+The two NCP checks above — a listed link's price, and any unlisted id — close
+the hole that mattered. (This read "the last two" until 2026-10-19; the Gumroad
+drift bullet had been added below them the same day it was written.) The original check only asserted the
 three links were *present*, so a fourth, unverified, wrongly-priced link could
 be added and CI would pass — which is the exact shape of the €1,200 charge. Now
 an unlisted link cannot ship, and a listed one cannot drift off its price. Both
@@ -767,7 +769,8 @@ wrongly both refuse a count no pack ships; it is recorded here, not claimed
 as pinned.
 
 The Gumroad half now has structural guards, an existence-verified slug list and
-a price-drift table — but no verified *price* for any product. See below.
+a price-drift table — but no check that reads any product's price from Gumroad.
+See below.
 
 ## Gumroad — the unverified half of the shop
 
@@ -861,6 +864,30 @@ found (the kicks: matching prices, contradictory status), and would refuse
 proposals, VAT lines, cents fields and dated records. A status check would
 fail at once on the kicks contradiction, which must not be resolved by
 editing either file.
+
+**(measured 2026-10-19) How strongly the files describe the tables.** A
+read-only audit — three search modes over every tracked text file (by
+keyword, page by page, and every code comment, failure message and test
+name), then two refuters per suspect — found 185 sentences that state how
+strong a Gumroad or PayPal assertion is: 134 accurate, 41 suspects refuted.
+Fixed: `verify`'s own message for a Gumroad link off its product path called
+a slug in `verifiedGumroadSlugs` "a verified payment object" and said the
+account's other pages sell products "whose prices nobody has read back"
+(one is recorded) — each payment host now names what its table actually
+asserts; `CONTRIBUTING.md` listed "the verified shop payment surfaces"
+among the checks; `docs/TOOLING_AUDIT.md` said no Gumroad price had been
+checked against anything but itself; a test name called a recorded price
+"correct"; and in this file "the last two" pointed at the wrong bullets once
+the drift bullet was added, and "no verified price for any product" now
+names what is missing, a check that reads a price from Gumroad. Left for
+Gabriel: the workflow kit's note calling its URL "Verified" (above). **No
+lint was added.** Six candidate patterns run over the tree each caught at
+most one of the ten flagged lines, and every pattern wide enough to catch
+more matched accurate sentences — "verified Gumroad product page" is right
+in the existence sense, and `verifiedGumroadSlugs` is a name. The
+misstatements are semantic. The table of what each assertion means, and its
+labels in `verify.mjs`, are the defence; an audit like this one is how they
+are checked.
 
 **Verification route, same discipline as PayPal:** sign in at `gumroad.com`,
 open the products list, and read each product's own page — price, currency, and

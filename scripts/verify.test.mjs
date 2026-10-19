@@ -476,7 +476,7 @@ test("rejects a README price that drifts from the recorded one", { timeout: 90_0
   assert.match(result.stderr, /README\.md line \d+ states €99 beside ckthsb/);
 });
 
-test("accepts README copy that puts a correct price after a comma", { timeout: 90_000 }, async (t) => {
+test("accepts README copy that puts a recorded price after a comma", { timeout: 90_000 }, async (t) => {
   const fixtureRoot = await makeFixture(t);
   const readmePath = join(fixtureRoot, "README.md");
   const readme = await readFile(readmePath, "utf8");
@@ -1761,7 +1761,7 @@ for (const [defect, page, from, to, message] of [
       '<span>€45</span></a></p>\n</body>',
     /index\.html has 4 PayPal NCP URL\(s\) but only 3 of them are the href="\.\.\." of an <a> the price check reads/],
   ["a Gumroad link off the product path", "index.html", "</body>", payLink("https://notgabriel.gumroad.com/x/bqgfv"),
-    /goes to notgabriel\.gumroad\.com\/x\/bqgfv, which is not a verified payment object/],
+    /goes to notgabriel\.gumroad\.com\/x\/bqgfv, which is not a product page in verifiedGumroadSlugs\. .*its price is only the one the page records/],
   ["a protocol-relative link off the site", "index.html", "</body>", payLink("//pay.example.invalid/b/0"),
     /reaches pay\.example\.invalid, but it does not start with "https:\/\/"/],
   ["a javascript: link", "index.html", "</body>", payLink("javascript:void(0)"), /uses javascript:/],

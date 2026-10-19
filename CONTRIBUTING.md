@@ -159,7 +159,9 @@ The command checks:
   Claude Code would load it for every installer, and so does a missing file, a symlink, a
   `.gitmodules` file or an empty directory under `plugins/` (the shape a git submodule takes);
 - a fresh-machine-safe installation command;
-- the verified shop payment surfaces;
+- the shop's payment surfaces: each PayPal card against the price read back off PayPal, and each
+  Gumroad card against the list of published products and the prices the page recorded — drift
+  only, not a check against Gumroad;
 - that every link a browser can follow from a public page goes to a host in `reviewedLinkHosts`,
   spelled out as `https://<host>/`, and reaches PayPal or Gumroad only at a verified id or slug —
   a link to a new host is a deliberate edit to that list in `scripts/verify.mjs`;

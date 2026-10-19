@@ -2102,16 +2102,23 @@ const OTHER_ATTRIBUTES = new Set([
 // it are verified objects, so adding a sibling host (paypal.me, www.gumroad.com)
 // to the list below cannot open a payment path nobody checks.
 const PAYMENT_DOMAIN = /(^|\.)(paypal\.com|paypal\.me|gumroad\.com|stripe\.com)$/;
+// Each entry names what a link there must be, and the rule, both read out when
+// a link breaks it. They say only as much as the table behind them asserts: a
+// PayPal id was read back off PayPal's own object; a Gumroad slug only shows the
+// product is published, and says nothing of its price.
 const paymentPath = {
   "www.paypal.com": {
+    object: "a verified payment object",
     rule: "at /ncp/payment/<id> for an id in verifiedPayPalLinks, with no query or fragment",
     allows: (url) =>
       url.search === "" && url.hash === "" &&
       verifiedPayPalIds.some((id) => url.pathname === `/ncp/payment/${id}`),
   },
   "notgabriel.gumroad.com": {
-    rule: "at /l/<slug> for a slug in verifiedGumroadSlugs; its other pages, the storefront included, " +
-      "sell products whose prices nobody has read back",
+    object: "a product page in verifiedGumroadSlugs",
+    rule: "at /l/<slug> for a slug in verifiedGumroadSlugs (a published product; its price is only " +
+      "the one the page records); its other pages, the storefront included, may list products " +
+      "nobody here has reviewed",
     allows: (url) => {
       const slug = url.pathname.match(/^\/l\/([^/]+)$/)?.[1];
       return slug !== undefined && verifiedGumroadSlugs.has(slug);
@@ -2121,6 +2128,7 @@ const paymentPath = {
 // Hosts that are not payment hosts but serve a checkout on some paths: GitHub
 // Sponsors takes money for any account at github.com/sponsors/<name>.
 const ownerPath = {
+  object: "a verified payment object",
   rule: "under /notgabriels-sys/; elsewhere on it a path can be any account's Sponsors checkout",
   allows: (url) => url.pathname.startsWith("/notgabriels-sys/"),
 };
@@ -2292,8 +2300,8 @@ for (const page of linkedPages) {
         const path = hostPath[url.host];
         if (path && !path.allows(url)) {
           fail(
-            `${where} goes to ${url.host}${url.pathname}${url.search}${url.hash}, which is not a verified ` +
-              `payment object. ${url.host} may be linked only ${path.rule}.`,
+            `${where} goes to ${url.host}${url.pathname}${url.search}${url.hash}, which is not ` +
+              `${path.object}. ${url.host} may be linked only ${path.rule}.`,
           );
         }
       }

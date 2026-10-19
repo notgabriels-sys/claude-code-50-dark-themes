@@ -224,7 +224,10 @@ and it is published — existence, not price. `recordedGumroadPrices` means only
 when recorded passes CI forever. What it buys is that nothing drifts by
 accident. The priced half still needs a signed-in browser pass over the 15
 products, and until that happens no price on the Gumroad side of the shop has
-been checked against anything but itself.
+been checked against anything but itself. (Corrected 2026-10-19: too strong.
+`products/industrial-tension-fx/PUBLISHING.md` records one product's price
+read back after a provider reload, by whoever published it; no check in this
+repo repeats it. See CLAUDE.md.)
 
 ## 7. Execution checklist — **reopened 2026-08-24**
 
