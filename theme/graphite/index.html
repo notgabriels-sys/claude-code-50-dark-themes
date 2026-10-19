@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Graphite — dark theme for Claude Code</title>
+<meta name="description" content="Graphite: a free dark theme for Claude Code with a neutral #C9CFD6 accent on a #1D1E20 terminal. Palette roles, measured contrast and the one-line install.">
+<meta name="robots" content="index,follow,max-image-preview:large">
+<meta name="theme-color" content="#1D1E20">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="canonical" href="https://gabs-utilities.com/theme/graphite/">
+<link rel="license" href="https://opensource.org/license/mit">
+<meta property="og:title" content="Graphite — dark theme for Claude Code">
+<meta property="og:description" content="Graphite: a free dark theme for Claude Code with a neutral #C9CFD6 accent on a #1D1E20 terminal. Palette roles, measured contrast and the one-line install.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://gabs-utilities.com/theme/graphite/">
+<meta property="og:image" content="https://gabs-utilities.com/preview.png">
+<meta property="og:image:width" content="1280">
+<meta property="og:image:height" content="720">
+<meta property="og:image:alt" content="Title card: 50 dark themes for Claude Code, with the plugin install command and a strip of the site&#39;s interface colors">
+<meta property="og:site_name" content="Gabs Utilities">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Graphite — dark theme for Claude Code">
+<meta name="twitter:description" content="Graphite: a free dark theme for Claude Code with a neutral #C9CFD6 accent on a #1D1E20 terminal. Palette roles, measured contrast and the one-line install.">
+<meta name="twitter:image" content="https://gabs-utilities.com/preview.png">
+<meta name="twitter:image:alt" content="Title card: 50 dark themes for Claude Code, with the plugin install command and a strip of the site&#39;s interface colors">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": "https://gabs-utilities.com/theme/graphite/",
+      "url": "https://gabs-utilities.com/theme/graphite/",
+      "name": "Graphite — dark theme for Claude Code",
+      "description": "Graphite: a free dark theme for Claude Code with a neutral #C9CFD6 accent on a #1D1E20 terminal. Palette roles, measured contrast and the one-line install.",
+      "isPartOf": {
+        "@type": "WebSite",
+        "@id": "https://gabs-utilities.com/#website",
+        "name": "Gabs Utilities",
+        "url": "https://gabs-utilities.com/"
+      },
+      "about": {
+        "@id": "https://gabs-utilities.com/#plugin"
+      },
+      "author": {
+        "@type": "Organization",
+        "name": "Gabs Utilities",
+        "url": "https://gabs-utilities.com"
+      },
+      "license": "https://opensource.org/license/mit"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Gabs Utilities",
+          "item": "https://gabs-utilities.com/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Themes",
+          "item": "https://gabs-utilities.com/theme/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "Graphite",
+          "item": "https://gabs-utilities.com/theme/graphite/"
+        }
+      ]
+    }
+  ]
+}
+</script>
+<style>
+  :root{--ground:#0d0e0f;--ground-2:#131416;--hair:#292b2f;--ink:#e9eaec;--mute:#a0a3aa;--faint:#858991;--accent:#c9cfd6;--accent-dim:#5f646c;--radius:10px;
+    --mono:ui-monospace,"SF Mono",SFMono-Regular,"JetBrains Mono","Menlo",Consolas,monospace;
+    --display:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif}
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--mono);line-height:1.55;-webkit-font-smoothing:antialiased;padding:0 clamp(18px,4vw,48px) 72px}
+  .wrap{max-width:1080px;margin:0 auto}
+  .skip-link{position:fixed;left:12px;top:12px;z-index:100;color:var(--ground);background:var(--ink);border-radius:6px;padding:8px 12px;font-size:12px;font-weight:700;text-decoration:none;transform:translateY(calc(-100% - 16px));transition:transform .15s ease}
+  .skip-link:focus{transform:translateY(0);outline:2px solid var(--accent);outline-offset:2px}
+  a{color:var(--ink);text-underline-offset:3px}
+  a:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+  .jumpnav{min-height:42px;display:flex;align-items:center;justify-content:space-between;gap:24px;margin:22px 0 clamp(40px,6vw,72px);padding-bottom:14px;border-bottom:1px solid var(--hair)}
+  .site-mark{color:var(--ink);font-size:10px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;text-decoration:none}
+  .jumpnav-links{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px 24px}
+  .jumpnav-links a{min-height:44px;display:inline-flex;align-items:center;color:var(--faint);font-size:11px;text-decoration:none}
+  .jumpnav-links a:hover{color:var(--ink)}
+  .kicker{color:var(--faint);letter-spacing:.28em;text-transform:uppercase;font-size:10px;margin:0 0 18px;display:flex;align-items:center;gap:10px}
+  .kicker::before{content:"";width:30px;height:1px;background:var(--accent-dim)}
+  h1{font-family:var(--display);font-size:clamp(40px,6.5vw,76px);line-height:.95;letter-spacing:-.05em;font-weight:520;margin:0}
+  .lede{color:var(--mute);max-width:60ch;margin:22px 0 0;font-size:clamp(13px,1.4vw,15px);line-height:1.75}
+  .lede b{color:var(--ink);font-weight:600}
+  .hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,420px);gap:clamp(28px,5vw,64px);align-items:start}
+  @media (max-width:760px){.hero{grid-template-columns:1fr}}
+  h2{font-family:var(--display);font-size:clamp(22px,3vw,30px);letter-spacing:-.03em;font-weight:520;margin:clamp(44px,7vw,72px) 0 14px}
+  p{margin:0 0 12px;color:var(--mute);font-size:13px;line-height:1.7;max-width:76ch}
+  code{font-family:var(--mono);font-size:.95em;color:var(--ink)}
+  .card{--a:var(--accent);border:1px solid color-mix(in srgb,var(--a) 22%,transparent);border-radius:var(--radius);background:var(--bg,#111);overflow:hidden;display:flex;flex-direction:column}
+  .card .titlebar{display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid color-mix(in srgb,var(--a) 14%,transparent)}
+  .card .dots{display:flex;gap:5px}
+  .card .dots i{width:9px;height:9px;border-radius:50%;display:block;opacity:.7}
+  .card .tname{margin:0 0 0 4px;font-size:12px;font-weight:600;letter-spacing:.02em;color:var(--fg)}
+  .card .hex{margin-left:auto;font-size:10.5px;color:var(--sh);letter-spacing:.04em}
+  .term{padding:13px 14px 15px;font-size:12px;line-height:1.75;flex:1}
+  .term .row{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .term .acc{color:var(--a)}.term .sh{color:var(--sh)}.term .fg{color:var(--fg)}.term .mut{color:var(--mut)}
+  .prompt-box{margin-top:10px;display:flex;align-items:center;gap:8px;border:1px solid color-mix(in srgb,var(--a) 45%,transparent);border-radius:8px;padding:7px 10px;min-height:44px}
+  .prompt-box .gt{color:var(--a);font-weight:700}
+  .prompt-box .txt{color:var(--fg);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .caret{width:7px;height:15px;background:var(--a);display:inline-block;margin-left:1px;vertical-align:-3px;opacity:.8}
+  .term .hint{margin-top:8px;font-size:10.5px;color:var(--mut)}
+  .usermsg{margin-top:10px;padding:8px 10px;border-radius:6px;background:var(--um);color:var(--fg);font-size:12px}
+  .cmd{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px;margin:0 0 8px;padding:10px 12px;border:1px solid var(--hair);border-radius:8px;background:var(--ground-2);font-size:12.5px}
+  .cmd>span{min-width:0;overflow:auto;white-space:nowrap;padding-bottom:3px}
+  .cmd .prompt{color:var(--faint)}
+  .copy{flex:none;min-height:34px;padding:0 10px;border:1px solid var(--accent-dim);border-radius:6px;background:transparent;color:var(--ink);font:inherit;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer}
+  .copy:hover{border-color:var(--accent)}
+  .copy:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .note{color:var(--faint);font-size:12px}
+  table{width:100%;min-width:620px;border-collapse:collapse;font-size:12.5px}
+  th,td{padding:9px 10px;border-top:1px solid var(--hair);text-align:left;vertical-align:top}
+  th{color:var(--faint);font-weight:600;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase}
+  td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
+  .sw{display:inline-block;width:14px;height:14px;border-radius:4px;vertical-align:-2px;margin-right:8px;border:1px solid var(--hair)}
+  .ok{color:var(--mute)}
+  .table-wrap{overflow:auto}
+  .neighbours{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px;margin-top:clamp(40px,6vw,64px);padding-top:18px;border-top:1px solid var(--hair);font-size:12px}
+  .neighbours a{color:var(--mute);text-decoration:none;min-height:44px;display:inline-flex;align-items:center}
+  .neighbours a:hover{color:var(--ink)}
+  footer{margin-top:clamp(56px,9vw,100px);padding-top:24px;border-top:1px solid var(--hair);display:flex;flex-wrap:wrap;gap:10px 28px;color:var(--faint);font-size:11px}
+  footer a{color:var(--faint)}
+  .index-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:4px 24px;margin:0 0 8px}
+  .index-grid a{display:flex;align-items:center;gap:10px;min-height:44px;padding:4px 0;color:var(--ink);text-decoration:none;border-top:1px solid var(--hair);font-size:13px}
+  .index-grid a:hover{color:var(--accent)}
+  .index-grid .dot{width:12px;height:12px;border-radius:50%;flex:none}
+  .index-grid .hexv{margin-left:auto;color:var(--faint);font-size:11px}
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main-content">Skip to content</a>
+<div class="wrap">
+  <nav class="jumpnav" aria-label="Site">
+    <a class="site-mark" href="/">Gabs Utilities</a>
+    <span class="jumpnav-links">
+      <a href="/theme/">All themes</a>
+      <a href="/#themes">Gallery</a>
+      <a href="/claude-code-theme-install-guide.html">Install guide</a>
+    </span>
+  </nav>
+  <main id="main-content">
+    <div class="hero">
+      <div>
+        <p class="kicker">50 Dark Themes · 20 / 50</p>
+        <h1>Graphite</h1>
+        <p class="lede">A neutral accent, <b>#C9CFD6</b>, on a <b>#1D1E20</b> terminal. Primary text reads at
+          <b>13.85:1</b> and secondary text at <b>6.66:1</b>, measured against that
+          background. Free and MIT licensed, one of the 50 Dark Themes for Claude Code.</p>
+      </div>
+      <article class="card" aria-label="Graphite theme specimen" style="--bg:#1D1E20;--a:#C9CFD6;--sh:#F7F8F9;--fg:#E9EAEC;--mut:#A0A4AB;--um:#27282B">
+        <div class="titlebar">
+          <div class="dots"><i style="background:#C9CFD6"></i><i style="background:#A0A4AB;opacity:.4"></i><i style="background:#A0A4AB;opacity:.25"></i></div>
+          <p class="tname">Graphite</p>
+          <span class="hex">#C9CFD6</span>
+        </div>
+        <div class="term">
+          <div class="row"><span class="acc">✻</span> <span class="sh">Claude Code</span> <span class="mut">· graphite</span></div>
+          <div class="row"><span class="acc">●</span> <span class="fg">Applied theme &ldquo;Graphite&rdquo;</span></div>
+          <div class="row"><span class="mut">&nbsp;&nbsp;3 files changed · staged</span></div>
+          <div class="usermsg">&gt; show me the diff</div>
+          <div class="prompt-box"><span class="gt">&gt;</span><span class="txt">theme graphite</span><span class="caret" aria-hidden="true"></span></div>
+          <div class="hint">/theme &nbsp;·&nbsp; ⏎ send &nbsp;·&nbsp; esc to interrupt</div>
+        </div>
+      </article>
+    </div>
+
+    <section aria-labelledby="install-title">
+      <h2 id="install-title">Install Graphite.</h2>
+      <p>Requires Claude Code v2.1.118 or later. The marketplace command is needed once per machine; the plugin command installs the whole 50 Dark Themes pack, and <code>/theme</code> inside Claude Code switches to this one.</p>
+      <div class="cmd"><span><span class="prompt">$ </span><code>claude plugin marketplace add notgabriels-sys/claude-code-50-dark-themes</code></span><button class="copy" type="button" data-copy="claude plugin marketplace add notgabriels-sys/claude-code-50-dark-themes" aria-label="Copy: marketplace command">Copy</button></div>
+      <div class="cmd"><span><span class="prompt">$ </span><code>claude plugin install 50-dark-themes@notgabriels-themes</code></span><button class="copy" type="button" data-copy="claude plugin install 50-dark-themes@notgabriels-themes" aria-label="Copy: 50 Dark Themes install command">Copy</button></div>
+      <div class="cmd"><span><span class="prompt">$ </span><code>/theme graphite</code></span><button class="copy" type="button" data-copy="/theme graphite" aria-label="Copy: select Graphite in Claude Code">Copy</button></div>
+      <p class="note">Plugin themes are read-only. Press <code>Ctrl+E</code> on one in <code>/theme</code> for an editable copy in <code>~/.claude/themes/</code>.</p>
+    </section>
+
+    <section aria-labelledby="manual-title">
+      <h2 id="manual-title">Or copy just this file.</h2>
+      <p>One theme, no plugin: fetch <a href="https://github.com/notgabriels-sys/claude-code-50-dark-themes/blob/main/graphite.json"><code>graphite.json</code></a> from the repository into your themes folder. If that folder did not exist when Claude Code started, restart it once.</p>
+      <div class="cmd"><span><span class="prompt">$ </span><code>mkdir -p ~/.claude/themes &amp;&amp; curl -fsSL https://raw.githubusercontent.com/notgabriels-sys/claude-code-50-dark-themes/main/graphite.json -o ~/.claude/themes/graphite.json</code></span><button class="copy" type="button" data-copy="mkdir -p ~/.claude/themes &amp;&amp; curl -fsSL https://raw.githubusercontent.com/notgabriels-sys/claude-code-50-dark-themes/main/graphite.json -o ~/.claude/themes/graphite.json" aria-label="Copy: copy Graphite manually">Copy</button></div>
+    </section>
+
+    <section aria-labelledby="terminal-title">
+      <h2 id="terminal-title">Terminal background: <code>#1D1E20</code>.</h2>
+      <p>Claude Code colours its own interface; the terminal application owns the canvas behind it. Every figure below is measured against <code>#1D1E20</code>, so set that as the terminal background for the result the numbers describe. On a different background the ratios move.</p>
+    </section>
+
+    <section aria-labelledby="palette-title">
+      <h2 id="palette-title">Palette.</h2>
+      <p>The thirteen overrides Claude Code reads from the theme file. Success, error, warning and diff colours are deliberately not overridden, so status meaning stays the same across every theme in the pack.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th scope="col">Colour</th><th scope="col">Token</th><th scope="col">Role</th></tr></thead>
+          <tbody>
+          <tr><td><span class="sw" style="background:#C9CFD6"></span><code>#C9CFD6</code></td><td><code>claude</code></td><td>Claude's mark and accent</td></tr>
+          <tr><td><span class="sw" style="background:#F7F8F9"></span><code>#F7F8F9</code></td><td><code>claudeShimmer</code></td><td>Accent highlight while Claude works</td></tr>
+          <tr><td><span class="sw" style="background:#E9EAEC"></span><code>#E9EAEC</code></td><td><code>text</code></td><td>Primary text</td></tr>
+          <tr><td><span class="sw" style="background:#A0A4AB"></span><code>#A0A4AB</code></td><td><code>inactive</code></td><td>Secondary text</td></tr>
+          <tr><td><span class="sw" style="background:#2E2F33"></span><code>#2E2F33</code></td><td><code>subtle</code></td><td>Decorative hairlines (reserved, carries no meaning)</td></tr>
+          <tr><td><span class="sw" style="background:#C9CFD6"></span><code>#C9CFD6</code></td><td><code>suggestion</code></td><td>Autocomplete suggestions</td></tr>
+          <tr><td><span class="sw" style="background:#ECEEF0"></span><code>#ECEEF0</code></td><td><code>permission</code></td><td>Permission prompt border and indicator</td></tr>
+          <tr><td><span class="sw" style="background:#C9CFD6"></span><code>#C9CFD6</code></td><td><code>promptBorder</code></td><td>Input prompt border</td></tr>
+          <tr><td><span class="sw" style="background:#F7F8F9"></span><code>#F7F8F9</code></td><td><code>promptBorderShimmer</code></td><td>Prompt border highlight</td></tr>
+          <tr><td><span class="sw" style="background:#ECEEF0"></span><code>#ECEEF0</code></td><td><code>planMode</code></td><td>Plan mode indicator</td></tr>
+          <tr><td><span class="sw" style="background:#27282B"></span><code>#27282B</code></td><td><code>userMessageBackground</code></td><td>Surface behind your messages</td></tr>
+          <tr><td><span class="sw" style="background:#313236"></span><code>#313236</code></td><td><code>userMessageBackgroundHover</code></td><td>That surface, hovered</td></tr>
+          <tr><td><span class="sw" style="background:#C9CFD6"></span><code>#C9CFD6</code></td><td><code>rate_limit_fill</code></td><td>Usage meter fill</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section aria-labelledby="contrast-title">
+      <h2 id="contrast-title">Measured contrast.</h2>
+      <p>Computed from the hex values above with the WCAG 2 relative-luminance formula, by the same script that gates every change to this repository. Figures are truncated, never rounded up. Each row meets its floor.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th scope="col">Pair</th><th scope="col">Colours</th><th scope="col">Ratio</th><th scope="col">Floor</th><th scope="col">Standard</th></tr></thead>
+          <tbody>
+          <tr><td>text on terminal background</td><td class="num"><code>#E9EAEC</code> on <code>#1D1E20</code></td><td class="num">13.85:1</td><td class="num">7:1</td><td class="ok">WCAG AAA, normal text</td></tr>
+          <tr><td>text on your-message surface</td><td class="num"><code>#E9EAEC</code> on <code>#27282B</code></td><td class="num">12.24:1</td><td class="num">7:1</td><td class="ok">WCAG AAA, normal text</td></tr>
+          <tr><td>inactive on terminal background</td><td class="num"><code>#A0A4AB</code> on <code>#1D1E20</code></td><td class="num">6.66:1</td><td class="num">4.5:1</td><td class="ok">WCAG AA, normal text</td></tr>
+          <tr><td>inactive on your-message surface</td><td class="num"><code>#A0A4AB</code> on <code>#27282B</code></td><td class="num">5.89:1</td><td class="num">4.5:1</td><td class="ok">WCAG AA, normal text</td></tr>
+          <tr><td>claude on terminal background</td><td class="num"><code>#C9CFD6</code> on <code>#1D1E20</code></td><td class="num">10.62:1</td><td class="num">4.5:1</td><td class="ok">WCAG AA, normal text</td></tr>
+          <tr><td>claudeShimmer on terminal background</td><td class="num"><code>#F7F8F9</code> on <code>#1D1E20</code></td><td class="num">15.68:1</td><td class="num">4.5:1</td><td class="ok">WCAG AA, normal text</td></tr>
+          <tr><td>suggestion on terminal background</td><td class="num"><code>#C9CFD6</code> on <code>#1D1E20</code></td><td class="num">10.62:1</td><td class="num">4.5:1</td><td class="ok">WCAG AA, normal text</td></tr>
+          <tr><td>permission on terminal background</td><td class="num"><code>#ECEEF0</code> on <code>#1D1E20</code></td><td class="num">14.34:1</td><td class="num">3:1</td><td class="ok">WCAG AA, non-text</td></tr>
+          <tr><td>planMode on terminal background</td><td class="num"><code>#ECEEF0</code> on <code>#1D1E20</code></td><td class="num">14.34:1</td><td class="num">3:1</td><td class="ok">WCAG AA, non-text</td></tr>
+          <tr><td>promptBorder on terminal background</td><td class="num"><code>#C9CFD6</code> on <code>#1D1E20</code></td><td class="num">10.62:1</td><td class="num">3:1</td><td class="ok">WCAG AA, non-text</td></tr>
+          <tr><td>promptBorderShimmer on terminal background</td><td class="num"><code>#F7F8F9</code> on <code>#1D1E20</code></td><td class="num">15.68:1</td><td class="num">3:1</td><td class="ok">WCAG AA, non-text</td></tr>
+          <tr><td>rate_limit_fill on terminal background</td><td class="num"><code>#C9CFD6</code> on <code>#1D1E20</code></td><td class="num">10.62:1</td><td class="num">3:1</td><td class="ok">WCAG AA, non-text</td></tr>
+          <tr><td>your-message surface against the terminal</td><td class="num"><code>#27282B</code> on <code>#1D1E20</code></td><td class="num">1.13:1</td><td class="num">1.08:1</td><td class="ok">visibly distinct surface</td></tr>
+          <tr><td>hovered surface against the resting one</td><td class="num"><code>#313236</code> on <code>#27282B</code></td><td class="num">1.15:1</td><td class="num">1.08:1</td><td class="ok">visibly distinct surface</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <nav class="neighbours" aria-label="Neighbouring themes">
+      <a href="/theme/glacier/" rel="prev">&larr; Glacier</a>
+      <a href="/theme/">All themes</a>
+      <a href="/theme/greenhouse/" rel="next">Greenhouse &rarr;</a>
+    </nav>
+  </main>
+  <footer>
+    <span>50 dark themes for Claude Code · Gabs Utilities</span>
+    <span>Free, <a href="https://opensource.org/license/mit">MIT licensed</a></span>
+    <span><a href="https://github.com/notgabriels-sys/claude-code-50-dark-themes">Source on GitHub</a></span>
+    <span><a href="/impressum.html">Impressum</a></span>
+  </footer>
+</div>
+<script>
+document.querySelectorAll("[data-copy]").forEach((button) => {
+  button.addEventListener("click", async () => {
+    const text = button.getAttribute("data-copy");
+    const original = button.textContent;
+    try {
+      await navigator.clipboard.writeText(text);
+      button.textContent = "Copied";
+    } catch {
+      button.textContent = "Select and copy";
+    }
+    setTimeout(() => { button.textContent = original; }, 1400);
+  });
+});
+</script>
+</body>
+</html>

@@ -1231,6 +1231,66 @@ if (/file ?names?/i.test(visibleCopy)) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// One page per theme under theme/<slug>/ is rendered from the theme files by
+// scripts/build-theme-pages.mjs. A page states hex values, measured ratios and
+// an install command, so it is a public claim: every page on disk must be
+// byte-for-byte what the builder renders from today's files, no page may exist
+// for a theme that does not, and sitemap.xml must list each one (the builder
+// owns the sitemap for that reason).
+// ---------------------------------------------------------------------------
+const { buildThemePages } = await import("./build-theme-pages.mjs");
+const themePages = await buildThemePages(root);
+for (const [path, expected] of themePages) {
+  let actual;
+  try {
+    actual = await readFile(new URL(path, root), "utf8");
+  } catch {
+    fail(`${path} is missing. Run node scripts/build-theme-pages.mjs and commit the result.`);
+  }
+  if (actual !== expected) {
+    fail(
+      `${path} is stale: it does not match what scripts/build-theme-pages.mjs renders from the ` +
+        "theme files. Run it and commit the result.",
+    );
+  }
+}
+let themeDirectoryEntries;
+try {
+  themeDirectoryEntries = await readdir(new URL("theme/", root), { withFileTypes: true });
+} catch {
+  fail("theme/ is missing. Run node scripts/build-theme-pages.mjs and commit the result.");
+}
+for (const entry of themeDirectoryEntries) {
+  const path = entry.isDirectory() ? `theme/${entry.name}/index.html` : `theme/${entry.name}`;
+  if (!themePages.has(path)) {
+    fail(`${path} has no theme behind it. Remove it, or add the theme and rebuild the pages.`);
+  }
+}
+// The pages are public pages like the root ones: first-party favicon, no
+// unverified product links, and the shared share image described one way.
+for (const [path, source] of themePages) {
+  if (!path.endsWith(".html")) continue;
+  if (!source.includes('rel="icon" type="image/svg+xml" href="/favicon.svg"')) {
+    fail(`${path} must expose the first-party SVG favicon.`);
+  }
+  for (const match of source.matchAll(/https:\/\/notgabriel\.gumroad\.com\/l\/([a-z0-9-]+)/g)) {
+    if (!verifiedGumroadSlugs.has(match[1])) {
+      fail(`${path} contains an unverified or unavailable Gumroad product link: ${match[1]}.`);
+    }
+  }
+  const image = source.match(/<meta property="og:image" content="([^"]+)">/);
+  const ogAlt = source.match(/<meta property="og:image:alt" content="([^"]+)">/);
+  if (!image || !ogAlt) fail(`${path} must ship an og:image with og:image:alt.`);
+  const seen = sharedImageAlts.get(image[1]);
+  if (seen && seen.alt !== ogAlt[1]) {
+    fail(
+      `${path} and ${seen.file} share ${image[1]} but describe it differently. ` +
+        "One image gets one description.",
+    );
+  }
+}
+
 console.log(
   `Verified ${files.length} themes, ${pluginFiles.length} plugin themes, ${vol2Files.length} Vol. 2 themes, ` +
     `${galleryThemes.length} gallery cards, ` +
