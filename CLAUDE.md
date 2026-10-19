@@ -340,6 +340,10 @@ another note. `www.agensi.io` is not reviewed, so a link written with `www.`
 fails, and listing it as an ordinary host fails too, because a reviewed host
 on a payment domain needs its own path rule. The creator's name on that page
 is not copied here. Linking another Agensi skill is a new review.
+Mutation-tested (rule 5): any path allowed, a query allowed, a fragment
+allowed and `agensi.io` dropped from the payment domains each turn exactly
+their own tests red; dropping the path rule turns the real tree red, since
+the storefront's link is then to an unreviewed host.
 
 **Every note is a page on the shop's domain, and is now checked as one.** The
 repo has no `.nojekyll`, so GitHub Pages renders every Markdown file outside a
