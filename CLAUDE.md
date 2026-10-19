@@ -888,6 +888,67 @@ storefront's own role-aware check was covered by the prose scan whenever
 on the storefront — and, gutted again, each branch turns exactly its new tests
 red while the control passes all 343.
 
+**(reviewed 2026-10-19) The rebuilt scan, re-attacked.** An independent
+re-attack of 3b34c52 — four fresh lenses (coverage by spelling, coverage by
+surface, false refusals in prose and in structure), 252 experiments, each
+finding reproduced in its own scratch copy and re-run from a fresh one by a
+second agent told to refute it — reported 49 findings. Its second readers were
+capped at 30; all 30 held, and the other 19 were logged rather than dropped.
+All 49 were then replayed mechanically on HEAD (rule 1): 45 reproduced as
+reported; three failed there for another reason (an edit to the theme-index
+generator, which the byte check catches, and two script edits, which the hash
+check catches), and one replay wrote a literal no-break space where the finding
+meant a JSON escape.
+
+Fixed in 39616d3, each replayed red or green as it should be, and 33 tests,
+each failing on the old reader for its own reason. Read more: a link's title,
+alt or aria-label inside a phrase no longer cuts the count in two — attribute
+text is a second text with the same lines, read on its own, not fenced into
+the visible words; a quoted attribute value may hold a raw `>`; a tag opens
+only with a name followed by a space, `/` or `>`, so `a<b` in Markdown code no
+longer swallows the prose after it; a comment is skipped whole;
+`aria-description` and `aria-roledescription` are read; a blockquote's `>`,
+a reference-style link and a footnote mark drop out; `&` and accented words
+may stand between; a pair may be joined by "and" and its message shows both
+numbers; a word other than "contrast" may follow "role-aware"; and every
+served note is read (a launch draft under `assets/`, a skill's own reference
+files), as are the plugin manifests' descriptions. Refuse less: a
+demonstrative, possessive, preposition, month, "another" or a plural pack word
+between a number and the noun; "one theme pack"; a step badge ("04"), an
+ordinal split by markup, a hex colour; an entity this reader does not know,
+which now becomes a mark no count reads across instead of a space; a bare "-"
+bullet; "1/" in a thread; "Vols. 1 and 2"; a clause comma before
+"role-aware"; and a count "per theme". Measured first (rule 4): the old and
+new readers read the same 148 counts on the real tree, none lost or gained.
+One change was reverted on that evidence: leaving no space for an inline
+element's tag joined the share card's `themes</span><span>894` and lost five
+real counts, so every tag leaves a space again and an ordinal is skipped by
+its suffix.
+
+Not covered, and recorded rather than chased: text in SVG files,
+`install.sh`'s help text, CSS generated content, Markdown link titles, a total
+followed by its breakdown in parentheses or preceded by its sum, "or" between
+adjectives (kept as a stop word for "one or more themes"), a singular noun used
+as a modifier without a hyphen ("a 13 theme expansion", since "one theme" is
+ordinary prose), a number hyphenated to another word ("63-piece"), "dozen",
+JSON escapes inside JSON-LD, and punctuation other than "&" between the words.
+`label` and `value` attributes are left unread on purpose: `OTHER_ATTRIBUTES`
+allows them, but an option's or an input's value is rarely what a reader sees.
+Kept refused: a part named before its count ("Each theme gets 14 role-aware
+checks" — write "14 role-aware checks per theme"); the storefront's own
+role-aware check, which reads any noun after "<n> role-aware" and the number
+of a label-first stat, because it is the original guard and stays strict;
+"atmospheres" in an audio card on the storefront, which calls its themes
+atmospheres; and script text, which a script may render.
+
+Mutation-tested (rule 5) from a snapshot of 39616d3: of 37 branches, each
+gutted alone with the full suite re-run, 35 turned their own tests red and two
+turned nothing red. The prepositions' test sentence also held "your", which
+the possessives stop, and the tag-name rule's test had an apostrophe that the
+quote-aware reader stopped at on its own. Each now has a sentence only it
+reads correctly (08ff646, 132a417), and, gutted again against those, each
+turns exactly its new test red.
+
 The Gumroad half now has structural guards, an existence-verified slug list and
 a price-drift table — but no check that reads any product's price from Gumroad.
 See below.
