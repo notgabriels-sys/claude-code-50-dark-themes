@@ -87,8 +87,10 @@ tell.
 **Filter before distortion** = the distortion reacts to what survived; usually
 smoother and more controllable.
 
-**Reverb before distortion** = the space itself is crushed; dense, dirty, glued.
-**Distortion after reverb** is the classic industrial-techno texture.
+**Distortion before reverb** = the grit stays on the source and the space
+around it stays clean; the hit reads clearly and the tail stays smooth.
+**Reverb before distortion** = the space itself is crushed; dense, dirty,
+glued — the classic industrial-techno texture.
 
 Modulation last, generally — but a filter *inside* a delay feedback loop is
 where dub techno lives.
