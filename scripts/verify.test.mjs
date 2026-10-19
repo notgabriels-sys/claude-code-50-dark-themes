@@ -1339,12 +1339,12 @@ const canonicalTag = '<link rel="canonical" href="https://gabs-utilities.com/">'
 for (const [defect, page, from, to, message] of [
   ["a JSON-LD script tag spelled with single quotes", "index.html", markerEnd,
     `${markerEnd}\n<script type='application/ld+json'>${wrongList}</script>`,
-    /index\.html has a script tag spelled "<script type='application\/ld\+json'>"/],
+    /index\.html:\d+ has a script tag spelled "<script type='application\/ld\+json'>"/],
   ["a script closed in capitals", "index.html", markerEnd,
     `${markerEnd}\n<script type="application/ld+json">{}</SCRIPT>`,
-    /index\.html closes a script with "<\/SCRIPT>"/],
+    /index\.html:\d+ closes a script with "<\/SCRIPT>"/],
   ["the theme list wrapped in a template", "index.html", markerStart, `<template>${markerStart}`,
-    /index\.html uses <template>/],
+    /index\.html:\d+ uses <template>/],
   ["a microdata ItemList", "index.html", "</body>",
     '<div itemscope itemtype="https://schema.org/ItemList" hidden><span itemprop="name">Dracula</span></div>\n</body>',
     /index\.html carries microdata or RDFa/],
@@ -1999,7 +1999,7 @@ for (const [defect, path, content, message] of [
   ["a script loaded by src on a page in a subdirectory", "assets/promo.html",
     '<!doctype html>\n<html lang="en"><head><meta charset="utf-8"><title>Promo</title></head>\n' +
       '<body><p>Promo</p><script src="../scripts/sync-plugin-themes.mjs"></script></body></html>\n',
-    /assets\/promo\.html has a script tag spelled "<script src=\\"\.\.\/scripts\/sync-plugin-themes\.mjs\\">"\. Only <script type="application\/ld\+json"> and <script> are allowed: a src loads code from a file verify does not read/],
+    /assets\/promo\.html:\d+ has a script tag spelled "<script src=\\"\.\.\/scripts\/sync-plugin-themes\.mjs\\">"\. Only <script type="application\/ld\+json"> and <script> are allowed: a src loads code from a file verify does not read/],
   ["an SVG spelling url( in capitals", "assets/pay.svg",
     `${SVG_OPEN}<rect width="9" height="9" fill="URL(https://pay.example.invalid/p.svg#g)"/></svg>\n`,
     /assets\/pay\.svg:1 has "URL\("\. A url\(\) may only name an element in this file/],
@@ -2216,9 +2216,9 @@ for (const [defect, page, to, message] of [
     '<script type="application/ld+json">{"@context":"https://schema.org","name":"<!--"}</script>',
     /assets\/social-preview\.html has a <script> whose text holds "<!--"/],
   ["a <noscript>", "assets/social-preview.html", "<noscript><p>x</p></noscript>",
-    /assets\/social-preview\.html uses <noscript>/],
+    /assets\/social-preview\.html:\d+ uses <noscript>/],
   ["a script tag spelled another way", "assets/social-preview.html", "<script  ></script>",
-    /assets\/social-preview\.html has a script tag spelled "<script  >"/],
+    /assets\/social-preview\.html:\d+ has a script tag spelled "<script  >"/],
   ["microdata", "assets/social-preview.html", "<div itemscope></div>",
     /assets\/social-preview\.html carries microdata or RDFa \("itemscope" on <div>\)/],
   ["an attribute written twice", "assets/social-preview.html", '<a href="#top" href="https://example.invalid/">x</a>',
@@ -2237,6 +2237,34 @@ for (const [defect, page, to, message] of [
     assert.match(result.stderr, message);
   });
 }
+
+// The inert-element and script-spelling checks read the raw page, so a mention
+// in a comment counts. The message names the line and the way to write it.
+for (const [mention, comment, message] of [
+  ["an inert element", "<!-- old <noscript> fallback removed -->", "uses <noscript>, which can hide structured data"],
+  ["a script with a src", '<!-- <script src="old.js"></script> -->', 'has a script tag spelled "<script src=\\\\"old\\.js\\\\">"'],
+  ["a misspelled script end tag", "<!-- </script > -->", 'closes a script with "<\\/script >"'],
+]) {
+  test(`rejects ${mention} named in a comment, and says where and how to quote it`, { timeout: 90_000 }, async (t) => {
+    const fixtureRoot = await editPage(t, "impressum.html", "</body>", `${comment}\n</body>`);
+    const markup = await readFile(join(fixtureRoot, "impressum.html"), "utf8");
+    const line = markup.slice(0, markup.indexOf(comment)).split("\n").length;
+
+    const result = await runVerifier(fixtureRoot);
+
+    assert.notEqual(result.code, 0, `${mention} in a comment shipped green`);
+    assert.match(result.stderr, new RegExp(`impressum\\.html:${line} ${message}`));
+    assert.match(result.stderr, /comments, attribute values and CSS included, so a mention counts too: write its "<" as &lt; or name the element in words/);
+  });
+}
+
+test("accepts an inert element quoted as &lt;noscript> in a comment", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await editPage(t, "impressum.html", "</body>", "<!-- old &lt;noscript> fallback removed -->\n</body>");
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.equal(result.code, 0, `a quoted mention was refused: ${result.stderr}`);
+});
 
 // A browser turns CRLF into LF before it hashes a script, and runs this one
 // under the LF hash (checked in Chromium), so verify must hash it the same way.

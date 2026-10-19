@@ -697,6 +697,19 @@ list (pre-existing). It is checked differentially against Chromium; see rule
 it tested anything, so it never ran; the exhaustive differential of rule 13 is
 the evidence in its place.
 
+**(measured 2026-10-19) The raw scans count a mention.** The script-spelling,
+script end-tag and inert-element checks read the raw page rather than
+`htmlTags`' tags, so a mistake in that reader cannot hide what they refuse;
+reading text as markup only adds refusals there, which is the safe direction
+the `title` lesson above leaves. The cost, measured on ordinary edits in a
+scratch copy: a `noscript`, `iframe` or `template` named in an HTML comment, an
+attribute value or a CSS comment, a commented-out script with a `src`, and a
+commented-out script end tag with a space were each refused; the same element
+written with `&lt;`, and a plain script start tag in a comment, were accepted.
+The scans stay as they are. Their messages now give the line and say how to
+write a mention: with `&lt;`, or in words; five mutations (no line, an empty
+note, and the note dropped from each message) each fail their own tests.
+
 The Gumroad half now has structural guards, an existence-verified slug list and
 a price-drift table — but no verified *price* for any product. See below.
 

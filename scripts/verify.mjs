@@ -1625,6 +1625,9 @@ const itemListStart = html.indexOf(ITEMLIST_START);
 const itemListEnd = html.indexOf(ITEMLIST_END);
 const ALLOWED_SCRIPT_TAGS = new Set(['<script type="application/ld+json">', "<script>"]);
 const INERT_CONTAINER = /<(template|noscript|textarea|xmp|plaintext|iframe|noembed|noframes)\b/i;
+const RAW_SCAN_NOTE =
+  "This check reads the raw page, comments, attribute values and CSS included, so a mention counts too: " +
+  'write its "<" as &lt; or name the element in words.';
 // Every start and end tag with its attributes, read as the HTML tokenizer reads
 // them: "/" separates attributes as whitespace does, a quoted value runs to its
 // own quote whatever it holds, and an attribute may follow a closing quote with
@@ -1796,23 +1799,29 @@ for (const page of linkedPages) {
         `as U+FFFD, so the page it builds is not the file verify read; remove it.`,
     );
   }
-  for (const [tag] of markup.matchAll(/<script\b[^>]*>/gi)) {
+  // These three read the raw page, not htmlTags' tags, so a mistake in that
+  // reader cannot hide what they refuse. The cost is that a mention counts:
+  // measured 2026-10-19, a <noscript> named in an HTML comment, an attribute
+  // value or a CSS comment, and a commented-out <script src>, were refused. The
+  // message says where, and how to write the mention instead.
+  const where = (index) => `${page}:${markup.slice(0, index).split("\n").length}`;
+  for (const { 0: tag, index } of markup.matchAll(/<script\b[^>]*>/gi)) {
     if (!ALLOWED_SCRIPT_TAGS.has(tag)) {
       fail(
-        `${page} has a script tag spelled ${JSON.stringify(tag)}. Only <script type="application/ld+json"> ` +
+        `${where(index)} has a script tag spelled ${JSON.stringify(tag)}. Only <script type="application/ld+json"> ` +
           `and <script> are allowed: a src loads code from a file verify does not read, and every JSON-LD ` +
-          `block a crawler reads must be one this check reads.`,
+          `block a crawler reads must be one this check reads. ${RAW_SCAN_NOTE}`,
       );
     }
   }
-  for (const [tag] of markup.matchAll(/<\/script\b[^>]*>/gi)) {
-    if (tag !== "</script>") fail(`${page} closes a script with ${JSON.stringify(tag)}; write </script>.`);
+  for (const { 0: tag, index } of markup.matchAll(/<\/script\b[^>]*>/gi)) {
+    if (tag !== "</script>") fail(`${where(index)} closes a script with ${JSON.stringify(tag)}; write </script>. ${RAW_SCAN_NOTE}`);
   }
   const container = markup.match(INERT_CONTAINER);
   if (container) {
     fail(
-      `${page} uses <${container[1]}>, which can hide structured data from crawlers or carry markup ` +
-        `this check does not read. Nothing on the site needs one; remove it.`,
+      `${where(container.index)} uses <${container[1]}>, which can hide structured data from crawlers or carry ` +
+        `markup this check does not read. Nothing on the site needs one; remove it. ${RAW_SCAN_NOTE}`,
     );
   }
   for (const tag of htmlTags(markup)) {

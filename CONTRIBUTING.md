@@ -161,7 +161,9 @@ The command checks:
   and turning off workers, plugins, frames, `base` and form posts;
 - that every served page is one `verify` reads as a browser does: no NUL character, no attribute
   written twice on one tag, no inline `svg` or `math`, no `noscript`, `template` or other inert
-  container, and no comment opener inside a script;
+  container, and no comment opener inside a script. The inert-element and script-tag checks read the
+  raw page, comments and attribute values included: to mention one of those elements, write its `<`
+  as `&lt;`;
 - that every Markdown note GitHub Pages serves as a page (any `.md` outside a `.` or `_` directory) links
   only to reviewed hosts and never to a payment host, sets no front matter beyond `name`,
   `title` and `description`, and holds no Liquid — and that the root has no `_config.yml` or other `_` entry;
