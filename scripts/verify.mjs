@@ -324,9 +324,12 @@ for (const { label, tag, file, linked } of releaseZips) {
     fail(`README must point at the ${label} release ${releaseUrl} and name its zip ${file}.`);
   }
 }
-const releaseLinkPattern = /https:\/\/github\.com\/notgabriels-sys\/claude-code-50-dark-themes\/releases\/(?:tag|download)\/[^\s"')<>]+/g;
+// Tags and asset names use letters, digits, dots and dashes; a trailing dot or comma is sentence
+// punctuation, not part of the link, and is stripped before the lookup.
+const releaseLinkPattern = /https:\/\/github\.com\/notgabriels-sys\/claude-code-50-dark-themes\/releases\/(?:tag|download)\/[\w.-]+(?:\/[\w.-]+)?/g;
 for (const [source, text] of [["The storefront", html], ["README", readme]]) {
-  for (const [url] of text.matchAll(releaseLinkPattern)) {
+  for (const [link] of text.matchAll(releaseLinkPattern)) {
+    const url = link.replace(/[.,;:]+$/, "");
     if (!currentReleaseUrls.has(url)) {
       fail(`${source} links a release that no shipped pack version claims: ${url}.`);
     }

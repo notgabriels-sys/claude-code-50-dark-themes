@@ -538,3 +538,18 @@ test("rejects a README that links a release no shipped pack version claims", { t
   assert.match(result.stderr, /README links a release that no shipped pack version claims: .*themes-plugin-v0\.9\.0/);
 });
 
+test("accepts a README that names the current release in prose with sentence punctuation after it", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixtureReadme = join(fixtureRoot, "README.md");
+  const readme = await readFile(fixtureReadme, "utf8");
+  const version = await readManifestVersion(fixtureRoot, "50-dark-themes");
+  await writeFile(
+    fixtureReadme,
+    `${readme}\nThe zip lives on https://github.com/notgabriels-sys/claude-code-50-dark-themes/releases/tag/themes-plugin-v${version}, as before.\n`,
+  );
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.equal(result.code, 0, result.stderr);
+});
+
