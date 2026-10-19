@@ -2030,20 +2030,26 @@ const policyMeta = (content) => `<meta http-equiv="Content-Security-Policy" cont
 for (const [defect, page, from, to, message] of [
   ["a line added to the gallery script", "index.html", 'const grid = document.getElementById("grid");',
     'location.assign("https://pay.example.invalid/x");\nconst grid = document.getElementById("grid");',
-    /index\.html runs an inline script nobody has reviewed \(sha256-[A-Za-z0-9+/]+=*\)\. A script can navigate or load without a link/],
+    /index\.html runs an inline script nobody has reviewed \(sha256-[A-Za-z0-9+/]+=*\)\. A script can navigate or load without a link, so read it first; then replace sha256-[A-Za-z0-9+/]+=* with it in reviewedInlineScripts for index\.html[\s\S]*use this Content-Security-Policy: <meta http-equiv/],
   ["a second inline script", "impressum.html", "</body>",
     '<script>location.assign("https://pay.example.invalid/x")</script>\n</body>',
     /impressum\.html runs an inline script nobody has reviewed/],
   ["a page without its Content-Security-Policy", "impressum.html", `  ${policyMeta(POLICY_NONE)}\n`, "",
-    /impressum\.html must carry exactly one Content-Security-Policy, right after <meta charset>/],
+    /impressum\.html carries 0 Content-Security-Policy metas; it must carry exactly one/],
   ["a policy that lets any inline script run", "impressum.html", policyMeta(POLICY_NONE),
     policyMeta(POLICY_NONE.replace("script-src 'none'", "script-src 'unsafe-inline'")),
-    /impressum\.html must carry exactly one Content-Security-Policy/],
+    /impressum\.html's Content-Security-Policy must read exactly, on one line, with the hashes in page order/],
   // A policy applies only to what follows it.
   ["a policy placed after the head's other tags", "impressum.html", `  ${policyMeta(POLICY_NONE)}\n`, "",
-    /impressum\.html must carry exactly one Content-Security-Policy/],
+    /impressum\.html's Content-Security-Policy must come right after <meta charset>, with only whitespace between; <meta> comes before it/],
   ["a second policy", "impressum.html", "</head>", `${policyMeta("img-src 'self'")}\n</head>`,
-    /impressum\.html must carry exactly one Content-Security-Policy/],
+    /impressum\.html carries 2 Content-Security-Policy metas; it must carry exactly one/],
+  // Anything but whitespace there ends the head in a browser, and a policy in
+  // the body is ignored: Chromium then runs an unreviewed script.
+  ["a stray character before the policy", "impressum.html", '<meta charset="utf-8">\n', '<meta charset="utf-8">>\n',
+    /impressum\.html's Content-Security-Policy must come right after <meta charset>, with only whitespace between; the text ">" comes before it/],
+  ["an invisible space before the policy", "impressum.html", `  ${policyMeta(POLICY_NONE)}`, `  \u00a0${policyMeta(POLICY_NONE)}`,
+    /impressum\.html's Content-Security-Policy must come right after <meta charset>, with only whitespace between; the text "\\u00a0" comes before it/],
 ]) {
   test(`rejects ${defect}`, { timeout: 90_000 }, async (t) => {
     const fixtureRoot = await editPage(t, page, from, to);

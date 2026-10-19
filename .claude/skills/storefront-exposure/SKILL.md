@@ -103,9 +103,12 @@ a price, a slug, or an `aria-label` that states a price.
 
 The gallery is the page's one inline script, reviewed by hash. Any change to it,
 a theme row included, makes `verify` fail with the new hash: read the change,
-then put that hash in `reviewedInlineScripts` in `scripts/verify.mjs` and in the
-`script-src` of the page's Content-Security-Policy. Never add a second script or
-loosen the policy to get green; the browser enforces that policy too.
+then replace the old hash with it in `reviewedInlineScripts` in
+`scripts/verify.mjs` and paste the policy `verify` prints over the page's own. The
+policy is compared byte for byte and must follow `meta charset` with only
+whitespace between: anything else there ends the head, and a browser ignores a
+policy outside it. Never add a second script or loosen the policy to get green;
+the browser enforces that policy too.
 
 `verify` enforces that, so after any edit run `node scripts/verify.mjs` and
 `node scripts/verify.test.mjs`. If a payment check goes red on a change you

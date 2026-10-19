@@ -1648,6 +1648,7 @@ const htmlTags = (markup) => {
     at = found ? found.index + found[0].length : markup.length;
   };
   while ((at = markup.indexOf("<", at)) !== -1) {
+    const start = at;
     at++;
     if (markup.startsWith("!--", at)) {
       at += 3;
@@ -1690,7 +1691,7 @@ const htmlTags = (markup) => {
       attributes.push({ name: attribute, value });
     }
     at++;
-    const tag = { name, closing, attributes, text: "" };
+    const tag = { name, closing, attributes, text: "", start, end: at };
     tags.push(tag);
     if (!closing && name === "plaintext") {
       tag.text = markup.slice(at);
@@ -2255,33 +2256,49 @@ for (const page of linkedPages) {
   const tags = htmlTags(markup);
   const running = tags.filter((tag) => tag.name === "script" && !tag.closing && tag.attributes.length === 0);
   const reviewed = reviewedInlineScripts.get(page) ?? [];
-  for (const tag of running) {
-    const hash = scriptHash(tag.text);
-    if (!reviewed.includes(hash)) {
-      fail(
-        `${page} runs an inline script nobody has reviewed (${hash}). A script can navigate or load without a ` +
-          `link, so read it first; then add the hash to reviewedInlineScripts for ${page} in scripts/verify.mjs ` +
-          `and to the page's Content-Security-Policy.`,
-      );
-    }
-  }
   const hashes = running.map((tag) => scriptHash(tag.text));
-  for (const hash of reviewed) {
-    if (!hashes.includes(hash)) {
-      fail(`reviewedInlineScripts lists ${hash} for ${page}, which no longer runs it. Remove the entry.`);
-    }
-  }
-  // The policy must come before anything it governs: right after <meta charset>.
   const policy = `<meta http-equiv="Content-Security-Policy" content="${expectedPolicy(hashes)}">`;
+  const unreviewed = hashes.filter((hash) => !reviewed.includes(hash));
+  const stale = reviewed.filter((hash) => !hashes.includes(hash));
+  if (unreviewed.length) {
+    fail(
+      `${page} runs an inline script nobody has reviewed (${unreviewed[0]}). A script can navigate or load ` +
+        `without a link, so read it first; then ${stale.length ? `replace ${stale[0]} with it` : "add it"} in ` +
+        `reviewedInlineScripts for ${page} in scripts/verify.mjs, and use this Content-Security-Policy: ${policy}`,
+    );
+  }
+  if (stale.length) {
+    fail(`reviewedInlineScripts lists ${stale[0]} for ${page}, which no longer runs it. Remove that hash from the entry.`);
+  }
+  // The policy must come before anything it governs: right after <meta charset>,
+  // with only whitespace between. Anything else there -- a stray ">", a
+  // no-break space -- ends the head in a browser, and a policy in the body is
+  // ignored: Chromium then ran an unreviewed script while verify read the
+  // policy as present.
   const policies = tags.filter((tag) => tag.name === "meta" && tag.attributes.some(
     ({ name, value }) => name === "http-equiv" && value.toLowerCase() === "content-security-policy"));
-  const first = tags.find((tag) => !["html", "head"].includes(tag.name) &&
+  if (policies.length !== 1) {
+    fail(`${page} carries ${policies.length} Content-Security-Policy metas; it must carry exactly one: ${policy}`);
+  }
+  const before = tags.filter((tag) => tag.start < policies[0].start);
+  const intruder = before.find((tag) => !["html", "head"].includes(tag.name) &&
     !(tag.name === "meta" && tag.attributes.some(({ name }) => name === "charset")));
-  const content = policies[0]?.attributes.find(({ name }) => name === "content")?.value;
-  if (policies.length !== 1 || first !== policies[0] || content !== expectedPolicy(hashes)) {
+  let gap = markup.slice(0, policies[0].start);
+  for (const tag of [...before].reverse()) gap = gap.slice(0, tag.start) + gap.slice(tag.end);
+  const stray = gap.replace(/^\uFEFF?<!doctype html>/i, "").replace(/[\t\n\f\r ]+/g, "");
+  if (intruder || stray) {
     fail(
-      `${page} must carry exactly one Content-Security-Policy, right after <meta charset>, so the browser runs ` +
-        `only the scripts verify reviewed: ${policy}`,
+      `${page}'s Content-Security-Policy must come right after <meta charset>, with only whitespace between; ` +
+        (intruder
+          ? `<${intruder.name}> comes before it.`
+          : `the text "${stray.replace(/[^\x21-\x7e]/g, (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`)}" ` +
+            `comes before it.`),
+    );
+  }
+  const content = policies[0].attributes.find(({ name }) => name === "content")?.value;
+  if (content !== expectedPolicy(hashes)) {
+    fail(
+      `${page}'s Content-Security-Policy must read exactly, on one line, with the hashes in page order: ${policy}`,
     );
   }
 }

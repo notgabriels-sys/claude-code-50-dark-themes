@@ -481,6 +481,19 @@ both copy buttons and deep links, compared in Chromium. This reviews a script;
 it does not read what it does. Editing the gallery code or a theme row in
 `index.html` changes the hash, and `verify` prints the new one.
 
+A review of that check (four lenses, every finding re-run by a second agent;
+its bypass lens was stopped by a safety classifier before testing anything, so
+its silence means nothing and it was re-run) found the browser layer could be
+switched off with `verify` green: a stray `>` after `meta charset`, or a
+no-break or zero-width space before the policy, ends the head in a browser, a
+policy outside the head is ignored, and Chromium then ran an unreviewed script.
+Nothing but whitespace may now come between `meta charset` and the policy, and
+each tag's position is read rather than assumed. Its messages now say which of
+the three rules failed — how many policies, what comes before the policy (an
+invisible character spelled as an escape), or what it must read — and a changed
+script's message says to replace the old hash and prints the policy to paste,
+so one edit reaches green where following the old wording took three runs.
+
 **Sixteen failure cases were proven** by breaking `index.html`, `README.md` and
 `impressum.html` in turn and confirming the build goes red, then restoring:
 grid price, developer-picks price, `aria-label` number, `aria-label` currency,

@@ -63,9 +63,14 @@ its interface colours; the terminal application still owns the terminal backgrou
 
 The gallery rows live inside the page's one inline script, which is reviewed by hash. Changing a row,
 or the gallery code, changes that hash, and `node scripts/verify.mjs` fails with the new one. Read
-your change, then put the new hash in two places: `reviewedInlineScripts` in `scripts/verify.mjs`, and
-the `script-src` of the Content-Security-Policy meta at the top of `index.html`. The browser runs no
-script the policy does not name.
+your change, then make the one edit its message names: replace the old hash with the new one in
+`reviewedInlineScripts` in `scripts/verify.mjs`, and paste the Content-Security-Policy meta it prints
+over the one at the top of `index.html`. The browser runs no script the policy does not name.
+
+The policy is compared byte for byte: one line, the directives in the printed order, the hashes in the
+order the scripts appear, and nothing but whitespace between it and `meta charset`. Anything else there,
+even a stray `>` or an invisible space, ends the page's head in a browser, and a policy outside the head
+is ignored.
 
 ## Adding a theme to Dark Themes Vol. 2
 
@@ -85,6 +90,9 @@ is where the pieces live:
   verifier requires the array, the packaged themes and `previews.json` to agree exactly.
 - Display names must be unique across **both** packs. The two plugins can be installed together, so
   two themes named the same would be indistinguishable in `/theme`.
+- The `VOL2_THEMES` row is part of the page's inline script, so it changes the script's hash: replace
+  the hash `verify` prints in `reviewedInlineScripts`, and paste the policy it prints into `index.html`
+  (see "Updating the gallery" above).
 - Bump the version in `plugins/dark-themes-vol-2/.claude-plugin/plugin.json` and the matching entry
   in `.claude-plugin/marketplace.json` together; the verifier requires them to match.
 - Update the numbers the public pages state, in the same change. A theme adds fourteen contrast
@@ -126,8 +134,8 @@ Every public page shipping an `og:image` must state `og:image:alt`, a `twitter:i
 
 ```bash
 node scripts/sync-plugin-themes.mjs
-node --test scripts/*.test.mjs
 node scripts/verify.mjs
+node --test scripts/*.test.mjs
 claude plugin validate .
 ```
 
