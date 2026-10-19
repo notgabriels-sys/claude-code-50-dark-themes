@@ -710,6 +710,29 @@ The scans stay as they are. Their messages now give the line and say how to
 write a mention: with `&lt;`, or in words; five mutations (no line, an empty
 note, and the note dropped from each message) each fail their own tests.
 
+**(checked 2026-10-19) The JSON-LD rules against jsonld.js.** Rule 13 again,
+for the reader that counts ItemList types: jsonld.js 8.3.3, offline, with a
+static copy of the schema.org context (3,103 terms, read back through
+Firecrawl, because this session's proxy refuses schema.org), converted each
+block to RDF. 9,200 generated blocks — 23 spellings of the type (compact and
+full IRIs over http and https, JSON escapes in the value and in the key, case,
+percent-encoding, a relative IRI, a subtype's name, a vocabulary or prefix that
+completes the word), 7 ways to state it (`@type`, its `type` alias, an escaped
+key, an array, `rdf:type` as a property), 8 placements (`@graph`, nesting,
+`@included`, `@reverse`, `@list`, `@set`) and 7 contexts — gave 0 that `verify`
+accepts while jsonld.js types a node `schema:ItemList`, and 0 even after
+trimming, case-folding or percent-decoding the type. The harness saw misses
+first on weakened readers: 32 without the context rule, 264 without the parsed
+count, 336 counting only the exact word. Without the raw-text count it saw
+none, so that count is a second wall behind the parsed one, recorded as
+shadowed. On a 78-block sample the real `verify` agreed with the extracted
+reader every time. The cost is 312 refusals of blocks that jsonld.js reads as
+no list — a lowercase or uppercase spelling, a subtype's name, an unknown
+prefix, a relative IRI — each of which spells the type in text. Not covered:
+ItemList's own subtypes (`BreadcrumbList`, `OfferCatalog`, `HowToSection`,
+`HowToStep`), which a crawler may read as lists. The harness lives in the
+scratchpad.
+
 The Gumroad half now has structural guards, an existence-verified slug list and
 a price-drift table — but no verified *price* for any product. See below.
 
