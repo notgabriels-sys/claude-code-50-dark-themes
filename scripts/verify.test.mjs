@@ -1053,14 +1053,31 @@ test("rejects docs that say CI runs on every push when it runs only on main", { 
 // `permission` and `planMode` are held to the 3:1 non-text floor, but Claude
 // Code draws text in them. README states how many themes keep that text below
 // AA and the lowest ratio; both must match what verify-contrast.mjs computes.
-const indicatorSentence = "Nine of the 62\nthemes keep that text below AA, down to 3.01:1 in Acid.";
+// The anchors tolerate any rewrap of README's paragraph.
+async function editReadmeClaim(fixtureRoot, pattern, replacement) {
+  const readme = join(fixtureRoot, "README.md");
+  const text = await readFile(readme, "utf8");
+  assert.match(text, pattern, "fixture anchor moved; update this test");
+  await writeFile(readme, text.replace(pattern, replacement));
+}
+
+// Gives each listed root theme, and its plugin copy, new permission and
+// planMode colours.
+async function setIndicatorColours(fixtureRoot, colours) {
+  for (const [file, colour] of Object.entries(colours)) {
+    for (const path of [file, `plugins/50-dark-themes/themes/${file}`]) {
+      const target = join(fixtureRoot, path);
+      const theme = JSON.parse(await readFile(target, "utf8"));
+      theme.overrides.permission = colour;
+      theme.overrides.planMode = colour;
+      await writeFile(target, `${JSON.stringify(theme, null, 2)}\n`);
+    }
+  }
+}
 
 test("rejects a README count of below-AA permission and planMode text that the palettes contradict", { timeout: 90_000 }, async (t) => {
   const fixtureRoot = await makeFixture(t);
-  const readme = join(fixtureRoot, "README.md");
-  const text = await readFile(readme, "utf8");
-  assert.ok(text.includes(indicatorSentence), "fixture anchor moved; update this test");
-  await writeFile(readme, text.replace(indicatorSentence, indicatorSentence.replace("Nine", "Eight")));
+  await editReadmeClaim(fixtureRoot, /Nine(\s+)of(\s+)the(\s+)62/, "Eight$1of$2the$362");
 
   const result = await runVerifier(fixtureRoot);
 
@@ -1070,10 +1087,7 @@ test("rejects a README count of below-AA permission and planMode text that the p
 
 test("rejects a README lowest permission and planMode ratio that the palettes contradict", { timeout: 90_000 }, async (t) => {
   const fixtureRoot = await makeFixture(t);
-  const readme = join(fixtureRoot, "README.md");
-  const text = await readFile(readme, "utf8");
-  assert.ok(text.includes(indicatorSentence), "fixture anchor moved; update this test");
-  await writeFile(readme, text.replace(indicatorSentence, indicatorSentence.replace("3.01:1", "3.13:1")));
+  await editReadmeClaim(fixtureRoot, /3\.01:1(\s+)in(\s+)Acid/, "3.13:1$1in$2Acid");
 
   const result = await runVerifier(fixtureRoot);
 
@@ -1081,16 +1095,20 @@ test("rejects a README lowest permission and planMode ratio that the palettes co
   assert.match(result.stderr, /README\.md must give the lowest `permission`\/`planMode` ratio: 3\.01:1 in Acid/);
 });
 
+test("rejects a README that names the wrong theme for the lowest permission and planMode ratio", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  await editReadmeClaim(fixtureRoot, /3\.01:1(\s+)in(\s+)Acid/, "3.01:1$1in$2Sonar");
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted the wrong theme for the lowest ratio");
+  assert.match(result.stderr, /README\.md must give the lowest `permission`\/`planMode` ratio: 3\.01:1 in Acid/);
+});
+
 test("holds the README sentence to the palettes when a theme's permission colour changes", { timeout: 90_000 }, async (t) => {
   const fixtureRoot = await makeFixture(t);
-  // Raise Acid's purple to 4.82:1 in the theme and its plugin copy; README
-  // still says nine themes and 3.01:1, so it is now stale.
-  for (const path of ["acid.json", "plugins/50-dark-themes/themes/acid.json"]) {
-    const file = join(fixtureRoot, path);
-    const theme = await readFile(file, "utf8");
-    assert.equal(theme.split('"#8A38D8"').length - 1, 2, `fixture anchor moved in ${path}; update this test`);
-    await writeFile(file, theme.replaceAll('"#8A38D8"', '"#A866F0"'));
-  }
+  // Acid's purple raised to 4.82:1; README still says nine themes and 3.01:1.
+  await setIndicatorColours(fixtureRoot, { "acid.json": "#A866F0" });
 
   const result = await runVerifier(fixtureRoot);
 
@@ -1100,15 +1118,40 @@ test("holds the README sentence to the palettes when a theme's permission colour
 
 test("rejects a README floor paragraph that no longer names permission and planMode", { timeout: 90_000 }, async (t) => {
   const fixtureRoot = await makeFixture(t);
-  const readme = join(fixtureRoot, "README.md");
-  const text = await readFile(readme, "utf8");
-  const start = text.indexOf(" `permission` and `planMode` are held");
-  const end = text.indexOf(" `subtle` is not checked");
-  assert.ok(start > 0 && end > start, "fixture anchor moved; update this test");
-  await writeFile(readme, text.slice(0, start) + text.slice(end));
+  await editReadmeClaim(fixtureRoot, /\s`permission`\s+and\s+`planMode`\s+are\s+held[\s\S]*?(?=\s`subtle`\s+is\s+not\s+checked)/, "");
 
   const result = await runVerifier(fixtureRoot);
 
   assert.notEqual(result.code, 0, "the verifier accepted a floor paragraph silent about permission and planMode");
   assert.match(result.stderr, /contrast-floor paragraph must say that `permission` and `planMode` are held to the non-text floor/);
+});
+
+test("accepts another README paragraph that names permission, planMode and the non-text floor", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  await editReadmeClaim(
+    fixtureRoot,
+    /- `permission`, `planMode`: second accent where the theme has one/,
+    "- `permission`, `planMode`: second accent where the theme has one, held to the non-text floor",
+  );
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.equal(result.code, 0, `a correct README was rejected:\n${result.stderr}`);
+});
+
+test("rejects a stale below-AA sentence once every theme holds permission and planMode at AA", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  // Each of the nine takes its own `claude` accent, which every theme holds at AA.
+  const nine = ["acid", "sonar", "hearth", "amber-room", "undertow", "plasma", "coral", "oxide", "verdigris"];
+  const colours = {};
+  for (const name of nine) {
+    colours[`${name}.json`] = JSON.parse(await readFile(join(fixtureRoot, `${name}.json`), "utf8")).overrides.claude;
+  }
+  await setIndicatorColours(fixtureRoot, colours);
+  await editReadmeClaim(fixtureRoot, /below(\s+)AA,(\s+)down/, "below$14.5:1,$2down");
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier kept a below-AA sentence no theme supports");
+  assert.match(result.stderr, /README\.md says some `permission`\/`planMode` text is below AA, but every theme now holds it at 4\.5:1/);
 });

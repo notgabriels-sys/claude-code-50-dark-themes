@@ -97,9 +97,10 @@ The repository verifier checks each palette against its recommended terminal bac
 AAA contrast for primary text, AA for foreground accents and readable secondary text, and the
 WCAG non-text floor for functional borders and indicators. `permission` and `planMode` are held
 to that non-text floor too. Claude Code's token reference describes `permission` as dialog
-borders and `planMode` as the plan-mode accent, messages and dialogs, and both colour text: the
-"⏸ plan mode on" status, plan messages and dialog titles such as "Permissions". Nine of the 62
-themes keep that text below AA, down to 3.01:1 in Acid. `subtle` is not checked, and these
+borders and `planMode` as the plan-mode accent, messages and dialogs, but both colour text:
+`planMode` draws the "⏸ plan mode on" status and plan titles such as "Plan to implement", and
+`permission` draws dialog titles such as "Permissions" and notices such as "Retrying…". Nine of
+the 62 themes keep that text below AA, down to 3.01:1 in Acid. `subtle` is not checked, and these
 themes keep it very faint. Claude Code draws text in it far more than borders: rejection
 notices ("User rejected Claude's plan:"), sandbox and settings notices, usage statistics and
 key hints. With this pack installed that text reads at low contrast.

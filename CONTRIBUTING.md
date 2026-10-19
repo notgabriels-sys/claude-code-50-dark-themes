@@ -50,9 +50,11 @@ Rules:
 - Keep primary text at 7:1, foreground accents and readable secondary text at 4.5:1,
   and functional borders or indicators at 3:1 against the matching gallery background.
 - `permission` and `planMode` are checked at 3:1, but Claude Code also draws text in them ("⏸ plan
-  mode on", plan messages, dialog titles). README states how many themes keep that text below
-  4.5:1 and the lowest ratio, and the verifier holds it to both, so changing either colour can
-  mean updating that sentence. Holding them at 4.5:1 instead would be a pack-wide decision.
+  mode on", plan and dialog titles). README says how many of all the themes keep that text below
+  4.5:1, and the lowest ratio with its theme. The verifier holds all three to the palettes, so
+  adding a theme, or changing a theme's `permission`/`planMode` colour or its recommended
+  background, can mean updating that sentence. Holding them at 4.5:1 instead would be a
+  pack-wide decision.
 - `subtle` is not contrast-checked, and the pack keeps it very faint. Claude Code draws text in it
   far more than borders — rejection notices ("User rejected Claude's plan:"), sandbox and settings
   notices, usage statistics, key hints — so match the existing themes rather than tuning it per
@@ -90,10 +92,11 @@ What differs is where the pieces live:
 - Bump the version in `plugins/dark-themes-vol-2/.claude-plugin/plugin.json` and the matching entry
   in `.claude-plugin/marketplace.json` together; the verifier requires them to match.
 - Update the numbers the public pages state, in the same change. A theme adds fourteen contrast
-  comparisons, so the role-aware check count moves; the share card names each pack's size, and the
-  storefront's Vol. 2 heading spells that pack's size out in words. All three are CI-enforced — see
-  "Numbers stated on public pages" below. Adding a theme and running `node scripts/verify.mjs`
-  without this step fails with, for example,
+  comparisons, so the role-aware check count moves; the share card names each pack's size; the
+  storefront's Vol. 2 heading spells that pack's size out in words; and README's contrast paragraph
+  says how many of all the themes keep `permission`/`planMode` text below AA. All four are
+  CI-enforced — see "Numbers stated on public pages" below. Adding a theme and running
+  `node scripts/verify.mjs` without this step fails with, for example,
   `index.html claims 894 role-aware checks; the verifier runs 908.`
   The Vol. 2 size also appears in prose that CI does not check, in a dozen or so files — among them
   README.md, both public articles, `llms.txt`, both plugin descriptions, the Vol. 2 plugin's README
@@ -111,10 +114,12 @@ noticeably: render `index.html` in a headless browser and screenshot the `#vol2G
 ## Numbers stated on public pages
 
 The storefront and the share card state a role-aware check count; the share card states both pack
-sizes, and the storefront's Vol. 2 heading states that pack's size in words. These are claims to a
-reader, so the verifier ties each one to the computed value: if a change moves the number of
-contrast comparisons or the size of either pack, the stated numbers must be updated in the same
-change or CI fails. Removing a claim fails too, so the guard cannot be silenced by deletion.
+sizes, and the storefront's Vol. 2 heading states that pack's size in words. README's contrast
+paragraph states how many of all the themes keep `permission`/`planMode` text below AA, and the
+lowest ratio with its theme. These are claims to a reader, so the verifier ties each one to the
+computed value: if a change moves the number of contrast comparisons, the size of either pack or a
+`permission`/`planMode` ratio, the stated numbers must be updated in the same change or CI fails.
+Removing a claim fails too, so the guard cannot be silenced by deletion.
 
 The flagship's "50" also appears throughout as the product's name. It is not checked line by line;
 it stays true because the verifier pins the flagship at exactly fifty theme files.
@@ -147,8 +152,8 @@ The command checks:
 - a fresh-machine-safe installation command;
 - the verified shop payment surfaces;
 - valid 1280×720 PNG assets for the curated developer picks;
-- that the stated check count, the share card's pack sizes and the storefront's Vol. 2 size match
-  the computed values;
+- that the stated check count, the share card's pack sizes, the storefront's Vol. 2 size, and
+  README's below-AA `permission`/`planMode` count and lowest ratio match the computed values;
 - that share images carry alternative text, and that one image is described one way.
 
 GitHub Actions runs the regression tests and the same repository check on every pull request and

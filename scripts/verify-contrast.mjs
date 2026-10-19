@@ -54,9 +54,10 @@ const checks = [
   { token: "suggestion", floor: 4.5, surfaces: ["terminal"] },
   // Claude Code's token reference lists `permission` as dialog borders and
   // `planMode` as the plan-mode accent, messages and dialogs. They are held to
-  // the non-text floor here, but both colour text: the "⏸ plan mode on" status,
-  // plan messages, and dialog titles such as "Permissions". README states how
-  // many themes keep that text below 4.5:1; verify.mjs holds it to the list
+  // the non-text floor here, but both colour text: `planMode` the "⏸ plan mode
+  // on" status and plan titles, `permission` dialog titles such as
+  // "Permissions" and notices such as "Retrying…". README states how many
+  // themes keep that text below 4.5:1; verify.mjs holds it to the list
   // collected in noteIndicatorText.
   { token: "permission", floor: 3, surfaces: ["terminal"] },
   { token: "planMode", floor: 3, surfaces: ["terminal"] },
@@ -276,3 +277,8 @@ console.log(
 // surface that prints a comparison count is making a claim to a reader.
 export const roleAwareComparisonCount = comparisons;
 indicatorTextBelowAA.sort((a, b) => a.ratio - b.ratio);
+// The floor `permission` and `planMode` are held to, so verify.mjs knows
+// whether README still has to say they sit below the text floor.
+export const indicatorTextFloor = Math.min(
+  ...checks.filter((check) => ["permission", "planMode"].includes(check.token)).map((check) => check.floor),
+);
