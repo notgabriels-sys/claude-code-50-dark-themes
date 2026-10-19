@@ -67,7 +67,7 @@ if [[ -n "$only" ]]; then
     echo "Tag '$tag' names plugins/$only, but it has no .claude-plugin/plugin.json at this tag." >&2
     exit 1
   fi
-  manifest_version="$(node -e 'process.stdout.write(String(JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8")).version ?? ""))' "$manifest")"
+  manifest_version="$(node -e 'let v; try { v = JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8")).version; } catch { v = ""; } process.stdout.write(typeof v === "string" ? v : "")' "$manifest")"
   if [[ "$manifest_version" != "$version" ]]; then
     echo "Tag '$tag' says version $version, but plugins/$only/.claude-plugin/plugin.json says '$manifest_version'. Tag the commit whose manifest carries the version in the tag." >&2
     exit 1

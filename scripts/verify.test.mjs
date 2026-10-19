@@ -520,7 +520,7 @@ test("rejects a README that stops naming the 50-theme zip", { timeout: 90_000 },
   const result = await runVerifier(fixtureRoot);
 
   assert.notEqual(result.code, 0, "the verifier accepted a README that no longer names the 50-theme zip");
-  assert.match(result.stderr, /README must point at the 50 Dark Themes release /);
+  assert.match(result.stderr, /README must link the 50 Dark Themes release as /);
 });
 
 test("rejects a README that links a release no shipped pack version claims", { timeout: 90_000 }, async (t) => {
@@ -551,5 +551,35 @@ test("accepts a README that names the current release in prose with sentence pun
   const result = await runVerifier(fixtureRoot);
 
   assert.equal(result.code, 0, result.stderr);
+});
+
+test("rejects a storefront whose stated release version drifts from the zip it links", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixtureHtml = join(fixtureRoot, "index.html");
+  const html = await readFile(fixtureHtml, "utf8");
+  const version = await readManifestVersion(fixtureRoot, "50-dark-themes");
+  const caption = `</a> from the v${version} release`;
+  assert.ok(html.includes(caption), "the storefront should state the linked release version beside the zip link");
+  await writeFile(fixtureHtml, html.replace(caption, "</a> from the v9.9.9 release"));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a zip link captioned with a version it does not resolve to");
+  assert.match(result.stderr, new RegExp(`say "from the v${version.replaceAll(".", "\\.")} release" beside it`));
+});
+
+test("rejects a README whose release link text names a version the link does not resolve to", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixtureReadme = join(fixtureRoot, "README.md");
+  const readme = await readFile(fixtureReadme, "utf8");
+  const version = await readManifestVersion(fixtureRoot, "50-dark-themes");
+  const text = `[v${version} GitHub release →]`;
+  assert.ok(readme.includes(text), "the README should name the release version in the link text");
+  await writeFile(fixtureReadme, readme.replace(text, "[v9.9.9 GitHub release →]"));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted README link text naming a version the link does not resolve to");
+  assert.match(result.stderr, /README must link the 50 Dark Themes release as /);
 });
 
