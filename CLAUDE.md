@@ -783,9 +783,13 @@ read off a Gumroad product.
 
 Two things found by static read on 2026-08-24, both needing Gabriel:
 
-**1. The page mixes currencies.** Eleven products are priced in €; three are
-priced in $ — `cfcvmy` "Dark HTML Templates" at **$19**, `xcxeb` "50 Dark
-Palettes" at **$9**, and the bundle `wuhehk` at **$39**. Everything else on the
+**1. The page mixes currencies.** Twelve products are priced in € (eleven when
+this was written; `dark-invoice-business-documents` arrived at €12 the next
+day, and the count went stale until 2026-10-19); three are priced in $ —
+`cfcvmy` "Dark HTML Templates" at **$19**, `xcxeb` "50 Dark Palettes" at
+**$9**, and the bundle `wuhehk` at **$39**. Re-derive the split rather than
+trusting it:
+`LC_ALL=C.UTF-8 grep -oE '\{ slug: "[^"]+", price: "(€|\$)' scripts/verify.mjs | LC_ALL=C.UTF-8 grep -oE '(€|\$)$' | sort | uniq -c`. Everything else on the
 page, including the entire mixing and mastering rate card, is EUR. Either the Gumroad products really are priced in USD, in
 which case the page is honest and inconsistent, or the page is misquoting
 them, in which case a buyer is shown the wrong number. **Do not resolve this by
@@ -803,6 +807,60 @@ and ends "No public product exists." Yet `raw-techno-kick-architecture` is
 linked on `index.html` at €15 and sits in `verifiedGumroadSlugs`. One of the two
 is out of date. Which one is a fact about the Gumroad product and Gabriel's
 approvals, not about this repo — do not edit either to make them agree.
+Re-read 2026-10-19: unchanged.
+
+**Found 2026-10-19 by a read-only inventory of every stated price** (each of
+the five product directories read in full, the customer zip included; the
+storefront and the price tables; every other served file; each finding then
+re-read at its cited lines by two agents told to refute it, and all held).
+Where a product has a card, its notes agree with the page: €15 for
+`industrial-tension-fx` and €15 for `raw-techno-kick-architecture`. The other
+three state prices for products that are not on the shop — the workflow kit's
+€12 "launch price" (`zvbti`, withdrawn), and €17 each, marked target or
+proposed, for `hypnotic-percussion-grid` and `techno-low-end-architecture`.
+Needing Gabriel:
+
+- **Gumroad adds VAT on top of the card price.** The one recorded checkout,
+  the creator's own signed-in zero-charge test from Germany
+  (`products/industrial-tension-fx/PUBLISHING.md`), showed a €15 subtotal,
+  €2.85 VAT and a €17.85 total, against "€15" on the card. The PayPal cards
+  are tax-inclusive, and the "say nothing" decision of 2026-08-18 was made
+  for them; nothing records whether it was meant to cover the Gumroad cards,
+  where, in that one test, the card's number was not the cart's total.
+- **The install guide's structured data still offers the withdrawn free zip.**
+  The FAQ answer in `claude-code-theme-install-guide.html`'s JSON-LD says "The
+  Gumroad ZIP can be downloaded for zero by choosing the free price". Main's
+  `6422979` ("withdraw unverified Gumroad archive route") removed that route
+  from `index.html`, `README.md` and `PROMOTION_QUEUE.md` but not from here.
+  The sentence is not on the visible page, so a crawler reads a claim the
+  reader never sees, and it puts a price, zero, in structured data, which
+  the storefront-exposure skill forbids. The fix is deleting that one
+  sentence; it is a statement about a payment route, so it waits for him.
+- **The workflow kit's publishing notes are stale or unsupported.** Its
+  `PUBLISHING.md` says, in the past tense, that the `zvbti` URL was added to
+  the gallery and the README (true when written; it has been removed from
+  both), and calls the URL "Verified" on an HTTP 200 while the same lines
+  record `is_published: false`.
+- **Two `industrial-tension-fx` notes disagree.** `LISTING.md` says the
+  delivered-file checksum is pending a test purchase; `PUBLISHING.md` records
+  the completed test purchase and a matching SHA-256.
+- **Draft copy prices the catalog as free.** `DIRECTORY_SUBMISSION_PACK.md`'s
+  DevHunt block gives "Pricing: Free" for the whole Gabs Utilities catalog,
+  whose description, in the same file, lists the paid packs.
+- `products/hypnotic-percussion-grid/BRIEF.md` calls "the two published
+  packs" published without naming them; by their content they are the kicks
+  and the FX packs, and the kicks' own notes say it is not published.
+
+Fixed here, because they are claims about this repo: the storefront-exposure
+skill said no Gumroad price had ever been read back (the record above
+contradicts it, and the skill ships to installers), and the currency count
+in point 1. **No guard was added.** A check tying note prices to the page
+would compare three pieces of unverified text, covers two of fifteen
+products (only two have a directory), would pass the one real contradiction
+found (the kicks: matching prices, contradictory status), and would refuse
+proposals, VAT lines, cents fields and dated records. A status check would
+fail at once on the kicks contradiction, which must not be resolved by
+editing either file.
 
 **Verification route, same discipline as PayPal:** sign in at `gumroad.com`,
 open the products list, and read each product's own page — price, currency, and

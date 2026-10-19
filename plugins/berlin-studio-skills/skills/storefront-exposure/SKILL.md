@@ -28,9 +28,11 @@ an RSS or JSON feed, not a sitemap extension.
 
 The reason is specific and not obvious. `index.html` states prices, and CI
 guards them — but that guard only asserts the page has not *drifted* from what
-it said when recorded. **No Gumroad product price in this repo has ever been
-read back from Gumroad.** See CLAUDE.md, "Gumroad — the unverified half of the
-shop", and the table of what each assertion actually means.
+it said when recorded. **Claude has read back no Gumroad product price in this
+repo, and only one product has any recorded read-back** — a publishing record
+left by whoever published it, not a check CI can repeat. See CLAUDE.md,
+"Gumroad — the unverified half of the shop", and the table of what each
+assertion actually means.
 
 Printing an unverified price on a page a human reads is a mistake someone can
 notice and report. Emitting it as `"price": "12"` in JSON-LD hands it to Google
