@@ -757,7 +757,14 @@ other number-before-"skills" on a served file counts another set, in the
 dated tooling audit. The products' own counts — 64, 48, 48 and 40 WAV files,
 10 templates and 2 examples — agree with each product's `verify-audio.mjs`
 or its committed zip, which already pin them, and a product does not grow
-the way a theme pack does.
+the way a theme pack does. Mutation-tested (rule 5): of 14 branches, each
+gutted alone, 13 turn red exactly the tests written for them — narrowing the
+loop back to five files fails both note tests, a constant line fails both
+line tests, and dropping the theme check fails every theme-count test — and
+one fails none: the value of a compound word past sixty. It is shadowed until
+a pack ships seventy or more, because reading such a number rightly or
+wrongly both refuse a count no pack ships; it is recorded here, not claimed
+as pinned.
 
 The Gumroad half now has structural guards, an existence-verified slug list and
 a price-drift table — but no verified *price* for any product. See below.
