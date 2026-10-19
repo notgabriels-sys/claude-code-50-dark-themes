@@ -878,8 +878,8 @@ test("rejects a hyphenated skills count in the README", { timeout: 90_000 }, asy
   const fixtureRoot = await makeFixture(t);
   const readmePath = join(fixtureRoot, "README.md");
   const readme = await readFile(readmePath, "utf8");
-  assert.equal(readme.split("Six skills for running").length, 2, "fixture anchor must be unique");
-  await writeFile(readmePath, readme.replace("Six skills for running", "Twenty-six skills for running"));
+  assert.equal(readme.split("Five skills for running").length, 2, "fixture anchor must be unique");
+  await writeFile(readmePath, readme.replace("Five skills for running", "Twenty-six skills for running"));
 
   const result = await runVerifier(fixtureRoot);
 
@@ -889,16 +889,17 @@ test("rejects a hyphenated skills count in the README", { timeout: 90_000 }, asy
 
 test("rejects a digit skills count in the README", { timeout: 90_000 }, async (t) => {
   const fixtureRoot = await makeFixture(t);
-  // The skills scan read number words only, so "5 skills" passed.
+  // The skills scan read number words only, so a digit count passed. Five ship,
+  // so the wrong digit is 6.
   const readmePath = join(fixtureRoot, "README.md");
   const readme = await readFile(readmePath, "utf8");
-  assert.equal(readme.split("Six skills for running").length, 2, "fixture anchor must be unique");
-  await writeFile(readmePath, readme.replace("Six skills for running", "5 skills for running"));
+  assert.equal(readme.split("Five skills for running").length, 2, "fixture anchor must be unique");
+  await writeFile(readmePath, readme.replace("Five skills for running", "6 skills for running"));
 
   const result = await runVerifier(fixtureRoot);
 
   assert.notEqual(result.code, 0, "a digit skills count passed unread");
-  assert.match(result.stderr, /README\.md:\d+ says "5 skills" but \d+ skills ship/);
+  assert.match(result.stderr, /README\.md:\d+ says "6 skills" but \d+ skills ship/);
 });
 
 test("rejects a stale theme count in any note Pages renders, at its line", { timeout: 90_000 }, async (t) => {
@@ -1075,8 +1076,8 @@ for (const [form, page, from, to, message] of [
     "<p class=\"kicker\" aria-roledescription=\"51 dark themes for Claude Code\">50 dark themes \u00b7 Claude Code</p>",
     /index\.html:\d+ says "51 dark themes"/],
   ["a blockquote continued across lines", "README.md",
-    "Six skills for running",
-    "> The flagship pack ships 51\n> hand-tuned dark themes.\n\nSix skills for running",
+    "Five skills for running",
+    "> The flagship pack ships 51\n> hand-tuned dark themes.\n\nFive skills for running",
     /README\.md:\d+ says "51 hand-tuned dark themes"/],
   ["a reference-style link", "README.md",
     "the repository verifies the theme schema, gallery parity, installation command and payment links on every push.",
@@ -1217,8 +1218,8 @@ for (const [prose, page, from, to] of [
     "## Safe launch order",
     "As of 19 October, Vol. 2 themes are previewed in the gallery.\n\n## Safe launch order"],
   ["one another", "README.md",
-    "They route to one another, so you rarely have to name one.",
-    "They route to one another, so skills rarely need to be named."],
+    "route to each other, so you rarely have to name one.",
+    "route to one another, so skills rarely need to be named."],
   ["a clause comma before role-aware", "README.md",
     "## Note on backgrounds",
     "Since Vol. 2, role-aware checks cover both packs.\n\n## Note on backgrounds"],
@@ -1275,15 +1276,27 @@ for (const [file, content, message] of [
 }
 test("reads counts in a skill that ships to installers", { timeout: 90_000 }, async (t) => {
   const fixtureRoot = await makeFixture(t);
-  for (const copy of [".claude/skills/storefront-exposure/SKILL.md", "plugins/berlin-studio-skills/skills/storefront-exposure/SKILL.md"]) {
+  const anchor = "## Resampling \u2014 the single highest-leverage habit";
+  for (const copy of [".claude/skills/sound-design-recipes/SKILL.md", "plugins/berlin-studio-skills/skills/sound-design-recipes/SKILL.md"]) {
     const path = join(fixtureRoot, copy);
     const text = await readFile(path, "utf8");
-    assert.equal(text.split("consuming the 50 themes").length, 2, "fixture anchor must be unique");
-    await writeFile(path, text.replace("consuming the 50 themes", "consuming the 40 themes"));
+    assert.equal(text.split(anchor).length, 2, "fixture anchor must be unique");
+    await writeFile(path, text.replace(anchor, `The same marketplace ships the 40 themes.\n\n${anchor}`));
   }
   const result = await runVerifier(fixtureRoot);
   assert.notEqual(result.code, 0, "a stale count in a shipped skill passed");
-  assert.match(result.stderr, /plugins\/berlin-studio-skills\/skills\/storefront-exposure\/SKILL\.md:\d+ says "40 themes"/);
+  assert.match(result.stderr, /plugins\/berlin-studio-skills\/skills\/sound-design-recipes\/SKILL\.md:\d+ says "40 themes"/);
+});
+
+test("rejects a plugin README that lists a skill the plugin does not ship", { timeout: 90_000 }, async (t) => {
+  // Moving storefront-exposure out of the plugin left its row in this table,
+  // and verify stayed green.
+  const fixtureRoot = await editPage(t, "plugins/berlin-studio-skills/README.md",
+    "| `freelance-admin-de` |",
+    "| `storefront-exposure` | SEO, structured data, sitemap |\n| `freelance-admin-de` |");
+  const result = await runVerifier(fixtureRoot);
+  assert.notEqual(result.code, 0, "a README row for a skill that does not ship passed");
+  assert.match(result.stderr, /plugins\/berlin-studio-skills\/README\.md lists storefront-exposure, which the plugin does not ship/);
 });
 
 test("lists every stale count in a file in one run", { timeout: 90_000 }, async (t) => {
@@ -1301,7 +1314,7 @@ test("reads a skills count however the README spells it, and requires one", { ti
     ["[Seven](https://gabs-utilities.com/) skills for running", /README\.md:\d+ says "Seven skills" but \d+ skills ship/],
     ["Skills for running", /README\.md no longer states how many skills ship in a form verify reads/],
   ]) {
-    const fixtureRoot = await editPage(t, "README.md", "Six skills for running", to);
+    const fixtureRoot = await editPage(t, "README.md", "Five skills for running", to);
     const result = await runVerifier(fixtureRoot);
     assert.notEqual(result.code, 0, `${to} shipped green`);
     assert.match(result.stderr, message, to);

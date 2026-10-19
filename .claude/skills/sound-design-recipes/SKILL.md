@@ -9,8 +9,8 @@ description: >-
   a metallic percussion hit", "recreate this sound", "my bass has no weight",
   or describes a texture they can hear but cannot build. Covers synthesis
   approach, sampling and resampling, effect chain order, and adding motion.
-  Does NOT cover deciding what to work on (track-finishing-system) or fixing a
-  full mix (mix-master-decisions).
+  Does NOT cover deciding what to work on, or fixing a full mix
+  (mix-master-decisions).
 ---
 
 # Sound design recipes
@@ -114,14 +114,18 @@ faster to finish.
 | Buried | Competing with another element in the same band; one must move |
 | Sounds like a preset | Envelope untouched; no resampling; no per-hit variation |
 
-## Placeholder — Gabriel's own conventions
+## The user's own conventions — ask, do not assume
 
-His default synths, sample library organisation, and go-to chains inside
-Bitwig are **not recorded**. Ask before assuming a specific instrument or rack,
-and add what he confirms here rather than guessing.
+The user's default synths, DAW, sample library organisation and go-to chains
+are not known. Ask before assuming a specific instrument, rack or DAW, and use
+what the user tells you for the rest of the conversation rather than guessing.
 
 ## Routing
 
-- What to work on, finishing, session planning → `track-finishing-system`
+- What to work on, finishing, session planning → `track-finishing-system` (a separate skill, not part of this plugin)
 - Mix balance, translation, master-bus problems → `mix-master-decisions`
-- Packaging sounds as a sellable product → `sample-pack-creation`
+- Packaging sounds as a sellable product → `sample-pack-creation` (a separate skill, not part of this plugin)
+
+A skill marked *separate* is not part of this plugin. If it is not installed,
+say so in a line and answer what this skill can, rather than acting as if it
+were there.

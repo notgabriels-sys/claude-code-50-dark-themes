@@ -1,30 +1,33 @@
 ---
 name: freelance-admin-de
 description: >-
-  Invoicing, tax, and self-employment admin for a freelance audio engineer and
-  musician registered in Berlin. Use whenever the user mentions Rechnung,
-  invoice, Steuernummer, USt-IdNr, Umsatzsteuer, VAT, Kleinunternehmerregelung,
+  Invoicing, tax, and self-employment admin for someone self-employed in
+  Germany, written for a freelance audio engineer and musician registered in
+  Berlin. Use whenever such a user mentions a German invoice (Rechnung),
+  Steuernummer, USt-IdNr, Umsatzsteuer or German VAT, Kleinunternehmerregelung,
   §19 UStG, Umsatzsteuervoranmeldung, EÜR, Einkommensteuererklärung, Finanzamt,
-  Künstlersozialkasse, KSK, Gewerbeanmeldung, Freiberufler vs Gewerbe, business
-  expenses, Betriebsausgaben, deadlines, "do I charge VAT", "how do I invoice
-  this client", "what can I write off", or reading a letter from the Finanzamt.
-  Also trigger when a quote, rate, or payment surface is being priced and the
-  tax treatment has not been settled. Does NOT cover rights income mechanics
-  (music-rights-royalties) or the wording of the German letter itself
-  (german-correspondence).
+  Künstlersozialkasse, KSK, Gewerbeanmeldung, Freiberufler vs Gewerbe,
+  Betriebsausgaben, German tax deadlines, "do I charge VAT" for a German
+  business, "how do I invoice this client" from Germany, "what can I write off"
+  in Germany, or reading a letter from the Finanzamt. Also trigger when a quote,
+  rate, or payment surface for a business in Germany is being priced and the
+  tax treatment has not been settled. Does NOT cover rights income mechanics,
+  or the wording of the German letter itself (german-correspondence).
 ---
 
 # Freelance admin (Germany / Berlin)
 
 ## Status of the user's own tax position — do not assume
 
-His USt status is **not recorded** anywhere Claude can read. The shop's rate
-card is tax-inclusive with no VAT added, which is *consistent with* §19
-Kleinunternehmerregelung but does not prove it. Treat it as unknown.
+The user's USt status is **not known** unless the user states it. Prices that
+show no VAT are *consistent with* §19 Kleinunternehmerregelung but do not prove
+it. Treat it as unknown.
 
-- Never state on his behalf that he is or is not a Kleinunternehmer.
-- Never put a tax statement on a customer-facing surface without his wording.
-- When the answer depends on his status, give both branches and ask which applies.
+- Never state on the user's behalf that they are or are not a Kleinunternehmer.
+- Never put a tax statement on a customer-facing surface without the user's
+  wording.
+- When the answer depends on their status, give both branches and ask which
+  applies.
 
 This is practical orientation, not Steuerberatung. For anything binding —
 an audit, a back-payment demand, a cross-border threshold — the answer is
@@ -97,7 +100,7 @@ performance, artistic sound design) tends toward **freiberuflich** — no
 Gewerbeanmeldung, no Gewerbesteuer, EÜR only. Selling goods — sample packs,
 theme licences, merch, digital products — tends toward **Gewerbe**.
 
-Selling digital products alongside services can make him a mixed case. That is
+Selling digital products alongside services can make the user a mixed case. That is
 a Steuerberater question, not a guess. Flag it when the shop side grows.
 
 ## Künstlersozialkasse (KSK)
@@ -111,7 +114,7 @@ self-employed contributions.
 - Predominantly technical service work (live sound engineering, straight
   mastering as a trade) is frequently rejected; composition, production, and
   artistic sound design are the qualifying framing.
-- Membership does not stop him invoicing normally.
+- Membership does not stop the user invoicing normally.
 
 ## Recurring deadlines
 
@@ -119,7 +122,7 @@ self-employed contributions.
 |---|---|
 | Umsatzsteuervoranmeldung | Monthly or quarterly, 10th of the following month; a one-month Dauerfristverlängerung is available on request |
 | Einkommensteuererklärung + EÜR + USt-Jahreserklärung | Annual; the statutory date is later when a Steuerberater files for you |
-| Zusammenfassende Meldung | Only if he has EU B2B reverse-charge sales |
+| Zusammenfassende Meldung | Only if the user has EU B2B reverse-charge sales |
 
 Exact dates shift year to year — confirm the current year's rather than
 asserting one.
@@ -139,7 +142,11 @@ audit.
 
 ## Routing
 
-- Rights income, GEMA/GVL, splits → `music-rights-royalties`
+- Rights income, GEMA/GVL, splits → `music-rights-royalties` (a separate skill, not part of this plugin)
 - Writing the German letter or email → `german-correspondence`
-- Setting the prices themselves → `rate-cards-service-menus`
-- Quoting a specific job → `audio-client-proposals`
+- Setting the prices themselves → `rate-cards-service-menus` (a separate skill, not part of this plugin)
+- Quoting a specific job → `audio-client-proposals` (a separate skill, not part of this plugin)
+
+A skill marked *separate* is not part of this plugin. If it is not installed,
+say so in a line and answer what this skill can, rather than acting as if it
+were there.

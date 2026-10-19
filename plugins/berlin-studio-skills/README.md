@@ -1,11 +1,11 @@
 # Berlin Studio Skills
 
-Six Claude Code skills for running a techno studio and a freelance audio
+Five Claude Code skills for running a techno studio and a freelance audio
 practice in Berlin.
 
 ```
 claude plugin marketplace add notgabriels-sys/claude-code-50-dark-themes
-claude plugin install berlin-studio-skills
+claude plugin install berlin-studio-skills@notgabriels-themes
 ```
 
 | Skill | Use it for |
@@ -15,20 +15,26 @@ claude plugin install berlin-studio-skills
 | `release-delivery` | Master specs, ISRC/UPC, artwork, metadata, distributor lead times |
 | `german-correspondence` | Formal German letters and email — Kündigung, Widerspruch, Mahnung |
 | `freelance-admin-de` | Rechnung, §14 UStG fields, Kleinunternehmerregelung, KSK, deadlines |
-| `storefront-exposure` | SEO, structured data, sitemap, llms.txt, directory listings — and the price-in-structured-data trap |
 
-They route to one another, so asking "what do I do with this track" lands in the
-right one without naming it.
+The audio pair — `sound-design-recipes` and `mix-master-decisions` — and the
+admin pair — `freelance-admin-de` and `german-correspondence` — hand questions to
+each other, so asking "why does this kick sound thin" lands in the right one
+without naming it. Each skill also names the skills it would hand a question
+on to that are not in this plugin (rights and royalties, rate cards, release
+campaigns and the like), marks them as separate, and says so when one is not
+installed rather than acting as if it were there.
 
 ## What these skills will not do
 
-Three of them end in a marked placeholder rather than a guess. `mix-master-decisions`
-and `sound-design-recipes` do not assume a monitoring chain, room, reference
-tracks, or a default synth. `freelance-admin-de` does not assert a USt status —
-a tax-inclusive rate card is consistent with §19 but does not prove it.
+`mix-master-decisions` and `sound-design-recipes` do not assume a monitoring
+chain, room, reference tracks, DAW or default synth, and `freelance-admin-de`
+does not assume a USt status: prices that show no VAT are consistent with §19
+but do not prove it. They ask instead of inventing, and use your answers for
+the rest of the conversation.
 
-They ask instead of inventing. Fill the placeholders in with real answers and
-they get sharper; leave them and the skills stay honest.
+`freelance-admin-de`'s §19 section, invoice footers and deadlines have not been
+checked against the current statute, and the skill says so before you rely on
+them.
 
 Nothing here is tax or legal advice.
 

@@ -45,7 +45,7 @@
       "source": "./plugins/berlin-studio-skills",
       "version": "1.0.0",
       "displayName": "Berlin Studio Skills",
-      "description": "Six skills for a Berlin techno producer and freelance audio engineer: sound design, mix and master decisions, release delivery, German correspondence, German freelance admin, and storefront discoverability.",
+      "description": "Five skills for a Berlin techno producer and freelance audio engineer: sound design, mix and master decisions, release delivery, German correspondence, and German freelance admin.",
       "author": {
         "name": "NotGabriels",
         "url": "https://github.com/notgabriels-sys"

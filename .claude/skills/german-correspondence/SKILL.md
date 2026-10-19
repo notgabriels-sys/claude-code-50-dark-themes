@@ -7,16 +7,15 @@ description: >-
   German text that will actually be sent: "write this in German", "draft the
   email to the venue", "Kündigung", "Widerspruch", "Mahnung", "Terminanfrage",
   "answer this German letter", "make this sound more formal", or pastes German
-  correspondence and wants a reply. Does NOT cover learning or drilling German
-  (german-practice-drills) or job applications and CVs
-  (german-audio-job-applications).
+  correspondence and wants a reply. Does NOT cover learning or drilling German,
+  or job applications and CVs.
 ---
 
 # German correspondence
 
-Output here is a finished document he can send without editing. Not a lesson.
-If he wants to understand *why* a case is used, that is
-`german-practice-drills`.
+Output here is a finished document the user can send without editing. Not a
+lesson. If the user wants to understand *why* a case is used, that is
+`german-practice-drills` (a separate skill, not part of this plugin).
 
 ## Always ask yourself first: Sie or du?
 
@@ -115,11 +114,15 @@ client and does not speed up payment.
 2. Ask for anything you would otherwise invent — reference numbers, contract
    numbers, dates, addresses. Never fabricate a Kundennummer or an Aktenzeichen.
 3. Produce the German text as the deliverable.
-4. Add a short English gloss underneath **only** if he asks or if the letter
-   carries legal consequence he should understand before sending.
+4. Add a short English gloss underneath **only** if the user asks or if the
+   letter carries legal consequence the user should understand before sending.
 
 ## Routing
 
-- Understanding grammar, practising, rehearsing a call → `german-practice-drills`
-- Bewerbung, Lebenslauf, Anschreiben → `german-audio-job-applications`
+- Understanding grammar, practising, rehearsing a call → `german-practice-drills` (a separate skill, not part of this plugin)
+- Bewerbung, Lebenslauf, Anschreiben → `german-audio-job-applications` (a separate skill, not part of this plugin)
 - Invoice content and tax wording → `freelance-admin-de`
+
+A skill marked *separate* is not part of this plugin. If it is not installed,
+say so in a line and answer what this skill can, rather than acting as if it
+were there.

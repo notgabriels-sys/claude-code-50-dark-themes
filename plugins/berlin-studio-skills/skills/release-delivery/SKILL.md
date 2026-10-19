@@ -8,10 +8,8 @@ description: >-
   want", "prepare the release package", "distributor", "DistroKid /
   Bandcamp / Beatport upload", "ISRC", "UPC", "artwork size", "when should I
   set the release date", "what do I send them", or is assembling files and
-  metadata for an upcoming release. Does NOT cover promotion or press timing
-  (release-campaigns), the artistic concept and texts
-  (release-concept-architecture), or ownership and registration
-  (music-rights-royalties).
+  metadata for an upcoming release. Does NOT cover promotion or press timing,
+  the artistic concept and texts, or ownership and registration.
 ---
 
 # Release delivery
@@ -67,12 +65,12 @@ Inconsistent metadata is what splits an artist page in two.
 - **Release title**, **label name**, **catalogue number**
 - **Genre**, **release date**, **℗ and © lines** (year + owner)
 - **Contributor credits:** composer, producer, mixer, mastering engineer.
-  These feed rights matching downstream — see `music-rights-royalties`.
+  These feed rights matching downstream — see `music-rights-royalties` (a separate skill, not part of this plugin).
 
 **ISRC** — one per unique recording. A remix, a radio edit, and a re-master are
 each a new recording and each need their own. Reissuing the identical recording
-keeps the original ISRC. A distributor will issue them free if he has none of
-his own.
+keeps the original ISRC. A distributor will issue them free if the user has
+none of their own.
 
 **UPC/EAN** — one per release (the product), not per track. Distributors issue
 these too.
@@ -96,7 +94,7 @@ these too.
 | Bandcamp only | Days, but the promo cycle still wants lead time |
 
 Set the date backwards from the *promo* plan, not from when the audio is
-finished. Hand off to `release-campaigns` once the date is fixed.
+finished. Hand off to `release-campaigns` (a separate skill, not part of this plugin) once the date is fixed.
 
 ## Pre-delivery checklist
 
@@ -108,12 +106,16 @@ finished. Hand off to `release-campaigns` once the date is fixed.
 - [ ] Filenames consistent: `01 Artist - Title.wav`
 - [ ] ISRC per recording, UPC per release
 - [ ] Artwork meets spec and is cleared
-- [ ] Splits documented before release, not after (`music-rights-royalties`)
+- [ ] Splits documented before release, not after
 - [ ] Anything sampled is cleared or replaced
 
 ## Routing
 
-- What the release *means*, titles, tracklist logic → `release-concept-architecture`
-- Promo, press, playlist and social timing → `release-campaigns`
-- Splits, GEMA/GVL registration, clearance → `music-rights-royalties`
-- Client-facing delivery notes for paid mix/master work → `mixing-mastering-reports`
+- What the release *means*, titles, tracklist logic → `release-concept-architecture` (a separate skill, not part of this plugin)
+- Promo, press, playlist and social timing → `release-campaigns` (a separate skill, not part of this plugin)
+- Splits, GEMA/GVL registration, clearance → `music-rights-royalties` (a separate skill, not part of this plugin)
+- Client-facing delivery notes for paid mix/master work → `mixing-mastering-reports` (a separate skill, not part of this plugin)
+
+A skill marked *separate* is not part of this plugin. If it is not installed,
+say so in a line and answer what this skill can, rather than acting as if it
+were there.

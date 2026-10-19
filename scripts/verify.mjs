@@ -640,6 +640,18 @@ for (const name of sourceSkills) {
     fail(`plugins/berlin-studio-skills/README.md does not list the packaged skill ${name}.`);
   }
 }
+// And it lists nothing else. A skill removed from .claude/skills/ but left in
+// the table tells an installer they get something the plugin no longer ships;
+// moving storefront-exposure out on 2026-10-19 left its row in, and verify
+// stayed green. The name is taken to its closing backtick.
+for (const [, name] of skillsReadme.matchAll(/^\|[ \t]*`([^`\n]+)`[ \t]*\|/gm)) {
+  if (!sourceSkills.includes(name)) {
+    fail(
+      `plugins/berlin-studio-skills/README.md lists ${name}, which the plugin does not ship; ` +
+        `remove its row, or add the skill to .claude/skills/ and sync.`,
+    );
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Exactly what ships, and nothing else. `claude plugin install` copies every

@@ -9,8 +9,7 @@ description: >-
   ready to send", "my master is clipping", or asks whether a mix is finished.
   Covers gain staging, frequency conflicts, dynamics decisions, referencing,
   translation checks, and loudness targets. Does NOT cover creating a sound
-  (sound-design-recipes) or writing the client-facing delivery note
-  (mixing-mastering-reports).
+  (sound-design-recipes) or writing the client-facing delivery note.
 ---
 
 # Mix and master decisions
@@ -117,17 +116,21 @@ after transcoding while looking clean in the DAW.
 - [ ] Nothing is fixable at the source that you papered over instead
 
 If revisions keep circling the same 0.5 dB, the mix is done and the decision is
-`track-finishing-system`, not another plugin.
+`track-finishing-system` (a separate skill, not part of this plugin), not another plugin.
 
-## Placeholder — Gabriel's own setup
+## The user's own setup — ask, do not assume
 
-His monitoring chain, room treatment, and reference tracks are **not
-recorded**. Ask rather than assuming a speaker, room, or target loudness, and
-record the answers here once confirmed.
+The user's monitoring chain, room treatment and reference tracks are not
+known. Ask rather than assuming a speaker, room, or target loudness, and use
+the answers for the rest of the conversation.
 
 ## Routing
 
 - Creating or rebuilding the sound itself → `sound-design-recipes`
-- Deciding whether the track is finished at all → `track-finishing-system`
-- Writing the delivery note or revision reply to a client → `mixing-mastering-reports`
-- What to charge for the work → `rate-cards-service-menus`
+- Deciding whether the track is finished at all → `track-finishing-system` (a separate skill, not part of this plugin)
+- Writing the delivery note or revision reply to a client → `mixing-mastering-reports` (a separate skill, not part of this plugin)
+- What to charge for the work → `rate-cards-service-menus` (a separate skill, not part of this plugin)
+
+A skill marked *separate* is not part of this plugin. If it is not installed,
+say so in a line and answer what this skill can, rather than acting as if it
+were there.
