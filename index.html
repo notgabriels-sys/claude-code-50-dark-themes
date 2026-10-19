@@ -294,9 +294,10 @@
   .finder-empty{margin:0;padding:18px 0 26px;color:var(--mute);font-size:12px}
   .finder-empty button{padding:0;border:0;border-bottom:1px solid var(--accent-dim);background:transparent;color:var(--ink);cursor:pointer;font:inherit}
   .quick-picks{margin:0 0 26px}
-  .pick-list{list-style:none;margin:14px 0 0;padding:0;display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+  .pick-list{list-style:none;margin:14px 0 0;padding:0;display:flex;flex-wrap:wrap;gap:10px}
+  .pick-list li{display:flex;flex:1 1 200px;min-width:0}
   .pick{
-    display:flex;flex-direction:column;gap:6px;min-height:44px;padding:12px 14px;
+    display:flex;flex:1;flex-direction:column;gap:6px;min-height:44px;padding:12px 14px;
     border:1px solid color-mix(in srgb, var(--a) 22%, transparent);
     border-radius:var(--radius);background:var(--bg);color:var(--fg);text-decoration:none;
   }
@@ -547,7 +548,7 @@
     <!-- quick-picks:start -->
     <nav class="quick-picks" aria-labelledby="quick-picks-title">
       <p class="finder-label" id="quick-picks-title">Start here</p>
-      <p class="finder-copy">Five of the 50, chosen by contrast measured against each theme&rsquo;s recommended terminal background, not by taste. Every figure is on the theme&rsquo;s page.</p>
+      <p class="finder-copy">Five of the 50, each chosen by a contrast measurement against its recommended terminal background. Every figure is on the theme&rsquo;s page.</p>
       <ul class="pick-list">
         <li><a class="pick" href="/theme/blackout/" style="--bg:#141415;--a:#E0A83C;--fg:#EAEAEB;--mut:#A2A2A9">
           <span class="pick-kicker">Maximum contrast</span>
@@ -557,7 +558,7 @@
         <li><a class="pick" href="/theme/cassette/" style="--bg:#231F1A;--a:#E8853C;--fg:#EFE4D2;--mut:#AFA69D">
           <span class="pick-kicker">Long sessions</span>
           <span class="pick-name"><i class="pick-dot" aria-hidden="true"></i>Cassette</span>
-          <span class="pick-fact">Primary text 13.02:1 on #231F1A, the softest of all 50 and still above the 7:1 AAA floor.</span>
+          <span class="pick-fact">Primary text 13.02:1 on #231F1A, the softest of all 50 (Glacier prints the same) and still above the 7:1 AAA floor.</span>
         </a></li>
         <li><a class="pick" href="/theme/static/" style="--bg:#212121;--a:#E4E6E8;--fg:#EBEBEB;--mut:#A6A6A6">
           <span class="pick-kicker">Neutral</span>

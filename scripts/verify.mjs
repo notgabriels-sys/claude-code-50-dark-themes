@@ -288,13 +288,6 @@ if (!html.includes("claude plugin install dark-themes-vol-2@notgabriels-themes")
   fail("The gallery must expose the Vol. 2 install command.");
 }
 
-// Each pack's free zip is a release asset that scripts/build-release-zip.sh names after the
-// pack's manifest version, and release-zip.yml refuses any other tag. So the storefront and the
-// README may only link the zip of the version they ship; a version bump that forgets the links
-// stops here instead of pointing readers at an old pack or a release that does not exist.
-// The 50-theme zip must be linked. The Vol. 2 zip is accepted at its current version and
-// becomes required once its release exists (set `linked: true` in the same change that adds
-// the link).
 // ---------------------------------------------------------------------------
 // The "Start here" row in index.html names five themes and a measured contrast
 // ratio for each; scripts/build-quick-picks.mjs chooses and words them from
@@ -312,8 +305,12 @@ if (quickPicksStart === -1 || quickPicksEnd === -1) {
       "Add both markers inside the collection section and run node scripts/build-quick-picks.mjs.",
   );
 }
-if (html.indexOf(QUICK_PICKS_START, quickPicksStart + 1) !== -1) {
-  fail("index.html carries more than one quick-picks block; the row appears once.");
+if (
+  html.indexOf(QUICK_PICKS_START, quickPicksStart + 1) !== -1 ||
+  html.indexOf(QUICK_PICKS_END, quickPicksEnd + 1) !== -1 ||
+  (html.match(/class="quick-picks"/g) ?? []).length > 1
+) {
+  fail("index.html carries more than one quick-picks row or marker pair; the row appears once, between one pair of markers.");
 }
 const expectedQuickPicks = await buildQuickPicks(root);
 if (html.slice(quickPicksStart, quickPicksEnd + QUICK_PICKS_END.length) !== expectedQuickPicks) {
@@ -328,6 +325,13 @@ for (const [, slug] of expectedQuickPicks.matchAll(/href="\/theme\/([a-z0-9-]+)\
   if (!exists) fail(`A quick pick links /theme/${slug}/, but ${page} does not exist.`);
 }
 
+// Each pack's free zip is a release asset that scripts/build-release-zip.sh names after the
+// pack's manifest version, and release-zip.yml refuses any other tag. So the storefront and the
+// README may only link the zip of the version they ship; a version bump that forgets the links
+// stops here instead of pointing readers at an old pack or a release that does not exist.
+// The 50-theme zip must be linked. The Vol. 2 zip is accepted at its current version and
+// becomes required once its release exists (set `linked: true` in the same change that adds
+// the link).
 const escapeRegExp = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const repositoryUrl = "https://github.com/notgabriels-sys/claude-code-50-dark-themes";
 const releaseZips = [

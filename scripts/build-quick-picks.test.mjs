@@ -101,7 +101,7 @@ test("prints each ratio truncated to two decimals, never above the measurement, 
   const picks = computeQuickPicks(await loadThemes(root));
   for (const pick of picks) {
     const measured = pick.key === "maximum-contrast" || pick.key === "long-sessions" ? pick.text : pick.accent;
-    const printed = pick.fact.match(/^(?:Primary text|Accent) (\d+\.\d\d):1 on (#[0-9A-F]{6}), /);
+    const printed = pick.fact.match(/^(?:Primary text|Accent) (\d+\.\d\d):1 on (#[0-9A-Fa-f]{6}), /);
     assert.ok(printed, `"${pick.fact}" opens with a ratio and the background it was measured on`);
     assert.equal(Number(printed[1]), Math.floor(measured * 100) / 100, `${pick.theme.name}: printed figure is the truncated measurement`);
     assert.ok(Number(printed[1]) <= measured);
@@ -142,12 +142,29 @@ test("says when a family's strongest accent already holds a pick above, and refu
   assert.match(picks[4].fact, /the only cool accent\.$/);
   assert.match(picks[0].fact, /the highest of all 5\.$/);
   assert.match(picks[1].fact, /the softest of all 5 and still above the 7:1 AAA floor\.$/);
+  for (const pick of picks) assert.doesNotMatch(pick.fact, /print(s)? the same/, "no two of these print the same figure");
+
+  // Golf measures exactly what Bravo does, so Bravo's caption names it; Hotel
+  // ties Alpha for the highest text figure, so Alpha's caption names it.
+  const tied = computeQuickPicks([
+    ...themes,
+    make("Golf", "warm", "#DDDDDD", "#DDDDDD"),
+    make("Hotel", "neutral", "#FFFFFF", "#AAAAAA"),
+  ]);
+  assert.equal(tied[0].theme.name, "Alpha", "ties at full precision go to the name that sorts first");
+  assert.match(tied[0].fact, /the highest of all 7 \(Hotel prints the same\)\.$/);
+  assert.match(tied[3].fact, /the strongest of the 3 warm accents after Alpha above \(Golf prints the same\)\.$/);
 
   assert.throws(
     () => computeQuickPicks(themes.filter((theme) => theme.name !== "Delta")),
     /Every neutral theme already holds a pick/,
   );
   assert.throws(() => computeQuickPicks(themes.filter((theme) => theme.family !== "cool")), /No cool theme/);
+  assert.throws(
+    () => computeQuickPicks([...themes, make("India", "cool", "#808080", "#EEEEEE")]),
+    /India: primary text reads 5\.31:1 against its terminal, below the 7:1 floor/,
+    "a theme below the floor the caption cites stops the build instead of printing a false caption",
+  );
 });
 
 test("renders the block verify.mjs expects: both markers, one link per pick, each to a rendered theme page", async () => {
@@ -160,7 +177,7 @@ test("renders the block verify.mjs expects: both markers, one link per pick, eac
   assert.equal((block.match(/class="pick"/g) ?? []).length, links.length);
   const pages = await buildThemePages(root);
   for (const slug of links) assert.ok(pages.has(`theme/${slug}/index.html`), `/theme/${slug}/ has a page`);
-  assert.match(block, /Five of the 50, chosen by contrast measured/);
+  assert.match(block, /Five of the 50, each chosen by a contrast measurement/);
 });
 
 test("placeQuickPicks swaps only the block and refuses a page without the markers", () => {
@@ -217,7 +234,7 @@ test("rejects a storefront carrying the quick-picks row twice", { timeout: 90_00
   const result = await runScript("scripts/verify.mjs", fixtureRoot);
 
   assert.notEqual(result.code, 0, "the verifier accepted two quick-picks rows");
-  assert.match(result.stderr, /more than one quick-picks block/);
+  assert.match(result.stderr, /more than one quick-picks row or marker pair/);
 });
 
 test("rejects a storefront whose quick pick names a figure the theme files do not give", { timeout: 90_000 }, async (t) => {
@@ -232,4 +249,30 @@ test("rejects a storefront whose quick pick names a figure the theme files do no
 
   assert.notEqual(result.code, 0, "the verifier accepted a quick pick with an inflated ratio");
   assert.match(result.stderr, /The quick picks in index\.html are stale/);
+});
+
+test("rejects a quick pick whose theme page is missing", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const html = await readFile(join(fixtureRoot, "index.html"), "utf8");
+  const firstPick = html.match(/<a class="pick" href="\/theme\/([a-z0-9-]+)\/"/);
+  assert.ok(firstPick, "the storefront carries a quick pick");
+  await rm(join(fixtureRoot, "theme", firstPick[1]), { recursive: true, force: true });
+
+  const result = await runScript("scripts/verify.mjs", fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a quick pick linking a page that does not exist");
+  assert.match(result.stderr, new RegExp(`A quick pick links /theme/${firstPick[1]}/, but theme/${firstPick[1]}/index\\.html does not exist`));
+});
+
+test("rejects a second quick-picks row outside the markers", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const page = join(fixtureRoot, "index.html");
+  const html = await readFile(page, "utf8");
+  assert.ok(html.includes("</main>"));
+  await writeFile(page, html.replace("</main>", '<nav class="quick-picks" aria-label="Start here"></nav>\n</main>'));
+
+  const result = await runScript("scripts/verify.mjs", fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted two quick-picks rows");
+  assert.match(result.stderr, /more than one quick-picks row or marker pair/);
 });

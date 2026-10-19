@@ -29,6 +29,15 @@ export const FAMILY_PICKS = [
 const esc = (value) => String(value).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const byName = (a, b) => a.theme.name.localeCompare(b.theme.name, "en");
 const joinNames = (entries) => entries.map((entry) => entry.theme.name).join(" and ");
+// A figure is printed to two decimals, so another theme can print the same
+// figure while measuring differently. The caption names it, so "highest",
+// "softest" or "strongest" is never contradicted by a page printing the same
+// number.
+const printedTies = (pick, entries, measureOf) =>
+  entries
+    .filter((entry) => entry !== pick && ratioText(measureOf(entry)) === ratioText(measureOf(pick)))
+    .sort(byName);
+const tieNote = (ties) => (ties.length === 0 ? "" : ` (${joinNames(ties)} print${ties.length === 1 ? "s" : ""} the same)`);
 // Small counts read as words in running copy.
 const COUNT_WORDS = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"];
 const countWord = (count) => COUNT_WORDS[count] ?? String(count);
@@ -63,18 +72,28 @@ export function computeQuickPicks(themes) {
     key: "maximum-contrast",
     kicker: "Maximum contrast",
     ...strongest,
-    fact: `Primary text ${ratioText(strongest.text)} on ${strongest.theme.terminal}, the highest of all ${pool.length}.`,
+    fact:
+      `Primary text ${ratioText(strongest.text)} on ${strongest.theme.terminal}, the highest of all ${pool.length}` +
+      `${tieNote(printedTies(strongest, pool, (entry) => entry.text))}.`,
   });
 
   // The verifier holds primary text to WCAG AAA (7:1) on every theme, so the
   // lowest figure in the pack is the gentlest reading contrast that still
   // clears that floor.
   const softest = byTextDescending[byTextDescending.length - 1];
+  if (softest.text < 7) {
+    throw new Error(
+      `${softest.theme.name}: primary text reads ${ratioText(softest.text)} against its terminal, below the 7:1 floor the row cites. Fix the theme first.`,
+    );
+  }
+  const floorNote = softest.text > 7 ? "still above the 7:1 AAA floor" : "still meeting the 7:1 AAA floor";
   take({
     key: "long-sessions",
     kicker: "Long sessions",
     ...softest,
-    fact: `Primary text ${ratioText(softest.text)} on ${softest.theme.terminal}, the softest of all ${pool.length} and still above the 7:1 AAA floor.`,
+    fact:
+      `Primary text ${ratioText(softest.text)} on ${softest.theme.terminal}, the softest of all ${pool.length}` +
+      `${tieNote(printedTies(softest, pool, (entry) => entry.text))} and ${floorNote}.`,
   });
 
   for (const [family, kicker] of FAMILY_PICKS) {
@@ -91,10 +110,11 @@ export function computeQuickPicks(themes) {
       members.length === 1 ? `the only ${family} accent` : `the strongest of the ${members.length} ${family} accents`;
     // When the family's strongest accent already holds a pick above, say so
     // instead of calling the runner-up the strongest.
+    const ties = tieNote(printedTies(pick, members, (entry) => entry.accent));
     const fact =
       index === 0
-        ? `Accent ${ratioText(pick.accent)} on ${pick.theme.terminal}, ${strength}.`
-        : `Accent ${ratioText(pick.accent)} on ${pick.theme.terminal}, ${strength} after ${joinNames(members.slice(0, index))} above.`;
+        ? `Accent ${ratioText(pick.accent)} on ${pick.theme.terminal}, ${strength}${ties}.`
+        : `Accent ${ratioText(pick.accent)} on ${pick.theme.terminal}, ${strength} after ${joinNames(members.slice(0, index))} above${ties}.`;
     take({ key: family, kicker, ...pick, fact });
   }
   return picks;
@@ -114,7 +134,7 @@ export function renderQuickPicks(picks, total) {
   return `${QUICK_PICKS_START}
     <nav class="quick-picks" aria-labelledby="quick-picks-title">
       <p class="finder-label" id="quick-picks-title">Start here</p>
-      <p class="finder-copy">${capitalize(countWord(picks.length))} of the ${total}, chosen by contrast measured against each theme&rsquo;s recommended terminal background, not by taste. Every figure is on the theme&rsquo;s page.</p>
+      <p class="finder-copy">${capitalize(countWord(picks.length))} of the ${total}, each chosen by a contrast measurement against its recommended terminal background. Every figure is on the theme&rsquo;s page.</p>
       <ul class="pick-list">
 ${items}
       </ul>
