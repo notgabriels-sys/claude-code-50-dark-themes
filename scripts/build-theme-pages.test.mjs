@@ -112,3 +112,43 @@ test("rejects a sitemap that drops a theme page", { timeout: 120_000 }, async (t
   assert.notEqual(result.code, 0, "the verifier accepted a sitemap missing a theme page");
   assert.match(result.stderr, /sitemap\.xml is stale/);
 });
+
+// Renders the fixture's pages with its own (edited) builder, as a contributor
+// would after changing the template.
+async function rebuildPages(fixtureRoot) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, ["scripts/build-theme-pages.mjs"], { cwd: fixtureRoot });
+    child.on("error", reject);
+    child.on("close", (code) => (code === 0 ? resolve() : reject(new Error(`builder exited ${code}`))));
+  });
+}
+
+async function editBuilder(fixtureRoot, from, to) {
+  const builder = join(fixtureRoot, "scripts/build-theme-pages.mjs");
+  const source = await readFile(builder, "utf8");
+  assert.ok(source.includes(from), "fixture anchor moved; update this test");
+  await writeFile(builder, source.replace(from, to));
+  await rebuildPages(fixtureRoot);
+}
+
+// Claude Code's /theme takes no argument: `/theme acid` opens the same picker
+// as `/theme` and applies nothing (2.1.302 and 2.1.303, run live).
+test("rejects theme pages that offer /theme with the theme as an argument", { timeout: 120_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  await editBuilder(fixtureRoot, 'commandPanel("/theme", ', "commandPanel(`/theme ${slug}`, ");
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted 62 pages handing out a command that does nothing");
+  assert.match(result.stderr, /theme\/absinthe\/index\.html shows "theme absinthe" as a command/);
+});
+
+test("rejects a theme page specimen that types the theme name after /theme", { timeout: 120_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  await editBuilder(fixtureRoot, '<span class="txt">/theme</span>', '<span class="txt">theme ${esc(slug)}</span>');
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a specimen acting out the dead command");
+  assert.match(result.stderr, /theme\/absinthe\/index\.html shows "theme absinthe" as a command/);
+});

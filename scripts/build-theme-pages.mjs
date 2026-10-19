@@ -373,8 +373,10 @@ function foot() {
 `;
 }
 
-function commandPanel(command, label) {
-  return `      <div class="cmd"><span><span class="prompt">$ </span><code>${esc(command)}</code></span><button class="copy" type="button" data-copy="${esc(command)}" aria-label="Copy: ${esc(label)}">Copy</button></div>\n`;
+// The prompt glyph says where the command runs: "$ " in a shell, "> " in
+// Claude Code.
+function commandPanel(command, label, prompt = "$ ") {
+  return `      <div class="cmd"><span><span class="prompt">${esc(prompt)}</span><code>${esc(command)}</code></span><button class="copy" type="button" data-copy="${esc(command)}" aria-label="Copy: ${esc(label)}">Copy</button></div>\n`;
 }
 
 export function renderThemePage(theme) {
@@ -448,16 +450,16 @@ export function renderThemePage(theme) {
           <div class="row"><span class="acc">●</span> <span class="fg">Applied theme &ldquo;${esc(name)}&rdquo;</span></div>
           <div class="row"><span class="mut">&nbsp;&nbsp;3 files changed · staged</span></div>
           <div class="usermsg">&gt; show me the diff</div>
-          <div class="prompt-box"><span class="gt">&gt;</span><span class="txt">theme ${esc(slug)}</span><span class="caret" aria-hidden="true"></span></div>
-          <div class="hint">/theme &nbsp;·&nbsp; ⏎ send &nbsp;·&nbsp; esc to interrupt</div>
+          <div class="prompt-box"><span class="gt">&gt;</span><span class="txt">/theme</span><span class="caret" aria-hidden="true"></span></div>
+          <div class="hint">then choose &ldquo;${esc(name)}&rdquo;</div>
         </div>
       </article>
     </div>
 
     <section aria-labelledby="install-title">
       <h2 id="install-title">Install ${esc(name)}.</h2>
-      <p>Requires Claude Code v2.1.118 or later. The marketplace command is needed once per machine; the plugin command installs the whole ${esc(pack.label)} pack, and <code>/theme</code> inside Claude Code switches to this one.</p>
-${commandPanel(MARKETPLACE_COMMAND, "marketplace command")}${commandPanel(pack.installCommand, `${pack.label} install command`)}${commandPanel(`/theme ${slug}`, `select ${name} in Claude Code`)}      <p class="note">Plugin themes are read-only. Press <code>Ctrl+E</code> on one in <code>/theme</code> for an editable copy in <code>~/.claude/themes/</code>.</p>
+      <p>Requires Claude Code v2.1.118 or later. The marketplace command is needed once per machine; the plugin command installs the whole ${esc(pack.label)} pack. Then run <code>/theme</code> in Claude Code and choose &ldquo;${esc(name)}&rdquo; from the list.</p>
+${commandPanel(MARKETPLACE_COMMAND, "marketplace command")}${commandPanel(pack.installCommand, `${pack.label} install command`)}${commandPanel("/theme", `the /theme command, then choose ${name} in Claude Code`, "> ")}      <p class="note">Plugin themes are read-only. Press <code>Ctrl+E</code> on one in <code>/theme</code> for an editable copy in <code>~/.claude/themes/</code>.</p>
     </section>
 
     <section aria-labelledby="manual-title">

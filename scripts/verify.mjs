@@ -1271,6 +1271,20 @@ for (const entry of themeDirectoryEntries) {
 // unverified product links, and the shared share image described one way.
 for (const [path, source] of themePages) {
   if (!path.endsWith(".html")) continue;
+  // The dead command again: #59's pages showed `> theme <slug>` in the
+  // specimen and offered `/theme <slug>` as a copy panel on all 62 pages, a
+  // command that opens the same picker as `/theme` and applies nothing.
+  for (const { where, text, patterns } of readable("the page", source)) {
+    for (const pattern of patterns) {
+      const shown = text.match(pattern);
+      if (shown) {
+        fail(
+          `${path} shows "theme ${shown[1]}" as a command (${where}). Claude Code's /theme ignores the ` +
+            "argument; show /theme and name the theme to choose.",
+        );
+      }
+    }
+  }
   if (!source.includes('rel="icon" type="image/svg+xml" href="/favicon.svg"')) {
     fail(`${path} must expose the first-party SVG favicon.`);
   }
