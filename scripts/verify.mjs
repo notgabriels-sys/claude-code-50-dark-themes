@@ -1600,6 +1600,21 @@ if (!/matches by filename, not contents/i.test(installerHeader)) {
 // anyone without the plugin flow no manual route to the twelve.
 const installGuide = await readFile(new URL("claude-code-theme-install-guide.html", root), "utf8");
 const manualSection = installGuide.match(/<section[^>]*id="manual"[\s\S]*?<\/section>/);
+// A manual install copies theme files out of a clone, and the clone's root
+// also holds themes.json, the published index, which is not a theme: copied
+// into a themes folder it shows up in /theme as a 51st "theme" named after the
+// pack. So every documented copy into a themes folder reads a pack's own
+// themes/ directory, as install.sh does.
+for (const [file, text] of [["README.md", readme], ["claude-code-theme-install-guide.html", normalizeHtmlText(installGuide)]]) {
+  for (const match of text.matchAll(/\bcp\s+(\S*\*\.json)\s+\S*\.claude\/themes/g)) {
+    if (!/(?:^|\/)plugins\/[^/\s]+\/themes\/\*\.json$/.test(match[1])) {
+      fail(
+        `${file} copies ${match[1]} into a themes folder. That glob reaches the repository root, where ` +
+          "themes.json would install as a theme; copy from plugins/<pack>/themes/ instead.",
+      );
+    }
+  }
+}
 if (!manualSection) {
   fail("claude-code-theme-install-guide.html has no #manual section; the manual-route guard would be inert.");
 }

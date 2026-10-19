@@ -221,9 +221,9 @@ footer{margin-top:42px;padding-top:22px;border-top:1px solid var(--hair)}
 <pre><span class="syntax-command">git</span> <span class="syntax-argument">clone https://github.com/notgabriels-sys/claude-code-50-dark-themes</span>
 <span class="syntax-command">cd</span> <span class="syntax-argument">claude-code-50-dark-themes</span>
 <span class="syntax-command">mkdir</span> <span class="syntax-option">-p</span> <span class="syntax-argument">~/.claude/themes</span>
-<span class="syntax-command">cp</span> <span class="syntax-value">*.json</span> <span class="syntax-argument">~/.claude/themes/</span></pre>
+<span class="syntax-command">cp</span> <span class="syntax-value">plugins/50-dark-themes/themes/*.json</span> <span class="syntax-argument">~/.claude/themes/</span></pre>
           </div>
-          <p>That copies the fifty. Vol.&nbsp;2 ships inside its own plugin folder, so the glob above does not reach it — add the twelve with one more copy:</p>
+          <p>That copies the fifty. Vol.&nbsp;2 ships in its own plugin folder — add the twelve with one more copy:</p>
           <div class="code-panel" aria-label="Manual Dark Themes Vol. 2 install command">
             <div class="code-head"><span>Terminal</span><span>Vol.&nbsp;2, manually</span></div>
 <pre><span class="syntax-command">cp</span> <span class="syntax-value">plugins/dark-themes-vol-2/themes/*.json</span> <span class="syntax-argument">~/.claude/themes/</span></pre>

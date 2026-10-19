@@ -64,7 +64,7 @@ shop and repository easier to find. They route to one another, so you rarely hav
 ```bash
 git clone https://github.com/notgabriels-sys/claude-code-50-dark-themes
 mkdir -p ~/.claude/themes
-cp claude-code-50-dark-themes/*.json ~/.claude/themes/
+cp claude-code-50-dark-themes/plugins/50-dark-themes/themes/*.json ~/.claude/themes/
 ```
 
 Then run `/theme` in Claude Code and pick one.

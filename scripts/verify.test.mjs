@@ -1519,6 +1519,50 @@ test("rejects an installer whose help drops the filename-matching warning", { ti
   assert.match(result.stderr, /matches by filename, not contents/);
 });
 
+// The repository root holds themes.json, the published index, beside the 50
+// theme files; installing it put a 51st "theme" named after the pack in
+// /theme. The installer reads the pack's packaged directory instead, and the
+// themes folder follows CLAUDE_CONFIG_DIR as Claude Code's own config does.
+test("installs exactly the pack's themes, and never the index", { timeout: 90_000 }, async (t) => {
+  const home = await mkdtemp(join(tmpdir(), "gabs-install-"));
+  t.after(() => rm(home, { recursive: true, force: true }));
+  const run = (args, env = {}) =>
+    execFileSync("bash", [join(projectRoot, "install.sh"), ...args], {
+      encoding: "utf8",
+      env: { ...process.env, HOME: home, CLAUDE_CONFIG_DIR: "", ...env },
+    });
+  const pack = (await readdir(join(projectRoot, "plugins", "50-dark-themes", "themes"))).filter((f) => f.endsWith(".json")).sort();
+  assert.equal(pack.length, 50);
+
+  assert.match(run(["--list"]), /^50 themes$/m);
+  assert.match(run([]), /Installed 50 theme\(s\)/);
+  const installed = (await readdir(join(home, ".claude", "themes"))).sort();
+  assert.deepEqual(installed, pack, "the themes folder holds exactly the packaged themes");
+  assert.ok(!installed.includes("themes.json"), "the index was installed as a theme");
+
+  const config = join(home, "config");
+  assert.match(run([], { CLAUDE_CONFIG_DIR: config }), /Installed 50 theme\(s\) into .*config\/themes/);
+  assert.deepEqual((await readdir(join(config, "themes"))).sort(), pack);
+});
+
+for (const [route, page, from, to] of [
+  ["the README", "README.md",
+    "cp claude-code-50-dark-themes/plugins/50-dark-themes/themes/*.json ~/.claude/themes/",
+    "cp claude-code-50-dark-themes/*.json ~/.claude/themes/"],
+  ["the install guide", "claude-code-theme-install-guide.html",
+    '<span class="syntax-value">plugins/50-dark-themes/themes/*.json</span>',
+    '<span class="syntax-value">*.json</span>'],
+]) {
+  test(`rejects a manual copy in ${route} that globs the repository root`, { timeout: 90_000 }, async (t) => {
+    const fixtureRoot = await editPage(t, page, from, to);
+
+    const result = await runVerifier(fixtureRoot);
+
+    assert.notEqual(result.code, 0, `${route} copies themes.json into the themes folder`);
+    assert.match(result.stderr, /copies \S*\*\.json into a themes folder\. That glob reaches the repository root/);
+  });
+}
+
 test("rejects a manual install route that never says where the files come from", { timeout: 90_000 }, async (t) => {
   const fixtureRoot = await makeFixture(t);
   const fixtureGuide = join(fixtureRoot, "claude-code-theme-install-guide.html");
@@ -1537,7 +1581,11 @@ test("rejects a manual install route that silently skips Vol. 2", { timeout: 90_
   const fixtureRoot = await makeFixture(t);
   const fixtureGuide = join(fixtureRoot, "claude-code-theme-install-guide.html");
   const guide = await readFile(fixtureGuide, "utf8");
-  await writeFile(fixtureGuide, guide.replaceAll("plugins/dark-themes-vol-2/themes/*.json", "*.json"));
+  // The flagship pack's folder copied twice: a valid glob, and still no Vol. 2.
+  await writeFile(
+    fixtureGuide,
+    guide.replaceAll("plugins/dark-themes-vol-2/themes/*.json", "plugins/50-dark-themes/themes/*.json"),
+  );
 
   const result = await runVerifier(fixtureRoot);
 
