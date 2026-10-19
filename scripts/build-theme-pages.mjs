@@ -475,7 +475,7 @@ ${commandPanel(manualCommand, `copy ${name} manually`)}    </section>
 
     <section aria-labelledby="terminal-title">
       <h2 id="terminal-title">Terminal background: <code>${terminal}</code>.</h2>
-      <p>Claude Code colours its own interface; the terminal application owns the canvas behind it. Every figure below is measured against <code>${terminal}</code>, so set that as the terminal background for the result the numbers describe. On a different background the ratios move.</p>
+      <p>Claude Code colours its own interface; the terminal application owns the canvas behind it. The terminal rows below are measured against <code>${terminal}</code>, so set that as the terminal background for the result the numbers describe; on a different background they move. The rest compare text with the surface behind your messages, and that surface with its hovered state.</p>
     </section>
 
     <section aria-labelledby="palette-title">
