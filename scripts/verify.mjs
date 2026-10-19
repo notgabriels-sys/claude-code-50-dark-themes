@@ -936,6 +936,43 @@ if (!html.includes("claude plugin install dark-themes-vol-2@notgabriels-themes")
   fail("The gallery must expose the Vol. 2 install command.");
 }
 
+// ---------------------------------------------------------------------------
+// The "Start here" row in index.html names five themes and a measured contrast
+// ratio for each; scripts/build-quick-picks.mjs chooses and words them from
+// the theme files. Both are public claims, so the block between its markers
+// must be exactly what the builder renders today, and each pick must link to a
+// theme page that exists (the theme-page check further down keeps those pages
+// true to the same files).
+// ---------------------------------------------------------------------------
+const { buildQuickPicks, QUICK_PICKS_START, QUICK_PICKS_END } = await import("./build-quick-picks.mjs");
+const quickPicksStart = html.indexOf(QUICK_PICKS_START);
+const quickPicksEnd = quickPicksStart === -1 ? -1 : html.indexOf(QUICK_PICKS_END, quickPicksStart + QUICK_PICKS_START.length);
+if (quickPicksStart === -1 || quickPicksEnd === -1) {
+  fail(
+    `index.html has no quick-picks block (${QUICK_PICKS_START} … ${QUICK_PICKS_END}). ` +
+      "Add both markers inside the collection section and run node scripts/build-quick-picks.mjs.",
+  );
+}
+if (
+  html.indexOf(QUICK_PICKS_START, quickPicksStart + 1) !== -1 ||
+  html.indexOf(QUICK_PICKS_END, quickPicksEnd + 1) !== -1 ||
+  (html.match(/class="quick-picks"/g) ?? []).length > 1
+) {
+  fail("index.html carries more than one quick-picks row or marker pair; the row appears once, between one pair of markers.");
+}
+const expectedQuickPicks = await buildQuickPicks(root);
+if (html.slice(quickPicksStart, quickPicksEnd + QUICK_PICKS_END.length) !== expectedQuickPicks) {
+  fail(
+    "The quick picks in index.html are stale: they are not what scripts/build-quick-picks.mjs renders " +
+      "from the theme files. Run it and commit the result.",
+  );
+}
+for (const [, slug] of expectedQuickPicks.matchAll(/href="\/theme\/([a-z0-9-]+)\/"/g)) {
+  const page = `theme/${slug}/index.html`;
+  const exists = await stat(new URL(page, root)).then((entry) => entry.isFile(), () => false);
+  if (!exists) fail(`A quick pick links /theme/${slug}/, but ${page} does not exist.`);
+}
+
 // Each pack's free zip is a release asset that scripts/build-release-zip.sh names after the
 // pack's manifest version, and release-zip.yml refuses any other tag. So the storefront and the
 // README may only link the zip of the version they ship; a version bump that forgets the links

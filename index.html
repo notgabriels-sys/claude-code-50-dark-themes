@@ -294,6 +294,20 @@
   .filter:focus-visible,.finder-search input:focus-visible,.finder-empty button:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
   .finder-empty{margin:0;padding:18px 0 26px;color:var(--mute);font-size:12px}
   .finder-empty button{padding:0;border:0;border-bottom:1px solid var(--accent-dim);background:transparent;color:var(--ink);cursor:pointer;font:inherit}
+  .quick-picks{margin:0 0 26px}
+  .pick-list{list-style:none;margin:14px 0 0;padding:0;display:flex;flex-wrap:wrap;gap:10px}
+  .pick-list li{display:flex;flex:1 1 200px;min-width:0}
+  .pick{
+    display:flex;flex:1;flex-direction:column;gap:6px;min-height:44px;padding:12px 14px;
+    border:1px solid color-mix(in srgb, var(--a) 22%, transparent);
+    border-radius:var(--radius);background:var(--bg);color:var(--fg);text-decoration:none;
+  }
+  .pick:hover{border-color:color-mix(in srgb, var(--a) 55%, transparent)}
+  .pick:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+  .pick-kicker{color:var(--a);font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase}
+  .pick-name{display:flex;align-items:center;gap:8px;font-family:var(--display);font-size:15px;font-weight:600;letter-spacing:-.01em}
+  .pick-dot{width:9px;height:9px;border-radius:50%;background:var(--a);flex:none}
+  .pick-fact{color:var(--mut);font-size:11px;line-height:1.55}
   .grid{
     display:grid;gap:14px;padding:6px 0 26px;
     grid-template-columns:repeat(auto-fill,minmax(268px,1fr));
@@ -541,6 +555,39 @@
         the meaning of success, warning and error. Install the native plugin, <a href="https://github.com/notgabriels-sys/claude-code-50-dark-themes">explore the source</a>,
         or <a href="https://github.com/notgabriels-sys/claude-code-50-dark-themes/releases/download/themes-plugin-v1.0.1/claude-code-dark-themes-v1.0.1.zip">download the 50 themes as a free zip</a> from the v1.0.1 release.</p>
     </div>
+    <!-- quick-picks:start -->
+    <nav class="quick-picks" aria-labelledby="quick-picks-title">
+      <p class="finder-label" id="quick-picks-title">Start here</p>
+      <p class="finder-copy">Five of the 50, each chosen by a contrast measurement against its recommended terminal background. Every figure is on the theme&rsquo;s page.</p>
+      <ul class="pick-list">
+        <li><a class="pick" href="/theme/blackout/" style="--bg:#141415;--a:#E0A83C;--fg:#EAEAEB;--mut:#A2A2A9">
+          <span class="pick-kicker">Maximum contrast</span>
+          <span class="pick-name"><i class="pick-dot" aria-hidden="true"></i>Blackout</span>
+          <span class="pick-fact">Primary text 15.31:1 on #141415, the highest of all 50.</span>
+        </a></li>
+        <li><a class="pick" href="/theme/cassette/" style="--bg:#231F1A;--a:#E8853C;--fg:#EFE4D2;--mut:#AFA69D">
+          <span class="pick-kicker">Long sessions</span>
+          <span class="pick-name"><i class="pick-dot" aria-hidden="true"></i>Cassette</span>
+          <span class="pick-fact">Primary text 13.02:1 on #231F1A, the softest of all 50 (Glacier prints the same) and still above the 7:1 AAA floor.</span>
+        </a></li>
+        <li><a class="pick" href="/theme/static/" style="--bg:#212121;--a:#E4E6E8;--fg:#EBEBEB;--mut:#A6A6A6">
+          <span class="pick-kicker">Neutral</span>
+          <span class="pick-name"><i class="pick-dot" aria-hidden="true"></i>Static</span>
+          <span class="pick-fact">Accent 12.86:1 on #212121, the strongest of the 3 neutral accents.</span>
+        </a></li>
+        <li><a class="pick" href="/theme/acid/" style="--bg:#191B13;--a:#C8E62E;--fg:#EDEDE8;--mut:#ACAF9D">
+          <span class="pick-kicker">Warm</span>
+          <span class="pick-name"><i class="pick-dot" aria-hidden="true"></i>Acid</span>
+          <span class="pick-fact">Accent 12.26:1 on #191B13, the strongest of the 18 warm accents.</span>
+        </a></li>
+        <li><a class="pick" href="/theme/undertow/" style="--bg:#151E23;--a:#A8D8E8;--fg:#E8ECED;--mut:#9DA9AF">
+          <span class="pick-kicker">Cool</span>
+          <span class="pick-name"><i class="pick-dot" aria-hidden="true"></i>Undertow</span>
+          <span class="pick-fact">Accent 10.99:1 on #151E23, the strongest of the 14 cool accents.</span>
+        </a></li>
+      </ul>
+    </nav>
+    <!-- quick-picks:end -->
     <div class="theme-finder" role="search" aria-labelledby="finder-title">
       <p class="finder-label" id="finder-title">Find a working atmosphere</p>
       <p class="finder-copy">Search by name, <code>/theme</code> command or accent hex; refine by palette family. Press <kbd>/</kbd> to focus.</p>
