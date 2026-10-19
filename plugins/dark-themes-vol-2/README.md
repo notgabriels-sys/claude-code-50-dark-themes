@@ -19,19 +19,20 @@ to copy it into `~/.claude/themes/` for editing.
 
 | Theme | Mood |
 |---|---|
-| Afterglow | Warm peach dusk after the sun drops |
-| Aurora Borealis | Mint-green light over a black sky |
-| Basalt | Cooled volcanic stone, steel-gray monochrome |
-| Biolume | Bioluminescent teal in deep water |
-| Cryosleep | Pale ice-blue stasis chamber |
-| Darkroom | Photographic safelight red-amber |
-| Gaslight | Victorian gas-lamp amber |
-| Heliotrope | Violet-pink garden at night |
-| Magnetite | Dark iron with a magnetic blue pull |
-| Monsoon | Rain-washed green-gray |
-| Neon Noir | Magenta signage on wet asphalt |
-| Ozone | Electric periwinkle after the storm |
+| [Afterglow](https://gabs-utilities.com/theme/afterglow/) | Warm peach dusk after the sun drops |
+| [Aurora Borealis](https://gabs-utilities.com/theme/aurora-borealis/) | Mint-green light over a black sky |
+| [Basalt](https://gabs-utilities.com/theme/basalt/) | Cooled volcanic stone, steel-gray monochrome |
+| [Biolume](https://gabs-utilities.com/theme/biolume/) | Bioluminescent teal in deep water |
+| [Cryosleep](https://gabs-utilities.com/theme/cryosleep/) | Pale ice-blue stasis chamber |
+| [Darkroom](https://gabs-utilities.com/theme/darkroom/) | Photographic safelight red-amber |
+| [Gaslight](https://gabs-utilities.com/theme/gaslight/) | Victorian gas-lamp amber |
+| [Heliotrope](https://gabs-utilities.com/theme/heliotrope/) | Violet-pink garden at night |
+| [Magnetite](https://gabs-utilities.com/theme/magnetite/) | Dark iron with a magnetic blue pull |
+| [Monsoon](https://gabs-utilities.com/theme/monsoon/) | Rain-washed green-gray |
+| [Neon Noir](https://gabs-utilities.com/theme/neon-noir/) | Magenta signage on wet asphalt |
+| [Ozone](https://gabs-utilities.com/theme/ozone/) | Electric periwinkle after the storm |
 
-Visual gallery for the original 50: https://gabs-utilities.com/
+Each name above opens the theme's own page: a specimen, the install commands, its palette and the
+measured contrast. Visual gallery, with the Vol. 2 section: https://gabs-utilities.com/#vol2
 
 Source and manual installation: https://github.com/notgabriels-sys/claude-code-50-dark-themes

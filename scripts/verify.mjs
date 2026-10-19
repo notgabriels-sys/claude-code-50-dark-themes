@@ -325,6 +325,55 @@ for (const [, slug] of expectedQuickPicks.matchAll(/href="\/theme\/([a-z0-9-]+)\
   if (!exists) fail(`A quick pick links /theme/${slug}/, but ${page} does not exist.`);
 }
 
+// ---------------------------------------------------------------------------
+// The READMEs on GitHub link every theme by name to its page on the site
+// (theme/<slug>/, rendered further down from the same theme files). A name
+// that opens another theme's page, a link to a page that does not exist, or a
+// theme left out of a list is a public claim gone wrong, so each list is held
+// to the theme files: README.md links all of them, the Vol. 2 plugin README
+// links its twelve, and the 50-theme plugin README links the page index.
+// ---------------------------------------------------------------------------
+const { loadThemes: loadLinkedThemes } = await import("./build-theme-pages.mjs");
+const themePageUrl = "https://gabs-utilities.com/theme/";
+const linkedThemes = await loadLinkedThemes(root);
+const themeByPageSlug = new Map(linkedThemes.map((theme) => [theme.slug, theme]));
+const readmeThemeLinkSurfaces = [
+  { path: "README.md", markdown: readme, required: linkedThemes, index: false },
+  {
+    path: "plugins/50-dark-themes/README.md",
+    markdown: await readFile(new URL("plugins/50-dark-themes/README.md", root), "utf8"),
+    required: [],
+    index: true,
+  },
+  {
+    path: "plugins/dark-themes-vol-2/README.md",
+    markdown: await readFile(new URL("plugins/dark-themes-vol-2/README.md", root), "utf8"),
+    required: linkedThemes.filter((theme) => theme.pack.id === "dark-themes-vol-2"),
+    index: false,
+  },
+];
+for (const { path, markdown, required, index } of readmeThemeLinkSurfaces) {
+  const linked = new Set();
+  let indexLinked = false;
+  for (const [, text, rest] of markdown.matchAll(/(?:\[([^\]]*)\]\()?https:\/\/gabs-utilities\.com\/theme\/([^\s)]*)/g)) {
+    if (rest === "") {
+      indexLinked = true;
+      continue;
+    }
+    const slug = rest.match(/^([a-z0-9-]+)\/$/)?.[1];
+    const theme = slug === undefined ? undefined : themeByPageSlug.get(slug);
+    if (!theme) fail(`${path} links ${themePageUrl}${rest}, but no theme page has that address.`);
+    if (text !== undefined && text !== theme.name) {
+      fail(`${path} links ${themePageUrl}${rest} as "${text}"; that page is ${theme.name}'s.`);
+    }
+    linked.add(theme.slug);
+  }
+  for (const theme of required) {
+    if (!linked.has(theme.slug)) fail(`${path} does not link ${theme.name}'s page (${themePageUrl}${theme.slug}/).`);
+  }
+  if (index && !indexLinked) fail(`${path} must link the theme page index ${themePageUrl} (the list of every page).`);
+}
+
 // Each pack's free zip is a release asset that scripts/build-release-zip.sh names after the
 // pack's manifest version, and release-zip.yml refuses any other tag. So the storefront and the
 // README may only link the zip of the version they ship; a version bump that forgets the links
