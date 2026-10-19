@@ -1049,3 +1049,66 @@ test("rejects docs that say CI runs on every push when it runs only on main", { 
   assert.notEqual(result.code, 0, "the verifier accepted a CI claim the workflow's push filter contradicts");
   assert.match(result.stderr, /README\.md says CI runs on "every push"/);
 });
+
+// `permission` and `planMode` are held to the 3:1 non-text floor, but Claude
+// Code draws text in them. README states how many themes keep that text below
+// AA and the lowest ratio; both must match what verify-contrast.mjs computes.
+const indicatorSentence = "Nine of the 62\nthemes keep that text below AA, down to 3.01:1 in Acid.";
+
+test("rejects a README count of below-AA permission and planMode text that the palettes contradict", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const readme = join(fixtureRoot, "README.md");
+  const text = await readFile(readme, "utf8");
+  assert.ok(text.includes(indicatorSentence), "fixture anchor moved; update this test");
+  await writeFile(readme, text.replace(indicatorSentence, indicatorSentence.replace("Nine", "Eight")));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a wrong count of themes below AA");
+  assert.match(result.stderr, /README\.md must say that 9 of the 62 themes keep `permission`\/`planMode` text below AA; it says "Eight of the 62 themes"/);
+});
+
+test("rejects a README lowest permission and planMode ratio that the palettes contradict", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const readme = join(fixtureRoot, "README.md");
+  const text = await readFile(readme, "utf8");
+  assert.ok(text.includes(indicatorSentence), "fixture anchor moved; update this test");
+  await writeFile(readme, text.replace(indicatorSentence, indicatorSentence.replace("3.01:1", "3.13:1")));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a wrong lowest ratio");
+  assert.match(result.stderr, /README\.md must give the lowest `permission`\/`planMode` ratio: 3\.01:1 in Acid/);
+});
+
+test("holds the README sentence to the palettes when a theme's permission colour changes", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  // Raise Acid's purple to 4.82:1 in the theme and its plugin copy; README
+  // still says nine themes and 3.01:1, so it is now stale.
+  for (const path of ["acid.json", "plugins/50-dark-themes/themes/acid.json"]) {
+    const file = join(fixtureRoot, path);
+    const theme = await readFile(file, "utf8");
+    assert.equal(theme.split('"#8A38D8"').length - 1, 2, `fixture anchor moved in ${path}; update this test`);
+    await writeFile(file, theme.replaceAll('"#8A38D8"', '"#A866F0"'));
+  }
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier kept a below-AA count the palettes no longer support");
+  assert.match(result.stderr, /README\.md must say that 8 of the 62 themes keep/);
+});
+
+test("rejects a README floor paragraph that no longer names permission and planMode", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const readme = join(fixtureRoot, "README.md");
+  const text = await readFile(readme, "utf8");
+  const start = text.indexOf(" `permission` and `planMode` are held");
+  const end = text.indexOf(" `subtle` is not checked");
+  assert.ok(start > 0 && end > start, "fixture anchor moved; update this test");
+  await writeFile(readme, text.slice(0, start) + text.slice(end));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a floor paragraph silent about permission and planMode");
+  assert.match(result.stderr, /contrast-floor paragraph must say that `permission` and `planMode` are held to the non-text floor/);
+});

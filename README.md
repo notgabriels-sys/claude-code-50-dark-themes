@@ -95,7 +95,11 @@ so status colors stay semantically green/red/yellow in every theme.
 
 The repository verifier checks each palette against its recommended terminal background:
 AAA contrast for primary text, AA for foreground accents and readable secondary text, and the
-WCAG non-text floor for functional borders and indicators. `subtle` is not checked, and these
+WCAG non-text floor for functional borders and indicators. `permission` and `planMode` are held
+to that non-text floor too. Claude Code's token reference describes `permission` as dialog
+borders and `planMode` as the plan-mode accent, messages and dialogs, and both colour text: the
+"⏸ plan mode on" status, plan messages and dialog titles such as "Permissions". Nine of the 62
+themes keep that text below AA, down to 3.01:1 in Acid. `subtle` is not checked, and these
 themes keep it very faint. Claude Code draws text in it far more than borders: rejection
 notices ("User rejected Claude's plan:"), sandbox and settings notices, usage statistics and
 key hints. With this pack installed that text reads at low contrast.

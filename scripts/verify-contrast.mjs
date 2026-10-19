@@ -52,9 +52,16 @@ const checks = [
   { token: "claude", floor: 4.5, surfaces: ["terminal"] },
   { token: "claudeShimmer", floor: 4.5, surfaces: ["terminal"] },
   { token: "suggestion", floor: 4.5, surfaces: ["terminal"] },
-  // Claude Code documents these as borders, indicators, and a usage-meter fill.
+  // Claude Code's token reference lists `permission` as dialog borders and
+  // `planMode` as the plan-mode accent, messages and dialogs. They are held to
+  // the non-text floor here, but both colour text: the "⏸ plan mode on" status,
+  // plan messages, and dialog titles such as "Permissions". README states how
+  // many themes keep that text below 4.5:1; verify.mjs holds it to the list
+  // collected in noteIndicatorText.
   { token: "permission", floor: 3, surfaces: ["terminal"] },
   { token: "planMode", floor: 3, surfaces: ["terminal"] },
+  // The input-box border and its shimmer, and the filled part of the usage
+  // meter, are non-text.
   { token: "promptBorder", floor: 3, surfaces: ["terminal"] },
   { token: "promptBorderShimmer", floor: 3, surfaces: ["terminal"] },
   { token: "rate_limit_fill", floor: 3, surfaces: ["terminal"] },
@@ -68,6 +75,18 @@ const checks = [
 
 const failures = [];
 let comparisons = 0;
+
+// Themes whose `permission` or `planMode` text reads below 4.5:1 on their own
+// terminal background. Not a failure: README states the count and the lowest
+// ratio, and verify.mjs holds that sentence to what is collected here.
+export const indicatorTextBelowAA = [];
+function noteIndicatorText(name, overrides, terminal) {
+  const ratio = Math.min(
+    contrast(overrides.permission, terminal),
+    contrast(overrides.planMode, terminal),
+  );
+  if (ratio < 4.5) indicatorTextBelowAA.push({ name, ratio });
+}
 
 function cssColour(variable, source = html, page = "index.html") {
   const variableMatch = source.match(
@@ -157,6 +176,7 @@ for (const file of themes) {
   }
 
   const surfaces = { terminal, userMessageBackground: theme.overrides.userMessageBackground };
+  noteIndicatorText(theme.name, theme.overrides, terminal);
   for (const check of checks) {
     const foreground = theme.overrides[check.token];
     for (const surfaceName of check.surfaces) {
@@ -208,6 +228,7 @@ for (const file of vol2Themes) {
   }
 
   const surfaces = { terminal, userMessageBackground: theme.overrides.userMessageBackground };
+  noteIndicatorText(theme.name, theme.overrides, terminal);
   for (const check of checks) {
     const foreground = theme.overrides[check.token];
     for (const surfaceName of check.surfaces) {
@@ -254,3 +275,4 @@ console.log(
 // Exported so verify.mjs can hold the public pages to the real number. Every
 // surface that prints a comparison count is making a claim to a reader.
 export const roleAwareComparisonCount = comparisons;
+indicatorTextBelowAA.sort((a, b) => a.ratio - b.ratio);

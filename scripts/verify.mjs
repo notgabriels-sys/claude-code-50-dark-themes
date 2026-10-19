@@ -428,7 +428,7 @@ for (const id of verifiedPayPalIds) {
   }
 }
 
-const { roleAwareComparisonCount } = await import("./verify-contrast.mjs");
+const { roleAwareComparisonCount, indicatorTextBelowAA } = await import("./verify-contrast.mjs");
 
 // ---------------------------------------------------------------------------
 // Stated numbers are public claims. The share card once printed "726
@@ -490,6 +490,35 @@ if (Number(cardThemeCounts[1]) !== files.length || Number(cardThemeCounts[2]) !=
     `The social card claims ${cardThemeCounts[1]} + ${cardThemeCounts[2]} themes; ` +
       `the repository ships ${files.length} + ${vol2Files.length}.`,
   );
+}
+
+// README promises AA for foreground accents and calls `permission` and
+// `planMode` the second accent, but verify-contrast.mjs holds both to the 3:1
+// non-text floor, and Claude Code draws text in them ("⏸ plan mode on", plan
+// messages, dialog titles). README's floor paragraph has to say so, with the
+// number of themes that keep that text below AA and the lowest ratio, both as
+// verify-contrast.mjs computes them.
+const floorParagraph = readme
+  .split(/\n\s*\n/)
+  .map((paragraph) => paragraph.replace(/\s+/g, " "))
+  .find((paragraph) => /non-text floor/i.test(paragraph));
+if (!floorParagraph || !floorParagraph.includes("`permission`") || !floorParagraph.includes("`planMode`")) {
+  fail("README.md's contrast-floor paragraph must say that `permission` and `planMode` are held to the non-text floor.");
+} else if (indicatorTextBelowAA.length > 0) {
+  const lowest = indicatorTextBelowAA[0];
+  const stated = floorParagraph.match(/\b([a-z]+|\d+) of the (\d+) themes\b/i);
+  const statedCount = stated && (/^\d+$/.test(stated[1]) ? Number(stated[1]) : numberWords.indexOf(stated[1].toLowerCase()));
+  if (!stated || statedCount !== indicatorTextBelowAA.length || Number(stated[2]) !== files.length + vol2Files.length) {
+    fail(
+      `README.md must say that ${indicatorTextBelowAA.length} of the ${files.length + vol2Files.length} themes keep ` +
+        `\`permission\`/\`planMode\` text below AA${stated ? `; it says "${stated[0]}"` : ""}.`,
+    );
+  }
+  if (!floorParagraph.includes(`${lowest.ratio.toFixed(2)}:1`) || !floorParagraph.includes(lowest.name)) {
+    fail(`README.md must give the lowest \`permission\`/\`planMode\` ratio: ${lowest.ratio.toFixed(2)}:1 in ${lowest.name}.`);
+  }
+} else if (/below AA/i.test(floorParagraph)) {
+  fail("README.md says some `permission`/`planMode` text is below AA, but every theme now holds it at 4.5:1.");
 }
 
 // The finder hides non-matching cards by setting the `hidden` property. That
