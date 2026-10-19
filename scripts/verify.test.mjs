@@ -439,3 +439,102 @@ test("rejects paste-ready promotion copy that advertises the unpublished Workflo
   assert.notEqual(result.code, 0, "the verifier accepted paste-ready copy advertising an unpublished product");
   assert.match(result.stderr, /PROMOTION_QUEUE\.md paste-ready copy advertises the Workflow Kit/);
 });
+
+async function readManifestVersion(fixtureRoot, plugin) {
+  const manifest = JSON.parse(
+    await readFile(join(fixtureRoot, "plugins", plugin, ".claude-plugin", "plugin.json"), "utf8"),
+  );
+  return manifest.version;
+}
+
+test("rejects a storefront that links a Vol. 2 zip of a version the pack does not ship", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixtureHtml = join(fixtureRoot, "index.html");
+  const html = await readFile(fixtureHtml, "utf8");
+  const version = await readManifestVersion(fixtureRoot, "dark-themes-vol-2");
+  assert.notEqual(version, "0.9.0");
+  const marker = "<div class=\"grid\" id=\"vol2Grid\"></div>";
+  assert.ok(html.includes(marker), "the storefront should still render the Vol. 2 grid");
+  await writeFile(
+    fixtureHtml,
+    html.replace(
+      marker,
+      `<p><a href="https://github.com/notgabriels-sys/claude-code-50-dark-themes/releases/download/dark-themes-vol-2-v0.9.0/claude-code-dark-themes-vol-2-v0.9.0.zip">zip</a></p>${marker}`,
+    ),
+  );
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a Vol. 2 zip link for a version the pack does not ship");
+  assert.match(
+    result.stderr,
+    /The storefront links a release that no shipped pack version claims: .*dark-themes-vol-2-v0\.9\.0/,
+  );
+});
+
+test("accepts a storefront that links the Vol. 2 zip of the shipped version", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixtureHtml = join(fixtureRoot, "index.html");
+  const html = await readFile(fixtureHtml, "utf8");
+  const version = await readManifestVersion(fixtureRoot, "dark-themes-vol-2");
+  const marker = "<div class=\"grid\" id=\"vol2Grid\"></div>";
+  await writeFile(
+    fixtureHtml,
+    html.replace(
+      marker,
+      `<p><a href="https://github.com/notgabriels-sys/claude-code-50-dark-themes/releases/download/dark-themes-vol-2-v${version}/claude-code-dark-themes-vol-2-v${version}.zip">zip</a></p>${marker}`,
+    ),
+  );
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.equal(result.code, 0, result.stderr);
+});
+
+test("rejects a storefront that drops the 50-theme zip link", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixtureHtml = join(fixtureRoot, "index.html");
+  const html = await readFile(fixtureHtml, "utf8");
+  const version = await readManifestVersion(fixtureRoot, "50-dark-themes");
+  const anchor = new RegExp(
+    `<a href="https://github\\.com/notgabriels-sys/claude-code-50-dark-themes/releases/download/themes-plugin-v${version.replaceAll(".", "\\.")}/claude-code-dark-themes-v${version.replaceAll(".", "\\.")}\\.zip">([^<]+)</a>`,
+  );
+  assert.match(html, anchor, "the storefront should link the current 50-theme zip");
+  await writeFile(fixtureHtml, html.replace(anchor, "$1"));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a storefront with no 50-theme zip link");
+  assert.match(result.stderr, /must link the 50 Dark Themes zip at /);
+});
+
+test("rejects a README that stops naming the 50-theme zip", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixtureReadme = join(fixtureRoot, "README.md");
+  const readme = await readFile(fixtureReadme, "utf8");
+  const version = await readManifestVersion(fixtureRoot, "50-dark-themes");
+  const zip = `\`claude-code-dark-themes-v${version}.zip\``;
+  assert.ok(readme.includes(zip), "the README should name the current 50-theme zip");
+  await writeFile(fixtureReadme, readme.replace(zip, "`themes.zip`"));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a README that no longer names the 50-theme zip");
+  assert.match(result.stderr, /README must point at the 50 Dark Themes release /);
+});
+
+test("rejects a README that links a release no shipped pack version claims", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixtureReadme = join(fixtureRoot, "README.md");
+  const readme = await readFile(fixtureReadme, "utf8");
+  await writeFile(
+    fixtureReadme,
+    `${readme}\nOld build: https://github.com/notgabriels-sys/claude-code-50-dark-themes/releases/tag/themes-plugin-v0.9.0\n`,
+  );
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a README linking a release of a version that is not shipped");
+  assert.match(result.stderr, /README links a release that no shipped pack version claims: .*themes-plugin-v0\.9\.0/);
+});
+

@@ -288,6 +288,51 @@ if (!html.includes("claude plugin install dark-themes-vol-2@notgabriels-themes")
   fail("The gallery must expose the Vol. 2 install command.");
 }
 
+// Each pack's free zip is a release asset that scripts/build-release-zip.sh names after the
+// pack's manifest version, and release-zip.yml refuses any other tag. So the storefront and the
+// README may only link the zip of the version they ship; a version bump that forgets the links
+// stops here instead of pointing readers at an old pack or a release that does not exist.
+// The 50-theme zip must be linked. The Vol. 2 zip is accepted at its current version and
+// becomes required once its release exists (set `linked: true` in the same change that adds
+// the link).
+const repositoryUrl = "https://github.com/notgabriels-sys/claude-code-50-dark-themes";
+const releaseZips = [
+  {
+    label: "50 Dark Themes",
+    tag: `themes-plugin-v${pluginManifest.version}`,
+    file: `claude-code-dark-themes-v${pluginManifest.version}.zip`,
+    linked: true,
+  },
+  {
+    label: "Vol. 2",
+    tag: `dark-themes-vol-2-v${vol2Manifest.version}`,
+    file: `claude-code-dark-themes-vol-2-v${vol2Manifest.version}.zip`,
+    linked: false,
+  },
+];
+const currentReleaseUrls = new Set();
+for (const { label, tag, file, linked } of releaseZips) {
+  const zipUrl = `${repositoryUrl}/releases/download/${tag}/${file}`;
+  const releaseUrl = `${repositoryUrl}/releases/tag/${tag}`;
+  currentReleaseUrls.add(zipUrl);
+  currentReleaseUrls.add(releaseUrl);
+  if (!linked) continue;
+  if (!html.includes(`href="${zipUrl}"`)) {
+    fail(`The storefront must link the ${label} zip at ${zipUrl}.`);
+  }
+  if (!readme.includes(`(${releaseUrl})`) || !readme.includes(`\`${file}\``)) {
+    fail(`README must point at the ${label} release ${releaseUrl} and name its zip ${file}.`);
+  }
+}
+const releaseLinkPattern = /https:\/\/github\.com\/notgabriels-sys\/claude-code-50-dark-themes\/releases\/(?:tag|download)\/[^\s"')<>]+/g;
+for (const [source, text] of [["The storefront", html], ["README", readme]]) {
+  for (const [url] of text.matchAll(releaseLinkPattern)) {
+    if (!currentReleaseUrls.has(url)) {
+      fail(`${source} links a release that no shipped pack version claims: ${url}.`);
+    }
+  }
+}
+
 if (!readme.includes("mkdir -p ~/.claude/themes")) {
   fail("The manual install command must create ~/.claude/themes before copying files.");
 }
