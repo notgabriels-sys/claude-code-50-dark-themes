@@ -677,7 +677,9 @@ does, including which elements hold text, and refuses what it cannot model:
 inline `svg`/`math`, and `<!--` inside a `script`, where a browser's
 escaped states run the script past its `</script>` and swallowed the theme
 list (pre-existing). It is checked differentially against Chromium; see rule
-13 above.
+13 above. That review's bypass lens was stopped by a safety classifier before
+it tested anything, so it never ran; the exhaustive differential of rule 13 is
+the evidence in its place.
 
 The Gumroad half now has structural guards, an existence-verified slug list and
 a price-drift table — but no verified *price* for any product. See below.
