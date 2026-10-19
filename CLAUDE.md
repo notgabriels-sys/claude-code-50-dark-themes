@@ -826,6 +826,19 @@ now names its noun), a count after its noun, more than five words between,
 numbers above 999, and comparisons with other products, history and plans
 inside the files that are read — on those, reword the sentence.
 
+Mutation-tested (rule 5) from a snapshot of 3b34c52: of 36 branches, each
+gutted alone with the full suite re-run, 33 turn red only tests of the scan.
+Dropping the stop words also turns the real tree red — `verify` then refuses
+the install guide's "one of the installed dark themes" — so the tree pins
+that branch as well as its tests. Two turned nothing red. The line that drops
+a soft hyphen character was never reached: the one soft-hyphen test wrote
+`&shy;`, which the entity decoder already empties. And the "+" in the
+storefront's own role-aware check was covered by the prose scan whenever
+"checks" follows. Three tests in 7046aed reach them — a soft hyphen as
+`&#173;` and as the character in a note, and "900+ role-aware contrast pairs"
+on the storefront — and, gutted again, each branch turns exactly its new tests
+red while the control passes all 343.
+
 The Gumroad half now has structural guards, an existence-verified slug list and
 a price-drift table — but no check that reads any product's price from Gumroad.
 See below.
