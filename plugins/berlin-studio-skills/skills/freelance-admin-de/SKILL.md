@@ -30,10 +30,19 @@ This is practical orientation, not Steuerberatung. For anything binding —
 an audit, a back-payment demand, a cross-border threshold — the answer is
 "confirm with a Steuerberater", said once, without hedging every sentence.
 
+**Not checked against the current statute.** The §19 section, the two invoice
+footers and the deadlines below were written without reading the current text
+of the UStG and the UStDV, and the §19 section itself notes that its thresholds
+have changed in recent years. Before relying on any of them — whether §19
+applies, what an invoice must carry, what has to be filed and when — confirm
+the rules in force for the tax year in question with a Steuerberater or the
+Finanzamt, and tell the user that this is the step that remains.
+
 ## Invoice (Rechnung) — mandatory fields under §14 UStG
 
-An invoice missing any of these is not deductible for the client, which is how
-you find out you got it wrong:
+For a client who reclaims VAT, an invoice missing any of these can cost them
+the input-tax deduction (Vorsteuerabzug), which is how you find out you got it
+wrong:
 
 1. Full name and address — yours and the client's
 2. Your Steuernummer **or** USt-IdNr.
