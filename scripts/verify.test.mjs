@@ -2553,9 +2553,6 @@ test("rejects a stylesheet, which a page could load", { timeout: 90_000 }, async
 for (const [control, path, content] of [
   ["an image whose extension is in capitals", "assets/products/IMG_0001.JPG", "not really a jpeg\n"],
   ["an audio preview", "assets/audio/kick-preview.mp3", "ID3\n"],
-  ["a sitemap declaration in single quotes and lower case", "sitemap.xml",
-    "<?xml version='1.0' encoding='utf-8'?>\n" +
-      '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n  <url><loc>https://gabs-utilities.com/</loc></url>\n</urlset>\n'],
   ["an SVG declaring itself standalone", "assets/plain.svg",
     `<?xml version="1.0" encoding="UTF-8" standalone="no"?>\n${SVG_OPEN}<rect width="9" height="9"/></svg>\n`],
   ["a note with a title in its front matter", "docs/PALETTE_NOTES.md", "---\ntitle: Palette notes\ndescription: How the palettes were tuned.\n---\n\nNotes.\n"],
@@ -2568,6 +2565,23 @@ for (const [control, path, content] of [
     assert.equal(result.code, 0, `${control} was rejected: ${result.stderr}`);
   });
 }
+
+test("reads a sitemap declaration in single quotes and lower case as well-formed", { timeout: 90_000 }, async (t) => {
+  // scripts/build-theme-pages.mjs owns sitemap.xml, so any other bytes are
+  // stale. The freshness check runs after the sitemap's document checks, so
+  // reaching it shows the reader accepted this declaration.
+  const fixtureRoot = await editPage(
+    t,
+    "sitemap.xml",
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    "<?xml version='1.0' encoding='utf-8'?>",
+  );
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "a sitemap the builder did not write shipped green");
+  assert.match(result.stderr, /sitemap\.xml is stale/);
+});
 
 test("accepts a tracked file deleted from the working tree, in a repository", { timeout: 90_000 }, async (t) => {
   const fixtureRoot = await inRepository(t);

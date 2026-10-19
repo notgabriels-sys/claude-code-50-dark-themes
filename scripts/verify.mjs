@@ -1934,7 +1934,10 @@ const ldJsonBlocks = (page, markup) =>
 // ---------------------------------------------------------------------------
 const { buildThemePages } = await import("./build-theme-pages.mjs");
 const themePages = await buildThemePages(root);
-for (const [path, expected] of themePages) {
+// The builder also writes sitemap.xml; that file is compared at the end, after
+// the sitemap's own document checks, so a malformed sitemap is reported as
+// malformed and only a well-formed but stale one as stale.
+const themePageFreshness = async (path, expected) => {
   let actual;
   try {
     actual = await readFile(new URL(path, root), "utf8");
@@ -1947,6 +1950,9 @@ for (const [path, expected] of themePages) {
         "theme files. Run it and commit the result.",
     );
   }
+};
+for (const [path, expected] of themePages) {
+  if (path !== "sitemap.xml") await themePageFreshness(path, expected);
 }
 let themeDirectoryEntries;
 try {
@@ -3077,6 +3083,8 @@ for (const file of servedFiles) {
     }
   }
 }
+
+await themePageFreshness("sitemap.xml", themePages.get("sitemap.xml"));
 
 console.log(
   `Verified ${files.length} themes, ${pluginFiles.length} plugin themes, ${vol2Files.length} Vol. 2 themes, ` +
