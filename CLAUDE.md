@@ -539,6 +539,23 @@ check b1efa3b added for pages in subdirectories became unreachable behind the
 script-spelling rule, so the two are now one rule whose message gives both
 reasons.
 
+How strong the check now is. The hashing lens's generated differential,
+re-run on 3a9b631 with the same harness (proven again first: a copy of `verify`
+without its CRLF step missed 6 of 10 proof cases, the real one none), gives 0
+misses in 14,942 cases, where 17e1cb7 gave 565 — every one a NUL, an SVG
+script or a comment opener. It measures misses only: a case on which `verify`
+and Chromium agree never runs `verify`, so false refusals are not counted.
+Mutation runs over the check's 22 branches (seven in 17e1cb7, six in 9e8a147,
+six in 27fd215, three pinned in 3a9b631) each turn their own tests red; the one
+that failed none in 9e8a147's run, a tag before the policy with no text around
+it, is now caught by the end-tag and body-tag tests. The review's first lens,
+meant to search for pages `verify` accepts while Chromium runs something else,
+was stopped by a safety classifier before it tested anything three times —
+once in the review and twice re-worded as a coverage review. It has never run,
+it is recorded here as unrun, and it is not retried in other words; the
+generated differential above is the evidence instead, and it is narrower: it
+varies a script's text and its context, not the whole head.
+
 **Sixteen failure cases were proven** by breaking `index.html`, `README.md` and
 `impressum.html` in turn and confirming the build goes red, then restoring:
 grid price, developer-picks price, `aria-label` number, `aria-label` currency,
