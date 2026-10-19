@@ -459,7 +459,8 @@ export function renderThemePage(theme) {
     <section aria-labelledby="install-title">
       <h2 id="install-title">Install ${esc(name)}.</h2>
       <p>Requires Claude Code v2.1.118 or later. The marketplace command is needed once per machine; the plugin command installs the whole ${esc(pack.label)} pack. Then run <code>/theme</code> in Claude Code and choose &ldquo;${esc(name)}&rdquo; from the list.</p>
-${commandPanel(MARKETPLACE_COMMAND, "marketplace command")}${commandPanel(pack.installCommand, `${pack.label} install command`)}${commandPanel("/theme", `the /theme command, then choose ${name} in Claude Code`, "> ")}      <p class="note">Plugin themes are read-only. Press <code>Ctrl+E</code> on one in <code>/theme</code> for an editable copy in <code>~/.claude/themes/</code>.</p>
+${commandPanel(MARKETPLACE_COMMAND, "marketplace command")}${commandPanel(pack.installCommand, `${pack.label} install command`)}      <p class="note">If Claude Code was open while you installed, restart it: plugin themes load when it starts.</p>
+${commandPanel("/theme", `the /theme command, then choose ${name} in Claude Code`, "> ")}      <p class="note">Plugin themes are read-only. Press <code>Ctrl+E</code> on one in <code>/theme</code> for an editable copy in <code>~/.claude/themes/</code>.</p>
     </section>
 
     <section aria-labelledby="manual-title">
@@ -535,7 +536,7 @@ export function renderIndexPage(themes) {
       .join("\n");
     return `    <section aria-labelledby="${pack.id}-title">
       <h2 id="${pack.id}-title">${esc(pack.label)} · ${packThemes.length}</h2>
-      <p>Installs as one plugin: <code>${esc(installCommandFor(pack.id))}</code>. Previewed in colour in the <a href="/${pack.galleryAnchor}">gallery</a>.</p>
+      <p>Installs as one plugin: <code>${esc(installCommandFor(pack.id))}</code>. If Claude Code was open while you installed, restart it: plugin themes load when it starts. Previewed in colour in the <a href="/${pack.galleryAnchor}">gallery</a>.</p>
       <div class="index-grid">
 ${links}
       </div>

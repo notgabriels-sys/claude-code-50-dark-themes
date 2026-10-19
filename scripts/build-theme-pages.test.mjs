@@ -152,3 +152,27 @@ test("rejects a theme page specimen that types the theme name after /theme", { t
   assert.notEqual(result.code, 0, "the verifier accepted a specimen acting out the dead command");
   assert.match(result.stderr, /theme\/absinthe\/index\.html shows "theme absinthe" as a command/);
 });
+
+// Plugin themes load when Claude Code starts: a session open during the
+// install lists none of them until a restart (2.1.302 and 2.1.303, run live).
+const restartNote = "If Claude Code was open while you installed, restart it: plugin themes load when it starts.";
+
+test("rejects theme pages that give the plugin install with no restart note", { timeout: 120_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  await editBuilder(fixtureRoot, `      <p class="note">${restartNote}</p>\n`, "");
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted an install section with no restart note");
+  assert.match(result.stderr, /theme\/absinthe\/index\.html gives "plugin install 50-dark-themes@notgabriels-themes" without saying to restart/);
+});
+
+test("rejects a theme index that gives the plugin install with no restart note", { timeout: 120_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  await editBuilder(fixtureRoot, `</code>. ${restartNote} Previewed`, "</code>. Previewed");
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted an index with no restart note");
+  assert.match(result.stderr, /theme\/index\.html gives "plugin install [\w-]+@notgabriels-themes" without saying to restart/);
+});

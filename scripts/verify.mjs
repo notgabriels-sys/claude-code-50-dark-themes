@@ -1285,6 +1285,24 @@ for (const [path, source] of themePages) {
       }
     }
   }
+  // The plugin restart note, as for the root pages above: #59's pages and
+  // their index gave the install command and went straight to /theme.
+  const pageText = source
+    .replace(/<(script|style)\b[\s\S]*?<\/\1\s*>/gi, "")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;|&#160;/g, " ")
+    .replace(/\s+/g, " ");
+  // The single-file route's own "restart it once" (about a new themes folder)
+  // sits within reach, so the note must be about the open session or plugins.
+  const pluginRestart = /[^.]*\brestart\b[^.]*\b(?:open|plugin)|[^.]*\b(?:open|plugin)\b[^.]*\brestart/i;
+  for (const command of pageText.matchAll(/plugin install [\w-]+@notgabriels-themes/g)) {
+    if (!pluginRestart.test(pageText.slice(command.index, command.index + 700))) {
+      fail(
+        `${path} gives "${command[0]}" without saying to restart Claude Code if it was open. Plugin themes ` +
+          "load when Claude Code starts, so a session open during the install lists none of them in /theme.",
+      );
+    }
+  }
   if (!source.includes('rel="icon" type="image/svg+xml" href="/favicon.svg"')) {
     fail(`${path} must expose the first-party SVG favicon.`);
   }
