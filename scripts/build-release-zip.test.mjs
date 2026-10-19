@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, readdirSync, rmSync, statSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -23,6 +23,15 @@ const plugins = readdirSync(join(repoRoot, "plugins")).filter(
 );
 const TAG = "themes-plugin-v0.0.0";
 const ROOT = "claude-code-dark-themes-v0.0.0";
+
+// An expansion tag must carry the version its plugin manifest states, so the
+// test reads the real one instead of inventing a version.
+const VOL2 = "dark-themes-vol-2";
+const vol2Manifest = JSON.parse(
+  readFileSync(join(repoRoot, "plugins", VOL2, ".claude-plugin", "plugin.json"), "utf8"),
+);
+const VOL2_TAG = `${VOL2}-v${vol2Manifest.version}`;
+const VOL2_ROOT = `claude-code-${VOL2}-v${vol2Manifest.version}`;
 
 function run(args, options = {}) {
   return spawnSync("bash", [script, ...args], { encoding: "utf8", ...options });
@@ -99,4 +108,80 @@ test("writes a relative OUT_DIR under the caller's directory, as the workflow do
   } finally {
     rmSync(cwd, { recursive: true, force: true });
   }
+});
+
+test("rejects an expansion tag that is not dark-themes-vol-N-vMAJOR.MINOR.PATCH", () => {
+  const tags = [
+    "dark-themes-vol-2-v1.0",
+    "dark-themes-vol-2",
+    "dark-themes-vol-0-v1.0.0",
+    "dark-themes-vol-02-v1.0.0",
+    "dark-themes-vol-2-v1.0.0-rc1",
+    "dark-themes-vol-2-v01.0.0",
+    "vol-2-v1.0.0",
+    "50-dark-themes-v1.0.1",
+  ];
+  for (const tag of tags) {
+    const result = run([repoRoot, tag, tmpdir()]);
+    assert.notEqual(result.status, 0, `tag ${tag} should be rejected`);
+    assert.match(result.stderr, /Unexpected tag/);
+  }
+});
+
+test("packs only the named expansion for a dark-themes-vol-N tag", { skip: !hasZipTools }, () => {
+  const out = mkdtempSync(join(tmpdir(), "release-zip-vol2-"));
+  try {
+    const result = run([repoRoot, VOL2_TAG, out]);
+    assert.equal(result.status, 0, result.stderr);
+
+    const zips = readdirSync(out).filter((name) => name.endsWith(".zip"));
+    assert.deepEqual(zips, [`${VOL2_ROOT}.zip`]);
+    const listing = zipEntries(join(out, zips[0]));
+
+    const expectedThemes = readdirSync(join(repoRoot, "plugins", VOL2, "themes"))
+      .filter((file) => file.endsWith(".json"))
+      .map((file) => `${VOL2_ROOT}/${VOL2}/themes/${file}`)
+      .sort();
+    assert.ok(expectedThemes.length > 0, "the checkout should hold the Vol. 2 themes");
+    const packedThemes = listing.filter((entry) => /\/themes\/[^/]+\.json$/.test(entry)).sort();
+    assert.deepEqual(packedThemes, expectedThemes);
+    assert.ok(
+      !listing.some((entry) => entry.includes("/50-dark-themes/")),
+      "the 50-theme pack must not ride along in an expansion zip",
+    );
+    for (const file of ["LICENSE", "README.md", ".claude-plugin/plugin.json"]) {
+      assert.ok(listing.includes(`${VOL2_ROOT}/${VOL2}/${file}`), `${file} missing`);
+    }
+    assert.ok(listing.includes(`${VOL2_ROOT}/INSTALL.txt`));
+
+    const install = execFileSync("unzip", ["-p", join(out, zips[0]), `${VOL2_ROOT}/INSTALL.txt`], {
+      encoding: "utf8",
+    });
+    assert.match(
+      install,
+      new RegExp(`^Dark Themes Vol\\. 2 for Claude Code, release ${VOL2_TAG}\\n${expectedThemes.length} theme files`),
+    );
+    assert.match(install, new RegExp(`Manual install \\(run from this folder, ${VOL2_ROOT}\\):`));
+    assert.match(install, /claude plugin install dark-themes-vol-2@notgabriels-themes/);
+    assert.match(install, /cp dark-themes-vol-2\/themes\/\*\.json ~\/\.claude\/themes\//);
+    assert.doesNotMatch(install, /claude plugin install 50-dark-themes@/);
+    assert.doesNotMatch(install, /cp 50-dark-themes\//);
+    assert.match(result.stdout, new RegExp(`^${expectedThemes.length} theme files from ${VOL2_TAG} packed into `));
+  } finally {
+    rmSync(out, { recursive: true, force: true });
+  }
+});
+
+test("rejects an expansion tag whose version disagrees with the plugin manifest", () => {
+  assert.notEqual(vol2Manifest.version, "0.0.0", "the manifest version must differ from the probe tag");
+  const result = run([repoRoot, `${VOL2}-v0.0.0`, tmpdir()]);
+  assert.notEqual(result.status, 0, "a tag whose version the manifest does not carry should be rejected");
+  assert.match(result.stderr, /plugin\.json says/);
+});
+
+test("rejects an expansion tag for a volume the checkout does not contain", () => {
+  assert.ok(!existsSync(join(repoRoot, "plugins", "dark-themes-vol-99")));
+  const result = run([repoRoot, "dark-themes-vol-99-v1.0.0", tmpdir()]);
+  assert.notEqual(result.status, 0, "a tag naming a missing plugin directory should be rejected");
+  assert.match(result.stderr, /does not exist at this tag/);
 });
