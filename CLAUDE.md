@@ -602,6 +602,31 @@ it is recorded here as unrun, and it is not retried in other words; the
 generated differential above is the evidence instead, and it is narrower: it
 varies a script's text and its context, not the whole head.
 
+**(merged 2026-10-19) Main's #59, a page per theme.** #59 renders a page
+for each of the 62 themes, and an index, under `theme/` with
+`scripts/build-theme-pages.mjs`, and compares every page and `sitemap.xml`
+with what the builder renders. Merged here, the 63 pages meet every guard a
+served page meets, and four things were adapted so they pass for the right
+reason. Each page runs one inline script, a copy button that writes a
+button's `data-copy` text to the clipboard and loads or navigates nowhere: the
+builder now writes each page's Content-Security-Policy from that script's
+hash, and `verify` reviews the script once for every page the builder renders
+(`reviewedThemePageScripts`). The builder writes the policy but not the
+review, so a changed copy script is still a deliberate edit — a test changes
+it in the builder, rebuilds, and sees `verify` refuse; with `verify` trusting
+the builder's own hash instead, that test fails. The builder read every root
+`.json` as a theme and threw on `themes.json`; it now uses `isThemeFile`.
+Main's check of Gumroad links on the pages captured the slug with the
+character class this file forbids; it now captures to a delimiter. And the
+order: main's checks run before the guards every page meets, so a page the
+builder does not render is reported as that. Moving them first also moved the
+byte comparison of `sitemap.xml` ahead of the sitemap's own document checks,
+and CI failed eight sitemap tests on it — every malformed sitemap read as
+merely stale. `sitemap.xml` is now compared last. One control could no longer
+hold as written, since the builder owns every byte of the sitemap: it now
+changes only the declaration and expects "stale", which is reached only once
+the document checks pass, and a reader requiring double quotes fails it.
+
 **Sixteen failure cases were proven** by breaking `index.html`, `README.md` and
 `impressum.html` in turn and confirming the build goes red, then restoring:
 grid price, developer-picks price, `aria-label` number, `aria-label` currency,
