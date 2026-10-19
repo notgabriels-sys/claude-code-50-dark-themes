@@ -101,7 +101,15 @@ done < <(themes)
 echo "Installed $installed theme(s) into $DEST"
 [ $backed -gt 0 ] && echo "Backed up $backed existing file(s) as *.json.bak"
 echo
-if [ $created -eq 1 ]; then
+# Claude Code reads custom themes only from its config folder's themes/, so a
+# --dir anywhere else is never listed, restart or not.
+CC_THEMES="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/themes"
+cc_real="$CC_THEMES"
+[ -d "$CC_THEMES" ] && cc_real="$(cd "$CC_THEMES" && pwd -P)"
+if [ "$(cd "$DEST" && pwd -P)" != "$cc_real" ]; then
+  echo "Claude Code reads themes from $CC_THEMES, so /theme won't list these."
+  echo "Copy them there, or run again with  --dir \"$CC_THEMES\"."
+elif [ $created -eq 1 ]; then
   echo "$DEST is new: restart Claude Code once so it sees the folder."
   echo "Then run  /theme  and pick one."
 else

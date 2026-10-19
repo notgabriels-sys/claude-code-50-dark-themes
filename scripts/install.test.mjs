@@ -16,8 +16,12 @@ function sandbox(t) {
   return { home, themes: join(home, ".claude", "themes") };
 }
 
-function run(home, args) {
-  return spawnSync("bash", [installer, ...args], { encoding: "utf8", env: { ...process.env, HOME: home } });
+// CLAUDE_CONFIG_DIR moves the folder Claude Code reads themes from, so it is
+// cleared unless a test sets it.
+function run(home, args, extraEnv = {}) {
+  const env = { ...process.env, HOME: home, ...extraEnv };
+  if (!("CLAUDE_CONFIG_DIR" in extraEnv)) delete env.CLAUDE_CONFIG_DIR;
+  return spawnSync("bash", [installer, ...args], { encoding: "utf8", env });
 }
 
 const installed = (dir) => (existsSync(dir) ? readdirSync(dir).filter((file) => file.endsWith(".json")).sort() : []);
@@ -57,4 +61,27 @@ test("says to restart Claude Code once when it creates the themes folder", (t) =
   assert.equal(first.status, 0, first.stderr);
   assert.match(first.stdout, /restart Claude Code once/i);
   assert.doesNotMatch(again.stdout, /restart/i, "the folder already existed, so no restart is needed");
+});
+
+// Claude Code reads custom themes only from <config dir>/themes. A --dir
+// anywhere else is never listed, so the restart note there was false.
+test("says /theme won't list themes installed outside Claude Code's themes folder", (t) => {
+  const { home } = sandbox(t);
+
+  const elsewhere = run(home, ["--dir", join(home, "elsewhere"), "acid"]);
+
+  assert.equal(elsewhere.status, 0, elsewhere.stderr);
+  assert.match(elsewhere.stdout, /Claude Code reads themes from .*\/\.claude\/themes, so \/theme won't list these/);
+  assert.doesNotMatch(elsewhere.stdout, /restart/i, "a restart never makes Claude Code read another folder");
+});
+
+test("follows CLAUDE_CONFIG_DIR to the folder Claude Code reads", (t) => {
+  const { home } = sandbox(t);
+  const config = join(home, "cfg");
+
+  const there = run(home, ["--dir", join(config, "themes"), "acid"], { CLAUDE_CONFIG_DIR: config });
+  const defaultDest = run(home, ["acid"], { CLAUDE_CONFIG_DIR: config });
+
+  assert.match(there.stdout, /restart Claude Code once/i, "--dir at Claude Code's own themes folder lost the restart note");
+  assert.match(defaultDest.stdout, /Claude Code reads themes from .*\/cfg\/themes, so \/theme won't list these/);
 });
