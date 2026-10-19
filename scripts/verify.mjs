@@ -1330,6 +1330,16 @@ for (const [path, source] of themePages) {
       fail(`${path} labels its ${row[1]} row "${row[2]}" as if it were non-text only; Claude Code also draws text in it.`);
     }
   }
+  // Copy buttons need a way to tell a screen reader the copy happened: their
+  // aria-label outlasts the visible "Copied", and #59's pages had no live
+  // region, as the storefront's Vol. 2 copies once did (item 3).
+  if (source.includes("data-copy=")) {
+    const liveRegion = source.match(/<[a-z]+\b[^>]*\bid="([\w-]+)"[^>]*\baria-live="(?:polite|assertive)"[^>]*>|<[a-z]+\b[^>]*\baria-live="(?:polite|assertive)"[^>]*\bid="([\w-]+)"[^>]*>/);
+    const regionId = liveRegion && (liveRegion[1] || liveRegion[2]);
+    if (!regionId || !source.includes(`getElementById("${regionId}")`)) {
+      fail(`${path} has copy buttons but no live region the copy script writes to, so a screen reader hears nothing when a copy succeeds or fails.`);
+    }
+  }
   // index.html defines #plugin as the 50-theme plugin. #59 had all 12 Vol. 2
   // pages and the two-pack index declare they were about it.
   if (source.includes('"@id": "https://gabs-utilities.com/#plugin"')

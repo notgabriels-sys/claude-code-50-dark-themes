@@ -236,3 +236,15 @@ test("rejects Vol. 2 theme pages that claim to be about the 50-theme plugin", { 
   assert.notEqual(result.code, 0, "the verifier accepted a Vol. 2 page naming the wrong plugin");
   assert.match(result.stderr, /theme\/afterglow\/index\.html says in its structured data that it is about #plugin/);
 });
+
+// The copy buttons' aria-label outlasts the visible "Copied"; the live region
+// is the only way a screen reader hears the outcome.
+test("rejects theme pages whose copy buttons have no live region", { timeout: 120_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  await editBuilder(fixtureRoot, '    <p class="sr-only" id="copyStatus" aria-live="polite"></p>\n', "");
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted copy buttons a screen reader never hears");
+  assert.match(result.stderr, /theme\/absinthe\/index\.html has copy buttons but no live region/);
+});
