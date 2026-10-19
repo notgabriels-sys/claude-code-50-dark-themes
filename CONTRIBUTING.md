@@ -117,6 +117,19 @@ Regenerating the pack's preview image is optional, and only worth doing if the g
 noticeably: render `index.html` in a headless browser and screenshot the `#vol2Grid` element to
 `plugins/dark-themes-vol-2/preview.png`.
 
+## Theme pages
+
+Every theme has a page under `theme/<slug>/`, plus the index at `theme/index.html` and
+`sitemap.xml`. They are generated, never edited by hand: `scripts/build-theme-pages.mjs` renders
+them from the theme files, the gallery's terminal backgrounds and `previews.json`, and the verifier
+fails if a page on disk differs from that render, if a theme has no page, or if a page has no theme.
+After changing a theme, a gallery terminal colour or a preview colour, run the builder and commit
+what it writes:
+
+```bash
+node scripts/build-theme-pages.mjs
+```
+
 ## Numbers stated on public pages
 
 The storefront, the share card and the meta descriptions state a role-aware check count and theme
@@ -152,6 +165,7 @@ Every public page shipping an `og:image` must state `og:image:alt`, a `twitter:i
 
 ```bash
 node scripts/sync-plugin-themes.mjs
+node scripts/build-theme-pages.mjs
 node scripts/verify.mjs
 node --test scripts/*.test.mjs
 claude plugin validate .
@@ -200,6 +214,7 @@ The command checks:
 - that stated check and theme counts on public pages, plugin descriptions and the READMEs match the
   computed values, in digits or in words;
 - that share images carry alternative text, and that one image is described one way.
+- that every page under `theme/` is a fresh render of its theme file and `sitemap.xml` lists each one.
 
 GitHub Actions runs the regression tests and the same repository check on every push and pull request.
 

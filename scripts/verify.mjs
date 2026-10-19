@@ -1923,6 +1923,70 @@ const ldJsonBlocks = (page, markup) =>
 // Every HTML file Pages can serve, not only the root pages: a link on
 // assets/social-preview.html reaches visitors too. Payment links belong only
 // on the root pages, the ones the price checks read.
+// ---------------------------------------------------------------------------
+// One page per theme under theme/<slug>/ is rendered from the theme files by
+// scripts/build-theme-pages.mjs. A page states hex values, measured ratios and
+// an install command, so it is a public claim: every page on disk must be
+// byte-for-byte what the builder renders from today's files, no page may exist
+// for a theme that does not, and sitemap.xml must list each one (the builder
+// owns the sitemap for that reason). These run before the guards every served
+// page meets, so a page the builder does not render is reported as that first.
+// ---------------------------------------------------------------------------
+const { buildThemePages } = await import("./build-theme-pages.mjs");
+const themePages = await buildThemePages(root);
+for (const [path, expected] of themePages) {
+  let actual;
+  try {
+    actual = await readFile(new URL(path, root), "utf8");
+  } catch {
+    fail(`${path} is missing. Run node scripts/build-theme-pages.mjs and commit the result.`);
+  }
+  if (actual !== expected) {
+    fail(
+      `${path} is stale: it does not match what scripts/build-theme-pages.mjs renders from the ` +
+        "theme files. Run it and commit the result.",
+    );
+  }
+}
+let themeDirectoryEntries;
+try {
+  themeDirectoryEntries = await readdir(new URL("theme/", root), { withFileTypes: true });
+} catch {
+  fail("theme/ is missing. Run node scripts/build-theme-pages.mjs and commit the result.");
+}
+for (const entry of themeDirectoryEntries) {
+  const path = entry.isDirectory() ? `theme/${entry.name}/index.html` : `theme/${entry.name}`;
+  if (!themePages.has(path)) {
+    fail(`${path} has no theme behind it. Remove it, or add the theme and rebuild the pages.`);
+  }
+}
+// The pages are public pages like the root ones: first-party favicon, no
+// unverified product links, and the shared share image described one way.
+for (const [path, source] of themePages) {
+  if (!path.endsWith(".html")) continue;
+  if (!source.includes('rel="icon" type="image/svg+xml" href="/favicon.svg"')) {
+    fail(`${path} must expose the first-party SVG favicon.`);
+  }
+  // Captured to a delimiter, then split on "?"/"#", as every slug read here is
+  // (CLAUDE.md, "Capture to a delimiter, never to a character class").
+  for (const match of source.matchAll(/https:\/\/notgabriel\.gumroad\.com\/l\/([^"'\s<>]+)/g)) {
+    const slug = match[1].split(/[?#]/)[0];
+    if (!verifiedGumroadSlugs.has(slug)) {
+      fail(`${path} contains an unverified or unavailable Gumroad product link: ${slug}.`);
+    }
+  }
+  const image = source.match(/<meta property="og:image" content="([^"]+)">/);
+  const ogAlt = source.match(/<meta property="og:image:alt" content="([^"]+)">/);
+  if (!image || !ogAlt) fail(`${path} must ship an og:image with og:image:alt.`);
+  const seen = sharedImageAlts.get(image[1]);
+  if (seen && seen.alt !== ogAlt[1]) {
+    fail(
+      `${path} and ${seen.file} share ${image[1]} but describe it differently. ` +
+        "One image gets one description.",
+    );
+  }
+}
+
 const linkedPages = [
   ...publicHtmlFiles,
   ...(await readdir(root, { recursive: true }))
@@ -2300,6 +2364,16 @@ const reviewedInlineScripts = new Map([
   // The gallery: renders THEMES and VOL2_THEMES, filters and copies install commands.
   ["index.html", ["sha256-V8bZZsjNTr3HAwTnMFReSIV+PlAuV1o1UimLudKymSw="]],
 ]);
+// Every page under theme/ is rendered by scripts/build-theme-pages.mjs (main's
+// #59) and runs one script, the same on each: its copy button, which writes a
+// button's data-copy text to the clipboard and changes the button's label for
+// 1.4 s. It reads nothing else, and loads and navigates nowhere. Read
+// 2026-10-19 when #59 was merged here; one entry holds for every generated
+// page the builder renders, so a change to that script is still one deliberate
+// edit, and a page it does not render gets no reviewed script.
+const reviewedThemePageScripts = ["sha256-a45E5Riw8az2PUDhD9sCmfIbb20+7UZqWfjQXdb0TmU="];
+const reviewedScriptsFor = (page) =>
+  reviewedInlineScripts.get(page) ?? (themePages.has(page) ? reviewedThemePageScripts : []);
 const POLICY_REST = "worker-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'";
 const scriptHash = (text) =>
   `sha256-${createHash("sha256").update(text.replace(/\r\n?/g, "\n"), "utf8").digest("base64")}`;
@@ -2457,7 +2531,7 @@ for (const page of linkedPages) {
   }
   const tags = htmlTags(markup);
   const running = tags.filter((tag) => tag.name === "script" && !tag.closing && tag.attributes.length === 0);
-  const reviewed = reviewedInlineScripts.get(page) ?? [];
+  const reviewed = reviewedScriptsFor(page);
   const hashes = running.map((tag) => scriptHash(tag.text));
   const policy = `<meta http-equiv="Content-Security-Policy" content="${expectedPolicy(hashes)}">`;
   const unreviewed = hashes.filter((hash) => !reviewed.includes(hash));
