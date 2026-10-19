@@ -1102,6 +1102,13 @@ for (const [form, page, from, to, message] of [
     "the repository verifies the theme schema, gallery parity, installation command and payment links on every push.",
     "the repository verifies the theme schema, gallery parity, installation command and payment links on every push.\n\n```js\nfor (let i = 0; i<themes.length; i++) install(themes[i]);\n```\n\nThat loop installs the flagship pack's 51 themes.\n\n```js\nthemes.forEach((t) => install(t));\n```\n",
     /README\.md:\d+ says "51 themes"/],
+  // The same with no quote in between, which the quote-aware reader would
+  // otherwise stop at: only the rule that a tag's name ends at a space, "/"
+  // or ">" keeps "<themes.length" from opening a tag.
+  ["a < in a Markdown code block, no quote after it", "README.md",
+    "the repository verifies the theme schema, gallery parity, installation command and payment links on every push.",
+    "the repository verifies the theme schema, gallery parity, installation command and payment links on every push.\n\n```js\nfor (let i = 0; i<themes.length; i++) install(themes[i]);\n```\n\nThat loop installs all 51 themes.\n\n```js\nthemes.forEach((t) => install(t));\n```\n",
+    /README\.md:\d+ says "51 themes"/],
   ["a launch draft under assets/", "assets/product-hunt/SEMANTIC_NOCTURNE.md",
     "The palette is painstakingly tuned",
     "Each of the 63 palettes is painstakingly tuned",
