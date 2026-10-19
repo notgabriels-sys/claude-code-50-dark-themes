@@ -1758,15 +1758,43 @@ const ldJsonBlocks = (page, markup) =>
       fail(`${page} has a JSON-LD block that does not parse, at offset ${block.index}.`);
     }
   });
+// Every HTML file Pages can serve, not only the root pages: a link on
+// assets/social-preview.html reaches visitors too. Payment links belong only
+// on the root pages, the ones the price checks read.
+const linkedPages = [
+  ...publicHtmlFiles,
+  ...(await readdir(root, { recursive: true }))
+    .map((file) => file.split(sep).join("/"))
+    .filter((file) => file.endsWith(".html") && file.includes("/") && !file.startsWith(".git/"))
+    .sort(),
+];
+const readPage = (page) => page === "index.html"
+  ? html
+  : readFile(new URL(page.split("/").map(encodeURIComponent).join("/"), root), "utf8");
+// The rules that keep htmlTags reading what a browser builds hold on every
+// served page, not only the root ones: on assets/social-preview.html an inline
+// <svg> decoded a script's text before Chromium hashed it, and a <!-- in a
+// JSON-LD block ran on into a script htmlTags never saw.
 let markedBlock;
 const jsonLdBlocks = [];
-for (const page of publicHtmlFiles) {
-  const markup = page === "index.html" ? html : await readFile(new URL(page, root), "utf8");
+for (const page of linkedPages) {
+  const markup = await readPage(page);
+  // The tokenizer hands a NUL to a script, an attribute or a tag name as
+  // U+FFFD, so a script holding one hashes differently in Chromium, which
+  // refused the gallery when verify had accepted its hash.
+  const nul = markup.indexOf("\u0000");
+  if (nul !== -1) {
+    fail(
+      `${page}:${markup.slice(0, nul).split("\n").length} holds a NUL character (U+0000). A browser reads it ` +
+        `as U+FFFD, so the page it builds is not the file verify read; remove it.`,
+    );
+  }
   for (const [tag] of markup.matchAll(/<script\b[^>]*>/gi)) {
     if (!ALLOWED_SCRIPT_TAGS.has(tag)) {
       fail(
         `${page} has a script tag spelled ${JSON.stringify(tag)}. Only <script type="application/ld+json"> ` +
-          `and <script> are allowed, so every JSON-LD block a crawler reads is one this check reads.`,
+          `and <script> are allowed: a src loads code from a file verify does not read, and every JSON-LD ` +
+          `block a crawler reads must be one this check reads.`,
       );
     }
   }
@@ -1786,6 +1814,14 @@ for (const page of publicHtmlFiles) {
         `${page} has an inline <${tag.name}>. Inside one a <style> is not raw text, so a browser ` +
           `reads tags there that this check cannot. Use <img src="icon.svg">, or for an icon that ` +
           `follows the text colour a CSS mask-image with background-color: currentColor.`,
+      );
+    }
+    const names = tag.attributes.map(({ name }) => name);
+    const twice = names.find((name, index) => names.indexOf(name) !== index);
+    if (twice !== undefined) {
+      fail(
+        `${page} writes ${twice} twice on one <${tag.name}>. A browser keeps the first and drops the rest, ` +
+          `so a check that reads either one can disagree with it; write it once.`,
       );
     }
     if (tag.name === "script" && tag.text.includes("<!--")) {
@@ -2081,16 +2117,6 @@ const scriptHash = (text) =>
   `sha256-${createHash("sha256").update(text.replace(/\r\n?/g, "\n"), "utf8").digest("base64")}`;
 const expectedPolicy = (hashes) =>
   `script-src ${hashes.length ? hashes.map((hash) => `'${hash}'`).join(" ") : "'none'"}; ${POLICY_REST}`;
-// Every HTML file Pages can serve, not only the root pages: a link on
-// assets/social-preview.html reaches visitors too. Payment links belong only
-// on the root pages, the ones the price checks read.
-const linkedPages = [
-  ...publicHtmlFiles,
-  ...(await readdir(root, { recursive: true }))
-    .map((file) => file.split(sep).join("/"))
-    .filter((file) => file.endsWith(".html") && file.includes("/") && !file.startsWith(".git/"))
-    .sort(),
-];
 // Schemes that reach no web page, and image data an <img> or a poster shows
 // but cannot follow.
 const NO_WEB_HOST = new Set(["mailto:", "tel:", "sms:"]);
@@ -2146,9 +2172,7 @@ const stripeBan = (file, text) => {
   }
 };
 for (const page of linkedPages) {
-  const markup = page === "index.html"
-    ? html
-    : await readFile(new URL(page.split("/").map(encodeURIComponent).join("/"), root), "utf8");
+  const markup = await readPage(page);
   stripeBan(page, markup);
   if (/^\uFEFF?---/.test(markup)) {
     fail(
@@ -2158,16 +2182,6 @@ for (const page of linkedPages) {
   }
   for (const tag of htmlTags(markup)) {
     if (tag.closing) continue;
-    // The root pages hold scripts to two spellings above; a page in a
-    // subdirectory could load a served script by src, which nothing reads.
-    if (tag.name === "script" && !(tag.attributes.length === 0 ||
-        (tag.attributes.length === 1 && tag.attributes[0].name === "type" &&
-          tag.attributes[0].value === "application/ld+json"))) {
-      fail(
-        `${page} has a <script> with ${tag.attributes.map(({ name }) => name).join(", ")}. A script may carry ` +
-          `no attribute but type="application/ld+json": a src loads code from a file verify does not read.`,
-      );
-    }
     if (tag.name === "base" && tag.attributes.some(({ name }) => name === "href")) {
       fail(`${page} has a <base href>, which changes where every relative link goes. Remove it.`);
     }
@@ -2272,17 +2286,19 @@ for (const page of linkedPages) {
   }
   // The policy must come before anything it governs: right after <meta charset>,
   // with only whitespace between. Anything else there -- a stray ">", a
-  // no-break space -- ends the head in a browser, and a policy in the body is
-  // ignored: Chromium then ran an unreviewed script while verify read the
-  // policy as present.
+  // no-break space, an end tag such as </html> -- ends the head in a browser,
+  // and a policy in the body is ignored: Chromium then ran an unreviewed script
+  // while verify read the policy as present. (A second http-equiv on the
+  // policy, which a browser reads first, is refused with every repeated
+  // attribute above.)
   const policies = tags.filter((tag) => tag.name === "meta" && tag.attributes.some(
     ({ name, value }) => name === "http-equiv" && value.toLowerCase() === "content-security-policy"));
   if (policies.length !== 1) {
     fail(`${page} carries ${policies.length} Content-Security-Policy metas; it must carry exactly one: ${policy}`);
   }
   const before = tags.filter((tag) => tag.start < policies[0].start);
-  const intruder = before.find((tag) => !["html", "head"].includes(tag.name) &&
-    !(tag.name === "meta" && tag.attributes.some(({ name }) => name === "charset")));
+  const intruder = before.find((tag) => tag.closing || (!["html", "head"].includes(tag.name) &&
+    !(tag.name === "meta" && tag.attributes.some(({ name }) => name === "charset"))));
   let gap = markup.slice(0, policies[0].start);
   for (const tag of [...before].reverse()) gap = gap.slice(0, tag.start) + gap.slice(tag.end);
   const stray = gap.replace(/^\uFEFF?<!doctype html>/i, "").replace(/[\t\n\f\r ]+/g, "");
@@ -2290,7 +2306,7 @@ for (const page of linkedPages) {
     fail(
       `${page}'s Content-Security-Policy must come right after <meta charset>, with only whitespace between; ` +
         (intruder
-          ? `<${intruder.name}> comes before it.`
+          ? `<${intruder.closing ? "/" : ""}${intruder.name}> comes before it.`
           : `the text "${stray.replace(/[^\x21-\x7e]/g, (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`)}" ` +
             `comes before it.`),
     );

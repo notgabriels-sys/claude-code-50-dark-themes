@@ -1907,7 +1907,7 @@ for (const [defect, path, content, message] of [
   ["a script loaded by src on a page in a subdirectory", "assets/promo.html",
     '<!doctype html>\n<html lang="en"><head><meta charset="utf-8"><title>Promo</title></head>\n' +
       '<body><p>Promo</p><script src="../scripts/sync-plugin-themes.mjs"></script></body></html>\n',
-    /assets\/promo\.html has a <script> with src\. A script may carry no attribute but type="application\/ld\+json"/],
+    /assets\/promo\.html has a script tag spelled "<script src=\\"\.\.\/scripts\/sync-plugin-themes\.mjs\\">"\. Only <script type="application\/ld\+json"> and <script> are allowed: a src loads code from a file verify does not read/],
   ["an SVG spelling url( in capitals", "assets/pay.svg",
     `${SVG_OPEN}<rect width="9" height="9" fill="URL(https://pay.example.invalid/p.svg#g)"/></svg>\n`,
     /assets\/pay\.svg:1 has "URL\("\. A url\(\) may only name an element in this file/],
@@ -2050,6 +2050,16 @@ for (const [defect, page, from, to, message] of [
     /impressum\.html's Content-Security-Policy must come right after <meta charset>, with only whitespace between; the text ">" comes before it/],
   ["an invisible space before the policy", "impressum.html", `  ${policyMeta(POLICY_NONE)}`, `  \u00a0${policyMeta(POLICY_NONE)}`,
     /impressum\.html's Content-Security-Policy must come right after <meta charset>, with only whitespace between; the text "\\u00a0" comes before it/],
+  // A tag that cannot sit in the head starts the body, with no text needed.
+  ["a body tag before the policy", "impressum.html", '<meta charset="utf-8">\n', '<meta charset="utf-8"><br>\n',
+    /impressum\.html's Content-Security-Policy must come right after <meta charset>, with only whitespace between; <br> comes before it/],
+  ["an end tag before the policy", "impressum.html", '<meta charset="utf-8">\n', '<meta charset="utf-8">\n</html>\n',
+    /impressum\.html's Content-Security-Policy must come right after <meta charset>, with only whitespace between; <\/html> comes before it/],
+  // A browser reads the first of two http-equiv attributes, so this meta
+  // applies no policy at all.
+  ["a second http-equiv in front of the policy", "impressum.html", policyMeta(POLICY_NONE),
+    `<meta http-equiv="content-language" http-equiv="Content-Security-Policy" content="${POLICY_NONE}">`,
+    /impressum\.html writes http-equiv twice on one <meta>\. A browser keeps the first and drops the rest/],
 ]) {
   test(`rejects ${defect}`, { timeout: 90_000 }, async (t) => {
     const fixtureRoot = await editPage(t, page, from, to);
@@ -2089,6 +2099,35 @@ test("accepts the policy with its attributes in the other order", { timeout: 90_
 
   assert.equal(result.code, 0, `a reordered policy was rejected: ${result.stderr}`);
 });
+
+// The rules that keep htmlTags reading what a browser builds hold on every
+// served page. On assets/social-preview.html each of these once shipped green.
+for (const [defect, page, to, message] of [
+  ["an inline <svg>", "assets/social-preview.html", '<svg><title>x</title></svg>',
+    /assets\/social-preview\.html has an inline <svg>/],
+  ['"<!--" in a script', "assets/social-preview.html",
+    '<script type="application/ld+json">{"@context":"https://schema.org","name":"<!--"}</script>',
+    /assets\/social-preview\.html has a <script> whose text holds "<!--"/],
+  ["a <noscript>", "assets/social-preview.html", "<noscript><p>x</p></noscript>",
+    /assets\/social-preview\.html uses <noscript>/],
+  ["a script tag spelled another way", "assets/social-preview.html", "<script  ></script>",
+    /assets\/social-preview\.html has a script tag spelled "<script  >"/],
+  ["microdata", "assets/social-preview.html", "<div itemscope></div>",
+    /assets\/social-preview\.html carries microdata or RDFa \("itemscope" on <div>\)/],
+  ["an attribute written twice", "assets/social-preview.html", '<a href="#top" href="https://example.invalid/">x</a>',
+    /assets\/social-preview\.html writes href twice on one <a>/],
+  ["a NUL character", "impressum.html", "\u0000",
+    /impressum\.html:\d+ holds a NUL character \(U\+0000\)\. A browser reads it as U\+FFFD/],
+]) {
+  test(`rejects ${defect} on any served page`, { timeout: 90_000 }, async (t) => {
+    const fixtureRoot = await editPage(t, page, "</body>", `${to}\n</body>`);
+
+    const result = await runVerifier(fixtureRoot);
+
+    assert.notEqual(result.code, 0, `${defect} on ${page} shipped green`);
+    assert.match(result.stderr, message);
+  });
+}
 
 // A browser turns CRLF into LF before it hashes a script, and runs this one
 // under the LF hash (checked in Chromium), so verify must hash it the same way.

@@ -483,7 +483,7 @@ it does not read what it does. Editing the gallery code or a theme row in
 
 A review of that check (four lenses, every finding re-run by a second agent;
 its bypass lens was stopped by a safety classifier before testing anything, so
-its silence means nothing and it was re-run) found the browser layer could be
+its silence means nothing) found the browser layer could be
 switched off with `verify` green: a stray `>` after `meta charset`, or a
 no-break or zero-width space before the policy, ends the head in a browser, a
 policy outside the head is ignored, and Chromium then ran an unreviewed script.
@@ -493,6 +493,28 @@ the three rules failed — how many policies, what comes before the policy (an
 invisible character spelled as an escape), or what it must read — and a changed
 script's message says to replace the old hash and prints the policy to paste,
 so one edit reaches green where following the old wording took three runs.
+
+The same review's hashing lens ran 14,942 generated scripts and pages through
+`verify` and Chromium, comparing each script's hash and each policy violation;
+its harness was proven first by removing the CRLF step from a copy of `verify`,
+which then missed 6 of 10 proof cases. It found three more holes, each
+reproduced with `verify` green. A NUL in a script reaches it as U+FFFD, so
+Chromium refused a gallery whose hash `verify` had accepted. An end tag such as
+`</html>` before the policy, or a second `http-equiv` in front of it (a browser
+reads the first), left Chromium with no policy, and a script hidden from
+`htmlTags` inside a `noscript` ran and navigated to another host; a lone `<br>`
+there, with no text at all, does the same. And the rules that keep `htmlTags`
+reading what a browser builds (no inline `svg` or `math`, no comment opener
+inside a script, no `noscript` or other inert container, two script spellings,
+no microdata) held only on the root pages, while `assets/social-preview.html`
+is served too: an entity in an SVG script, decoded before Chromium hashed it,
+and a comment opener in a JSON-LD block, which ran on into a script `htmlTags`
+never saw, both passed there. Now a NUL anywhere in a served page fails, an
+attribute written twice on any tag fails, any end tag or body tag before the
+policy fails, and those parser rules hold on every served page. The `src`
+check b1efa3b added for pages in subdirectories became unreachable behind the
+script-spelling rule, so the two are now one rule whose message gives both
+reasons.
 
 **Sixteen failure cases were proven** by breaking `index.html`, `README.md` and
 `impressum.html` in turn and confirming the build goes red, then restoring:
