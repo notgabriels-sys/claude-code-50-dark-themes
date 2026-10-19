@@ -417,46 +417,73 @@ const countValue = (stated) => (/^\d/.test(stated) ? Number(stated) : numberWord
 const numberWordPattern = `(?:${TENS})(?:-|\\s+)(?:${UNITS})|` + Object.keys(NUMBER_WORDS).join("|");
 // A count is read only where nothing joins it to the text before: not a
 // digit, a decimal point or a ratio ("WCAG 2.1", "7:1"), a thousands comma, a
-// path, a currency sign ("the $9 palettes product") or an entity's end.
-const COUNT_START = "(?<![\\w.,:&;$€£/-])";
-// Words that never sit between a count and its noun. An article or a
-// partitive means the number counts something else: "one of the themes",
-// "every one of the palettes", "one or more themes", "90 percent of themes",
-// "9 roles across all themes", "On 19 October the themes". Only the word
-// itself: "all-new" and "of-the-moment" are adjectives like any other.
-const NOT_A_COUNT_WORD = "the|a|an|of|or|per|percent|all|every|each|across";
+// path, a currency sign ("the $9 palettes product"), an entity's end or a "#"
+// ("#000"). A count never starts with 0 — "04 Switch themes" is a step
+// badge, not four themes — and is not an ordinal: "2<sup>nd</sup> theme pack"
+// reads as "2 nd theme pack" once its tags drop out.
+const COUNT_START = "(?<![\\w.,:&;$€£#/-])";
+const COUNT_NUMBER = `${numberWordPattern}|(?:[1-9]\\d{0,2}|0)(?!\\s*(?:st|nd|rd|th)\\b)`;
+// Words that never sit between a count and its noun, because each means the
+// number counts something else. An article, a partitive or a quantifier: "one
+// of the themes", "every one of the palettes", "one or more themes", "90
+// percent of themes", "9 roles across all themes". A demonstrative or a
+// possessive: "two commands install these themes", "3 to check your own
+// themes". A preposition: "pick 3 colours for your themes". A month: "on 19
+// October, Vol. 2 themes". "one another", and a plural pack word: "two theme
+// packs, 62 themes" counts packs. Only the word itself: "all-new", "on-brand"
+// and "of-the-moment" are adjectives like any other.
+const NOT_A_COUNT_WORD =
+  "the|a|an|of|or|per|percent|all|every|each|across|another|" +
+  "this|that|these|those|my|our|your|its|their|his|her|" +
+  "for|in|on|at|to|by|from|with|without|into|onto|about|than|via|as|over|under|between|through|within|" +
+  "packs|plugins|bundles|sets|" +
+  "january|february|march|april|may|june|july|august|september|october|november|december|" +
+  "jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec";
+// An edition is one word between: in "the 13 Vol. 2 themes" the count is 13.
+const EDITION = "Vol(?:ume)?\\.?\\s*\\d+";
+// A word between holds a letter or a digit, so a bare "-" (a Markdown bullet,
+// a spaced dash) is not one; accented letters count ("café-noir"), and so
+// does a lone "&" ("dark & moody").
+const BETWEEN_WORD = "(?=[\\p{L}\\p{N}_'-]*[\\p{L}\\p{N}])[\\p{L}\\p{N}_'-]+,?|&";
 // "<number> <noun>", with up to five words between that are not themselves
 // numbers: in "one of my 50 themes" the count bound to "themes" is 50.
 // Any whitespace separates the words, line breaks included, since pages and
 // notes wrap their lines. A word between may carry an apostrophe or end in a
-// comma ("51 dark, hand-tuned themes"), and an edition is one word: in
-// "the 13 Vol. 2 themes" the count is 13. A "+" after the number is part of
-// the claim ("70+ themes"). The noun must end the word, so a file name such
-// as themes.json is not a count of themes.
+// comma ("51 dark, hand-tuned themes"). A "+" after the number is part of the
+// claim ("70+ themes"). The noun must end the word, so a file name such as
+// themes.json is not a count of themes.
 const countPattern = (nouns) =>
   new RegExp(
-    `${COUNT_START}(${numberWordPattern}|\\d{1,3})\\+?` +
-      `((?:\\s+(?:Vol(?:ume)?\\.?\\s*\\d+|(?!(?:${numberWordPattern}|\\d+)\\b|(?:${NOT_A_COUNT_WORD})(?![\\w'-]))[\\w'-]+,?)){0,5})` +
+    `${COUNT_START}(${COUNT_NUMBER})\\+?` +
+      `((?:\\s+(?:${EDITION}|(?!(?:${numberWordPattern}|\\d+)\\b|(?:${NOT_A_COUNT_WORD})(?![\\w'-]))(?:${BETWEEN_WORD}))){0,5})` +
       `\\s+(${nouns})\\b(?![./-]\\w)`,
-    "gi",
+    "giu",
   );
 // A number joined to its noun by a hyphen: "the 12-theme expansion", "a
 // seven-skill pack".
 const compoundPattern = (nouns) =>
-  new RegExp(`${COUNT_START}(${numberWordPattern}|\\d{1,3})-(?:${nouns})\\b(?![./-]\\w)`, "gi");
-// The words a reader reads, which on a page include what a browser shows or
-// a crawler indexes from an attribute: a meta description, an og: or twitter:
-// title, an image's alt, a title or an aria-label. A tag drops out, so a count
-// split by markup ("<dt>50</dt><dd>hand-tuned themes</dd>") is read whole; a
-// tag carrying such attributes leaves their values, fenced by "|" so a count
-// cannot bind across them; and its line breaks stay, so a match can name its
-// line. Only "<" followed
-// by a letter, "/", "!" or "?" opens a tag, as in HTML: "size < 200 KB" is
-// text. A style element's text is not read. Entities are decoded, a soft
-// hyphen vanishes and a non-breaking hyphen is a hyphen; a Markdown link
-// reads as its text, and Markdown's emphasis and code marks drop out, since
-// "**13** palettes" renders as "13 palettes". Dropping a mark only joins
-// text: a number joined to a word before it is not read as a count.
+  new RegExp(`${COUNT_START}(${COUNT_NUMBER})-(?:${nouns})\\b(?![./-]\\w)`, "giu");
+// The words a reader reads. A page is read as a browser lays it out: a tag
+// drops out, so a count split by markup ("<dt>50</dt><dd>hand-tuned
+// themes</dd>") is read whole. A tag leaves a space, since without the CSS
+// nothing says whether "</span><span>" joins two words or lays them apart,
+// and its line breaks stay, so a match can name its line. A comment and a
+// style element are not read. A tag is read as the HTML tokenizer reads it: it
+// opens only with "<" and a name followed by a space, "/" or ">", so "size <
+// 200 KB" and "a<b" are text, and a quoted attribute value may hold a ">".
+// What a browser shows or a crawler indexes from an attribute — a meta
+// description, an og: or twitter: title, an image's alt, a title, an
+// aria-label, aria-description or aria-roledescription, a placeholder — is
+// read too, as a second text with the same lines, each tag's values on the
+// line the tag opens, fenced by "|" so a count cannot bind across them. Kept
+// apart from the visible text, a link's title cannot cut "thirteen <a
+// title="…">more palettes</a>" in two. Entities are decoded, and one this list
+// does not know becomes a mark no count reads across, not a space; a soft
+// hyphen vanishes and a non-breaking hyphen is a hyphen. In Markdown, a link
+// reads as its text, a reference or footnote mark drops out, a blockquote's
+// ">" drops out, and emphasis and code marks drop out, since "**13**
+// palettes" renders as "13 palettes". Dropping a mark only joins text: a
+// number joined to a word before it is not read as a count.
 const NAMED_ENTITIES = {
   amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " ", ensp: " ", emsp: " ", thinsp: " ",
   shy: "", lsquo: "'", rsquo: "'", ldquo: "\u201c", rdquo: "\u201d", ndash: "\u2013", mdash: "\u2014",
@@ -464,26 +491,43 @@ const NAMED_ENTITIES = {
 };
 const decodeEntities = (text) =>
   text.replace(/&(#x[0-9a-f]+|#\d+|[a-z][a-z0-9]*);/gi, (_, name) => {
-    if (name[0] !== "#") return NAMED_ENTITIES[name.toLowerCase()] ?? " ";
+    if (name[0] !== "#") return NAMED_ENTITIES[name.toLowerCase()] ?? "\ufffd";
     const code = /^#x/i.test(name) ? Number.parseInt(name.slice(2), 16) : Number.parseInt(name.slice(1), 10);
     return code > 0 && code <= 0x10ffff ? String.fromCodePoint(code) : " ";
   });
-const READER_ATTRIBUTES = /\b(?:content|alt|title|aria-label|placeholder)\s*=\s*("[^"]*"|'[^']*')/gi;
-const proseText = (raw) =>
-  decodeEntities(
-    raw
-      .replace(/<style\b[\s\S]*?<\/style\s*>/gi, (block) => block.replace(/[^\n]/g, ""))
-      .replace(/<[!/?a-z][^>]*>/gi, (tag) => {
-        const said = [...tag.matchAll(READER_ATTRIBUTES)].map((m) => m[1].slice(1, -1).replace(/\s+/g, " "));
-        const breaks = tag.replace(/[^\n]/g, "");
-        return said.length ? ` | ${said.join(" | ")} | ${breaks}` : ` ${breaks}`;
-      }),
-  )
+const READER_ATTRIBUTES =
+  /\b(?:content|alt|title|aria-label|aria-description|aria-roledescription|placeholder)\s*=\s*("[^"]*"|'[^']*')/gi;
+const READER_TAG = /<(?:!--[\s\S]*?-->|[!?][^>]*>|\/?([a-z][a-z0-9-]*)(?=[\s/>])(?:[^>"']|"[^"]*"|'[^']*')*>)/gi;
+const readable = (text) =>
+  decodeEntities(text)
     .replace(/\u00ad/g, "")
     .replace(/\u2011/g, "-")
     .replace(/[\u2018\u2019]/g, "'")
+    .replace(/^[ \t]*(?:>[ \t]?)+/gm, "")
+    .replace(/\[\^[^\]\n]+\]/g, "")
+    .replace(/!?\[([^\]\n]*)\]\[[^\]\n]*\]/g, "$1")
     .replace(/!?\[([^\]\n]*)\]\([^)\n]*\)/g, "$1")
     .replace(/\*+|_+|`+|~~+/g, "");
+// [the visible text, the attribute text]: both have the raw file's lines.
+const proseText = (raw) => {
+  const said = [];
+  let line = 1;
+  let seen = 0;
+  const body = raw
+    .replace(/<style\b[\s\S]*?<\/style\s*>/gi, (block) => block.replace(/[^\n]/g, ""))
+    .replace(READER_TAG, (tag, name, offset, whole) => {
+      line += whole.slice(seen, offset).split("\n").length - 1;
+      seen = offset;
+      const values = name ? [...tag.matchAll(READER_ATTRIBUTES)].map((m) => m[1].slice(1, -1).replace(/\s+/g, " ")) : [];
+      if (values.length) said.push([line, values]);
+      const breaks = tag.replace(/[^\n]/g, "");
+      return ` ${breaks}`;
+    });
+  const lines = body.split("\n").map(() => []);
+  for (const [at, values] of said) lines[at - 1].push(...values);
+  const attributes = lines.map((values) => (values.length ? ` | ${values.join(" | ")} |` : "")).join("\n");
+  return [readable(body), readable(attributes)];
+};
 const lineAt = (text, index) => text.slice(0, index).split("\n").length;
 const statedCount = (text) => {
   const match = /^([A-Za-z]+(?:-[A-Za-z]+)?)\b/.exec(text.trim());
@@ -568,8 +612,10 @@ for (const [index, expected] of expectedPlugins.entries()) {
 const skillCountPattern = countPattern("skills");
 const skillCompoundPattern = compoundPattern("skills?");
 for (const readme of ["README.md", "plugins/berlin-studio-skills/README.md"]) {
-  const text = proseText(await readFile(new URL(readme, root), "utf8"));
-  const matches = [...text.matchAll(skillCountPattern), ...text.matchAll(skillCompoundPattern)];
+  const texts = proseText(await readFile(new URL(readme, root), "utf8"));
+  const matches = texts.flatMap((text) =>
+    [...text.matchAll(skillCountPattern), ...text.matchAll(skillCompoundPattern)].map((match) => [text, match]),
+  );
   if (!matches.length) {
     fail(
       `${readme} no longer states how many skills ship in a form verify reads; keep "<number> skills" ` +
@@ -577,8 +623,8 @@ for (const readme of ["README.md", "plugins/berlin-studio-skills/README.md"]) {
     );
   }
   const stale = matches
-    .filter((match) => countValue(match[1]) !== sourceSkills.length)
-    .map((match) => `${readme}:${lineAt(text, match.index)} says "${match[0].replace(/\s+/g, " ")}"`);
+    .filter(([, match]) => countValue(match[1]) !== sourceSkills.length)
+    .map(([text, match]) => `${readme}:${lineAt(text, match.index)} says "${match[0].replace(/\s+/g, " ")}"`);
   if (stale.length) {
     fail(
       `${stale.join("; ")} but ${sourceSkills.length} skills ship. If a number counts some of them, ` +
@@ -731,31 +777,44 @@ for (const [name, expectedFiles] of expectedPackageFiles) {
 // Vol. 2, or the two together. Plural nouns only — "one step above the theme"
 // is not a count — and a digit directly after "Vol." is an edition number,
 // not a count ("Vol. 2 themes"), which a bare digit scan reads as 2 themes.
+// "A 51 theme pack" is a pack of 51, but "one theme pack" is one pack, and
+// "two theme packs" counts packs, so a pack or set is read only in the
+// singular and never after "one".
 const shippedThemeCounts = new Set([files.length, vol2Files.length, files.length + vol2Files.length]);
-const themeNouns = "theme\\s+files|theme\\s+packs?|theme\\s+sets?|themes|palettes|atmospheres";
+const themeNouns = "theme\\s+files|theme\\s+pack|theme\\s+set|themes|palettes|atmospheres";
 const themeCountPattern = countPattern(themeNouns);
 const themeCompoundPattern = compoundPattern("themes?|palettes?|atmospheres?");
-// "50 + 12 themes" states both pack sizes; the first number is joined to the
-// noun only through the second.
-const pairedCount = new RegExp(`(?:^|[^\\w.,:&;$€£/-])(${numberWordPattern}|\\d{1,3})\\s*[+/&]\\s*$`, "i");
+// "50 + 12 themes" and "50 and 12 themes" state both pack sizes; the first
+// number is joined to the noun only through the second. A "/" is not a pair:
+// "1/" numbers a post in a thread.
+const pairedCount = new RegExp(`(?:^|[^\\w.,:&;$€£#/-])(${COUNT_NUMBER})(?:\\s*[+&]\\s*|\\s+and\\s+)$`, "iu");
 // Read below, once the served set is known, on the files that state the packs'
 // size to a reader. Every stale count in a file is listed in one message.
-const themeCountFailure = (surface, text) => {
+// It reads each of a file's texts: the visible text and the attribute text.
+const themeCountFailure = (surface, texts) => {
   const stale = [];
-  const check = (match, counts) => {
-    if (counts.some((count) => !shippedThemeCounts.has(count))) {
-      stale.push(`${surface}:${lineAt(text, match.index)} says "${match[0].replace(/\s+/g, " ")}"`);
+  for (const text of texts) {
+    const check = (match, counts, shown) => {
+      if (counts.some((count) => !shippedThemeCounts.has(count))) {
+        stale.push(`${surface}:${lineAt(text, match.index)} says "${shown.replace(/\s+/g, " ")}"`);
+      }
+    };
+    for (const match of text.matchAll(themeCountPattern)) {
+      const before = text.slice(Math.max(0, match.index - 24), match.index);
+      if (/\bVol(?:ume)?s?\.?\s*(?:\d+\s*(?:and|&|\+|,)\s*)?$/i.test(before)) continue;
+      // "70 VS Code themes" is a claim about a different product, not this pack.
+      if (/\bVS\s*Code\b|\bVisual\s+Studio\s+Code\b/i.test(match[2])) continue;
+      if (/^theme\s+(?:pack|set)$/i.test(match[3]) && countValue(match[1]) === 1) continue;
+      const pair = pairedCount.exec(before);
+      if (pair) {
+        const from = before.length - pair[0].length + pair[0].indexOf(pair[1]);
+        check(match, [countValue(match[1]), countValue(pair[1])], before.slice(from) + match[0]);
+      } else {
+        check(match, [countValue(match[1])], match[0]);
+      }
     }
-  };
-  for (const match of text.matchAll(themeCountPattern)) {
-    const before = text.slice(Math.max(0, match.index - 24), match.index);
-    if (/\bVol(?:ume)?\.?\s*$/i.test(before)) continue;
-    // "70 VS Code themes" is a claim about a different product, not this pack.
-    if (/\bVS\s*Code\b|\bVisual\s+Studio\s+Code\b/i.test(match[2])) continue;
-    const pair = pairedCount.exec(before);
-    check(match, pair ? [countValue(match[1]), countValue(pair[1])] : [countValue(match[1])]);
+    for (const match of text.matchAll(themeCompoundPattern)) check(match, [countValue(match[1])], match[0]);
   }
-  for (const match of text.matchAll(themeCompoundPattern)) check(match, [countValue(match[1])]);
   if (!stale.length) return undefined;
   return (
     `${stale.join("; ")} but the packs ship ${files.length} + ${vol2Files.length} themes. If one counts ` +
@@ -2535,38 +2594,64 @@ for (const entry of (await committable()) ?? (await readdir(root, { recursive: t
 servedFiles.sort();
 const servedNotes = servedFiles.filter((file) => file.endsWith(".md"));
 // Stated counts, on the files that state the packs' size to a reader: every
-// served page, the root text files (llms.txt), every README, the notes at the
-// root that are written to be posted (the promotion drafts), and the skills
-// that ship to installers. Not the working notes: CLAUDE.md and
-// CONTRIBUTING.md narrate history and measurements by design, docs/ holds
-// dated records, and products/ describes the audio packs, where "atmospheres"
-// and "palettes" are sound terms. The review of 453ff81 reproduced the cost of
-// reading those: dated history, quoted stale copy and an audio pack's "8
-// evolving low atmospheres" were each refused. Scripts and data are not
-// prose and are not read.
+// served page and every served note and text file — the root text files
+// (llms.txt), every README, the promotion drafts at the root and under
+// assets/, and every file of the skills that ship to installers — but not the
+// working notes: CLAUDE.md and CONTRIBUTING.md narrate history and
+// measurements by design, docs/ holds dated records, and products/ describes
+// the audio packs, where "atmospheres" and "palettes" are sound terms. The
+// review of 453ff81 reproduced the cost of reading those: dated history,
+// quoted stale copy and an audio pack's "8 evolving low atmospheres" were each
+// refused. (Until the re-attack of 2026-10-19 this read only root notes,
+// READMEs and SKILL.md, and missed a launch draft under assets/ and a skill's
+// own reference files.) Scripts and data are not prose and are not read; the
+// plugin manifests' descriptions, which installers read, are read below.
 const countSurface = (file) =>
   /\.html$/i.test(file) ||
-  (/\.(txt|md)$/i.test(file) && !file.includes("/") && !["CLAUDE.md", "CONTRIBUTING.md"].includes(file)) ||
-  (/(^|\/)README\.md$/.test(file) && !/^(products|docs)\//.test(file)) ||
-  /^plugins\/[^/]+\/skills\/[^/]+\/SKILL\.md$/.test(file);
-// "<number> [up to two words] role-aware [contrast] checks|comparisons": the
-// noun is part of the claim, so "3 role-aware rules" is not one, and a number
-// joined to the text before ("WCAG 2.1", "7:1") is not read.
+  (/\.(txt|md)$/i.test(file) && !/^(products|docs)\//.test(file) && !["CLAUDE.md", "CONTRIBUTING.md"].includes(file));
+// "<number> [up to two words] role-aware [up to two words] checks|comparisons":
+// the noun is part of the claim, so "3 role-aware rules" is not one, and a
+// number joined to the text before ("WCAG 2.1", "7:1") is not read. A comma
+// joins digits only as a thousands separator: in "Since Vol. 2, role-aware
+// checks" no number is claimed. A count "per theme" or "for each theme" is a
+// part, not the total.
 const roleAwarePattern =
-  /(?<![\w.,:\/-])(\d[\d,]*)\+?((?:\s+(?!\d)[\w-]+){0,2})\s+role[\s-]aware(?:\s+contrast)?\s+(?:checks?|comparisons?)\b/gi;
-for (const surface of servedFiles.filter(countSurface)) {
-  const text = proseText(await readFile(fileUrl(surface), "utf8"));
-  const stale = themeCountFailure(surface, text);
-  if (stale) fail(stale);
-  for (const match of text.matchAll(roleAwarePattern)) {
-    const value = Number.parseInt(match[1].replace(/,/g, ""), 10);
-    if (value !== roleAwareComparisonCount) {
-      fail(
-        `${surface}:${lineAt(text, match.index)} claims ${value} role-aware checks; the verifier runs ` +
-          `${roleAwareComparisonCount}.`,
-      );
+  /(?<![\w.,:\/-])(\d{1,3}(?:,\d{3})+|\d+)(?![\d,]\d)\+?((?:\s+(?!\d)[\w-]+){0,2})\s+role[\s-]aware((?:\s+[\w-]+){0,2}?)\s+(?:checks?|comparisons?)\b(?!\s+(?:per|each|for\s+each|in\s+each|in\s+every)\b)/gi;
+const statedCountFailures = (surface, texts) => {
+  const failures = [];
+  const stale = themeCountFailure(surface, texts);
+  if (stale) failures.push(stale);
+  for (const text of texts) {
+    for (const match of text.matchAll(roleAwarePattern)) {
+      const value = Number.parseInt(match[1].replace(/,/g, ""), 10);
+      if (value !== roleAwareComparisonCount) {
+        failures.push(
+          `${surface}:${lineAt(text, match.index)} claims ${value} role-aware checks; the verifier runs ` +
+            `${roleAwareComparisonCount}.`,
+        );
+      }
     }
   }
+  return failures;
+};
+for (const surface of servedFiles.filter(countSurface)) {
+  for (const failure of statedCountFailures(surface, proseText(await readFile(fileUrl(surface), "utf8")))) {
+    fail(failure);
+  }
+}
+// The plugin manifests are not served, but installers read their
+// descriptions: the marketplace's own and each plugin's, in marketplace.json
+// and in every plugin.json. Only the description strings are read, each on its
+// line; the description guard above reads only their opening count.
+for (const manifest of [
+  ".claude-plugin/marketplace.json",
+  ...expectedPlugins.map(({ name }) => `plugins/${name}/.claude-plugin/plugin.json`),
+]) {
+  const raw = await readFile(new URL(manifest, root), "utf8");
+  const descriptions = raw.replace(/"description"[ \t]*:[ \t]*("(?:[^"\\\n]|\\.)*")|[^\n]/g, (whole, literal) =>
+    literal === undefined ? "" : ` ${JSON.parse(literal)} `,
+  );
+  for (const failure of statedCountFailures(manifest, [descriptions])) fail(failure);
 }
 const NOTE_LINK_PATTERNS = [
   // [text](url) and ![alt](url), with or without <...> around the url.

@@ -803,6 +803,21 @@ test("rejects a plugin whose description still states yesterday's count", { time
   assert.match(result.stderr, /berlin-studio-skills describes itself as shipping \d+ but \d+ ship/);
 });
 
+test("reads a skills count in a README image's alt text", { timeout: 90_000 }, async (t) => {
+  // The skills scan reads the attribute text as the theme scan does.
+  const fixtureRoot = await editPage(
+    t,
+    "README.md",
+    "## Note on backgrounds",
+    '<img src="preview.png" alt="Seven Berlin studio skills">\n\n## Note on backgrounds',
+  );
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "a stale skills count in alt text shipped green");
+  assert.match(result.stderr, /README\.md:\d+ says "Seven Berlin studio skills"/);
+});
+
 test("rejects a public page whose prose theme count drifts from what ships", { timeout: 90_000 }, async (t) => {
   const fixtureRoot = await makeFixture(t);
   // The Vol. 2 count is written as a word on the storefront, the install
@@ -1012,7 +1027,7 @@ for (const [form, page, from, to, message] of [
   ["a count before an edition", "README.md", "## The 12 Vol. 2 themes", "## The 13 Vol. 2 themes",
     /README\.md:\d+ says "13 Vol\. 2 themes"/],
   ["the first of a pair", "PROMOTION_QUEUE.md", "- Stat row: 50 + 12 themes", "- Stat row: 51 + 12 themes",
-    /PROMOTION_QUEUE\.md:\d+ says "12 themes"/],
+    /PROMOTION_QUEUE\.md:\d+ says "51 \+ 12 themes"/],
   ["a count with a plus", "index.html", "<div><dt>50</dt><dd>hand-tuned themes</dd></div>",
     "<div><dt>70+</dt><dd>hand-tuned themes</dd></div>", /index\.html:\d+ says "70\+ hand-tuned themes"/],
   ["five words between", "README.md", "The same 50 themes are a **free download** on the",
@@ -1041,6 +1056,60 @@ for (const [form, page, from, to, message] of [
     "The same 51 hand\u00adtuned themes are a **free download** on the", /README\.md:\d+ says "51 handtuned themes"/],
   ["a plugin's README", "plugins/50-dark-themes/README.md", "This plugin adds all 50 themes", "This plugin adds all 51 themes",
     /plugins\/50-dark-themes\/README\.md:\d+ says "51 themes"/],
+  // The re-attack of 2026-10-19 (every finding re-run by a second agent):
+  // spellings and surfaces the rebuilt scan still missed.
+  ["a link with a title inside the count", "semantic-terminal-colors.html",
+    "Dark Themes Vol.&nbsp;2: twelve more palettes",
+    "Dark Themes Vol.&nbsp;2: thirteen <a href=\"#vol2\" title=\"Jump to the install command\">more palettes</a>",
+    /semantic-terminal-colors\.html:\d+ says "thirteen more palettes"/],
+  ["a raw > in a meta description", "index.html",
+    "content=\"Browse and install 50 hand-tuned dark themes for Claude Code as a native plugin,",
+    "content=\"Browse and install 51 hand-tuned dark themes for Claude Code (every role at contrast > 4.5:1) as a native plugin,",
+    /index\.html:8 says "51 hand-tuned dark themes"/],
+  ["an aria-description", "index.html",
+    "<p class=\"kicker\">50 dark themes \u00b7 Claude Code</p>",
+    "<p class=\"kicker\" aria-description=\"51 dark themes for Claude Code\">50 dark themes \u00b7 Claude Code</p>",
+    /index\.html:\d+ says "51 dark themes"/],
+  ["an aria-roledescription", "index.html",
+    "<p class=\"kicker\">50 dark themes \u00b7 Claude Code</p>",
+    "<p class=\"kicker\" aria-roledescription=\"51 dark themes for Claude Code\">50 dark themes \u00b7 Claude Code</p>",
+    /index\.html:\d+ says "51 dark themes"/],
+  ["a blockquote continued across lines", "README.md",
+    "Six skills for running",
+    "> The flagship pack ships 51\n> hand-tuned dark themes.\n\nSix skills for running",
+    /README\.md:\d+ says "51 hand-tuned dark themes"/],
+  ["a reference-style link", "README.md",
+    "the repository verifies the theme schema, gallery parity, installation command and payment links on every push.",
+    "the repository verifies the theme schema, gallery parity, installation command and payment links on every push.\n\nBrowse all [51][gallery] themes in the gallery.\n\n[gallery]: https://gabs-utilities.com/\n",
+    /README\.md:\d+ says "51 themes"/],
+  ["a footnote mark", "README.md",
+    "the repository verifies the theme schema, gallery parity, installation command and payment links on every push.",
+    "the repository verifies the theme schema, gallery parity, installation command and payment links on every push.\n\nBrowse all 51[^1] themes in the gallery.\n",
+    /README\.md:\d+ says "51 themes"/],
+  ["an ampersand between", "README.md",
+    "(all 50 themes, plus the 12 Vol. 2 themes,",
+    "(all 51 syntax & UI themes, plus the 12 Vol. 2 themes,",
+    /README\.md:\d+ says "51 syntax & UI themes"/],
+  ["an accented word between", "README.md",
+    "(all 50 themes, plus the 12 Vol. 2 themes,",
+    "(all 51 caf\u00e9-noir themes, plus the 12 Vol. 2 themes,",
+    /README\.md:\d+ says "51 caf\u00e9-noir themes"/],
+  ["a pair joined by and", "README.md",
+    "(all 50 themes, plus the 12 Vol. 2 themes,",
+    "(two packs, 51 and 12 themes,",
+    /README\.md:\d+ says "51 and 12 themes"/],
+  ["a < in a Markdown code block", "README.md",
+    "the repository verifies the theme schema, gallery parity, installation command and payment links on every push.",
+    "the repository verifies the theme schema, gallery parity, installation command and payment links on every push.\n\n```js\nfor (let i = 0; i<themes.length; i++) install(themes[i]);\n```\n\nThat loop installs the flagship pack's 51 themes.\n\n```js\nthemes.forEach((t) => install(t));\n```\n",
+    /README\.md:\d+ says "51 themes"/],
+  ["a launch draft under assets/", "assets/product-hunt/SEMANTIC_NOCTURNE.md",
+    "The palette is painstakingly tuned",
+    "Each of the 63 palettes is painstakingly tuned",
+    /assets\/product-hunt\/SEMANTIC_NOCTURNE\.md:5 says "63 palettes"/],
+  ["the marketplace's own description", ".claude-plugin/marketplace.json",
+    "\"description\": \"Installable color-theme packs and studio skills for Claude Code.\"",
+    "\"description\": \"63 dark color themes and six studio skills for Claude Code, installable as plugins.\"",
+    /\.claude-plugin\/marketplace\.json:7 says "63 dark color themes"/],
 ]) {
   test(`reads a stale theme count written as ${form}`, { timeout: 90_000 }, async (t) => {
     const fixtureRoot = await editPage(t, page, from, to);
@@ -1067,6 +1136,10 @@ for (const [form, page, from, to, message] of [
     "<div><dt>894</dt><dd>role-aware checks</dd></div>",
     "<div><dt>894</dt><dd>role-aware checks</dd></div><p>Over <b>900+</b> role-aware contrast pairs are held.</p>",
     /index\.html:\d+ claims 900 role-aware checks/],
+  ["with a word between role-aware and checks", "semantic-terminal-colors.html",
+    "They leave the same status colors on the base preset",
+    "They pass the same 900 role-aware WCAG contrast checks, leave the same status colors on the base preset",
+    /semantic-terminal-colors\.html:\d+ claims 900 role-aware checks/],
 ]) {
   test(`reads a stale role-aware count ${form}`, { timeout: 90_000 }, async (t) => {
     const fixtureRoot = await editPage(t, page, from, to);
@@ -1105,6 +1178,55 @@ for (const [prose, page, from, to] of [
     "<div><dt>894</dt><dd>role-aware checks</dd></div><p>Held to WCAG 2.1 role-aware floors.</p>"],
   ["another product's count wrapped across a line", "README.md", "## Note on backgrounds",
     "Lowlight has 70 VS\nCode themes; the 70 Visual Studio Code themes are another pack.\n\n## Note on backgrounds"],
+  // The re-attack's false refusals, each passing now.
+  ["a demonstrative before the noun", "plugins/50-dark-themes/README.md",
+    "The themes are free and MIT licensed.\n\n```text",
+    "The themes are free and MIT licensed.\n\nTwo commands install these themes:\n\n```text"],
+  ["a version and a preposition before the noun", "README.md",
+    "checks any theme against WCAG floors and exits non-zero in CI.",
+    "checks any theme against WCAG floors and exits non-zero in CI. It needs only Python 3 to check your own themes."],
+  ["one theme pack", "claude-code-theme-install-guide.html",
+    "<p>Both packs then appear together in <code>/theme</code>.",
+    "<p>Install one theme pack or both; installed packs appear together in <code>/theme</code>."],
+  ["a count of theme packs", "README.md",
+    "## Note on backgrounds",
+    "Two theme packs, dark themes in both.\n\n## Note on backgrounds"],
+  ["a step badge", "claude-code-theme-install-guide.html",
+    "Use <code>Ctrl+E</code> if you want an editable copy.</p></div></article>",
+    "Use <code>Ctrl+E</code> if you want an editable copy.</p></div></article>\n            <article class=\"step\"><span class=\"num\">04</span><div><h3>Switch themes any time.</h3><p>Run <code>/theme</code> again; the change applies immediately.</p></div></article>"],
+  ["a list bullet", "README.md",
+    "## Manual install\n",
+    "## At a glance\n\n- Plugins: 3\n- Themes: 62\n- License: MIT\n\n## Manual install\n"],
+  ["an ordinal split by markup", "semantic-terminal-colors.html",
+    "<h2>The terminal owns the background.</h2>",
+    "<h2>The terminal owns the background.</h2>\n          <p>Vol.&nbsp;2 is the 2<sup>nd</sup> theme pack in the same marketplace.</p>"],
+  ["an entity this reader does not know", "index.html",
+    "<span>50 dark themes for Claude Code</span>",
+    "<span>50 dark themes for Claude Code</span>\n    <span>Plugins: 3 &bull; Themes: 62 &bull; Skills: 6</span>"],
+  ["a date before an edition", "PROMOTION_QUEUE.md",
+    "## Safe launch order",
+    "As of 19 October, Vol. 2 themes are previewed in the gallery.\n\n## Safe launch order"],
+  ["one another", "README.md",
+    "They route to one another, so you rarely have to name one.",
+    "They route to one another, so skills rarely need to be named."],
+  ["a clause comma before role-aware", "README.md",
+    "## Note on backgrounds",
+    "Since Vol. 2, role-aware checks cover both packs.\n\n## Note on backgrounds"],
+  ["a comment holding >", "index.html",
+    "<div class=\"grid\" id=\"vol2Grid\"></div>",
+    "<!-- layout: grid -> 4 themes per row on desktop -->\n      <div class=\"grid\" id=\"vol2Grid\"></div>"],
+  ["a numbered thread", "PROMOTION_QUEUE.md",
+    "### X launch post",
+    "### X thread \u2014 Vol. 2\n\n```text\n1/ Twelve all-new dark themes for Claude Code, free.\n\n2/ Same semantic status colors, same contrast floors.\n```\n\n### X launch post"],
+  ["a hex colour", "README.md",
+    "(listed in the gallery page, e.g. Graphite = #1D1E20).",
+    "(listed in the gallery page, e.g. Graphite = #1D1E20). On #222 backgrounds dark themes still pass."],
+  ["two editions", "README.md",
+    "## Note on backgrounds",
+    "Vols. 1 and 2 themes share one semantic palette.\n\n## Note on backgrounds"],
+  ["a role-aware count per theme", "README.md",
+    "## Note on backgrounds",
+    "The verifier runs 14 role-aware checks per theme.\n\n## Note on backgrounds"],
 ]) {
   test(`accepts ordinary prose: ${prose}`, { timeout: 90_000 }, async (t) => {
     const fixtureRoot = await editPage(t, page, from, to);

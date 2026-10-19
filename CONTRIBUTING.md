@@ -125,17 +125,21 @@ moves the number of contrast comparisons or the size of either pack, the stated 
 updated in the same change or CI fails. Removing the role-aware claim from the storefront or the share
 card fails too, so that guard cannot be silenced by deletion.
 
-The files that state the packs' size to a reader are read for those counts: every page, `llms.txt`,
-every README, the notes at the root written to be posted (the promotion drafts), and the skills that
-ship to installers. `CLAUDE.md`, `CONTRIBUTING.md`, `docs/` and `products/` are not: they record
-history, and the product notes describe audio packs. A page is read as a reader sees it, meta
-descriptions, titles and `alt` text included: a count wrapped across two lines, inside
-`**emphasis**`, a code span or a Markdown link, written with an entity, a hyphen ("12-theme") or a
-"+", or spelled out as a word ("seventy-four") is still a count. A theme, palette or atmosphere count
-must be one pack's size or the two together. A sentence that counts something else must not put a
-number within five words before "themes", "palettes" or "atmospheres", unless "the", "of", "all" or
-a similar word comes between ("one of the themes", "9 roles across all themes" are fine); reword
-it rather than the check.
+The files that state the packs' size to a reader are read for those counts: every page, and every
+note and text file Pages serves — `llms.txt`, every README, the promotion drafts, and every file of
+the skills that ship to installers — plus the plugin manifests' descriptions, which installers read.
+`CLAUDE.md`, `CONTRIBUTING.md`, `docs/` and `products/` are not: they record history, and the product
+notes describe audio packs. A page is read as a reader sees it, meta descriptions, titles, `alt` and
+`aria-` text included: a count wrapped across two lines or a blockquote, inside `**emphasis**`, a
+code span or a Markdown link, written with an entity, a hyphen ("12-theme"), a "+" or a pair ("50
+and 12 themes"), or spelled out as a word ("seventy-four") is still a count. A theme, palette or
+atmosphere count must be one pack's size or the two together. A sentence that counts something else
+must not put a number within five words before "themes", "palettes" or "atmospheres", unless an
+article, a quantifier, a demonstrative or possessive, a preposition or a month comes between ("one
+of the themes", "two commands install these themes", "3 colours for your themes" and "19 October,
+Vol. 2 themes" are fine); reword it rather than the check. A step badge ("04"), an ordinal ("2nd"),
+a hex colour and "one theme pack" are not counts. A role-aware count is the total unless "per theme"
+or "for each theme" follows it.
 
 The share card is rendered from `assets/social-preview.html`, not screenshotted from the site. Edit
 that source, then regenerate `preview.png` at 1280×720 — the declared `og:image:width` and
