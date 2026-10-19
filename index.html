@@ -553,7 +553,7 @@
     </div>
     <details class="theme-archive">
       <summary><strong>Open the full collection</strong><span class="archive-meta"><span id="count" aria-live="polite">50 themes</span><span class="disclosure-mark" aria-hidden="true"><span class="is-closed">+</span><span class="is-open">−</span></span></span></summary>
-      <p class="finder-empty" id="finderEmpty" hidden>No themes match that search. <button type="button" id="clearFinder">Clear finder</button></p>
+      <p class="finder-empty" id="finderEmpty" hidden><span id="finderEmptyText">No themes match that search.</span> <button type="button" id="clearFinder">Clear finder</button></p>
       <div class="grid" id="grid"></div>
     </details>
     <p class="sr-only" id="themeCopyStatus" aria-live="polite"></p>
@@ -834,6 +834,7 @@ const count = document.getElementById("count");
 const themeArchive = document.querySelector(".theme-archive");
 const themeSearch = document.getElementById("themeSearch");
 const finderEmpty = document.getElementById("finderEmpty");
+const finderEmptyText = document.getElementById("finderEmptyText");
 const clearFinder = document.getElementById("clearFinder");
 const filters = [...document.querySelectorAll(".filter")];
 const themeCopyStatus = document.getElementById("themeCopyStatus");
@@ -849,10 +850,12 @@ const updateFinder = ({reveal = false} = {}) => {
   const query = themeSearch.value.trim().toLowerCase();
   let archiveVisible = 0;
   let totalVisible = 0;
+  let queryMatches = 0;
   finderCards().forEach(card => {
     const matchesQuery = !query || card.dataset.search.includes(query);
     const matchesFamily = activeFamily === "all" || card.dataset.family === activeFamily;
     const show = matchesQuery && matchesFamily;
+    if (matchesQuery) queryMatches += 1;
     card.hidden = !show;
     if (!show) return;
     totalVisible += 1;
@@ -861,7 +864,15 @@ const updateFinder = ({reveal = false} = {}) => {
   // The count labels the archive disclosure, so it counts the archive.
   count.textContent = `${archiveVisible} ${archiveVisible === 1 ? "theme" : "themes"}`;
   // The empty note makes a claim about the whole page, so it waits for the whole page.
+  // With a family selected it must not blame the search: "acid" under Green
+  // matched Acid, which is warm, and the note said no theme matched at all.
   finderEmpty.hidden = totalVisible !== 0;
+  const family = activeFamily === "all" ? "" : `${activeFamily} `;
+  finderEmptyText.textContent = !query
+    ? `No ${family}themes.`
+    : family && queryMatches
+      ? `No ${family}themes match that search; ${queryMatches === 1 ? "1 in another family does" : `${queryMatches} in other families do`}.`
+      : "No themes match that search.";
   if (reveal && (query || activeFamily !== "all")) themeArchive.open = true;
 };
 
