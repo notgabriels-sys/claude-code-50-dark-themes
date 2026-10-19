@@ -364,7 +364,7 @@ const fiftyThemePack = releaseZips.find((pack) => pack.label === "50 Dark Themes
 const fiftyThemeZipUrl = `${repositoryUrl}/releases/download/${fiftyThemePack.tag}/${fiftyThemePack.file}`;
 const costQuestionName = "Do the 50 Claude Code themes cost anything?";
 let installGuideFaq = null;
-for (const [, json] of installGuide.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)) {
+for (const [, json] of installGuide.matchAll(/<script\b[^>]*\btype=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/g)) {
   let data;
   try {
     data = JSON.parse(json);
@@ -373,11 +373,15 @@ for (const [, json] of installGuide.matchAll(/<script type="application\/ld\+jso
   }
   if (data?.["@type"] === "FAQPage") installGuideFaq = data;
 }
-const costQuestion = installGuideFaq?.mainEntity?.find((entry) => entry?.name === costQuestionName);
+if (!installGuideFaq) {
+  fail("claude-code-theme-install-guide.html carries no FAQPage JSON-LD block; the cost-question guard would be inert.");
+}
+// schema.org allows a single Question object where a list is expected.
+const costQuestion = [].concat(installGuideFaq.mainEntity ?? []).find((entry) => entry?.name === costQuestionName);
 if (!costQuestion) {
   fail(`The install guide's FAQ schema must keep the question "${costQuestionName}".`);
 }
-const costAnswer = costQuestion?.acceptedAnswer?.text ?? "";
+const costAnswer = typeof costQuestion.acceptedAnswer?.text === "string" ? costQuestion.acceptedAnswer.text : "";
 if (/Gumroad ZIP|for zero by choosing the free price/i.test(installGuide)) {
   fail(
     "The install guide still sends readers to a Gumroad zip at the free price; the free pack is the GitHub release zip.",

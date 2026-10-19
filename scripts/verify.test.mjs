@@ -683,3 +683,52 @@ test("rejects an install guide whose FAQ schema loses the cost question", { time
   assert.notEqual(result.code, 0, "the verifier accepted a FAQ schema without the cost question");
   assert.match(result.stderr, /FAQ schema must keep the question "Do the 50 Claude Code themes cost anything\?"/);
 });
+
+test("rejects an install guide that has no FAQPage schema at all", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixtureGuide = join(fixtureRoot, "claude-code-theme-install-guide.html");
+  const guide = await readFile(fixtureGuide, "utf8");
+  const faqBlock = guide.match(/<script type="application\/ld\+json">\s*\{[^]*?"@type": "FAQPage"[^]*?<\/script>\n/);
+  assert.ok(faqBlock, "the guide should carry a FAQPage schema block");
+  await writeFile(fixtureGuide, guide.replace(faqBlock[0], ""));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted an install guide without any FAQPage schema");
+  assert.match(result.stderr, /carries no FAQPage JSON-LD block/);
+});
+
+test("accepts an install guide whose FAQ schema carries extra script attributes and a single question object", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixtureGuide = join(fixtureRoot, "claude-code-theme-install-guide.html");
+  const guide = await readFile(fixtureGuide, "utf8");
+  // The guide carries several JSON-LD blocks (HowTo, FAQPage); pick the FAQPage one by parsing each.
+  const faqBlock = [...guide.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)]
+    .find((match) => JSON.parse(match[1])["@type"] === "FAQPage");
+  assert.ok(faqBlock, "the guide should carry a FAQPage schema block");
+  const schema = JSON.parse(faqBlock[1]);
+  const costQuestion = schema.mainEntity.find((entry) => entry.name === "Do the 50 Claude Code themes cost anything?");
+  schema.mainEntity = costQuestion;
+  await writeFile(
+    fixtureGuide,
+    guide.replace(faqBlock[0], `<script id="faq-schema" type='application/ld+json'>\n${JSON.stringify(schema, null, 2)}\n</script>`),
+  );
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.equal(result.code, 0, result.stderr);
+});
+
+test("rejects an install guide whose FAQ answer names neither Gumroad nor the free zip", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixtureGuide = join(fixtureRoot, "claude-code-theme-install-guide.html");
+  const guide = await readFile(fixtureGuide, "utf8");
+  const answer = /("name": "Do the 50 Claude Code themes cost anything\?",\s*"acceptedAnswer": \{\s*"@type": "Answer",\s*"text": ")[^"]*(")/;
+  assert.match(guide, answer, "the guide should carry the cost question in its FAQ schema");
+  await writeFile(fixtureGuide, guide.replace(answer, "$1No. The 50 dark Claude Code themes are free and MIT licensed.$2"));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a FAQ answer that never says where the free zip is");
+  assert.match(result.stderr, /The install guide's FAQ answer must name the free zip at /);
+});
