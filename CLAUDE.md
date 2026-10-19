@@ -464,6 +464,19 @@ exports — eight real files from public repositories, eight written to each
 tool's documented format — 8 pass, up from 2, and each of the other eight needs
 one of those refusals.
 
+Checked against Chromium as rule 13 asks, the widened reader over 17,796
+generated SVG and sitemap documents loaded with Pages' content types: 0 that
+`verify` accepts while Chromium builds an element outside the allowlist or
+makes a request, and 2,402 that `verify` refuses though Chromium does nothing
+(an allowlist's cost). The harness was proven on a weakened reader first: one
+that also let `href` and `feImage` through missed 36, every one a fetch.
+Weakening only `feImage`, or only the doctype's no-internal-subset ending,
+accepted nothing more, because an `feImage` fetches only through `href` and an
+internal subset declares with `<!`, both refused elsewhere; the mutation run
+agrees (nine branches, eight failing their own tests, the internal-subset
+ending failing none). Those two stay as second walls and are recorded as
+shadowed, not as pinned.
+
 **(added 2026-10-19) Every inline script is reviewed, and the browser enforces
 it.** The link check reads URLs, and a script navigates without one: a
 `location.assign(...)` line added to the gallery script, or a second bare
