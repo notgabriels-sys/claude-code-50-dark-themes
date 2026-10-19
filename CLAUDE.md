@@ -205,7 +205,8 @@ repo has. `verify` runs on every push and **fails the build** on:
 - **(added 2026-10-19)** an inline script whose hash is not in
   `reviewedInlineScripts`, a reviewed hash no page runs, and a page whose
   Content-Security-Policy is missing, misplaced, doubled or names anything but
-  exactly those hashes — see "Every inline script is reviewed" below;
+  exactly those hashes, and a NUL or an attribute written twice on any served
+  page — see "Every inline script is reviewed" below;
 - the retired résumé checkout slug `notgabriel.gumroad.com/l/wmlrk`;
 - any of the three verified PayPal links going missing;
 - **(added 2026-08-24)** any of the three carrying a price other than its
@@ -283,8 +284,9 @@ goes stale and a custom checkout domain is on none. On `www.paypal.com` and
 `notgabriel.gumroad.com` the path must be a verified NCP id or Gumroad slug. A
 link off the site must be spelled `https://<host>/` exactly, with `&` written
 `&amp;` and no other character reference, so the text checks above see every
-payment link in the spelling a browser follows. A `base` element and
-`meta http-equiv` are refused. **Linking a new host is a deliberate edit to
+payment link in the spelling a browser follows. A `base href` and a
+`meta http-equiv` of `refresh` are refused, and every served `.html` page
+carries exactly one Content-Security-Policy meta. **Linking a new host is a deliberate edit to
 `reviewedLinkHosts`; a checkout host never goes there before its real object
 has been read.** Inline `script` text, which can navigate without a link, is
 held to reviewed hashes and enforced by a Content-Security-Policy — see "Every
@@ -344,7 +346,8 @@ only its autolink pattern gave 783, and one missing its reference-definition
 pattern gave misses at the first depth. The harness lives in the scratchpad.
 
 **Still Gabriel's call:** a `.nojekyll` would make Pages serve exactly the files
-`verify` reads, but every rendered note would disappear from the live site.
+`verify` reads, and drop the default theme's scripts (anchor-js from cdnjs) from
+every note page, but every rendered note would disappear from the live site.
 
 **(added 2026-10-18) Every served file is one `verify` reads, or one no browser
 opens as a page.** The link check read `.html` and the note check `.md`, and
@@ -467,7 +470,7 @@ it.** The link check reads URLs, and a script navigates without one: a
 `script` element, passed `verify` and sent Chromium to another host. Every
 script a served page runs is now held to `reviewedInlineScripts` in
 `scripts/verify.mjs` by the SHA-256 of its text, hashed as a browser hashes it,
-and every served page carries exactly one Content-Security-Policy meta, right
+and every served `.html` page carries exactly one Content-Security-Policy meta, right
 after `meta charset`, naming exactly those hashes (`script-src 'none'` on a
 page that runs none) and turning off workers, plugins, frames, `base` and form
 posts. A changed or added script is then a deliberate edit to that table, like
@@ -479,7 +482,14 @@ the added one, and neither navigated. Under the policy every page loads with no
 violation, and the gallery behaves exactly as without it — search, filters,
 both copy buttons and deep links, compared in Chromium. This reviews a script;
 it does not read what it does. Editing the gallery code or a theme row in
-`index.html` changes the hash, and `verify` prints the new one.
+`index.html` changes the hash, and `verify` prints the new one. Rendered notes
+carry no policy, and a note cannot add one. Read back 2026-10-19 through
+Firecrawl, Pages wraps each note in its default theme's layout, a head the
+repo does not write, and puts the note's text in the body, where a policy meta
+is ignored. That layout also runs the theme's own scripts — anchor-js from
+cdnjs, pinned by an `integrity` hash, and one inline line — which `verify`
+does not read; the note scan's refusal of scripts, handlers and other active
+elements keeps a note's own text from adding any.
 
 A review of that check (four lenses, every finding re-run by a second agent;
 its bypass lens was stopped by a safety classifier before testing anything, so

@@ -2036,13 +2036,16 @@ for (const [defect, page, from, to, message] of [
     /impressum\.html runs an inline script nobody has reviewed/],
   ["a page without its Content-Security-Policy", "impressum.html", `  ${policyMeta(POLICY_NONE)}\n`, "",
     /impressum\.html carries 0 Content-Security-Policy metas; it must carry exactly one/],
+  ["a page in a subdirectory without its Content-Security-Policy", "assets/social-preview.html", `${policyMeta(POLICY_NONE)}\n`, "",
+    /assets\/social-preview\.html carries 0 Content-Security-Policy metas; it must carry exactly one/],
   ["a policy that lets any inline script run", "impressum.html", policyMeta(POLICY_NONE),
     policyMeta(POLICY_NONE.replace("script-src 'none'", "script-src 'unsafe-inline'")),
     /impressum\.html's Content-Security-Policy must read exactly, on one line, with the hashes in page order/],
   // A policy applies only to what follows it.
   ["a policy placed after the head's other tags", "impressum.html", `  ${policyMeta(POLICY_NONE)}\n`, "",
     /impressum\.html's Content-Security-Policy must come right after <meta charset>, with only whitespace between; <meta> comes before it/],
-  ["a second policy", "impressum.html", "</head>", `${policyMeta("img-src 'self'")}\n</head>`,
+  // Spelled in lower case, as Chromium still applies it.
+  ["a second policy", "impressum.html", "</head>", `<meta http-equiv="content-security-policy" content="img-src 'self'">\n</head>`,
     /impressum\.html carries 2 Content-Security-Policy metas; it must carry exactly one/],
   // Anything but whitespace there ends the head in a browser, and a policy in
   // the body is ignored: Chromium then runs an unreviewed script.
@@ -2100,6 +2103,18 @@ test("accepts the policy with its attributes in the other order", { timeout: 90_
   assert.equal(result.code, 0, `a reordered policy was rejected: ${result.stderr}`);
 });
 
+// A lone CR is a line break to a browser too: Chromium ran this script under
+// the hash of its text with the CR read as LF.
+test("accepts a second script holding a lone CR, reviewed under its LF hash", { timeout: 90_000 }, async (t) => {
+  const text = 'document.documentElement.dataset.second = "ran";\rconsole.log("second ran");';
+  const fixtureRoot = await editPage(t, "index.html", "</body>", `<script>${text}</script>\n</body>`);
+  await reviewScript(fixtureRoot, "index.html", text.replace("\r", "\n"));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.equal(result.code, 0, `a script with a lone CR was rejected: ${result.stderr}`);
+});
+
 // The rules that keep htmlTags reading what a browser builds hold on every
 // served page. On assets/social-preview.html each of these once shipped green.
 for (const [defect, page, to, message] of [
@@ -2116,6 +2131,8 @@ for (const [defect, page, to, message] of [
     /assets\/social-preview\.html carries microdata or RDFa \("itemscope" on <div>\)/],
   ["an attribute written twice", "assets/social-preview.html", '<a href="#top" href="https://example.invalid/">x</a>',
     /assets\/social-preview\.html writes href twice on one <a>/],
+  ["an inline script nobody reviewed", "assets/social-preview.html", '<script>location.assign("https://pay.example.invalid/x")</script>',
+    /assets\/social-preview\.html runs an inline script nobody has reviewed/],
   ["a NUL character", "impressum.html", "\u0000",
     /impressum\.html:\d+ holds a NUL character \(U\+0000\)\. A browser reads it as U\+FFFD/],
 ]) {
