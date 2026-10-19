@@ -100,7 +100,11 @@ below was paid for by a defect in Claude's own work in this repo. Recorded
 4. **Run a new scan against the real tree before trusting it**, and treat
    every match as a finding. The prose-count scan found three false positives
    that way ("Vol. 2 themes", "70 VS Code themes", "one of my 50 themes") and
-   one public page that stated a count nobody had listed.
+   one public page that stated a count nobody had listed. When a scan's
+   pattern changes, diff what it reads against what the old one read, not
+   only what it refuses: a stop-word rule written as a prefix read "all-new"
+   as "all" and quietly stopped reading two real counts, and the listing of
+   reads showed it, unnoticed, before the old tests did.
 5. **Mutation-test every new test.** Gut the guard it covers and confirm that
    test, and only that test, fails. Reset the mutated file between mutations:
    a scratch copy with no commit cannot be checked out back, and two mutations
@@ -739,8 +743,9 @@ scratchpad.
 The theme-count scan read the root pages, `llms.txt` and three READMEs, and
 the role-aware count was read on the storefront and the share card. Run over
 every served page, note and text file (rule 4), the theme scan found 34
-counts in nine notes it never read — the promotion drafts, a skill that ships
-to installers, a product's publishing notes — and `PROMOTION_QUEUE.md`
+counts in seven notes it never read (corrected the same day: this said nine)
+— the promotion drafts, a skill that ships to installers, a product's
+publishing notes — and `PROMOTION_QUEUE.md`
 states the role-aware count in the stat row it asks to be posted. All agreed
 with what ships that day, and each could be edited to a wrong number with
 `verify` green. So could counts on files it did read, spelled another way: a
@@ -757,16 +762,69 @@ written with placeholders. Measured and left alone: the skills scan reads
 only the two READMEs, the only files that state the count that ships; every
 other number-before-"skills" on a served file counts another set, in the
 dated tooling audit. The products' own counts — 64, 48, 48 and 40 WAV files,
-10 templates and 2 examples — agree with each product's `verify-audio.mjs`
-or its committed zip, which already pin them, and a product does not grow
-the way a theme pack does. Mutation-tested (rule 5): of 14 branches, each
+10 templates and 2 examples — agree with the counts each product's
+`verify-audio.mjs` expects of a rendered pack, or with its committed zip, and
+a product does not grow the way a theme pack does. (Corrected the same day:
+this said those files "pin" the counts; `verify-audio.mjs` checks a pack only
+when someone runs it, and CI does not.) Mutation-tested (rule 5): of 14 branches, each
 gutted alone, 13 turn red exactly the tests written for them — narrowing the
 loop back to five files fails both note tests, a constant line fails both
 line tests, and dropping the theme check fails every theme-count test — and
 one fails none: the value of a compound word past sixty. It is shadowed until
 a pack ships seventy or more, because reading such a number rightly or
 wrongly both refuse a count no pack ships; it is recorded here, not claimed
-as pinned.
+as pinned. The review below found a fifteenth branch that run never cut: the
+`.html` half of the loop's file filter, which no test pinned.
+
+**(reviewed 2026-10-19) The count scan, re-read by three lenses.** An
+independent review of 453ff81 — a coverage lens, a false-refusals lens and a
+records lens, each reproducing every finding in its own scratch copy, then a
+second agent re-running each one from a fresh copy — reproduced all 93 of its
+findings and judged 50 real. It ran 275 experiments; no lens was stopped.
+The extension above went too far: reading every served note, the scan refused
+ordinary prose ("one of the themes", "one or more themes", "90 percent of
+themes", "WCAG 2.1 role-aware", "the $9 palettes product", "sixty two themes"
+misread as two) and an audio pack's own "8 evolving low atmospheres" in
+`products/`. And it still missed counts a reader sees: meta descriptions,
+og: titles and `alt` text, where 17 of the 28 real counts it left unread sat,
+on three pages (the scan dropped every tag with its attributes, though
+`CONTRIBUTING.md` said meta descriptions were tied to the shipped count); a lone `<` swallowing text
+up to the next `>`; a count in quotation-mark entities, a Markdown link, a
+hyphen ("12-theme"), a pair ("51 + 12 themes"), before an edition ("13 Vol. 2
+themes"), with a "+" ("70+"), with four or five words or a comma between; a
+role-aware count with a word between, a "+" or in another page's meta
+description; and "seven-skill" or "[Seven](…) skills" in the READMEs. Each of
+the 39 held reproductions with an edit was replayed on HEAD first (rule 1):
+the 17 gaps passed and the 22 refusals failed.
+
+Now the scan reads the files that state the packs' size to a reader: every
+served page, the root text files, every README, the root notes written to be
+posted, and the skills that ship — not `CLAUDE.md`, `CONTRIBUTING.md`,
+`docs/` or `products/`, which record history or describe the audio packs.
+Pages are read with their meta, title, `alt`, `aria-label` and placeholder
+text, entities decoded, only a letter, `/`, `!` or `?` after `<` opening a
+tag, style text left out and Markdown links read as their text. A count may
+have up to five words between it and its noun, with commas, apostrophes and
+an edition among them, a "+" after it, or a hyphen joining it ("12-theme",
+"seven-skill"); "theme files", "theme packs" and "theme sets" are nouns too;
+both numbers of a pair are checked. It is not read where an article, a
+partitive or "all"/"every"/"each"/"across"/"per"/"percent" stands between it
+and the noun, after a decimal point, ratio, thousands comma, path or
+currency sign, or before ".json" and the like. A role-aware count needs
+"checks" or "comparisons" after it and may have two words between, and the
+storefront's own claim check now names its line. Every stale count in a file
+is listed in one run, each README must state the skill count in a form the
+scan reads, and "Vol 2", "Volume 2", a wrapped "VS Code" and "Visual Studio
+Code" are skipped as the dotted forms were. Replayed against the fix, 15 of
+the 17 gaps fail on their own messages — the other two are a comma after the
+count and a line in `CONTRIBUTING.md`, now out of scope (the same form in
+`README.md` is caught) — and 20 of the 22 refusals pass; the two kept on
+purpose, "These two skills pair well" in a README and two other products'
+counts in one draft, still fail, now with advice and both counts at once. Not covered, and recorded rather than chased: a count
+separated from its noun by a comma ("all 51, plus …"; README's one such line
+now names its noun), a count after its noun, more than five words between,
+numbers above 999, and comparisons with other products, history and plans
+inside the files that are read — on those, reword the sentence.
 
 The Gumroad half now has structural guards, an existence-verified slug list and
 a price-drift table — but no check that reads any product's price from Gumroad.

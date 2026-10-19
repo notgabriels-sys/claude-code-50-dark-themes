@@ -104,9 +104,10 @@ is where the pieces live:
 - The pack's size is also stated in words, and those move too. The description in
   `plugins/dark-themes-vol-2/.claude-plugin/plugin.json` opens with the count ("Twelve new …"), the
   marketplace entry must repeat it exactly, and the pages say "twelve new atmospheres", "twelve
-  additional themes", "twelve all-new palettes" — on `index.html`, the install guide, `llms.txt`,
-  the READMEs and the promotion drafts. The verifier reads the number back from what ships and
-  names each stale sentence and its line, starting with
+  additional themes", "twelve all-new palettes" — on the pages (in their text and in meta
+  descriptions, titles and `alt` text), `llms.txt`, the READMEs, the promotion drafts and the skill
+  that describes the storefront. The verifier reads the number back from what ships and names each
+  stale sentence and its line, all of a file's at once, starting with
   `dark-themes-vol-2 describes itself as shipping 12 but 13 ship.`
 
 `scripts/sync-plugin-themes.mjs` does not apply here — it mirrors the root fifty into their plugin,
@@ -121,14 +122,20 @@ noticeably: render `index.html` in a headless browser and screenshot the `#vol2G
 The storefront, the share card and the meta descriptions state a role-aware check count and theme
 counts. These are claims to a reader, so the verifier ties them to the computed values: if a change
 moves the number of contrast comparisons or the size of either pack, the stated numbers must be
-updated in the same change or CI fails. Removing a claim from the storefront or the share card fails
-too, so the guard cannot be silenced by deletion.
+updated in the same change or CI fails. Removing the role-aware claim from the storefront or the share
+card fails too, so that guard cannot be silenced by deletion.
 
-Every page, note and text file GitHub Pages serves is read for those counts, as a reader sees it:
-a count wrapped across two lines, inside `**emphasis**` or a code span, or spelled out as a word
-("seventy-four") is still a count. A theme, palette or atmosphere count must be one pack's size or
-the two together. A sentence that counts something else — two plugins, a name used twice — must not
-put a number right before "themes", "palettes" or "atmospheres"; reword it rather than the check.
+The files that state the packs' size to a reader are read for those counts: every page, `llms.txt`,
+every README, the notes at the root written to be posted (the promotion drafts), and the skills that
+ship to installers. `CLAUDE.md`, `CONTRIBUTING.md`, `docs/` and `products/` are not: they record
+history, and the product notes describe audio packs. A page is read as a reader sees it, meta
+descriptions, titles and `alt` text included: a count wrapped across two lines, inside
+`**emphasis**`, a code span or a Markdown link, written with an entity, a hyphen ("12-theme") or a
+"+", or spelled out as a word ("seventy-four") is still a count. A theme, palette or atmosphere count
+must be one pack's size or the two together. A sentence that counts something else must not put a
+number within five words before "themes", "palettes" or "atmospheres", unless "the", "of", "all" or
+a similar word comes between ("one of the themes", "9 roles across all themes" are fine); reword
+it rather than the check.
 
 The share card is rendered from `assets/social-preview.html`, not screenshotted from the site. Edit
 that source, then regenerate `preview.png` at 1280×720 — the declared `og:image:width` and

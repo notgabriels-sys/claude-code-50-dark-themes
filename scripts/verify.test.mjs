@@ -235,7 +235,7 @@ test("rejects a share card that states a stale role-aware check count", { timeou
   const result = await runVerifier(fixtureRoot);
 
   assert.notEqual(result.code, 0, "the verifier accepted a share card claiming a stale check count");
-  assert.match(result.stderr, /assets\/social-preview\.html claims 726 role-aware checks/);
+  assert.match(result.stderr, /assets\/social-preview\.html:\d+ claims 726 role-aware checks/);
 });
 
 test("rejects a storefront proofline that states a stale check count", { timeout: 90_000 }, async (t) => {
@@ -249,7 +249,7 @@ test("rejects a storefront proofline that states a stale check count", { timeout
   const result = await runVerifier(fixtureRoot);
 
   assert.notEqual(result.code, 0, "the verifier accepted a proofline claiming a stale check count");
-  assert.match(result.stderr, /index\.html claims 900 role-aware checks/);
+  assert.match(result.stderr, /index\.html:\d+ claims 900 role-aware checks/);
 });
 
 test("rejects a share card whose theme counts drift from the shipped packs", { timeout: 90_000 }, async (t) => {
@@ -997,6 +997,172 @@ test("rejects a stale role-aware count in any note Pages renders", { timeout: 90
 
   assert.notEqual(result.code, 0, "a stale role-aware count in a served note shipped green");
   assert.match(result.stderr, new RegExp(`PROMOTION_QUEUE\\.md:\\d+ claims ${stale} role-aware checks; the verifier runs`));
+});
+
+// The review of 453ff81 (three lenses, every finding re-run by a second
+// agent) found counts a reader sees that the scan did not read. Each case is
+// a reproduction it made on the real tree, and each passed verify before.
+for (const [form, page, from, to, message] of [
+  ["a meta description", "index.html", 'content="Browse and install 50 hand-tuned dark themes',
+    'content="Browse and install 51 hand-tuned dark themes', /index\.html:\d+ says "51 hand-tuned dark themes"/],
+  ["a page's body text", "claude-code-theme-install-guide.html", "<h1>How to install 50 dark themes",
+    "<h1>How to install 51 dark themes", /claude-code-theme-install-guide\.html:\d+ says "51 dark themes"/],
+  ["a hyphenated count", "DIRECTORY_SUBMISSION_PACK.md", "free 12-theme Vol. 2 expansion, UI kits",
+    "free 13-theme Vol. 2 expansion, UI kits", /DIRECTORY_SUBMISSION_PACK\.md:\d+ says "13-theme"/],
+  ["a count before an edition", "README.md", "## The 12 Vol. 2 themes", "## The 13 Vol. 2 themes",
+    /README\.md:\d+ says "13 Vol\. 2 themes"/],
+  ["the first of a pair", "PROMOTION_QUEUE.md", "- Stat row: 50 + 12 themes", "- Stat row: 51 + 12 themes",
+    /PROMOTION_QUEUE\.md:\d+ says "12 themes"/],
+  ["a count with a plus", "index.html", "<div><dt>50</dt><dd>hand-tuned themes</dd></div>",
+    "<div><dt>70+</dt><dd>hand-tuned themes</dd></div>", /index\.html:\d+ says "70\+ hand-tuned themes"/],
+  ["five words between", "README.md", "The same 50 themes are a **free download** on the",
+    "The same 51 hand-tuned dark Claude Code themes are a **free download** on the",
+    /README\.md:\d+ says "51 hand-tuned dark Claude Code themes"/],
+  ["a comma between", "README.md", "The same 50 themes are a **free download** on the",
+    "The same 51 dark, hand-tuned themes are a **free download** on the", /README\.md:\d+ says "51 dark, hand-tuned themes"/],
+  ["a count in quotation-mark entities", "index.html", "download the 50 themes as a free zip",
+    "download &ldquo;51 dark themes&rdquo; as a free zip", /index\.html:\d+ says "51 dark themes"/],
+  ["a hexadecimal no-break space", "semantic-terminal-colors.html", "<p>Every Vol.&nbsp;2 palette is previewed",
+    "<p>All 51&#xA0;dark themes.</p><p>Every Vol.&nbsp;2 palette is previewed", /semantic-terminal-colors\.html:\d+ says "51 dark themes"/],
+  ["a count after a lone <", "README.md", "## The 12 Vol. 2 themes",
+    "The download is < 200 KB for all 51 dark themes -> one command.\n\n## The 12 Vol. 2 themes",
+    /README\.md:\d+ says "51 dark themes"/],
+  ["a count in a Markdown link", "README.md", "The same 50 themes are a **free download** on the",
+    "The same [51](https://gabs-utilities.com/) themes are a **free download** on the", /README\.md:\d+ says "51 themes"/],
+  ["a theme pack in the singular", "README.md", "The same 50 themes are a **free download** on the",
+    "The same 51 theme pack is a **free download** on the", /README\.md:\d+ says "51 theme pack"/],
+  ["a soft hyphen in a word between", "semantic-terminal-colors.html", "<p>Every Vol.&nbsp;2 palette is previewed",
+    "<p>All 51 hand&shy;tuned dark themes.</p><p>Every Vol.&nbsp;2 palette is previewed",
+    /semantic-terminal-colors\.html:\d+ says "51 hand.?tuned dark themes"/],
+  ["a plugin's README", "plugins/50-dark-themes/README.md", "This plugin adds all 50 themes", "This plugin adds all 51 themes",
+    /plugins\/50-dark-themes\/README\.md:\d+ says "51 themes"/],
+]) {
+  test(`reads a stale theme count written as ${form}`, { timeout: 90_000 }, async (t) => {
+    const fixtureRoot = await editPage(t, page, from, to);
+    const result = await runVerifier(fixtureRoot);
+    assert.notEqual(result.code, 0, `${form} with a stale count shipped green`);
+    assert.match(result.stderr, message);
+  });
+}
+
+for (const [form, page, from, to, message] of [
+  ["with a plus", "index.html", "<div><dt>894</dt><dd>role-aware checks</dd></div>",
+    "<div><dt>1,000+</dt><dd>role-aware checks</dd></div>", /index\.html:\d+ claims 1000 role-aware checks/],
+  ["in another page's meta description", "semantic-terminal-colors.html",
+    'content="Practical design notes from building 50 free Claude Code themes:',
+    'content="Practical design notes from building 50 free Claude Code themes, checked by 726 role-aware contrast comparisons:',
+    /semantic-terminal-colors\.html:\d+ claims 726 role-aware checks/],
+  ["with a word between", "PROMOTION_QUEUE.md", "· 894 role-aware checks ·", "· 726 WCAG role-aware checks ·",
+    /PROMOTION_QUEUE\.md:\d+ claims 726 role-aware checks/],
+  ["with a plus in a note", "PROMOTION_QUEUE.md", "· 894 role-aware checks ·", "· 900+ role-aware checks ·",
+    /PROMOTION_QUEUE\.md:\d+ claims 900 role-aware checks/],
+]) {
+  test(`reads a stale role-aware count ${form}`, { timeout: 90_000 }, async (t) => {
+    const fixtureRoot = await editPage(t, page, from, to);
+    const result = await runVerifier(fixtureRoot);
+    assert.notEqual(result.code, 0, `a role-aware count ${form} shipped green`);
+    assert.match(result.stderr, message);
+  });
+}
+
+// The same review's false-refusals lens: ordinary prose the scan refused.
+// Each passes now, on a file the scan still reads.
+for (const [prose, page, from, to] of [
+  ["one of the themes", "semantic-terminal-colors.html", "<h2>The terminal owns the background.</h2>",
+    "<h2>The terminal owns the background.</h2>\n<p>Dracula is one of the themes most people try first.</p>"],
+  ["one of my favourite themes", "DEV_COMMUNITY_ARTICLE_DRAFT.md", "## Contrast matters more than vibe",
+    "Graphite is one of my favourite themes to demo.\n\n## Contrast matters more than vibe"],
+  ["every one of the palettes, one or more themes", "README.md", "## Note on backgrounds",
+    "Every one of the palettes passes; if one or more themes fail, CI goes red.\n\n## Note on backgrounds"],
+  ["90 percent of themes, 9 roles across all themes", "README.md", "## Note on backgrounds",
+    "About 90 percent of themes pass at once; contrast is checked for 9 roles across all themes.\n\n## Note on backgrounds"],
+  ["a date before the themes", "PROMOTION_QUEUE.md", "## Safe launch order",
+    "Since Oct 19 the themes ship with a contrast check.\n\n## Safe launch order"],
+  ["Volume 2 themes", "PROMOTION_QUEUE.md", "## Safe launch order", "Volume 2 themes are live.\n\n## Safe launch order"],
+  ["a price before the noun", "PROMOTION_QUEUE.md", "## Safe launch order",
+    "The $9 palettes product is listed separately.\n\n## Safe launch order"],
+  ["the total written with a space", "README.md", "## Note on backgrounds",
+    "Install both packs for sixty two themes.\n\n## Note on backgrounds"],
+  ["a file name", "README.md", "## Note on backgrounds",
+    "Preview the index with `head -n 20 themes.json`.\n\n## Note on backgrounds"],
+  ["a CSS comment", "index.html", "</style>", "  /* 4 themes per row on desktop */\n</style>"],
+  ["WCAG 2.1 and 7:1 before role-aware", "semantic-terminal-colors.html", "<h2>The terminal owns the background.</h2>",
+    "<h2>The terminal owns the background.</h2>\n<p>Each theme passes WCAG 2.1 role-aware contrast checks; body text clears a 7:1 role-aware minimum.</p>"],
+  ["role-aware rules, not checks", "README.md", "## Note on backgrounds",
+    "The 3 role-aware rules are AAA text, AA accents and the non-text floor.\n\n## Note on backgrounds"],
+  ["a version before role-aware on the storefront", "index.html", "<div><dt>894</dt><dd>role-aware checks</dd></div>",
+    "<div><dt>894</dt><dd>role-aware checks</dd></div><p>Held to WCAG 2.1 role-aware floors.</p>"],
+  ["another product's count wrapped across a line", "README.md", "## Note on backgrounds",
+    "Lowlight has 70 VS\nCode themes; the 70 Visual Studio Code themes are another pack.\n\n## Note on backgrounds"],
+]) {
+  test(`accepts ordinary prose: ${prose}`, { timeout: 90_000 }, async (t) => {
+    const fixtureRoot = await editPage(t, page, from, to);
+    const result = await runVerifier(fixtureRoot);
+    assert.equal(result.code, 0, `ordinary prose was refused: ${result.stderr}`);
+  });
+}
+
+// Which files are read is a decision, and each side of it is pinned: the
+// working notes narrate history and the product notes use "atmospheres" and
+// "palettes" as sound terms, while a note written to be posted and a skill
+// that ships to installers state the packs' size to a reader.
+for (const [file, from, to] of [
+  ["CLAUDE.md", "## Payment surfaces — read before adding any buy button",
+    "When the pack had 40 themes, the share card said 726 role-aware checks.\n\n## Payment surfaces — read before adding any buy button"],
+  ["CONTRIBUTING.md", "exactly 50 root-level theme files", "exactly 51 root-level theme files"],
+  ["docs/TOOLING_AUDIT.md", "## 2. Five skills referenced but missing", "Once, 40 themes shipped.\n\n## 2. Five skills referenced but missing"],
+  ["products/industrial-tension-fx/LISTING.md", "- 10 four-second noise rises and falls",
+    "- 10 four-second noise rises and falls\n- 6 dark atmospheres for breakdowns"],
+]) {
+  test(`does not read counts in ${file}`, { timeout: 90_000 }, async (t) => {
+    const fixtureRoot = await editPage(t, file, from, to);
+    const result = await runVerifier(fixtureRoot);
+    assert.equal(result.code, 0, `${file} is read as a surface that states the packs' size: ${result.stderr}`);
+  });
+}
+for (const [file, content, message] of [
+  ["LAUNCH_NOTES.md", "# Launch\n\n51 dark themes for Claude Code.\n", /LAUNCH_NOTES\.md:3 says "51 dark themes"/],
+]) {
+  test(`reads counts in a new root note, ${file}`, { timeout: 90_000 }, async (t) => {
+    const fixtureRoot = await addFile(t, file, content);
+    const result = await runVerifier(fixtureRoot);
+    assert.notEqual(result.code, 0, "a stale count in a root note shipped green");
+    assert.match(result.stderr, message);
+  });
+}
+test("reads counts in a skill that ships to installers", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  for (const copy of [".claude/skills/storefront-exposure/SKILL.md", "plugins/berlin-studio-skills/skills/storefront-exposure/SKILL.md"]) {
+    const path = join(fixtureRoot, copy);
+    const text = await readFile(path, "utf8");
+    assert.equal(text.split("consuming the 50 themes").length, 2, "fixture anchor must be unique");
+    await writeFile(path, text.replace("consuming the 50 themes", "consuming the 40 themes"));
+  }
+  const result = await runVerifier(fixtureRoot);
+  assert.notEqual(result.code, 0, "a stale count in a shipped skill passed");
+  assert.match(result.stderr, /plugins\/berlin-studio-skills\/skills\/storefront-exposure\/SKILL\.md:\d+ says "40 themes"/);
+});
+
+test("lists every stale count in a file in one run", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await editPage(t, "DEV_COMMUNITY_ARTICLE_DRAFT.md", "## Contrast matters more than vibe",
+    "Ghostty ships 300 themes and iTerm2 offers 250 palettes.\n\n## Contrast matters more than vibe");
+  const result = await runVerifier(fixtureRoot);
+  assert.notEqual(result.code, 0);
+  assert.match(result.stderr, /says "300 themes"; DEV_COMMUNITY_ARTICLE_DRAFT\.md:\d+ says "250 palettes" but the packs ship/);
+});
+
+test("reads a skills count however the README spells it, and requires one", { timeout: 300_000 }, async (t) => {
+  for (const [to, message] of [
+    ["Seven hand-written Claude Code agent skills for running", /README\.md:\d+ says "Seven hand-written Claude Code agent skills" but \d+ skills ship/],
+    ["A seven-skill pack for running", /README\.md:\d+ says "seven-skill" but \d+ skills ship/],
+    ["[Seven](https://gabs-utilities.com/) skills for running", /README\.md:\d+ says "Seven skills" but \d+ skills ship/],
+    ["Skills for running", /README\.md no longer states how many skills ship in a form verify reads/],
+  ]) {
+    const fixtureRoot = await editPage(t, "README.md", "Six skills for running", to);
+    const result = await runVerifier(fixtureRoot);
+    assert.notEqual(result.code, 0, `${to} shipped green`);
+    assert.match(result.stderr, message, to);
+  }
 });
 
 test("accepts a correct count across a line break, in emphasis and in a note", { timeout: 90_000 }, async (t) => {

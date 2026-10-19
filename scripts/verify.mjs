@@ -403,37 +403,87 @@ const NUMBER_WORDS = Object.fromEntries(
 );
 // "sixty-two" is a number word too; the storefront already writes
 // "Forty-eight" in that style, and a bare-word table read "sixty-two themes"
-// as "two themes" and "Twenty-six skills" as twenty.
+// as "two themes" and "Twenty-six skills" as twenty. Written with a space,
+// "sixty two", it is the same number.
+const TENS = "twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety";
+const UNITS = "one|two|three|four|five|six|seven|eight|nine";
 const numberWordValue = (word) => {
-  const lower = word.toLowerCase();
+  const lower = word.toLowerCase().replace(/\s+/g, " ");
   if (lower in NUMBER_WORDS) return NUMBER_WORDS[lower];
-  const parts = /^(twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)-(one|two|three|four|five|six|seven|eight|nine)$/.exec(lower);
+  const parts = new RegExp(`^(${TENS})[- ](${UNITS})$`).exec(lower);
   return parts ? NUMBER_WORDS[parts[1]] + NUMBER_WORDS[parts[2]] : undefined;
 };
-const numberWordPattern =
-  "(?:twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)-(?:one|two|three|four|five|six|seven|eight|nine)|" +
-  Object.keys(NUMBER_WORDS).join("|");
-// "<number> <noun>", with up to three words between that are not themselves
-// numbers: in "one of my 50 themes" the count bound to "themes" is 50, not
-// one. Any whitespace separates the words, line breaks included: pages and
-// notes wrap their lines, and "the 50" at the end of one line of llms.txt
-// and "free Claude Code themes" on the next went unread while this matched
-// spaces and tabs only.
+const countValue = (stated) => (/^\d/.test(stated) ? Number(stated) : numberWordValue(stated));
+const numberWordPattern = `(?:${TENS})(?:-|\\s+)(?:${UNITS})|` + Object.keys(NUMBER_WORDS).join("|");
+// A count is read only where nothing joins it to the text before: not a
+// digit, a decimal point or a ratio ("WCAG 2.1", "7:1"), a thousands comma, a
+// path, a currency sign ("the $9 palettes product") or an entity's end.
+const COUNT_START = "(?<![\\w.,:&;$€£/-])";
+// Words that never sit between a count and its noun. An article or a
+// partitive means the number counts something else: "one of the themes",
+// "every one of the palettes", "one or more themes", "90 percent of themes",
+// "9 roles across all themes", "On 19 October the themes". Only the word
+// itself: "all-new" and "of-the-moment" are adjectives like any other.
+const NOT_A_COUNT_WORD = "the|a|an|of|or|per|percent|all|every|each|across";
+// "<number> <noun>", with up to five words between that are not themselves
+// numbers: in "one of my 50 themes" the count bound to "themes" is 50.
+// Any whitespace separates the words, line breaks included, since pages and
+// notes wrap their lines. A word between may carry an apostrophe or end in a
+// comma ("51 dark, hand-tuned themes"), and an edition is one word: in
+// "the 13 Vol. 2 themes" the count is 13. A "+" after the number is part of
+// the claim ("70+ themes"). The noun must end the word, so a file name such
+// as themes.json is not a count of themes.
 const countPattern = (nouns) =>
   new RegExp(
-    `(?<![\\w.&;-])(${numberWordPattern}|\\d{1,3})((?:\\s+(?!(?:${numberWordPattern}|\\d+)\\b)[\\w-]+){0,3})\\s+(${nouns})\\b`,
+    `${COUNT_START}(${numberWordPattern}|\\d{1,3})\\+?` +
+      `((?:\\s+(?:Vol(?:ume)?\\.?\\s*\\d+|(?!(?:${numberWordPattern}|\\d+)\\b|(?:${NOT_A_COUNT_WORD})(?![\\w'-]))[\\w'-]+,?)){0,5})` +
+      `\\s+(${nouns})\\b(?![./-]\\w)`,
     "gi",
   );
-// The words a reader reads: a tag drops out (its line breaks stay, so a match
-// can name its line), a no-break space reads as a space, and Markdown's
-// emphasis and code marks drop out, since "**13** palettes" renders as
-// "13 palettes". Dropping a mark only joins text: a number joined to a word
-// before it is not read as a count.
+// A number joined to its noun by a hyphen: "the 12-theme expansion", "a
+// seven-skill pack".
+const compoundPattern = (nouns) =>
+  new RegExp(`${COUNT_START}(${numberWordPattern}|\\d{1,3})-(?:${nouns})\\b(?![./-]\\w)`, "gi");
+// The words a reader reads, which on a page include what a browser shows or
+// a crawler indexes from an attribute: a meta description, an og: or twitter:
+// title, an image's alt, a title or an aria-label. A tag drops out, so a count
+// split by markup ("<dt>50</dt><dd>hand-tuned themes</dd>") is read whole; a
+// tag carrying such attributes leaves their values, fenced by "|" so a count
+// cannot bind across them; and its line breaks stay, so a match can name its
+// line. Only "<" followed
+// by a letter, "/", "!" or "?" opens a tag, as in HTML: "size < 200 KB" is
+// text. A style element's text is not read. Entities are decoded, a soft
+// hyphen vanishes and a non-breaking hyphen is a hyphen; a Markdown link
+// reads as its text, and Markdown's emphasis and code marks drop out, since
+// "**13** palettes" renders as "13 palettes". Dropping a mark only joins
+// text: a number joined to a word before it is not read as a count.
+const NAMED_ENTITIES = {
+  amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " ", ensp: " ", emsp: " ", thinsp: " ",
+  shy: "", lsquo: "'", rsquo: "'", ldquo: "\u201c", rdquo: "\u201d", ndash: "\u2013", mdash: "\u2014",
+  hellip: "\u2026", middot: "\u00b7",
+};
+const decodeEntities = (text) =>
+  text.replace(/&(#x[0-9a-f]+|#\d+|[a-z][a-z0-9]*);/gi, (_, name) => {
+    if (name[0] !== "#") return NAMED_ENTITIES[name.toLowerCase()] ?? " ";
+    const code = /^#x/i.test(name) ? Number.parseInt(name.slice(2), 16) : Number.parseInt(name.slice(1), 10);
+    return code > 0 && code <= 0x10ffff ? String.fromCodePoint(code) : " ";
+  });
+const READER_ATTRIBUTES = /\b(?:content|alt|title|aria-label|placeholder)\s*=\s*("[^"]*"|'[^']*')/gi;
 const proseText = (raw) =>
-  raw
-    .replace(/<[^>]+>/g, (tag) => ` ${tag.replace(/[^\n]/g, "")}`)
-    .replace(/&nbsp;|&#160;/gi, " ")
-    .replace(/[*_`~]+/g, "");
+  decodeEntities(
+    raw
+      .replace(/<style\b[\s\S]*?<\/style\s*>/gi, (block) => block.replace(/[^\n]/g, ""))
+      .replace(/<[!/?a-z][^>]*>/gi, (tag) => {
+        const said = [...tag.matchAll(READER_ATTRIBUTES)].map((m) => m[1].slice(1, -1).replace(/\s+/g, " "));
+        const breaks = tag.replace(/[^\n]/g, "");
+        return said.length ? ` | ${said.join(" | ")} | ${breaks}` : ` ${breaks}`;
+      }),
+  )
+    .replace(/\u00ad/g, "")
+    .replace(/\u2011/g, "-")
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/!?\[([^\]\n]*)\]\([^)\n]*\)/g, "$1")
+    .replace(/\*+|_+|`+|~~+/g, "");
 const lineAt = (text, index) => text.slice(0, index).split("\n").length;
 const statedCount = (text) => {
   const match = /^([A-Za-z]+(?:-[A-Za-z]+)?)\b/.exec(text.trim());
@@ -512,17 +562,28 @@ for (const [index, expected] of expectedPlugins.entries()) {
 // Only the READMEs state the count that ships; measured 2026-10-19, every
 // other "<number> skills" on a served file counts another set ("Five skills
 // referenced but missing", in the dated tooling audit).
+// Each README must state the count somewhere verify reads it, or a rewording
+// into a form it does not read ("a seven-skill pack", "[Seven](#skills)")
+// would quietly end the check.
 const skillCountPattern = countPattern("skills");
+const skillCompoundPattern = compoundPattern("skills?");
 for (const readme of ["README.md", "plugins/berlin-studio-skills/README.md"]) {
   const text = proseText(await readFile(new URL(readme, root), "utf8"));
-  for (const match of text.matchAll(skillCountPattern)) {
-    const stated = /^\d/.test(match[1]) ? Number(match[1]) : numberWordValue(match[1]);
-    if (stated !== sourceSkills.length) {
-      fail(
-        `${readme}:${lineAt(text, match.index)} says "${match[0].replace(/\s+/g, " ")}" but ` +
-          `${sourceSkills.length} skills ship.`,
-      );
-    }
+  const matches = [...text.matchAll(skillCountPattern), ...text.matchAll(skillCompoundPattern)];
+  if (!matches.length) {
+    fail(
+      `${readme} no longer states how many skills ship in a form verify reads; keep "<number> skills" ` +
+        `in it, so the count is checked against the ${sourceSkills.length} that ship.`,
+    );
+  }
+  const stale = matches
+    .filter((match) => countValue(match[1]) !== sourceSkills.length)
+    .map((match) => `${readme}:${lineAt(text, match.index)} says "${match[0].replace(/\s+/g, " ")}"`);
+  if (stale.length) {
+    fail(
+      `${stale.join("; ")} but ${sourceSkills.length} skills ship. If a number counts some of them, ` +
+        `name them instead ("these skills pair well") rather than putting a number before "skills".`,
+    );
   }
 }
 // And every skill that ships is named in the plugin README's table, so the
@@ -671,25 +732,35 @@ for (const [name, expectedFiles] of expectedPackageFiles) {
 // is not a count — and a digit directly after "Vol." is an edition number,
 // not a count ("Vol. 2 themes"), which a bare digit scan reads as 2 themes.
 const shippedThemeCounts = new Set([files.length, vol2Files.length, files.length + vol2Files.length]);
-const themeCountPattern = countPattern("themes|palettes|atmospheres");
-// Read below, once the served set is known, on every page, note and text file
-// Pages serves.
+const themeNouns = "theme\\s+files|theme\\s+packs?|theme\\s+sets?|themes|palettes|atmospheres";
+const themeCountPattern = countPattern(themeNouns);
+const themeCompoundPattern = compoundPattern("themes?|palettes?|atmospheres?");
+// "50 + 12 themes" states both pack sizes; the first number is joined to the
+// noun only through the second.
+const pairedCount = new RegExp(`(?:^|[^\\w.,:&;$€£/-])(${numberWordPattern}|\\d{1,3})\\s*[+/&]\\s*$`, "i");
+// Read below, once the served set is known, on the files that state the packs'
+// size to a reader. Every stale count in a file is listed in one message.
 const themeCountFailure = (surface, text) => {
-  for (const match of text.matchAll(themeCountPattern)) {
-    const before = text.slice(Math.max(0, match.index - 8), match.index);
-    if (/Vol\.\s*$/i.test(before)) continue;
-    // "70 VS Code themes" is a claim about a different product, not this pack.
-    if (/\bVS Code\b/i.test(match[2])) continue;
-    const stated = /^\d/.test(match[1]) ? Number(match[1]) : numberWordValue(match[1]);
-    if (!shippedThemeCounts.has(stated)) {
-      return (
-        `${surface}:${lineAt(text, match.index)} says "${match[0].replace(/\s+/g, " ")}" but the packs ship ` +
-        `${files.length} + ${vol2Files.length} themes. If it counts something else, write it without a ` +
-        `number before the noun.`
-      );
+  const stale = [];
+  const check = (match, counts) => {
+    if (counts.some((count) => !shippedThemeCounts.has(count))) {
+      stale.push(`${surface}:${lineAt(text, match.index)} says "${match[0].replace(/\s+/g, " ")}"`);
     }
+  };
+  for (const match of text.matchAll(themeCountPattern)) {
+    const before = text.slice(Math.max(0, match.index - 24), match.index);
+    if (/\bVol(?:ume)?\.?\s*$/i.test(before)) continue;
+    // "70 VS Code themes" is a claim about a different product, not this pack.
+    if (/\bVS\s*Code\b|\bVisual\s+Studio\s+Code\b/i.test(match[2])) continue;
+    const pair = pairedCount.exec(before);
+    check(match, pair ? [countValue(match[1]), countValue(pair[1])] : [countValue(match[1])]);
   }
-  return undefined;
+  for (const match of text.matchAll(themeCompoundPattern)) check(match, [countValue(match[1])]);
+  if (!stale.length) return undefined;
+  return (
+    `${stale.join("; ")} but the packs ship ${files.length} + ${vol2Files.length} themes. If one counts ` +
+    `something else, write it without a number within five words before the noun.`
+  );
 };
 
 const html = await readFile(new URL("index.html", root), "utf8");
@@ -1303,16 +1374,17 @@ for (const [page, source] of claimSurfaces) {
   // Any "<n> role-aware ..." claim must be the real comparison total. The
   // number and the phrase are often split by markup — the proofline reads
   // `<dt>894</dt><dd>role-aware checks</dd>` — so allow a run of tags between
-  // them, but no intervening text.
-  const claims = [...source.matchAll(/(\d[\d,]*)\s*(?:<\/?[a-z][^>]*>\s*)*role-aware/gi)];
+  // them, but no intervening text. A "+" after the number is part of it.
+  const claims = [...source.matchAll(/(?<![\w.,:\/-])(\d[\d,]*)\+?\s*(?:<\/?[a-z][^>]*>\s*)*role-aware/gi)];
   if (!claims.length) {
     fail(`${page} states no role-aware check count; the claim guard would be inert.`);
   }
-  for (const [, stated] of claims) {
-    const value = Number.parseInt(stated.replace(/,/g, ""), 10);
+  for (const claim of claims) {
+    const value = Number.parseInt(claim[1].replace(/,/g, ""), 10);
     if (value !== roleAwareComparisonCount) {
       fail(
-        `${page} claims ${value} role-aware checks; the verifier runs ${roleAwareComparisonCount}.`,
+        `${page}:${lineAt(source, claim.index)} claims ${value} role-aware checks; the verifier runs ` +
+          `${roleAwareComparisonCount}.`,
       );
     }
   }
@@ -2450,19 +2522,31 @@ for (const entry of (await committable()) ?? (await readdir(root, { recursive: t
 }
 servedFiles.sort();
 const servedNotes = servedFiles.filter((file) => file.endsWith(".md"));
-// Stated counts, on everything Pages serves for a person to read: every page,
-// every note it renders and every text file (llms.txt, a product's
-// README.txt). Scripts and data are not prose and are not read. Measured
-// 2026-10-19: the theme scan read five named files while nine notes stated the
-// same counts -- the posting drafts, a skill that ships to installers -- and
-// the role-aware count, read on the storefront and the share card, was stated
-// in PROMOTION_QUEUE.md as well. Each was edited to a wrong number with verify
-// green.
-for (const surface of servedFiles.filter((file) => /\.(html|md|txt)$/i.test(file))) {
+// Stated counts, on the files that state the packs' size to a reader: every
+// served page, the root text files (llms.txt), every README, the notes at the
+// root that are written to be posted (the promotion drafts), and the skills
+// that ship to installers. Not the working notes: CLAUDE.md and
+// CONTRIBUTING.md narrate history and measurements by design, docs/ holds
+// dated records, and products/ describes the audio packs, where "atmospheres"
+// and "palettes" are sound terms. The review of 453ff81 reproduced the cost of
+// reading those: dated history, quoted stale copy and an audio pack's "8
+// evolving low atmospheres" were each refused. Scripts and data are not
+// prose and are not read.
+const countSurface = (file) =>
+  /\.html$/i.test(file) ||
+  (/\.(txt|md)$/i.test(file) && !file.includes("/") && !["CLAUDE.md", "CONTRIBUTING.md"].includes(file)) ||
+  (/(^|\/)README\.md$/.test(file) && !/^(products|docs)\//.test(file)) ||
+  /^plugins\/[^/]+\/skills\/[^/]+\/SKILL\.md$/.test(file);
+// "<number> [up to two words] role-aware [contrast] checks|comparisons": the
+// noun is part of the claim, so "3 role-aware rules" is not one, and a number
+// joined to the text before ("WCAG 2.1", "7:1") is not read.
+const roleAwarePattern =
+  /(?<![\w.,:\/-])(\d[\d,]*)\+?((?:\s+(?!\d)[\w-]+){0,2})\s+role[\s-]aware(?:\s+contrast)?\s+(?:checks?|comparisons?)\b/gi;
+for (const surface of servedFiles.filter(countSurface)) {
   const text = proseText(await readFile(fileUrl(surface), "utf8"));
   const stale = themeCountFailure(surface, text);
   if (stale) fail(stale);
-  for (const match of text.matchAll(/(\d[\d,]*)\s*role-aware/gi)) {
+  for (const match of text.matchAll(roleAwarePattern)) {
     const value = Number.parseInt(match[1].replace(/,/g, ""), 10);
     if (value !== roleAwareComparisonCount) {
       fail(

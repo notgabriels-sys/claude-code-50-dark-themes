@@ -7,7 +7,7 @@ Light / Dark / System, so these install into Claude Code, which does support cus
 
 Requires **Claude Code v2.1.118 or later**, the release that introduced named custom themes.
 
-**→ Visual gallery and storefront: [gabs-utilities.com](https://gabs-utilities.com/)** (all 50, plus the 12 Vol. 2 themes, previewed in their own colors).
+**→ Visual gallery and storefront: [gabs-utilities.com](https://gabs-utilities.com/)** (all 50 themes, plus the 12 Vol. 2 themes, previewed in their own colors).
 
 Prefer a zip to a `git clone`? The same 50 themes are a **free download** on the
 **[v1.0.1 GitHub release →](https://github.com/notgabriels-sys/claude-code-50-dark-themes/releases/tag/themes-plugin-v1.0.1)**
