@@ -1011,15 +1011,16 @@ Needing Gabriel:
   are tax-inclusive, and the "say nothing" decision of 2026-08-18 was made
   for them; nothing records whether it was meant to cover the Gumroad cards,
   where, in that one test, the card's number was not the cart's total.
-- **The install guide's structured data still offers the withdrawn free zip.**
-  The FAQ answer in `claude-code-theme-install-guide.html`'s JSON-LD says "The
-  Gumroad ZIP can be downloaded for zero by choosing the free price". Main's
-  `6422979` ("withdraw unverified Gumroad archive route") removed that route
-  from `index.html`, `README.md` and `PROMOTION_QUEUE.md` but not from here.
-  The sentence is not on the visible page, so a crawler reads a claim the
-  reader never sees, and it puts a price, zero, in structured data, which
-  the storefront-exposure skill forbids. The fix is deleting that one
-  sentence; it is a statement about a payment route, so it waits for him.
+- **Settled 2026-10-19 by main's #61, which Gabriel merged: the install
+  guide's structured data offered the withdrawn free zip.** Its FAQ answer
+  sent readers to the Gumroad archive at the free price after main's
+  `6422979` had withdrawn that route from `index.html`, `README.md` and
+  `PROMOTION_QUEUE.md`, in structured data the reader never saw. #61 points
+  the answer, and two new visible links on the page, at the GitHub release
+  zip, and `verify` now fails if the old wording returns or if the answer and
+  the page stop naming the same zip. Merged here, one of its tests re-spelled
+  the JSON-LD tag with extra attributes, which this branch's one-spelling rule
+  refuses; the test keeps its other half, a single Question object.
 - **The workflow kit's publishing notes are stale or unsupported.** Its
   `PUBLISHING.md` says, in the past tense, that the `zvbti` URL was added to
   the gallery and the README (true when written; it has been removed from
