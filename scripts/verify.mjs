@@ -296,6 +296,70 @@ if (!html.includes("claude plugin install dark-themes-vol-2@notgabriels-themes")
   fail("The gallery must expose the Vol. 2 install command.");
 }
 
+// Each pack's free zip is a release asset that scripts/build-release-zip.sh names after the
+// pack's manifest version, and release-zip.yml refuses any other tag. So the storefront and the
+// README may only link the zip of the version they ship; a version bump that forgets the links
+// stops here instead of pointing readers at an old pack or a release that does not exist.
+// The 50-theme zip must be linked. The Vol. 2 zip is accepted at its current version and
+// becomes required once its release exists (set `linked: true` in the same change that adds
+// the link).
+const escapeRegExp = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const repositoryUrl = "https://github.com/notgabriels-sys/claude-code-50-dark-themes";
+const releaseZips = [
+  {
+    label: "50 Dark Themes",
+    version: pluginManifest.version,
+    tag: `themes-plugin-v${pluginManifest.version}`,
+    file: `claude-code-dark-themes-v${pluginManifest.version}.zip`,
+    readmeLinkText: `v${pluginManifest.version} GitHub release →`,
+    linked: true,
+  },
+  {
+    label: "Vol. 2",
+    version: vol2Manifest.version,
+    tag: `dark-themes-vol-2-v${vol2Manifest.version}`,
+    file: `claude-code-dark-themes-vol-2-v${vol2Manifest.version}.zip`,
+    readmeLinkText: `Vol. 2 v${vol2Manifest.version} release →`,
+    linked: false,
+  },
+];
+const currentReleaseUrls = new Set();
+for (const { label, version, tag, file, readmeLinkText, linked } of releaseZips) {
+  const zipUrl = `${repositoryUrl}/releases/download/${tag}/${file}`;
+  const releaseUrl = `${repositoryUrl}/releases/tag/${tag}`;
+  currentReleaseUrls.add(zipUrl);
+  currentReleaseUrls.add(releaseUrl);
+  if (!linked) continue;
+  // The version a reader sees beside the link must be the one the link resolves to.
+  const storefrontLink = new RegExp(
+    `href="${escapeRegExp(zipUrl)}">[^<]+</a> from the v${escapeRegExp(version)} release`,
+  );
+  if (!storefrontLink.test(html)) {
+    fail(
+      `The storefront must link the ${label} zip at ${zipUrl} and say "from the v${version} release" beside it.`,
+    );
+  }
+  if (!readme.includes(`[${readmeLinkText}](${releaseUrl})`) || !readme.includes(`\`${file}\``)) {
+    fail(`README must link the ${label} release as [${readmeLinkText}](${releaseUrl}) and name its zip ${file}.`);
+  }
+}
+// Tags and asset names use letters, digits, dots and dashes; a trailing dot or comma is sentence
+// punctuation, not part of the link, and is stripped before the lookup.
+const releaseLinkPattern = /https:\/\/github\.com\/notgabriels-sys\/claude-code-50-dark-themes\/releases\/(?:tag|download)\/[\w.-]+(?:\/[\w.-]+)?/g;
+const promotionQueueText = await readFile(new URL("PROMOTION_QUEUE.md", root), "utf8").catch(() => "");
+for (const [source, text] of [
+  ["The storefront", html],
+  ["README", readme],
+  ["PROMOTION_QUEUE.md", promotionQueueText],
+]) {
+  for (const [link] of text.matchAll(releaseLinkPattern)) {
+    const url = link.replace(/[.,;:]+$/, "");
+    if (!currentReleaseUrls.has(url)) {
+      fail(`${source} links a release that no shipped pack version claims: ${url}.`);
+    }
+  }
+}
+
 if (!readme.includes("mkdir -p ~/.claude/themes")) {
   fail("The manual install command must create ~/.claude/themes before copying files.");
 }

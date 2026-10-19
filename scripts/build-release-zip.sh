@@ -3,11 +3,19 @@
 #
 #   scripts/build-release-zip.sh SOURCE_DIR TAG OUT_DIR
 #
-# SOURCE_DIR is a checkout of TAG. Every plugin directory under
-# SOURCE_DIR/plugins that has a themes/ folder is copied whole, exactly as
-# released (themes/, LICENSE, README.md, manifest, any previews), so the zip
-# holds the files published at that tag and nothing rebuilt or renamed. A short
-# INSTALL.txt is added for readers who chose the zip over the plugin command.
+# SOURCE_DIR is a checkout of TAG. Two tag shapes are accepted:
+#
+#   themes-plugin-vX.Y.Z       every plugin directory under SOURCE_DIR/plugins
+#                              that has a themes/ folder, as the first releases
+#                              shipped -> claude-code-dark-themes-vX.Y.Z.zip
+#   dark-themes-vol-N-vX.Y.Z   that expansion's plugin directory only, and X.Y.Z
+#                              must equal the version in its plugin manifest
+#                              -> claude-code-dark-themes-vol-N-vX.Y.Z.zip
+#
+# Each packed plugin is copied whole, exactly as released (themes/, LICENSE,
+# README.md, manifest, any previews), so the zip holds the files published at
+# that tag and nothing rebuilt or renamed. A short INSTALL.txt is added for
+# readers who chose the zip over the plugin command.
 set -euo pipefail
 shopt -s nullglob
 
@@ -15,8 +23,21 @@ src="${1:?usage: build-release-zip.sh SOURCE_DIR TAG OUT_DIR}"
 tag="${2:?usage: build-release-zip.sh SOURCE_DIR TAG OUT_DIR}"
 out="${3:?usage: build-release-zip.sh SOURCE_DIR TAG OUT_DIR}"
 
-if [[ ! "$tag" =~ ^themes-plugin-v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
-  echo "Unexpected tag '$tag'; expected themes-plugin-vMAJOR.MINOR.PATCH." >&2
+semver='(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)'
+every_pack_tag='^themes-plugin-v'"$semver"'$'
+one_expansion_tag='^(dark-themes-vol-([1-9][0-9]*))-v'"$semver"'$'
+if [[ "$tag" =~ $every_pack_tag ]]; then
+  only=""
+  version="${tag#themes-plugin-v}"
+  root="claude-code-dark-themes-v$version"
+  title="Dark themes for Claude Code"
+elif [[ "$tag" =~ $one_expansion_tag ]]; then
+  only="${BASH_REMATCH[1]}"
+  version="${tag#"$only"-v}"
+  root="claude-code-$only-v$version"
+  title="Dark Themes Vol. ${BASH_REMATCH[2]} for Claude Code"
+else
+  echo "Unexpected tag '$tag'; expected themes-plugin-vMAJOR.MINOR.PATCH (every pack) or dark-themes-vol-N-vMAJOR.MINOR.PATCH (one expansion)." >&2
   exit 1
 fi
 if [[ ! -d "$src/plugins" ]]; then
@@ -32,15 +53,33 @@ fi
 mkdir -p "$out"
 out="$(cd "$out" && pwd)"
 
-version="${tag#themes-plugin-v}"
-root="claude-code-dark-themes-v$version"
 stage="$(mktemp -d)"
 trap 'rm -rf "$stage"' EXIT
 mkdir -p "$stage/$root"
 
+if [[ -n "$only" ]]; then
+  if [[ ! -d "$src/plugins/$only/themes" ]]; then
+    echo "Tag '$tag' names plugins/$only, but '$src/plugins/$only/themes' does not exist at this tag." >&2
+    exit 1
+  fi
+  manifest="$src/plugins/$only/.claude-plugin/plugin.json"
+  if [[ ! -f "$manifest" ]]; then
+    echo "Tag '$tag' names plugins/$only, but it has no .claude-plugin/plugin.json at this tag." >&2
+    exit 1
+  fi
+  manifest_version="$(node -e 'let v; try { v = JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8")).version; } catch { v = ""; } process.stdout.write(typeof v === "string" ? v : "")' "$manifest")"
+  if [[ "$manifest_version" != "$version" ]]; then
+    echo "Tag '$tag' says version $version, but plugins/$only/.claude-plugin/plugin.json says '$manifest_version'. Tag the commit whose manifest carries the version in the tag." >&2
+    exit 1
+  fi
+  candidates=("$src/plugins/$only/")
+else
+  candidates=("$src"/plugins/*/)
+fi
+
 count=0
 plugins=()
-for plugin in "$src"/plugins/*/; do
+for plugin in "${candidates[@]}"; do
   name="$(basename "$plugin")"
   [[ -d "$plugin/themes" ]] || continue
   cp -R "$plugin" "$stage/$root/$name"
@@ -62,7 +101,7 @@ if (( count == 0 )); then
 fi
 
 {
-  echo "Dark themes for Claude Code, release $tag"
+  echo "$title, release $tag"
   echo "$count theme files, one JSON each, MIT licensed. These are exactly the files published at this tag."
   echo
   echo "Recommended install (Claude Code v2.1.118 or later):"
