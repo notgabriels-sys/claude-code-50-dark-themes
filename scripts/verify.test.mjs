@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawn } from "node:child_process";
+import { createHash } from "node:crypto";
 import { chmod, cp, lstat, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, relative, sep } from "node:path";
@@ -1216,6 +1217,18 @@ test("accepts other JSON-LD beside the theme ItemList", { timeout: 90_000 }, asy
 
 // The page around the list. Each of these left a crawler reading a wrong list,
 // or no list, while the first version of the content check stayed green.
+async function reviewScript(fixtureRoot, page, text) {
+  const hash = `sha256-${createHash("sha256").update(text, "utf8").digest("base64")}`;
+  const verifyPath = join(fixtureRoot, "scripts", "verify.mjs");
+  const source = await readFile(verifyPath, "utf8");
+  const entry = `["${page}", ["`;
+  assert.equal(source.split(entry).length, 2, `reviewedInlineScripts must hold one entry for ${page}`);
+  await writeFile(verifyPath, source.replace(entry, `${entry}${hash}", "`));
+  const pagePath = join(fixtureRoot, page);
+  const markup = await readFile(pagePath, "utf8");
+  assert.equal(markup.split("; worker-src 'none'").length, 2, `${page} must carry one policy`);
+  await writeFile(pagePath, markup.replace("; worker-src 'none'", ` '${hash}'; worker-src 'none'`));
+}
 async function editPage(t, page, from, to) {
   const fixtureRoot = await makeFixture(t);
   const pagePath = join(fixtureRoot, page);
@@ -1400,6 +1413,9 @@ for (const [control, page, from, to] of [
 ]) {
   test(`accepts ${control}`, { timeout: 90_000 }, async (t) => {
     const fixtureRoot = await editPage(t, page, from, to);
+    // A second script is reviewed by hash before it may run, so this one is
+    // reviewed the way a contributor would: in the table and in the policy.
+    if (control === "typeof in a script") await reviewScript(fixtureRoot, page, 'if (1 <b && typeof window === "object") {}');
 
     const result = await runVerifier(fixtureRoot);
 
@@ -1536,8 +1552,10 @@ for (const [defect, page, from, to, message] of [
 }
 
 for (const [control, page, from, to] of [
-  ["a Content-Security-Policy meta", "index.html", "</head>",
-    `<meta http-equiv="Content-Security-Policy" content="img-src 'self' https:">\n</head>`],
+  // Every page carries one Content-Security-Policy now; another http-equiv
+  // that cannot navigate stays allowed.
+  ["a content-language meta", "index.html", "</head>",
+    '<meta http-equiv="content-language" content="en">\n</head>'],
   ["a tel: link", "impressum.html", "</body>", '<p><a href="tel:+4930000000">Telefon</a></p>\n</body>'],
   ["a <base> that only sets a target", "index.html", "</head>", '<base target="_blank">\n</head>'],
   // Split on every comma, this URL's second half read as the scheme "h-480:".
@@ -2003,4 +2021,82 @@ test("accepts a tracked file deleted from the working tree, in a repository", { 
   const result = await runVerifier(fixtureRoot);
 
   assert.equal(result.code, 0, `a deleted file stopped verify: ${result.stderr}`);
+});
+
+// Inline scripts are reviewed by hash, and each page's Content-Security-Policy
+// names exactly those hashes, so the browser runs nothing else.
+const POLICY_NONE = "script-src 'none'; worker-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'";
+const policyMeta = (content) => `<meta http-equiv="Content-Security-Policy" content="${content}">`;
+for (const [defect, page, from, to, message] of [
+  ["a line added to the gallery script", "index.html", 'const grid = document.getElementById("grid");',
+    'location.assign("https://pay.example.invalid/x");\nconst grid = document.getElementById("grid");',
+    /index\.html runs an inline script nobody has reviewed \(sha256-[A-Za-z0-9+/]+=*\)\. A script can navigate or load without a link/],
+  ["a second inline script", "impressum.html", "</body>",
+    '<script>location.assign("https://pay.example.invalid/x")</script>\n</body>',
+    /impressum\.html runs an inline script nobody has reviewed/],
+  ["a page without its Content-Security-Policy", "impressum.html", `  ${policyMeta(POLICY_NONE)}\n`, "",
+    /impressum\.html must carry exactly one Content-Security-Policy, right after <meta charset>/],
+  ["a policy that lets any inline script run", "impressum.html", policyMeta(POLICY_NONE),
+    policyMeta(POLICY_NONE.replace("script-src 'none'", "script-src 'unsafe-inline'")),
+    /impressum\.html must carry exactly one Content-Security-Policy/],
+  // A policy applies only to what follows it.
+  ["a policy placed after the head's other tags", "impressum.html", `  ${policyMeta(POLICY_NONE)}\n`, "",
+    /impressum\.html must carry exactly one Content-Security-Policy/],
+  ["a second policy", "impressum.html", "</head>", `${policyMeta("img-src 'self'")}\n</head>`,
+    /impressum\.html must carry exactly one Content-Security-Policy/],
+]) {
+  test(`rejects ${defect}`, { timeout: 90_000 }, async (t) => {
+    const fixtureRoot = await editPage(t, page, from, to);
+    if (defect.includes("placed after")) {
+      const path = join(fixtureRoot, page);
+      const markup = await readFile(path, "utf8");
+      assert.equal(markup.split("</head>").length, 2);
+      await writeFile(path, markup.replace("</head>", `  ${policyMeta(POLICY_NONE)}\n</head>`));
+    }
+
+    const result = await runVerifier(fixtureRoot);
+
+    assert.notEqual(result.code, 0, `${defect} shipped green`);
+    assert.match(result.stderr, message);
+  });
+}
+
+test("rejects a reviewed script hash for a page that no longer runs it", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const verifyPath = join(fixtureRoot, "scripts", "verify.mjs");
+  const source = await readFile(verifyPath, "utf8");
+  const anchor = "const reviewedInlineScripts = new Map([";
+  assert.equal(source.split(anchor).length, 2);
+  await writeFile(verifyPath, source.replace(anchor, `${anchor}\n  ["impressum.html", ["sha256-AAAA"]],`));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "a stale reviewed hash shipped green");
+  assert.match(result.stderr, /reviewedInlineScripts lists sha256-AAAA for impressum\.html, which no longer runs it/);
+});
+
+test("accepts the policy with its attributes in the other order", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await editPage(t, "impressum.html", policyMeta(POLICY_NONE),
+    `<meta content="${POLICY_NONE}" http-equiv="Content-Security-Policy">`);
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.equal(result.code, 0, `a reordered policy was rejected: ${result.stderr}`);
+});
+
+// A browser turns CRLF into LF before it hashes a script, and runs this one
+// under the LF hash (checked in Chromium), so verify must hash it the same way.
+test("accepts the gallery script saved with CRLF line endings", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const path = join(fixtureRoot, "index.html");
+  const markup = await readFile(path, "utf8");
+  const start = markup.indexOf("<script>\n");
+  assert.equal(markup.split("<script>\n").length, 2);
+  const end = markup.indexOf("</script>", start);
+  const body = markup.slice(start + "<script>".length, end);
+  await writeFile(path, markup.slice(0, start + "<script>".length) + body.replaceAll("\n", "\r\n") + markup.slice(end));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.equal(result.code, 0, `a CRLF gallery script was rejected: ${result.stderr}`);
 });

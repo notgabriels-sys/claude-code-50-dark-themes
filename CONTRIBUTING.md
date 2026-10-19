@@ -61,6 +61,12 @@ present in the gallery.
 The final value in each gallery row is the recommended terminal background. Claude Code controls
 its interface colours; the terminal application still owns the terminal background.
 
+The gallery rows live inside the page's one inline script, which is reviewed by hash. Changing a row,
+or the gallery code, changes that hash, and `node scripts/verify.mjs` fails with the new one. Read
+your change, then put the new hash in two places: `reviewedInlineScripts` in `scripts/verify.mjs`, and
+the `script-src` of the Content-Security-Policy meta at the top of `index.html`. The browser runs no
+script the policy does not name.
+
 ## Adding a theme to Dark Themes Vol. 2
 
 Vol. 2 is the expansion pack, and the place for a new theme. It is a second plugin in the same
@@ -142,6 +148,9 @@ The command checks:
 - that every link a browser can follow from a public page goes to a host in `reviewedLinkHosts`,
   spelled out as `https://<host>/`, and reaches PayPal or Gumroad only at a verified id or slug —
   a link to a new host is a deliberate edit to that list in `scripts/verify.mjs`;
+- that every inline script a page runs is reviewed by hash in `reviewedInlineScripts`, and every
+  page carries one Content-Security-Policy, right after `meta charset`, naming exactly those hashes
+  and turning off workers, plugins, frames, `base` and form posts;
 - that every Markdown note GitHub Pages serves as a page (any `.md` outside a `.` or `_` directory) links
   only to reviewed hosts and never to a payment host, sets no front matter beyond `name`,
   `title` and `description`, and holds no Liquid — and that the root has no `_config.yml` or other `_` entry;

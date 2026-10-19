@@ -56,7 +56,7 @@ produces for the paid products before anything ships.
 
 | Surface | Serves | Guarded by |
 |---|---|---|
-| `index.html` head — meta, OG, Twitter, canonical | humans sharing links, social unfurls | `verify` requires share-image alt text and exactly one canonical link, equal to the `CNAME` domain |
+| `index.html` head — meta, OG, Twitter, canonical | humans sharing links, social unfurls | `verify` requires share-image alt text, exactly one canonical link, equal to the `CNAME` domain, and a Content-Security-Policy right after `meta charset` naming the reviewed inline scripts |
 | `index.html` JSON-LD | search engines; free plugin only | `verify` checks the plugin's version and download URL, allows one script-tag spelling and only the plain schema.org context, refuses microdata and RDFa, and requires exactly one ItemList on the site, checked against the theme files |
 | `sitemap.xml` | crawler discovery of the four public pages | `verify` holds it to a sitemap element allowlist, with no stylesheet, and every `<loc>` to the site |
 | `robots.txt` | crawl permission; points at the sitemap | — |
@@ -100,6 +100,12 @@ Use that predicate; do not write a fresh `.endsWith(".json")` filter.
 The page is both the storefront and the theme gallery. Exposure work touches the
 head, the copy and the gallery; it must not touch a Gumroad or PayPal anchor,
 a price, a slug, or an `aria-label` that states a price.
+
+The gallery is the page's one inline script, reviewed by hash. Any change to it,
+a theme row included, makes `verify` fail with the new hash: read the change,
+then put that hash in `reviewedInlineScripts` in `scripts/verify.mjs` and in the
+`script-src` of the page's Content-Security-Policy. Never add a second script or
+loosen the policy to get green; the browser enforces that policy too.
 
 `verify` enforces that, so after any edit run `node scripts/verify.mjs` and
 `node scripts/verify.test.mjs`. If a payment check goes red on a change you

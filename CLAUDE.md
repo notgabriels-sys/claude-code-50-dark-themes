@@ -202,6 +202,10 @@ repo has. `verify` runs on every push and **fails the build** on:
   a script with a `src` on any page, an active element or handler in a note,
   and any name starting `.htaccess` — see "Every served file is one `verify`
   reads" below;
+- **(added 2026-10-19)** an inline script whose hash is not in
+  `reviewedInlineScripts`, a reviewed hash no page runs, and a page whose
+  Content-Security-Policy is missing, misplaced, doubled or names anything but
+  exactly those hashes — see "Every inline script is reviewed" below;
 - the retired résumé checkout slug `notgabriel.gumroad.com/l/wmlrk`;
 - any of the three verified PayPal links going missing;
 - **(added 2026-08-24)** any of the three carrying a price other than its
@@ -282,9 +286,9 @@ link off the site must be spelled `https://<host>/` exactly, with `&` written
 payment link in the spelling a browser follows. A `base` element and
 `meta http-equiv` are refused. **Linking a new host is a deliberate edit to
 `reviewedLinkHosts`; a checkout host never goes there before its real object
-has been read.** Not covered: inline `script` text, which can navigate, or
-load a served script as a worker, without a link; and CSS, which cannot
-navigate.
+has been read.** Inline `script` text, which can navigate without a link, is
+held to reviewed hashes and enforced by a Content-Security-Policy — see "Every
+inline script is reviewed" below. Not covered: CSS, which cannot navigate.
 
 The review of that first version (same day, three lenses, findings re-run by
 second reviewers) found the guard both too loose and too strict. Too loose,
@@ -402,10 +406,8 @@ The review of 1cd3984 (five lenses; the first run lost five of its eight agents
 to a session limit and was resumed) found the `.htaccess` names (high:
 `.htaccess.svg` ran its script and `.htaccess.md` rendered a live link with
 `verify` green), the service worker (medium), quirks-mode pages and documents
-with no namespace (low). Each is fixed above. Still not covered, and the next
-step: inline `script` text. Holding each inline script to an allowlist of its
-exact text would close it, at the cost of a deliberate edit for every change to
-the gallery code.
+with no namespace (low). Each is fixed above. The gap it left, inline `script`
+text, is closed below.
 
 Its records lens, re-run after a session limit lifted, found more. The
 script-tag check read only the root pages, so a page in a subdirectory loaded a
@@ -441,6 +443,26 @@ which would have let a contributor add `.css` as inert. Still open, and the next
 step: the SVG allowlist refuses what Figma, Illustrator, Inkscape and SVGO
 export (clip paths, comments, `data-*`), and widening it needs its own
 differential run.
+
+**(added 2026-10-19) Every inline script is reviewed, and the browser enforces
+it.** The link check reads URLs, and a script navigates without one: a
+`location.assign(...)` line added to the gallery script, or a second bare
+`script` element, passed `verify` and sent Chromium to another host. Every
+script a served page runs is now held to `reviewedInlineScripts` in
+`scripts/verify.mjs` by the SHA-256 of its text, hashed as a browser hashes it,
+and every served page carries exactly one Content-Security-Policy meta, right
+after `meta charset`, naming exactly those hashes (`script-src 'none'` on a
+page that runs none) and turning off workers, plugins, frames, `base` and form
+posts. A changed or added script is then a deliberate edit to that table, like
+a new host in `reviewedLinkHosts`, and the browser itself refuses a script
+nobody reviewed. Reproduced with the policy in place and the reviewed hash
+unchanged, as if `verify` had been skipped: Chromium refused the edited gallery
+script (the gallery stopped rendering, so the edit shows at once) and refused
+the added one, and neither navigated. Under the policy every page loads with no
+violation, and the gallery behaves exactly as without it — search, filters,
+both copy buttons and deep links, compared in Chromium. This reviews a script;
+it does not read what it does. Editing the gallery code or a theme row in
+`index.html` changes the hash, and `verify` prints the new one.
 
 **Sixteen failure cases were proven** by breaking `index.html`, `README.md` and
 `impressum.html` in turn and confirming the build goes red, then restoring:

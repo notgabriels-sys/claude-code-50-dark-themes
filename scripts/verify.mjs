@@ -1,4 +1,5 @@
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { lstat, readdir, readFile, stat } from "node:fs/promises";
 
 import { sep } from "node:path";
@@ -2060,6 +2061,25 @@ for (const host of reviewedLinkHosts) {
     fail(`${host} is a reviewed link host on a payment domain with no entry in paymentPath saying which paths are verified.`);
   }
 }
+// Inline scripts. The link check reads URLs, and a script navigates without
+// one: location.assign(...) added to index.html's gallery script, or a second
+// bare <script>, passed verify on 2026-10-18 and sent Chromium to another host.
+// So every script a served page runs is held to reviewedInlineScripts by the
+// SHA-256 of its text, hashed as a browser hashes it -- a changed or added
+// script is a deliberate edit here, like a new host in reviewedLinkHosts --
+// and each page carries a Content-Security-Policy naming exactly those hashes,
+// so the browser itself refuses any other script. The rest of the policy turns
+// off what the checks above refuse by reading: workers, plugins, frames, <base>
+// and form posts. This reviews; it does not read what a script does.
+const reviewedInlineScripts = new Map([
+  // The gallery: renders THEMES and VOL2_THEMES, filters and copies install commands.
+  ["index.html", ["sha256-V8bZZsjNTr3HAwTnMFReSIV+PlAuV1o1UimLudKymSw="]],
+]);
+const POLICY_REST = "worker-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'";
+const scriptHash = (text) =>
+  `sha256-${createHash("sha256").update(text.replace(/\r\n?/g, "\n"), "utf8").digest("base64")}`;
+const expectedPolicy = (hashes) =>
+  `script-src ${hashes.length ? hashes.map((hash) => `'${hash}'`).join(" ") : "'none'"}; ${POLICY_REST}`;
 // Every HTML file Pages can serve, not only the root pages: a link on
 // assets/social-preview.html reaches visitors too. Payment links belong only
 // on the root pages, the ones the price checks read.
@@ -2231,6 +2251,38 @@ for (const page of linkedPages) {
   // served .txt or .json as a stylesheet, and that CSS can fetch from any host.
   if (!/^\uFEFF?<!doctype html>/i.test(markup)) {
     fail(`${page} must open with <!doctype html>. Without it the page renders in quirks mode, which loads text files as CSS.`);
+  }
+  const tags = htmlTags(markup);
+  const running = tags.filter((tag) => tag.name === "script" && !tag.closing && tag.attributes.length === 0);
+  const reviewed = reviewedInlineScripts.get(page) ?? [];
+  for (const tag of running) {
+    const hash = scriptHash(tag.text);
+    if (!reviewed.includes(hash)) {
+      fail(
+        `${page} runs an inline script nobody has reviewed (${hash}). A script can navigate or load without a ` +
+          `link, so read it first; then add the hash to reviewedInlineScripts for ${page} in scripts/verify.mjs ` +
+          `and to the page's Content-Security-Policy.`,
+      );
+    }
+  }
+  const hashes = running.map((tag) => scriptHash(tag.text));
+  for (const hash of reviewed) {
+    if (!hashes.includes(hash)) {
+      fail(`reviewedInlineScripts lists ${hash} for ${page}, which no longer runs it. Remove the entry.`);
+    }
+  }
+  // The policy must come before anything it governs: right after <meta charset>.
+  const policy = `<meta http-equiv="Content-Security-Policy" content="${expectedPolicy(hashes)}">`;
+  const policies = tags.filter((tag) => tag.name === "meta" && tag.attributes.some(
+    ({ name, value }) => name === "http-equiv" && value.toLowerCase() === "content-security-policy"));
+  const first = tags.find((tag) => !["html", "head"].includes(tag.name) &&
+    !(tag.name === "meta" && tag.attributes.some(({ name }) => name === "charset")));
+  const content = policies[0]?.attributes.find(({ name }) => name === "content")?.value;
+  if (policies.length !== 1 || first !== policies[0] || content !== expectedPolicy(hashes)) {
+    fail(
+      `${page} must carry exactly one Content-Security-Policy, right after <meta charset>, so the browser runs ` +
+        `only the scripts verify reviewed: ${policy}`,
+    );
   }
 }
 for (const text of ["README.md", "llms.txt"]) stripeBan(text, await readFile(new URL(text, root), "utf8"));
