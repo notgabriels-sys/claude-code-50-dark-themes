@@ -8,6 +8,7 @@ and technical creators.
 - [Shop and theme gallery](https://gabs-utilities.com/)
 - [Claude Code theme install guide](https://gabs-utilities.com/claude-code-theme-install-guide.html)
 - [Semantic terminal color design article](https://gabs-utilities.com/semantic-terminal-colors.html)
+- [Every theme, one page each](https://gabs-utilities.com/theme/)
 - [Impressum](https://gabs-utilities.com/impressum.html)
 
 The semantic terminal color article explains the design choices behind the 50
@@ -17,6 +18,12 @@ contrast, terminal background ownership and transparent-terminal surfaces.
 The same marketplace also carries Dark Themes Vol. 2, a free expansion plugin
 with twelve additional dark themes held to the same contrast standards.
 Install with: claude plugin install dark-themes-vol-2@notgabriels-themes
+
+Every theme in both packs has its own page at https://gabs-utilities.com/theme/<slug>/
+(index: https://gabs-utilities.com/theme/), listing its thirteen palette overrides and
+what each one does, the contrast ratios measured against its recommended terminal
+background, and the install commands. The pages are generated from the theme files
+and checked for freshness on every change.
 
 The install guide gives the native Claude Code plugin command, manual JSON
 fallback, terminal background setup, and common troubleshooting steps:
