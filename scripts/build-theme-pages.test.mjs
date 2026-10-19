@@ -176,3 +176,33 @@ test("rejects a theme index that gives the plugin install with no restart note",
   assert.notEqual(result.code, 0, "the verifier accepted an index with no restart note");
   assert.match(result.stderr, /theme\/index\.html gives "plugin install [\w-]+@notgabriels-themes" without saying to restart/);
 });
+
+// Items 7 and 26: `subtle` is drawn as text far more than as hairlines, and
+// `permission` and `planMode` colour text although held to the 3:1 floor.
+test("rejects theme pages that call subtle decorative", { timeout: 120_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  await editBuilder(
+    fixtureRoot,
+    'subtle: "Faint borders and de-emphasised secondary text (not contrast-checked)",',
+    'subtle: "Decorative hairlines (reserved, carries no meaning)",',
+  );
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a role Claude Code contradicts");
+  assert.match(result.stderr, /theme\/absinthe\/index\.html describes subtle as "Decorative hairlines/);
+});
+
+test("rejects theme pages that label permission as non-text only", { timeout: 120_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  await editBuilder(
+    fixtureRoot,
+    '{ token: "permission", floor: 3, surfaces: ["terminal"], standard: "WCAG AA non-text floor; also colours text" },',
+    '{ token: "permission", floor: 3, surfaces: ["terminal"], standard: "WCAG AA, non-text" },',
+  );
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a label that hides the text Claude Code draws in it");
+  assert.match(result.stderr, /theme\/absinthe\/index\.html labels its permission row "WCAG AA, non-text"/);
+});

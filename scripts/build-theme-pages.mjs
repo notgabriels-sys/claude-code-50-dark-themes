@@ -55,23 +55,27 @@ const CONTRAST_CHECKS = [
   { token: "claude", floor: 4.5, surfaces: ["terminal"], standard: "WCAG AA, normal text" },
   { token: "claudeShimmer", floor: 4.5, surfaces: ["terminal"], standard: "WCAG AA, normal text" },
   { token: "suggestion", floor: 4.5, surfaces: ["terminal"], standard: "WCAG AA, normal text" },
-  { token: "permission", floor: 3, surfaces: ["terminal"], standard: "WCAG AA, non-text" },
-  { token: "planMode", floor: 3, surfaces: ["terminal"], standard: "WCAG AA, non-text" },
+  // Held to the non-text floor like the verifier, though Claude Code also draws
+  // text in both (README's contrast paragraph says how many themes fall below AA).
+  { token: "permission", floor: 3, surfaces: ["terminal"], standard: "WCAG AA non-text floor; also colours text" },
+  { token: "planMode", floor: 3, surfaces: ["terminal"], standard: "WCAG AA non-text floor; also colours text" },
   { token: "promptBorder", floor: 3, surfaces: ["terminal"], standard: "WCAG AA, non-text" },
   { token: "promptBorderShimmer", floor: 3, surfaces: ["terminal"], standard: "WCAG AA, non-text" },
   { token: "rate_limit_fill", floor: 3, surfaces: ["terminal"], standard: "WCAG AA, non-text" },
 ];
 
+// Each role in the words of Claude Code's token reference (code.claude.com,
+// terminal-config, "Color token reference").
 const ROLES = {
   claude: "Claude's mark and accent",
   claudeShimmer: "Accent highlight while Claude works",
   text: "Primary text",
   inactive: "Secondary text",
-  subtle: "Decorative hairlines (reserved, carries no meaning)",
+  subtle: "Faint borders and de-emphasised secondary text (not contrast-checked)",
   suggestion: "Autocomplete suggestions",
-  permission: "Permission prompt border and indicator",
+  permission: "Dialog borders and titles, permission prompts and pickers",
   promptBorder: "Input prompt border",
-  promptBorderShimmer: "Prompt border highlight",
+  promptBorderShimmer: "Lighter partner of promptBorder in animated gradients",
   planMode: "Plan mode indicator",
   userMessageBackground: "Surface behind your messages",
   userMessageBackgroundHover: "That surface, hovered",

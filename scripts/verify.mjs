@@ -1303,6 +1303,20 @@ for (const [path, source] of themePages) {
       );
     }
   }
+  // Token roles, as items 7 and 26 found them in Claude Code 2.1.302: `subtle`
+  // is drawn as text far more than as hairlines, and `permission` and
+  // `planMode` colour text although they are held to the non-text floor.
+  // #59's pages called `subtle` "decorative … carries no meaning" and labelled
+  // both rows plain "WCAG AA, non-text".
+  const subtleRole = source.match(/<code>subtle<\/code><\/td><td>([^<]*)<\/td>/);
+  if (subtleRole && /decorative|no meaning|reserved/i.test(subtleRole[1])) {
+    fail(`${path} describes subtle as "${subtleRole[1]}"; Claude Code draws de-emphasised text in it.`);
+  }
+  for (const row of source.matchAll(/<td>(permission|planMode) on terminal background<\/td>(?:<td[^>]*>[\s\S]*?<\/td>){3}<td class="ok">([^<]*)<\/td>/g)) {
+    if (!/\btext\b/i.test(row[2].replace(/non-text/gi, ""))) {
+      fail(`${path} labels its ${row[1]} row "${row[2]}" as if it were non-text only; Claude Code also draws text in it.`);
+    }
+  }
   if (!source.includes('rel="icon" type="image/svg+xml" href="/favicon.svg"')) {
     fail(`${path} must expose the first-party SVG favicon.`);
   }
