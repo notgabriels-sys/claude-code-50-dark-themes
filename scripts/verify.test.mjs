@@ -1937,6 +1937,14 @@ for (const [defect, page, from, to, message] of [
     '<p><a class="tool" href="https://www.paypal.com/ncp/payment/3SWZ64EXW9C8W\t?amount=1200"><b>Mastering</b> ' +
       '<span>€45</span></a></p>\n</body>',
     /index\.html has 4 PayPal NCP URL\(s\) but only 3 of them are the href="\.\.\." of an <a> the price check reads/],
+  ["an Agensi link to another skill", "index.html", "</body>", payLink("https://agensi.io/skills/another-skill"),
+    /goes to agensi\.io\/skills\/another-skill, which is not the reviewed Agensi product page\. agensi\.io may be linked only at \/skills\/claude-code-theme-setup-assistant/],
+  ["the Agensi page with a query", "index.html", "</body>",
+    payLink("https://agensi.io/skills/claude-code-theme-setup-assistant?ref=shop"),
+    /goes to agensi\.io\/skills\/claude-code-theme-setup-assistant\?ref=shop, which is not the reviewed Agensi product page/],
+  ["the Agensi page with a fragment", "index.html", "</body>",
+    payLink("https://agensi.io/skills/claude-code-theme-setup-assistant#buy"),
+    /goes to agensi\.io\/skills\/claude-code-theme-setup-assistant#buy, which is not the reviewed Agensi product page/],
   ["a Gumroad link off the product path", "index.html", "</body>", payLink("https://notgabriel.gumroad.com/x/bqgfv"),
     /goes to notgabriel\.gumroad\.com\/x\/bqgfv, which is not a product page in verifiedGumroadSlugs\. .*its price is only the one the page records/],
   ["a protocol-relative link off the site", "index.html", "</body>", payLink("//pay.example.invalid/b/0"),
@@ -2052,6 +2060,17 @@ for (const [defect, page, from, to, message] of [
   });
 }
 
+test("rejects an Agensi sibling host reviewed without a path rule", { timeout: 90_000 }, async (t) => {
+  // www.agensi.io serves the same marketplace; listed as an ordinary host, any
+  // skill on it would pass.
+  const fixtureRoot = await editPage(t, "scripts/verify.mjs", '"www.producthunt.com",', '"www.producthunt.com", "www.agensi.io",');
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "an unrestricted www.agensi.io shipped green");
+  assert.match(result.stderr, /www\.agensi\.io is a reviewed link host on a payment domain with no entry in paymentPath/);
+});
+
 test("rejects a payment-domain host reviewed without a path rule", { timeout: 90_000 }, async (t) => {
   // paypal.me is PayPal's own payment product; listed as an ordinary host, any
   // path on it would pass.
@@ -2096,6 +2115,9 @@ for (const [defect, path, content, message] of [
   ["a note linking an unverified PayPal checkout", "PAY_NOTE.md",
     "Book a master: [Mastering · €45](https://www.paypal.com/ncp/payment/ZZZZZZZZZZZZZ)\n",
     /PAY_NOTE\.md:1 \(https:\/\/www\.paypal\.com\/ncp\/payment\/ZZZZZZZZZZZZZ\) links to www\.paypal\.com from a note/],
+  ["a note linking the Agensi skill", "PAY_NOTE.md",
+    "Get the [assistant](https://agensi.io/skills/claude-code-theme-setup-assistant).\n",
+    /PAY_NOTE\.md:1 \(https:\/\/agensi\.io\/skills\/claude-code-theme-setup-assistant\) links to agensi\.io from a note/],
   ["a note autolinking another checkout", "PAY_NOTE.md", "Pay at <https://pay.example.invalid/b/1>.\n",
     /PAY_NOTE\.md:1 \(https:\/\/pay\.example\.invalid\/b\/1\) links to pay\.example\.invalid, which is not a reviewed link host/],
   ["a note with a raw-HTML PayPal.me link", "products/x/NOTE.md", '<a href="https://www.paypal.com/paypalme/someone/1200EUR">Pay</a>\n',

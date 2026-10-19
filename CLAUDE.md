@@ -174,6 +174,9 @@ audio products, then restyled the storefront and retired `zvbti`):
   cards' `aria-label` ("for 12 euros"). A screen-reader label that disagrees
   with the visible price is a wrong price for the buyer who cannot see it.
 - **3 PayPal NCP links** in "Mixing & mastering".
+- **1 Agensi link** in the tools row (main's #58), to the setup-assistant
+  skill; no price on the card. Reviewed 2026-10-19 on Gabriel's decision and
+  held to that one page — see "`agensi.io`, one page" below.
 - **No Stripe link anywhere.** `git log -S stripe` across all branches still
   returns nothing beyond this file and the CI guard itself, so the bad €1,200
   link never lived in this repo — it was on some other surface, and may still be.
@@ -320,6 +323,23 @@ PayPal card on every page is priced and counted. Too strict: every
 `base target`, and `srcset` split on every comma (now parsed as the HTML
 spec does). `mailto:` stays exempt on purpose: it cannot take money, and
 allowlisting the address would copy a contact email into another tracked file.
+
+**(reviewed 2026-10-19, on Gabriel's decision) `agensi.io`, one page.** Main's
+#58 linked the paid Claude Code Theme Setup Assistant on Agensi from the
+storefront's tools row and `README.md`, and the link guard refused the host.
+Reviewing a checkout host is a payment-surface decision, so it waited for
+Gabriel, who approved it the same day, held to that one page. Read back first,
+through Firecrawl, with a live fetch: HTTP 200 (`agensi.io` redirects to
+`www.agensi.io`), the skill's own listing, $12, sold through Agensi's checkout
+(Stripe behind it), with Agensi's money-back terms. The storefront card says
+"Paid, on Agensi" and states no price, so `verify` checks none; the price is
+set on Agensi and changes there. `agensi.io` is now a payment domain with a
+path rule in `paymentPath`: only `/skills/claude-code-theme-setup-assistant`,
+with no query or fragment, on the root pages and `README.md`, and never from
+another note. `www.agensi.io` is not reviewed, so a link written with `www.`
+fails, and listing it as an ordinary host fails too, because a reviewed host
+on a payment domain needs its own path rule. The creator's name on that page
+is not copied here. Linking another Agensi skill is a new review.
 
 **Every note is a page on the shop's domain, and is now checked as one.** The
 repo has no `.nojekyll`, so GitHub Pages renders every Markdown file outside a

@@ -2173,11 +2173,12 @@ const OTHER_ATTRIBUTES = new Set([
 // Domains that sell things. Each reviewed host on one must say which paths on
 // it are verified objects, so adding a sibling host (paypal.me, www.gumroad.com)
 // to the list below cannot open a payment path nobody checks.
-const PAYMENT_DOMAIN = /(^|\.)(paypal\.com|paypal\.me|gumroad\.com|stripe\.com)$/;
+const PAYMENT_DOMAIN = /(^|\.)(paypal\.com|paypal\.me|gumroad\.com|stripe\.com|agensi\.io)$/;
 // Each entry names what a link there must be, and the rule, both read out when
 // a link breaks it. They say only as much as the table behind them asserts: a
 // PayPal id was read back off PayPal's own object; a Gumroad slug only shows the
-// product is published, and says nothing of its price.
+// product is published, and says nothing of its price; the Agensi page was read
+// back, but its card states no price, so none is checked.
 const paymentPath = {
   "www.paypal.com": {
     object: "a verified payment object",
@@ -2195,6 +2196,17 @@ const paymentPath = {
       const slug = url.pathname.match(/^\/l\/([^/]+)$/)?.[1];
       return slug !== undefined && verifiedGumroadSlugs.has(slug);
     },
+  },
+  // A marketplace product page, linked from the storefront and the README by
+  // main's #58. Read back live on 2026-10-19 before its host was reviewed: HTTP
+  // 200, the Claude Code Theme Setup Assistant skill, $12, sold through Agensi's
+  // own checkout. The card says "Paid, on Agensi" and states no price, so no
+  // price is checked against it; the host is held to that one page.
+  "agensi.io": {
+    object: "the reviewed Agensi product page",
+    rule: "at /skills/claude-code-theme-setup-assistant, with no query or fragment",
+    allows: (url) =>
+      url.search === "" && url.hash === "" && url.pathname === "/skills/claude-code-theme-setup-assistant",
   },
 };
 // Hosts that are not payment hosts but serve a checkout on some paths: GitHub
