@@ -1034,6 +1034,11 @@ for (const [form, page, from, to, message] of [
   ["a soft hyphen in a word between", "semantic-terminal-colors.html", "<p>Every Vol.&nbsp;2 palette is previewed",
     "<p>All 51 hand&shy;tuned dark themes.</p><p>Every Vol.&nbsp;2 palette is previewed",
     /semantic-terminal-colors\.html:\d+ says "51 hand.?tuned dark themes"/],
+  ["a soft hyphen as a numeric reference", "semantic-terminal-colors.html", "<p>Every Vol.&nbsp;2 palette is previewed",
+    "<p>All 51 hand&#173;tuned dark themes.</p><p>Every Vol.&nbsp;2 palette is previewed",
+    /semantic-terminal-colors\.html:\d+ says "51 handtuned dark themes"/],
+  ["a soft hyphen character in a note", "README.md", "The same 50 themes are a **free download** on the",
+    "The same 51 hand\u00adtuned themes are a **free download** on the", /README\.md:\d+ says "51 handtuned themes"/],
   ["a plugin's README", "plugins/50-dark-themes/README.md", "This plugin adds all 50 themes", "This plugin adds all 51 themes",
     /plugins\/50-dark-themes\/README\.md:\d+ says "51 themes"/],
 ]) {
@@ -1056,6 +1061,12 @@ for (const [form, page, from, to, message] of [
     /PROMOTION_QUEUE\.md:\d+ claims 726 role-aware checks/],
   ["with a plus in a note", "PROMOTION_QUEUE.md", "· 894 role-aware checks ·", "· 900+ role-aware checks ·",
     /PROMOTION_QUEUE\.md:\d+ claims 900 role-aware checks/],
+  // The storefront's own check reads any "<n> role-aware" claim, whatever noun
+  // follows; the prose scan above needs "checks" or "comparisons".
+  ["with a plus on the storefront, whatever noun follows", "index.html",
+    "<div><dt>894</dt><dd>role-aware checks</dd></div>",
+    "<div><dt>894</dt><dd>role-aware checks</dd></div><p>Over <b>900+</b> role-aware contrast pairs are held.</p>",
+    /index\.html:\d+ claims 900 role-aware checks/],
 ]) {
   test(`reads a stale role-aware count ${form}`, { timeout: 90_000 }, async (t) => {
     const fixtureRoot = await editPage(t, page, from, to);
