@@ -48,8 +48,9 @@ const PACKS = [
 ];
 
 // Mirrors scripts/verify-contrast.mjs: the same tokens, surfaces and floors,
-// so a page states exactly what the verifier enforces.
-const CONTRAST_CHECKS = [
+// so a page states exactly what the verifier enforces. verify.mjs fails if
+// the two lists drift apart.
+export const CONTRAST_CHECKS = [
   { token: "text", floor: 7, surfaces: ["terminal", "userMessageBackground"], standard: "WCAG AAA, normal text" },
   { token: "inactive", floor: 4.5, surfaces: ["terminal", "userMessageBackground"], standard: "WCAG AA, normal text" },
   { token: "claude", floor: 4.5, surfaces: ["terminal"], standard: "WCAG AA, normal text" },
@@ -492,7 +493,7 @@ ${paletteRows}
 
     <section aria-labelledby="contrast-title">
       <h2 id="contrast-title">Measured contrast.</h2>
-      <p>Computed from the hex values above with the WCAG 2 relative-luminance formula, by the same script that gates every change to this repository. Figures are truncated, never rounded up. Each row meets its floor.</p>
+      <p>Computed from the hex values above with the WCAG 2 relative-luminance formula, against the same floors <code>scripts/verify-contrast.mjs</code> checks on every pull request. Figures are truncated, never rounded up. Each row meets its floor.</p>
       <div class="table-wrap">
         <table>
           <thead><tr><th scope="col">Pair</th><th scope="col">Colours</th><th scope="col">Ratio</th><th scope="col">Floor</th><th scope="col">Standard</th></tr></thead>

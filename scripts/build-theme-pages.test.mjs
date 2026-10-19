@@ -206,3 +206,18 @@ test("rejects theme pages that label permission as non-text only", { timeout: 12
   assert.notEqual(result.code, 0, "the verifier accepted a label that hides the text Claude Code draws in it");
   assert.match(result.stderr, /theme\/absinthe\/index\.html labels its permission row "WCAG AA, non-text"/);
 });
+
+// Each page prints its floors and says verify-contrast.mjs checks them.
+test("rejects theme pages whose floors drift from the ones verify-contrast.mjs checks", { timeout: 120_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const checker = join(fixtureRoot, "scripts/verify-contrast.mjs");
+  const source = await readFile(checker, "utf8");
+  const floor = '{ token: "rate_limit_fill", floor: 3, surfaces: ["terminal"] },';
+  assert.ok(source.includes(floor), "fixture anchor moved; update this test");
+  await writeFile(checker, source.replace(floor, floor.replace("floor: 3", "floor: 4.5")));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier let the pages print floors it no longer checks");
+  assert.match(result.stderr, /build-theme-pages\.mjs states contrast floors that scripts\/verify-contrast\.mjs does not check \(pages only: rate_limit_fill 3 terminal; checked only: rate_limit_fill 4\.5 terminal\)/);
+});

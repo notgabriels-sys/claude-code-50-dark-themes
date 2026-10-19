@@ -1239,7 +1239,20 @@ if (/file ?names?/i.test(visibleCopy)) {
 // for a theme that does not, and sitemap.xml must list each one (the builder
 // owns the sitemap for that reason).
 // ---------------------------------------------------------------------------
-const { buildThemePages } = await import("./build-theme-pages.mjs");
+const { buildThemePages, CONTRAST_CHECKS: pageFloors } = await import("./build-theme-pages.mjs");
+const { contrastFloors } = await import("./verify-contrast.mjs");
+// Each theme page prints its floors and says they are the ones
+// verify-contrast.mjs checks. The builder keeps its own list, so hold it to that
+// one: the same tokens, floors and surfaces, in the same order.
+const floorKey = ({ token, floor, surfaces }) => `${token} ${floor} ${surfaces.join("+")}`;
+if (pageFloors.map(floorKey).join("|") !== contrastFloors.map(floorKey).join("|")) {
+  const pageOnly = pageFloors.map(floorKey).filter((key) => !contrastFloors.map(floorKey).includes(key));
+  const checkedOnly = contrastFloors.map(floorKey).filter((key) => !pageFloors.map(floorKey).includes(key));
+  fail(
+    "scripts/build-theme-pages.mjs states contrast floors that scripts/verify-contrast.mjs does not check " +
+      `(pages only: ${pageOnly.join(", ") || "none"}; checked only: ${checkedOnly.join(", ") || "none"}).`,
+  );
+}
 const themePages = await buildThemePages(root);
 for (const [path, expected] of themePages) {
   let actual;

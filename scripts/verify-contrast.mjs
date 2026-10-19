@@ -276,6 +276,8 @@ console.log(
 // Exported so verify.mjs can hold the public pages to the real number. Every
 // surface that prints a comparison count is making a claim to a reader.
 export const roleAwareComparisonCount = comparisons;
+// The floors themselves, so the theme pages can be held to stating them.
+export const contrastFloors = checks.map(({ token, floor, surfaces }) => ({ token, floor, surfaces }));
 indicatorTextBelowAA.sort((a, b) => a.ratio - b.ratio);
 // The floor `permission` and `planMode` are held to, so verify.mjs knows
 // whether README still has to say they sit below the text floor.
