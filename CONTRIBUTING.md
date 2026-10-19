@@ -50,11 +50,11 @@ Rules:
 - Keep primary text at 7:1, foreground accents and readable secondary text at 4.5:1,
   and functional borders or indicators at 3:1 against the matching gallery background.
 - `permission` and `planMode` are checked at 3:1, but Claude Code also draws text in them ("⏸ plan
-  mode on", plan and dialog titles). README says how many of all the themes keep that text below
-  4.5:1, and the lowest ratio with its theme. The verifier holds all three to the palettes, so
-  adding a theme, or changing a theme's `permission`/`planMode` colour or its recommended
-  background, can mean updating that sentence. Holding them at 4.5:1 instead would be a
-  pack-wide decision.
+  mode on", plan and dialog titles). README says how many themes keep that text below 4.5:1, out
+  of how many, and the lowest ratio with its theme. The verifier checks all four against the
+  palettes, so adding a theme always means updating that sentence (its total moves), and changing
+  a theme's `permission`/`planMode` colour or its recommended background can. Holding them at
+  4.5:1 instead would be a pack-wide decision.
 - `subtle` is not contrast-checked, and the pack keeps it very faint. Claude Code draws text in it
   far more than borders — rejection notices ("User rejected Claude's plan:"), sandbox and settings
   notices, usage statistics, key hints — so match the existing themes rather than tuning it per

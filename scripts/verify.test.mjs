@@ -1,12 +1,19 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { chmod, cp, mkdtemp, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { chmod, cp, mkdtemp, readdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 
 const projectRoot = fileURLToPath(new URL("../", import.meta.url));
+
+// The numbers the public pages state move whenever a theme is added. Tests
+// that edit those claims start from today's real values, so following
+// CONTRIBUTING's add-a-theme step leaves them green.
+const { roleAwareComparisonCount, indicatorTextBelowAA } = await import("./verify-contrast.mjs");
+const vol2Count = (await readdir(join(projectRoot, "plugins/dark-themes-vol-2/themes"))).filter((file) => file.endsWith(".json")).length;
+const themeTotal = 50 + vol2Count;
 const coverPath = "assets/products/dark-ui-kit.png";
 const previewImagePath = "assets/products/dark-ui-kit-components.png";
 
@@ -178,12 +185,15 @@ test("rejects a share card that states a stale role-aware check count", { timeou
   const fixtureRoot = await makeFixture(t);
   const fixtureCard = join(fixtureRoot, "assets/social-preview.html");
   const card = await readFile(fixtureCard, "utf8");
-  await writeFile(fixtureCard, card.replace("<b>894</b> role-aware", "<b>726</b> role-aware"));
+  const stale = roleAwareComparisonCount - 168;
+  const claim = `<b>${roleAwareComparisonCount}</b> role-aware`;
+  assert.ok(card.includes(claim), "fixture anchor moved; update this test");
+  await writeFile(fixtureCard, card.replace(claim, `<b>${stale}</b> role-aware`));
 
   const result = await runVerifier(fixtureRoot);
 
   assert.notEqual(result.code, 0, "the verifier accepted a share card claiming a stale check count");
-  assert.match(result.stderr, /assets\/social-preview\.html claims 726 role-aware checks/);
+  assert.match(result.stderr, new RegExp(`assets/social-preview\\.html claims ${stale} role-aware checks`));
 });
 
 test("rejects a storefront proofline that states a stale check count", { timeout: 90_000 }, async (t) => {
@@ -192,31 +202,38 @@ test("rejects a storefront proofline that states a stale check count", { timeout
   const html = await readFile(fixtureHtml, "utf8");
   // The number and the phrase are split by markup here; the guard must still
   // read it, because this is the surface that shipped stale before.
-  await writeFile(fixtureHtml, html.replace("<dt>894</dt>", "<dt>900</dt>"));
+  const stale = roleAwareComparisonCount + 6;
+  const claim = `<dt>${roleAwareComparisonCount}</dt>`;
+  assert.ok(html.includes(claim), "fixture anchor moved; update this test");
+  await writeFile(fixtureHtml, html.replace(claim, `<dt>${stale}</dt>`));
 
   const result = await runVerifier(fixtureRoot);
 
   assert.notEqual(result.code, 0, "the verifier accepted a proofline claiming a stale check count");
-  assert.match(result.stderr, /index\.html claims 900 role-aware checks/);
+  assert.match(result.stderr, new RegExp(`index\\.html claims ${stale} role-aware checks`));
 });
 
 test("rejects a share card whose theme counts drift from the shipped packs", { timeout: 90_000 }, async (t) => {
   const fixtureRoot = await makeFixture(t);
   const fixtureCard = join(fixtureRoot, "assets/social-preview.html");
   const card = await readFile(fixtureCard, "utf8");
-  await writeFile(fixtureCard, card.replace("<b>50 + 12</b> themes", "<b>50 + 14</b> themes"));
+  const claim = `<b>50 + ${vol2Count}</b> themes`;
+  assert.ok(card.includes(claim), "fixture anchor moved; update this test");
+  await writeFile(fixtureCard, card.replace(claim, `<b>50 + ${vol2Count + 2}</b> themes`));
 
   const result = await runVerifier(fixtureRoot);
 
   assert.notEqual(result.code, 0, "the verifier accepted a share card overstating the theme count");
-  assert.match(result.stderr, /claims 50 \+ 14 themes; the repository ships 50 \+ 12/);
+  assert.match(result.stderr, new RegExp(`claims 50 \\+ ${vol2Count + 2} themes; the repository ships 50 \\+ ${vol2Count}`));
 });
 
 test("rejects a share card that drops its check-count claim entirely", { timeout: 90_000 }, async (t) => {
   const fixtureRoot = await makeFixture(t);
   const fixtureCard = join(fixtureRoot, "assets/social-preview.html");
   const card = await readFile(fixtureCard, "utf8");
-  await writeFile(fixtureCard, card.replace("<b>894</b> role-aware checks", "<b>MIT</b> licensed"));
+  const claim = `<b>${roleAwareComparisonCount}</b> role-aware checks`;
+  assert.ok(card.includes(claim), "fixture anchor moved; update this test");
+  await writeFile(fixtureCard, card.replace(claim, "<b>MIT</b> licensed"));
 
   const result = await runVerifier(fixtureRoot);
 
@@ -503,12 +520,15 @@ test("rejects a storefront Vol. 2 heading that misstates the pack size", { timeo
   const fixtureRoot = await makeFixture(t);
   const fixturePage = join(fixtureRoot, "index.html");
   const page = await readFile(fixturePage, "utf8");
-  await writeFile(fixturePage, page.replace("Vol.&nbsp;2 — twelve new atmospheres", "Vol.&nbsp;2 — eleven new atmospheres"));
+  const heading = /Vol\.&nbsp;2 — ([a-z]+|\d+) new atmospheres/i;
+  assert.match(page, heading, "fixture anchor moved; update this test");
+  const wrong = vol2Count === 11 ? "ten" : "eleven";
+  await writeFile(fixturePage, page.replace(heading, `Vol.&nbsp;2 — ${wrong} new atmospheres`));
 
   const result = await runVerifier(fixtureRoot);
 
   assert.notEqual(result.code, 0, "the verifier accepted a stale Vol. 2 count on the storefront");
-  assert.match(result.stderr, /Vol\. 2 heading says "eleven" new atmospheres; the pack ships 12/);
+  assert.match(result.stderr, new RegExp(`Vol\\. 2 heading says "${wrong}" new atmospheres; the pack ships ${vol2Count}`));
 });
 
 test("rejects a page that shows /theme with a theme argument as a command", { timeout: 90_000 }, async (t) => {
@@ -1053,7 +1073,12 @@ test("rejects docs that say CI runs on every push when it runs only on main", { 
 // `permission` and `planMode` are held to the 3:1 non-text floor, but Claude
 // Code draws text in them. README states how many themes keep that text below
 // AA and the lowest ratio; both must match what verify-contrast.mjs computes.
-// The anchors tolerate any rewrap of README's paragraph.
+// The anchors come from today's values and tolerate any rewrap of README.
+const lowestIndicator = indicatorTextBelowAA[0];
+const spaced = (text) => new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/ /g, "\\s+"));
+const indicatorCount = new RegExp(`\\b([a-z]+|\\d+)(\\s+)of(\\s+)the(\\s+)${themeTotal}(\\s+)themes\\b`, "i");
+const lowestClaim = spaced(`${lowestIndicator.ratio.toFixed(2)}:1 in ${lowestIndicator.name}`);
+
 async function editReadmeClaim(fixtureRoot, pattern, replacement) {
   const readme = join(fixtureRoot, "README.md");
   const text = await readFile(readme, "utf8");
@@ -1061,13 +1086,17 @@ async function editReadmeClaim(fixtureRoot, pattern, replacement) {
   await writeFile(readme, text.replace(pattern, replacement));
 }
 
-// Gives each listed root theme, and its plugin copy, new permission and
-// planMode colours.
+// Gives each named theme new permission and planMode colours, in every file
+// that carries it: a root theme and its plugin copy, or a Vol. 2 theme.
 async function setIndicatorColours(fixtureRoot, colours) {
-  for (const [file, colour] of Object.entries(colours)) {
-    for (const path of [file, `plugins/50-dark-themes/themes/${file}`]) {
+  for (const [name, colour] of Object.entries(colours)) {
+    const file = `${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.json`;
+    const vol2 = `plugins/dark-themes-vol-2/themes/${file}`;
+    const paths = (await readdir(fixtureRoot)).includes(file) ? [file, `plugins/50-dark-themes/themes/${file}`] : [vol2];
+    for (const path of paths) {
       const target = join(fixtureRoot, path);
       const theme = JSON.parse(await readFile(target, "utf8"));
+      assert.equal(theme.name, name, `${path} is not ${name}; update this test`);
       theme.overrides.permission = colour;
       theme.overrides.planMode = colour;
       await writeFile(target, `${JSON.stringify(theme, null, 2)}\n`);
@@ -1075,45 +1104,64 @@ async function setIndicatorColours(fixtureRoot, colours) {
   }
 }
 
+// Each theme's own `claude` accent, which the verifier holds at AA.
+async function accentsFor(fixtureRoot, names) {
+  const colours = {};
+  for (const name of names) {
+    const file = `${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.json`;
+    const path = (await readdir(fixtureRoot)).includes(file) ? file : `plugins/dark-themes-vol-2/themes/${file}`;
+    colours[name] = JSON.parse(await readFile(join(fixtureRoot, path), "utf8")).overrides.claude;
+  }
+  return colours;
+}
+
 test("rejects a README count of below-AA permission and planMode text that the palettes contradict", { timeout: 90_000 }, async (t) => {
   const fixtureRoot = await makeFixture(t);
-  await editReadmeClaim(fixtureRoot, /Nine(\s+)of(\s+)the(\s+)62/, "Eight$1of$2the$362");
+  const wrong = indicatorTextBelowAA.length + 1;
+  await editReadmeClaim(fixtureRoot, indicatorCount, `${wrong}$2of$3the$4${themeTotal}$5themes`);
 
   const result = await runVerifier(fixtureRoot);
 
   assert.notEqual(result.code, 0, "the verifier accepted a wrong count of themes below AA");
-  assert.match(result.stderr, /README\.md must say that 9 of the 62 themes keep `permission`\/`planMode` text below AA; it says "Eight of the 62 themes"/);
+  assert.match(
+    result.stderr,
+    new RegExp(`README\\.md must say that ${indicatorTextBelowAA.length} of the ${themeTotal} themes keep \`permission\`/\`planMode\` text below AA; it says "${wrong} of the ${themeTotal} themes"`),
+  );
 });
 
 test("rejects a README lowest permission and planMode ratio that the palettes contradict", { timeout: 90_000 }, async (t) => {
   const fixtureRoot = await makeFixture(t);
-  await editReadmeClaim(fixtureRoot, /3\.01:1(\s+)in(\s+)Acid/, "3.13:1$1in$2Acid");
+  await editReadmeClaim(fixtureRoot, lowestClaim, `${(lowestIndicator.ratio + 0.12).toFixed(2)}:1 in ${lowestIndicator.name}`);
 
   const result = await runVerifier(fixtureRoot);
 
   assert.notEqual(result.code, 0, "the verifier accepted a wrong lowest ratio");
-  assert.match(result.stderr, /README\.md must give the lowest `permission`\/`planMode` ratio: 3\.01:1 in Acid/);
+  assert.ok(result.stderr.includes(`must give the lowest \`permission\`/\`planMode\` ratio: ${lowestIndicator.ratio.toFixed(2)}:1 in ${lowestIndicator.name}`), result.stderr);
 });
 
 test("rejects a README that names the wrong theme for the lowest permission and planMode ratio", { timeout: 90_000 }, async (t) => {
   const fixtureRoot = await makeFixture(t);
-  await editReadmeClaim(fixtureRoot, /3\.01:1(\s+)in(\s+)Acid/, "3.01:1$1in$2Sonar");
+  const other = lowestIndicator.name === "Graphite" ? "Ink" : "Graphite";
+  await editReadmeClaim(fixtureRoot, lowestClaim, `${lowestIndicator.ratio.toFixed(2)}:1 in ${other}`);
 
   const result = await runVerifier(fixtureRoot);
 
   assert.notEqual(result.code, 0, "the verifier accepted the wrong theme for the lowest ratio");
-  assert.match(result.stderr, /README\.md must give the lowest `permission`\/`planMode` ratio: 3\.01:1 in Acid/);
+  assert.ok(result.stderr.includes(`must give the lowest \`permission\`/\`planMode\` ratio: ${lowestIndicator.ratio.toFixed(2)}:1 in ${lowestIndicator.name}`), result.stderr);
 });
 
 test("holds the README sentence to the palettes when a theme's permission colour changes", { timeout: 90_000 }, async (t) => {
   const fixtureRoot = await makeFixture(t);
-  // Acid's purple raised to 4.82:1; README still says nine themes and 3.01:1.
-  await setIndicatorColours(fixtureRoot, { "acid.json": "#A866F0" });
+  // The lowest theme takes its own accent; README still states the old count.
+  await setIndicatorColours(fixtureRoot, await accentsFor(fixtureRoot, [lowestIndicator.name]));
 
   const result = await runVerifier(fixtureRoot);
 
   assert.notEqual(result.code, 0, "the verifier kept a below-AA count the palettes no longer support");
-  assert.match(result.stderr, /README\.md must say that 8 of the 62 themes keep/);
+  const expected = indicatorTextBelowAA.length - 1
+    ? `README.md must say that ${indicatorTextBelowAA.length - 1} of the ${themeTotal} themes keep`
+    : "README.md says some `permission`/`planMode` text is below AA";
+  assert.ok(result.stderr.includes(expected), result.stderr);
 });
 
 test("rejects a README floor paragraph that no longer names permission and planMode", { timeout: 90_000 }, async (t) => {
@@ -1141,13 +1189,7 @@ test("accepts another README paragraph that names permission, planMode and the n
 
 test("rejects a stale below-AA sentence once every theme holds permission and planMode at AA", { timeout: 90_000 }, async (t) => {
   const fixtureRoot = await makeFixture(t);
-  // Each of the nine takes its own `claude` accent, which every theme holds at AA.
-  const nine = ["acid", "sonar", "hearth", "amber-room", "undertow", "plasma", "coral", "oxide", "verdigris"];
-  const colours = {};
-  for (const name of nine) {
-    colours[`${name}.json`] = JSON.parse(await readFile(join(fixtureRoot, `${name}.json`), "utf8")).overrides.claude;
-  }
-  await setIndicatorColours(fixtureRoot, colours);
+  await setIndicatorColours(fixtureRoot, await accentsFor(fixtureRoot, indicatorTextBelowAA.map((row) => row.name)));
   await editReadmeClaim(fixtureRoot, /below(\s+)AA,(\s+)down/, "below$14.5:1,$2down");
 
   const result = await runVerifier(fixtureRoot);
