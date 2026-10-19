@@ -339,10 +339,12 @@ for (const { label, version, tag, file, readmeLinkText, linked } of releaseZips)
 // punctuation, not part of the link, and is stripped before the lookup.
 const releaseLinkPattern = /https:\/\/github\.com\/notgabriels-sys\/claude-code-50-dark-themes\/releases\/(?:tag|download)\/[\w.-]+(?:\/[\w.-]+)?/g;
 const promotionQueueText = await readFile(new URL("PROMOTION_QUEUE.md", root), "utf8").catch(() => "");
+const installGuide = await readFile(new URL("claude-code-theme-install-guide.html", root), "utf8");
 for (const [source, text] of [
   ["The storefront", html],
   ["README", readme],
   ["PROMOTION_QUEUE.md", promotionQueueText],
+  ["The install guide", installGuide],
 ]) {
   for (const [link] of text.matchAll(releaseLinkPattern)) {
     const url = link.replace(/[.,;:]+$/, "");
@@ -350,6 +352,47 @@ for (const [source, text] of [
       fail(`${source} links a release that no shipped pack version claims: ${url}.`);
     }
   }
+}
+
+// The install guide's FAQ schema answered "Do the 50 Claude Code themes cost anything?" with
+// "The Gumroad ZIP can be downloaded for zero by choosing the free price" long after the free
+// zip moved to the release asset above and the Gumroad archive was unlinked. Search engines
+// quote that answer verbatim, so it must name the current zip, the page must not keep the old
+// route anywhere, and the visible page must offer the same link, or the structured data
+// describes a page that does not exist.
+const fiftyThemePack = releaseZips.find((pack) => pack.label === "50 Dark Themes");
+const fiftyThemeZipUrl = `${repositoryUrl}/releases/download/${fiftyThemePack.tag}/${fiftyThemePack.file}`;
+const costQuestionName = "Do the 50 Claude Code themes cost anything?";
+let installGuideFaq = null;
+for (const [, json] of installGuide.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)) {
+  let data;
+  try {
+    data = JSON.parse(json);
+  } catch (error) {
+    fail(`claude-code-theme-install-guide.html carries JSON-LD that does not parse: ${error.message}`);
+  }
+  if (data?.["@type"] === "FAQPage") installGuideFaq = data;
+}
+const costQuestion = installGuideFaq?.mainEntity?.find((entry) => entry?.name === costQuestionName);
+if (!costQuestion) {
+  fail(`The install guide's FAQ schema must keep the question "${costQuestionName}".`);
+}
+const costAnswer = costQuestion?.acceptedAnswer?.text ?? "";
+if (/Gumroad ZIP|for zero by choosing the free price/i.test(installGuide)) {
+  fail(
+    "The install guide still sends readers to a Gumroad zip at the free price; the free pack is the GitHub release zip.",
+  );
+}
+if (!costAnswer.includes(fiftyThemeZipUrl)) {
+  fail(`The install guide's FAQ answer must name the free zip at ${fiftyThemeZipUrl}.`);
+}
+const installGuideZipLink = new RegExp(
+  `href="${escapeRegExp(fiftyThemeZipUrl)}">[^<]+</a> from the v${escapeRegExp(fiftyThemePack.version)} release`,
+);
+if (!installGuideZipLink.test(installGuide)) {
+  fail(
+    `The install guide must link the ${fiftyThemePack.label} zip at ${fiftyThemeZipUrl} and say "from the v${fiftyThemePack.version} release" beside it, so the page shows what its FAQ schema promises.`,
+  );
 }
 
 if (!readme.includes("mkdir -p ~/.claude/themes")) {
@@ -590,7 +633,6 @@ if (!/matches by filename, not contents/i.test(installerHeader)) {
 // silently depended on the reader already standing in a clone. It also copied
 // only the root fifty, immediately after introducing Vol. 2 by name, leaving
 // anyone without the plugin flow no manual route to the twelve.
-const installGuide = await readFile(new URL("claude-code-theme-install-guide.html", root), "utf8");
 const manualSection = installGuide.match(/<section[^>]*id="manual"[\s\S]*?<\/section>/);
 if (!manualSection) {
   fail("claude-code-theme-install-guide.html has no #manual section; the manual-route guard would be inert.");

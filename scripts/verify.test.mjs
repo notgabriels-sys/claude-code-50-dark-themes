@@ -583,3 +583,103 @@ test("rejects a README whose release link text names a version the link does not
   assert.match(result.stderr, /README must link the 50 Dark Themes release as /);
 });
 
+const guideZipAnchor = (version) =>
+  new RegExp(
+    `<a href="https://github\\.com/notgabriels-sys/claude-code-50-dark-themes/releases/download/themes-plugin-v${version.replaceAll(".", "\\.")}/claude-code-dark-themes-v${version.replaceAll(".", "\\.")}\\.zip">[^<]+</a> from the v${version.replaceAll(".", "\\.")} release`,
+    "g",
+  );
+
+test("rejects an install guide whose FAQ answer sends the free zip to Gumroad", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixtureGuide = join(fixtureRoot, "claude-code-theme-install-guide.html");
+  const guide = await readFile(fixtureGuide, "utf8");
+  const answer = /("name": "Do the 50 Claude Code themes cost anything\?",\s*"acceptedAnswer": \{\s*"@type": "Answer",\s*"text": ")[^"]*(")/;
+  assert.match(guide, answer, "the guide should carry the cost question in its FAQ schema");
+  await writeFile(
+    fixtureGuide,
+    guide.replace(
+      answer,
+      "$1No. The 50 dark Claude Code themes are free and MIT licensed. The Gumroad ZIP can be downloaded for zero by choosing the free price.$2",
+    ),
+  );
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a FAQ answer that sends the free zip to Gumroad");
+  assert.match(result.stderr, /The install guide still sends readers to a Gumroad zip at the free price/);
+});
+
+test("rejects an install guide whose FAQ answer names a zip of an unshipped version", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixtureGuide = join(fixtureRoot, "claude-code-theme-install-guide.html");
+  const guide = await readFile(fixtureGuide, "utf8");
+  const version = await readManifestVersion(fixtureRoot, "50-dark-themes");
+  const current = `themes-plugin-v${version}/claude-code-dark-themes-v${version}.zip`;
+  const schemaEnd = guide.indexOf("</head>");
+  assert.ok(guide.slice(0, schemaEnd).includes(current), "the FAQ schema in <head> should name the current zip");
+  // Only the first occurrence sits in the FAQ schema; the visible links further down keep the current version.
+  await writeFile(fixtureGuide, guide.replace(current, "themes-plugin-v0.9.0/claude-code-dark-themes-v0.9.0.zip"));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a FAQ answer pointing at a zip no shipped version claims");
+  assert.match(result.stderr, /The install guide links a release that no shipped pack version claims: .*v0\.9\.0/);
+});
+
+test("rejects an install guide that drops the visible zip link its FAQ schema promises", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixtureGuide = join(fixtureRoot, "claude-code-theme-install-guide.html");
+  const guide = await readFile(fixtureGuide, "utf8");
+  const version = await readManifestVersion(fixtureRoot, "50-dark-themes");
+  assert.match(guide, guideZipAnchor(version), "the guide should link the current zip with its release version beside it");
+  await writeFile(fixtureGuide, guide.replace(guideZipAnchor(version), "ask for the zip"));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted an install guide whose FAQ promises a zip link the page does not show");
+  assert.match(result.stderr, /The install guide must link the 50 Dark Themes zip at /);
+});
+
+test("rejects an install guide whose visible zip caption names a version the link does not resolve to", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixtureGuide = join(fixtureRoot, "claude-code-theme-install-guide.html");
+  const guide = await readFile(fixtureGuide, "utf8");
+  const version = await readManifestVersion(fixtureRoot, "50-dark-themes");
+  assert.match(guide, guideZipAnchor(version));
+  await writeFile(
+    fixtureGuide,
+    guide.replace(guideZipAnchor(version), (anchor) => anchor.replace(`from the v${version} release`, "from the v9.9.9 release")),
+  );
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a zip link captioned with a version it does not resolve to");
+  assert.match(result.stderr, new RegExp(`say "from the v${version.replaceAll(".", "\\.")} release" beside it`));
+});
+
+test("rejects an install guide whose FAQ schema does not parse", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixtureGuide = join(fixtureRoot, "claude-code-theme-install-guide.html");
+  const guide = await readFile(fixtureGuide, "utf8");
+  assert.ok(guide.includes('"@type": "FAQPage",'), "the guide should carry a FAQPage schema");
+  await writeFile(fixtureGuide, guide.replace('"@type": "FAQPage",', '"@type": "FAQPage",,'));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted an install guide with broken JSON-LD");
+  assert.match(result.stderr, /carries JSON-LD that does not parse/);
+});
+
+test("rejects an install guide whose FAQ schema loses the cost question", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixtureGuide = join(fixtureRoot, "claude-code-theme-install-guide.html");
+  const guide = await readFile(fixtureGuide, "utf8");
+  const question = '"name": "Do the 50 Claude Code themes cost anything?",';
+  assert.ok(guide.includes(question));
+  await writeFile(fixtureGuide, guide.replace(question, '"name": "Are the themes paid?",'));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a FAQ schema without the cost question");
+  assert.match(result.stderr, /FAQ schema must keep the question "Do the 50 Claude Code themes cost anything\?"/);
+});
