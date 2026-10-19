@@ -1530,3 +1530,36 @@ test("rejects an install guide whose FAQ answer names neither Gumroad nor the fr
   assert.notEqual(result.code, 0, "the verifier accepted a FAQ answer that never says where the free zip is");
   assert.match(result.stderr, /The install guide's FAQ answer must name the free zip at /);
 });
+
+test("rejects a repository that lets a checkout turn the generated pages CRLF", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  await rm(join(fixtureRoot, ".gitattributes"), { force: true });
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a checkout config under which every generated page reads as stale");
+  assert.match(result.stderr, /\.gitattributes must keep text files LF in every checkout/);
+});
+
+test("rejects a .gitattributes whose last catch-all rule drops eol=lf", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  await writeFile(join(fixtureRoot, ".gitattributes"), "* text=auto eol=lf\n*.png binary\n* text=auto\n");
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a later catch-all rule that lets checkouts use CRLF again");
+  assert.match(result.stderr, /\.gitattributes must keep text files LF in every checkout/);
+});
+
+test("accepts a storefront an editor saved with CRLF line endings", { timeout: 90_000 }, async (t) => {
+  // index.html is edited by hand; Git stores it LF whatever the editor wrote,
+  // so the quick-picks check compares lines, not line endings.
+  const fixtureRoot = await makeFixture(t);
+  const fixturePage = join(fixtureRoot, "index.html");
+  const page = await readFile(fixturePage, "utf8");
+  await writeFile(fixturePage, page.replace(/\r?\n/g, "\r\n"));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.equal(result.code, 0, `a CRLF save of a correct storefront failed:\n${result.stderr}`);
+});

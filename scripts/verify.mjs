@@ -297,6 +297,33 @@ if (!html.includes("claude plugin install dark-themes-vol-2@notgabriels-themes")
 }
 
 // ---------------------------------------------------------------------------
+// The quick picks below, and the theme pages and sitemap further down, are
+// compared byte for byte with what their builders render, and the builders
+// write LF. Git for Windows checks text files out with CRLF by default
+// (core.autocrlf=true). On such a checkout of an untouched main, this script
+// called the quick picks and then every theme page stale, and 58 of main's 67
+// tests failed with it. So .gitattributes must keep text files LF in every
+// checkout. The last catch-all rule is the one Git applies.
+// ---------------------------------------------------------------------------
+const gitattributes = await readFile(new URL(".gitattributes", root), "utf8").catch(() => "");
+const gitattributeRules = gitattributes
+  .split(/\r?\n/)
+  .map((line) => line.trim())
+  .filter((line) => line && !line.startsWith("#"))
+  .map((line) => line.split(/\s+/));
+const catchAll = gitattributeRules.filter(([pattern]) => pattern === "*").at(-1) ?? [];
+if (
+  !catchAll.includes("eol=lf") ||
+  catchAll.some((attribute) => attribute === "-text" || attribute === "binary") ||
+  gitattributeRules.some((rule) => rule.includes("eol=crlf"))
+) {
+  fail(
+    ".gitattributes must keep text files LF in every checkout (`* text=auto eol=lf`): the generated pages are " +
+      "compared byte for byte, so on a CRLF checkout (Git for Windows' default) every one of them reads as stale.",
+  );
+}
+
+// ---------------------------------------------------------------------------
 // The "Start here" row in index.html names five themes and a measured contrast
 // ratio for each; scripts/build-quick-picks.mjs chooses and words them from
 // the theme files. Both are public claims, so the block between its markers
@@ -321,7 +348,10 @@ if (
   fail("index.html carries more than one quick-picks row or marker pair; the row appears once, between one pair of markers.");
 }
 const expectedQuickPicks = await buildQuickPicks(root);
-if (html.slice(quickPicksStart, quickPicksEnd + QUICK_PICKS_END.length) !== expectedQuickPicks) {
+// index.html is edited by hand, so an editor may save it with CRLF; Git stores
+// it LF either way. Compare the block's lines, not its line endings.
+const quickPicksOnDisk = html.slice(quickPicksStart, quickPicksEnd + QUICK_PICKS_END.length).replace(/\r\n/g, "\n");
+if (quickPicksOnDisk !== expectedQuickPicks) {
   fail(
     "The quick picks in index.html are stale: they are not what scripts/build-quick-picks.mjs renders " +
       "from the theme files. Run it and commit the result.",
