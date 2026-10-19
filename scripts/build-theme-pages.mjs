@@ -479,7 +479,7 @@ ${commandPanel("/theme", `the /theme command, then choose ${name} in Claude Code
     <section aria-labelledby="manual-title">
       <h2 id="manual-title">Or copy just this file.</h2>
       <p>One theme, no plugin: fetch <a href="${blobUrl}"><code>${esc(pack.rawDir)}${esc(theme.file)}</code></a> from the repository into your themes folder. If that folder did not exist when Claude Code started, restart it once.</p>
-${commandPanel(manualCommand, `copy ${name} manually`)}    </section>
+${commandPanel(manualCommand, `single-file install command for ${name}`)}    </section>
 
     <section aria-labelledby="terminal-title">
       <h2 id="terminal-title">Terminal background: <code>${terminal}</code>.</h2>
@@ -548,7 +548,7 @@ export function renderIndexPage(themes) {
       .join("\n");
     return `    <section aria-labelledby="${pack.id}-title">
       <h2 id="${pack.id}-title">${esc(pack.label)} · ${packThemes.length}</h2>
-      <p>Installs as one plugin: <code>${esc(installCommandFor(pack.id))}</code>. If Claude Code was open while you installed, restart it: plugin themes load when it starts. Previewed in colour in the <a href="/${pack.galleryAnchor}">gallery</a>.</p>
+      <p>Installs as one plugin: <code>${esc(installCommandFor(pack.id))}</code>. If Claude Code was open while you installed, restart it: plugin themes load when it starts. Previewed in colour in the <a href="/${pack.galleryAnchor}">gallery's ${esc(pack.label)} section</a>.</p>
       <div class="index-grid">
 ${links}
       </div>
