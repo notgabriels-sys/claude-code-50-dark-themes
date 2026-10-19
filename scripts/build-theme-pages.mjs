@@ -408,7 +408,8 @@ export function renderThemePage(theme) {
         name: title,
         description,
         isPartOf: { "@type": "WebSite", "@id": `${SITE}/#website`, name: "Gabs Utilities", url: `${SITE}/` },
-        about: { "@id": `${SITE}/#plugin` },
+        // index.html's #plugin is the 50-theme plugin; a Vol. 2 theme is not in it.
+        ...(pack.id === "50-dark-themes" ? { about: { "@id": `${SITE}/#plugin` } } : {}),
         author: { "@type": "Organization", name: "Gabs Utilities", url: SITE },
         license: "https://opensource.org/license/mit",
       },
@@ -528,7 +529,6 @@ export function renderIndexPage(themes) {
     name: title,
     description,
     isPartOf: { "@type": "WebSite", "@id": `${SITE}/#website`, name: "Gabs Utilities", url: `${SITE}/` },
-    about: { "@id": `${SITE}/#plugin` },
     author: { "@type": "Organization", name: "Gabs Utilities", url: SITE },
   };
   const sections = PACKS.map((pack) => {

@@ -1330,6 +1330,12 @@ for (const [path, source] of themePages) {
       fail(`${path} labels its ${row[1]} row "${row[2]}" as if it were non-text only; Claude Code also draws text in it.`);
     }
   }
+  // index.html defines #plugin as the 50-theme plugin. #59 had all 12 Vol. 2
+  // pages and the two-pack index declare they were about it.
+  if (source.includes('"@id": "https://gabs-utilities.com/#plugin"')
+    && (source.includes("dark-themes-vol-2@notgabriels-themes") || path === "theme/index.html")) {
+    fail(`${path} says in its structured data that it is about #plugin, the 50-theme plugin, which does not hold every theme it covers.`);
+  }
   if (!source.includes('rel="icon" type="image/svg+xml" href="/favicon.svg"')) {
     fail(`${path} must expose the first-party SVG favicon.`);
   }

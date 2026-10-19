@@ -221,3 +221,18 @@ test("rejects theme pages whose floors drift from the ones verify-contrast.mjs c
   assert.notEqual(result.code, 0, "the verifier let the pages print floors it no longer checks");
   assert.match(result.stderr, /build-theme-pages\.mjs states contrast floors that scripts\/verify-contrast\.mjs does not check \(pages only: rate_limit_fill 3 terminal; checked only: rate_limit_fill 4\.5 terminal\)/);
 });
+
+// index.html's #plugin is the 50-theme plugin; Vol. 2 themes are not in it.
+test("rejects Vol. 2 theme pages that claim to be about the 50-theme plugin", { timeout: 120_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  await editBuilder(
+    fixtureRoot,
+    '...(pack.id === "50-dark-themes" ? { about: { "@id": `${SITE}/#plugin` } } : {}),',
+    'about: { "@id": `${SITE}/#plugin` },',
+  );
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a Vol. 2 page naming the wrong plugin");
+  assert.match(result.stderr, /theme\/afterglow\/index\.html says in its structured data that it is about #plugin/);
+});
