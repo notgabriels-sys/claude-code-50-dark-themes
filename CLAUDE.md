@@ -377,8 +377,9 @@ reproduced: it kept serving every page a fake checkout after the registering
 line and the script were both removed. So a served `.mjs` is refused in any
 directory at or above a served page; `scripts/` holds none. The SVG and
 XML reader does not parse. It refuses whatever lets a browser build markup the
-text does not spell — another encoding, a doctype, a comment or CDATA section,
-a processing instruction, a character reference — and then holds every element
+text does not spell — another encoding, a doctype (since 2026-10-19, any but
+the two public SVG ones, exactly), CDATA, a processing instruction, a character
+reference — and then holds every element
 name and every attribute name anywhere in the file to the allowlist, each
 captured to a delimiter: Chromium runs a `script` element whose prefix is `ä`,
 and a capture by character class reads straight past it. Differentially tested
@@ -439,10 +440,26 @@ the XML declaration may use either quote and `utf-8` in any case; a note may
 set `title`, which the Pages SEO tag sanitises as it does `description`; and a
 `.css` file gets its own refusal, because a page may load a stylesheet and CSS
 makes requests — the generic message had asked only how a browser opens a file,
-which would have let a contributor add `.css` as inert. Still open, and the next
-step: the SVG allowlist refuses what Figma, Illustrator, Inkscape and SVGO
-export (clip paths, comments, `data-*`), and widening it needs its own
-differential run.
+which would have let a contributor add `.css` as inert. The SVG allowlist,
+which refused ordinary design-tool exports, was widened next; see below.
+
+**(added 2026-10-19) SVG artwork from design tools.** The allowlist refused the
+clip paths, filters, comments, public doctype and layer names that Figma,
+Illustrator, Inkscape and potrace write, so an ordinary export failed and the
+next contributor would have loosened it by hand. It now holds what those tools
+export: clip paths, masks, patterns, every filter primitive but `feImage`
+(which fetches), comments (the reader is stateless, so a comment hides nothing
+from it), the public SVG 1.1 and 1.0 doctypes written exactly and with no
+internal subset (one can declare entities and default an `onload`),
+`xmlns:xlink` and `xmlns:svg` pinned to their namespaces, and presentation
+attributes that take no URL, or only a `url()` naming the same file. Still
+refused, with a remedy line naming each tool's setting: `style` elements and
+attributes (CSS fetches through `@import` and `image-set()` without writing
+`url(`), `use`, `image`, `feImage`, `foreignObject`, and editor namespaces such
+as Inkscape's. Every refusal in a file is now listed in one run. Of 16 sample
+exports — eight real files from public repositories, eight written to each
+tool's documented format — 8 pass, up from 2, and each of the other eight needs
+one of those refusals.
 
 **(added 2026-10-19) Every inline script is reviewed, and the browser enforces
 it.** The link check reads URLs, and a script navigates without one: a

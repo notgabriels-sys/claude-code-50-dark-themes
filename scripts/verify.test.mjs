@@ -1770,12 +1770,12 @@ for (const [defect, path, content, message] of [
     `${SVG_OPEN}<rect width="9" height="9" fill="\\75rl(https://pay.example.invalid/p.svg#g)"/></svg>\n`,
     /assets\/pay\.svg:1 has "\\"\. A url\(\) may only name an element in this file/],
   ["an SVG in the XHTML namespace", "assets/pay.svg", '<svg xmlns="http://www.w3.org/1999/xhtml"><rect width="9"/></svg>\n',
-    /assets\/pay\.svg:1 sets xmlns to "http:\/\/www\.w3\.org\/1999\/xhtml"; it must be http:\/\/www\.w3\.org\/2000\/svg/],
+    /assets\/pay\.svg:1 has xmlns="http:\/\/www\.w3\.org\/1999\/xhtml"; it must be http:\/\/www\.w3\.org\/2000\/svg/],
   ["an SVG with a doctype that declares markup", "assets/pay.svg",
     `<!DOCTYPE svg [<!ENTITY pay "<a href='https://pay.example.invalid/x'>Pay</a>">]>\n${SVG_OPEN}&pay;</svg>\n`,
-    /assets\/pay\.svg:1 has "<!"\. A doctype, comment, CDATA section/],
+    /assets\/pay\.svg:1 has "<!"\. A doctype, CDATA section/],
   ["an SVG with a character reference", "assets/pay.svg", `${SVG_OPEN}<text>&#60;</text></svg>\n`,
-    /assets\/pay\.svg:1 has "&"\. A doctype, comment, CDATA section/],
+    /assets\/pay\.svg:1 has "&"\. A doctype, CDATA section/],
   ["an SVG saved as UTF-16", "assets/pay.svg",
     Buffer.concat([Buffer.from([0xff, 0xfe]), Buffer.from(`${SVG_OPEN}<rect width="9"/></svg>\n`, "utf16le")]),
     /assets\/pay\.svg is not UTF-8/],
@@ -1784,7 +1784,7 @@ for (const [defect, path, content, message] of [
   ["a sitemap styled into a page", "sitemap.xml",
     SITEMAP_OPEN.replace("\n", '\n<?xml-stylesheet type="text/xsl" href="sitemap.xsl"?>\n') +
       "  <url><loc>https://gabs-utilities.com/</loc></url>\n</urlset>\n",
-    /sitemap\.xml:2 has "<\?"\. A doctype, comment, CDATA section, processing instruction/],
+    /sitemap\.xml:2 has "<\?"\. A doctype, CDATA section, processing instruction/],
   ["an XHTML page saved as .xml", "assets/pay.xml",
     '<html xmlns="http://www.w3.org/1999/xhtml"><body><a href="https://pay.example.invalid/x">Pay</a></body></html>\n',
     /assets\/pay\.xml:1 has the element <html>, which is not in the sitemap allowlist/],
@@ -1919,11 +1919,11 @@ for (const [defect, path, content, message] of [
   ["a sitemap opening with a stylesheet", "sitemap.xml",
     '<?xml-stylesheet type="text/css" href="https://pay.example.invalid/s.css"?>\n' +
       SITEMAP_OPEN.slice(SITEMAP_OPEN.indexOf("\n") + 1) + "  <url><loc>https://gabs-utilities.com/</loc></url>\n</urlset>\n",
-    /sitemap\.xml:1 has "<\?"\. A doctype, comment, CDATA section, processing instruction/],
+    /sitemap\.xml:1 has "<\?"\. A doctype, CDATA section, processing instruction/],
   ["a sitemap declaring another encoding", "sitemap.xml",
     '<?xml version="1.0" encoding="ISO-8859-1"?>\n' +
       SITEMAP_OPEN.slice(SITEMAP_OPEN.indexOf("\n") + 1) + "  <url><loc>https://gabs-utilities.com/</loc></url>\n</urlset>\n",
-    /sitemap\.xml:1 has "<\?"\. A doctype, comment, CDATA section, processing instruction/],
+    /sitemap\.xml:1 has "<\?"\. A doctype, CDATA section, processing instruction/],
   ["a sitemap location not written as a browser writes it", "sitemap.xml",
     `${SITEMAP_OPEN}  <url><loc>https://gabs-utilities.com/a/../impressum.html</loc></url>\n</urlset>\n`,
     /sitemap\.xml lists https:\/\/gabs-utilities\.com\/a\/\.\.\/impressum\.html; a sitemap lists pages on/],
@@ -2099,4 +2099,89 @@ test("accepts the gallery script saved with CRLF line endings", { timeout: 90_00
   const result = await runVerifier(fixtureRoot);
 
   assert.equal(result.code, 0, `a CRLF gallery script was rejected: ${result.stderr}`);
+});
+
+// The SVG allowlist holds what design tools export, written here in each
+// tool's documented shape, and still nothing that links, loads or runs script.
+const ILLUSTRATOR_PROLOG = '<?xml version="1.0" encoding="utf-8"?>\n' +
+  "<!-- Generator: Adobe Illustrator 27.0.0, SVG Export Plug-In . SVG Version: 6.00 Build 0)  -->\n" +
+  '<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">\n';
+for (const [control, path, content] of [
+  ["an SVG with a clip path and a drop shadow, as Figma exports one", "assets/figma.svg",
+    '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">\n' +
+      '<g clip-path="url(#a)" filter="url(#b)"><path d="M2 2h20v20H2z" fill="#111"/></g>\n<defs>\n' +
+      '<clipPath id="a"><rect width="24" height="24" fill="white"/></clipPath>\n' +
+      '<filter id="b" x="0" y="0" width="24" height="28" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">' +
+      '<feFlood flood-opacity="0" result="BackgroundImageFix"/><feColorMatrix in="SourceAlpha" type="matrix" ' +
+      'values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/><feOffset dy="4"/>' +
+      '<feGaussianBlur stdDeviation="2"/><feComposite in2="hardAlpha" operator="out"/>' +
+      '<feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow"/></filter>\n</defs>\n</svg>\n'],
+  ["an Illustrator export with its comment, doctype and layer names", "assets/illustrator.svg",
+    ILLUSTRATOR_PROLOG + '<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" ' +
+      'xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" viewBox="0 0 24 24" ' +
+      'enable-background="new 0 0 24 24" xml:space="preserve">\n' +
+      '<g data-name="Layer 1"><rect class="st0" width="24" height="24" fill="#111"/></g>\n</svg>\n'],
+  ["a potrace export with the SVG 1.0 doctype and its metadata", "assets/potrace.svg",
+    '<?xml version="1.0" standalone="no"?>\n<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 20010904//EN"\n' +
+      ' "http://www.w3.org/TR/2001/REC-SVG-20010904/DTD/svg10.dtd">\n' +
+      '<svg version="1.0" xmlns="http://www.w3.org/2000/svg" width="64pt" height="64pt" viewBox="0 0 64 64">\n' +
+      "<metadata>\nCreated by potrace 1.14\n</metadata>\n" +
+      '<g transform="translate(0,64) scale(0.1,-0.1)" fill="#000000" stroke="none"><path d="M150 590 l0 -160z"/></g>\n</svg>\n'],
+]) {
+  test(`accepts ${control}`, { timeout: 90_000 }, async (t) => {
+    const fixtureRoot = await addFile(t, path, content);
+
+    const result = await runVerifier(fixtureRoot);
+
+    assert.equal(result.code, 0, `${control} was rejected: ${result.stderr}`);
+  });
+}
+
+for (const [defect, path, content, message] of [
+  // An internal subset can declare entities and default attributes, an onload
+  // among them, so the public doctype is allowed only exactly as tools write it.
+  ["an allowed doctype carrying an internal subset", "assets/pay.svg",
+    '<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd" ' +
+      `[<!ATTLIST svg onload CDATA "location.assign('https://pay.example.invalid/x')">]>\n${SVG_OPEN}<rect width="9"/></svg>\n`,
+    /assets\/pay\.svg:1 has "<!"\. A doctype, CDATA section, processing instruction or character reference/],
+  ["a filter that loads an image", "assets/pay.svg",
+    `${SVG_OPEN}<filter id="f"><feImage href="#x"/></filter><rect filter="url(#f)" width="9" height="9"/></svg>\n`,
+    /assets\/pay\.svg:1 has the element <feImage>, which is not in the SVG artwork allowlist/],
+  ["the xlink prefix bound to another namespace", "assets/pay.svg",
+    '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xhtml" viewBox="0 0 9 9"><rect width="9"/></svg>\n',
+    /assets\/pay\.svg:1 has xmlns:xlink="http:\/\/www\.w3\.org\/1999\/xhtml"; it must be http:\/\/www\.w3\.org\/1999\/xlink/],
+  // CSS fetches through @import and image-set() without writing url().
+  ["a style attribute in an SVG", "assets/pay.svg", `${SVG_OPEN}<rect style="fill:#111" width="9"/></svg>\n`,
+    /assets\/pay\.svg:1 has the attribute style=, which is not in the SVG artwork allowlist[\s\S]*Illustrator: export with Styling set to Presentation Attributes/],
+]) {
+  test(`rejects ${defect}`, { timeout: 90_000 }, async (t) => {
+    const fixtureRoot = await addFile(t, path, content);
+
+    const result = await runVerifier(fixtureRoot);
+
+    assert.notEqual(result.code, 0, `${defect} shipped green`);
+    assert.match(result.stderr, message);
+  });
+}
+
+test("lists every construct an SVG must change in one run", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await addFile(t, "assets/pay.svg",
+    `${SVG_OPEN}<style>rect{fill:#111}</style>\n<use href="#a"/>\n<use href="#b"/>\n</svg>\n`);
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "an SVG with a style element and use shipped green");
+  assert.match(result.stderr, /assets\/pay\.svg:1 has the element <style>[\s\S]*assets\/pay\.svg:2 has the element <use>/);
+  assert.equal(result.stderr.split("has the element <use>").length, 2, "a repeated construct is listed once");
+});
+
+test("rejects an SVG whose root is not svg", { timeout: 90_000 }, async (t) => {
+  // Only comments and an allowed doctype may come before the root.
+  const fixtureRoot = await addFile(t, "assets/pay.svg",
+    '<g xmlns="http://www.w3.org/2000/svg"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 9 9"/></g>\n');
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "an SVG rooted in a <g> shipped green");
+  assert.match(result.stderr, /assets\/pay\.svg must open with <svg xmlns="http:\/\/www\.w3\.org\/2000\/svg">/);
 });

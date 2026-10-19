@@ -155,7 +155,8 @@ The command checks:
   only to reviewed hosts and never to a payment host, sets no front matter beyond `name`,
   `title` and `description`, and holds no Liquid — and that the root has no `_config.yml` or other `_` entry;
 - that every file GitHub Pages serves is a reviewed type: a page is `.html` and a note `.md`, SVG
-  artwork and the sitemap stay inside element and attribute allowlists, every page opens with
+  artwork and the sitemap stay inside element and attribute allowlists (export SVG with presentation
+  attributes rather than CSS; `verify` lists every construct to change, with each tool's setting), every page opens with
   `<!doctype html>`, no `.mjs` sits at or above a page (keep scripts in `scripts/`), no script
   carries a `src`, no note holds a script, a handler or another active element (describe them in
   words), and no served file opens with front matter (a note's `name`/`title`/`description` aside), is a

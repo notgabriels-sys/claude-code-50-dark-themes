@@ -2511,27 +2511,66 @@ const SERVED_TYPES = new Map([
 // An SVG or XML file is a document when a browser opens it, with the links,
 // scripts and stylesheets XML allows. verify does not parse it. It refuses
 // every construct that lets the markup a browser builds differ from the text:
-// another encoding, a doctype (whose entities expand into markup), a comment or
-// CDATA section, a processing instruction (an <?xml-stylesheet?> turns the file
-// into another document), a character reference. What is left has no text a
-// parser skips, so every "<name" and every "name=" anywhere in the file is held
-// to an allowlist; a candidate in text a parser would read as data only refuses
-// more. Prefixed names (xlink:href, xmlns:h) are in no allowlist, and xmlns
-// must name the document's own namespace, so nothing from XHTML gets in.
+// another encoding, a doctype with an internal subset (whose entities expand
+// into markup, and whose ATTLIST defaults an onload), CDATA, a processing
+// instruction (an <?xml-stylesheet?> turns the file into another document), a
+// character reference. What is left has no text a parser skips, so every
+// "<name" and every "name=" anywhere in the file -- comments included, which is
+// why a comment can be allowed: it hides nothing -- is held to an allowlist; a
+// candidate in text a parser would read as data only refuses more. Prefixed
+// names are in no allowlist but xml:space and xmlns:xlink, whose value is
+// pinned, and xmlns must name the document's own namespace, so nothing from
+// XHTML gets in.
+//
+// The SVG allowlist is what design tools export (2026-10-19, widened after a
+// review found Figma, Illustrator, Inkscape and SVGO output refused): shapes,
+// text, gradients, clip paths, masks, patterns, and every filter primitive
+// but feImage, which fetches. Every attribute added takes no URL, or only a
+// url(), which may name only this file. Still refused: use, image, feImage,
+// foreignObject, a, script, style (CSS fetches through @import and image-set()
+// without writing url()), and every xlink:href.
 const SVG_DOCUMENT = {
   label: "SVG artwork",
   root: "svg",
   namespace: "http://www.w3.org/2000/svg",
+  comments: true,
+  // The public SVG 1.1 and 1.0 doctypes, as Illustrator and potrace write
+  // them, and no other: never one with an internal subset.
+  doctypes: [
+    /^<!DOCTYPE[\t\n\r ]+svg[\t\n\r ]+PUBLIC[\t\n\r ]+"-\/\/W3C\/\/DTD SVG 1\.1\/\/EN"[\t\n\r ]+"http:\/\/www\.w3\.org\/Graphics\/SVG\/1\.1\/DTD\/svg11\.dtd"[\t\n\r ]*>/,
+    /^<!DOCTYPE[\t\n\r ]+svg[\t\n\r ]+PUBLIC[\t\n\r ]+"-\/\/W3C\/\/DTD SVG 20010904\/\/EN"[\t\n\r ]+"http:\/\/www\.w3\.org\/TR\/2001\/REC-SVG-20010904\/DTD\/svg10\.dtd"[\t\n\r ]*>/,
+  ],
+  pinned: new Map([["xmlns:xlink", "http://www.w3.org/1999/xlink"], ["xmlns:svg", "http://www.w3.org/2000/svg"]]),
+  remedy:
+    "Illustrator: export with Styling set to Presentation Attributes. Inkscape: save as Optimized SVG, or Plain " +
+    "SVG without its metadata. Figma: export an image fill as PNG instead.",
   elements: new Set([
-    "svg", "g", "defs", "title", "desc", "path", "rect", "circle", "ellipse", "line", "polyline", "polygon",
-    "text", "tspan", "linearGradient", "radialGradient", "stop",
+    "svg", "g", "defs", "title", "desc", "metadata", "path", "rect", "circle", "ellipse", "line", "polyline",
+    "polygon", "text", "tspan", "linearGradient", "radialGradient", "stop", "clipPath", "mask", "pattern", "filter",
+    "feBlend", "feColorMatrix", "feComponentTransfer", "feFuncR", "feFuncG", "feFuncB", "feFuncA", "feComposite",
+    "feConvolveMatrix", "feDiffuseLighting", "feDisplacementMap", "feDistantLight", "feDropShadow", "feFlood",
+    "feGaussianBlur", "feMerge", "feMergeNode", "feMorphology", "feOffset", "fePointLight", "feSpecularLighting",
+    "feSpotLight", "feTile", "feTurbulence",
   ]),
   attributes: new Set([
-    "xmlns", "viewBox", "preserveAspectRatio", "width", "height", "x", "y", "x1", "y1", "x2", "y2", "cx", "cy",
-    "r", "rx", "ry", "fx", "fy", "d", "points", "transform", "fill", "fill-opacity", "fill-rule", "stroke",
-    "stroke-width", "stroke-linecap", "stroke-linejoin", "stroke-opacity", "stroke-dasharray", "opacity",
-    "font-family", "font-size", "font-weight", "letter-spacing", "text-anchor", "offset", "stop-color",
-    "stop-opacity", "gradientUnits", "gradientTransform", "id", "role", "aria-label", "aria-labelledby",
+    "xmlns", "xmlns:xlink", "xmlns:svg", "xml:space", "version", "viewBox", "preserveAspectRatio", "width", "height", "x", "y",
+    "x1", "y1", "x2", "y2", "cx", "cy", "r", "rx", "ry", "fx", "fy", "d", "points", "transform", "fill",
+    "fill-opacity", "fill-rule", "stroke", "stroke-width", "stroke-linecap", "stroke-linejoin", "stroke-opacity",
+    "stroke-dasharray", "stroke-dashoffset", "stroke-miterlimit", "opacity", "font-family", "font-size",
+    "font-weight", "font-style", "font-variant", "font-stretch", "letter-spacing", "word-spacing", "text-anchor",
+    "text-decoration", "dominant-baseline", "alignment-baseline", "baseline-shift", "offset", "stop-color",
+    "stop-opacity", "gradientUnits", "gradientTransform", "spreadMethod", "id", "class", "data-name", "role",
+    "aria-label", "aria-labelledby", "aria-hidden", "display", "visibility", "overflow", "color",
+    "shape-rendering", "text-rendering", "paint-order", "vector-effect", "enable-background", "clip-path",
+    "clip-rule", "clipPathUnits", "mask", "maskUnits", "maskContentUnits", "patternUnits", "patternContentUnits",
+    "patternTransform", "filter", "filterUnits", "primitiveUnits", "color-interpolation",
+    "color-interpolation-filters", "flood-color", "flood-opacity", "lighting-color", "result", "in", "in2",
+    "type", "values", "tableValues", "slope", "intercept", "amplitude", "exponent", "dx", "dy", "stdDeviation",
+    "operator", "k1", "k2", "k3", "k4", "mode", "radius", "scale", "xChannelSelector", "yChannelSelector",
+    "baseFrequency", "numOctaves", "seed", "stitchTiles", "order", "kernelMatrix", "divisor", "bias", "targetX",
+    "targetY", "edgeMode", "preserveAlpha", "surfaceScale", "diffuseConstant", "specularConstant",
+    "specularExponent", "azimuth", "elevation", "z", "pointsAtX", "pointsAtY", "pointsAtZ",
+    "limitingConeAngle",
   ]),
 };
 const SITEMAP_DOCUMENT = {
@@ -2557,52 +2596,73 @@ const checkXmlDocument = (file, bytes, allowed) => {
   )?.[0] ?? "";
   const body = text.slice(declaration.length);
   const lineOf = (index) => text.slice(0, declaration.length + index).split("\n").length;
-  const hidden = body.match(/<[!?]|&(?!(?:amp|lt|gt|quot|apos);)/);
-  if (hidden) {
-    fail(
-      `${file}:${lineOf(hidden.index)} has "${hidden[0]}". A doctype, comment, CDATA section, processing ` +
-        `instruction or character reference can make a browser build markup verify did not read; remove it ` +
-        `(the only declaration allowed is <?xml version="1.0" encoding="UTF-8"?>, first, quoted either way).`,
+  // Every refusal in the file is listed at once, each construct the first time
+  // it appears, so one run tells a contributor everything to change.
+  const problems = new Map();
+  const refuse = (index, what, why) => {
+    if (!problems.has(what)) problems.set(what, `${file}:${lineOf(index)} has ${what}${why}`);
+  };
+  const rootAt = body.search(new RegExp(`<${allowed.root}[\t\n\r >/]`));
+  for (const match of body.matchAll(/<[!?]|&(?!(?:amp|lt|gt|quot|apos);)/g)) {
+    if (match[0] === "<!" && allowed.comments && body.startsWith("<!--", match.index)) continue;
+    if (match[0] === "<!" && (allowed.doctypes ?? []).some((doctype) => doctype.test(body.slice(match.index)))) continue;
+    refuse(
+      match.index, `"${match[0]}"`,
+      `. A doctype, CDATA section, processing instruction or character reference can make a browser build ` +
+        `markup verify did not read; remove it (the only declaration allowed is <?xml version="1.0" ` +
+        `encoding="UTF-8"?>, first, quoted either way${allowed.doctypes ? ", and the plain SVG 1.1 doctype" : ""}).`,
     );
   }
   // Chromium fetches a paint server in another file, fill="url(https://...)",
   // so a url() may only point into this one. CSS reads an escape in a function
   // name ("\75rl(") and ignores its case, so no backslash is allowed at all.
-  const reference = body.match(/\\|url\((?!#[^)\t\n\r "'\\]*\))/i);
-  if (reference) {
-    fail(
-      `${file}:${lineOf(reference.index)} has "${reference[0]}". A url() may only name an element in this ` +
-        `file, as url(#id); one naming another file is a request a browser makes when it opens this one.`,
+  for (const match of body.matchAll(/\\|url\((?!#[^)\t\n\r "'\\]*\))/gi)) {
+    refuse(
+      match.index, `"${match[0]}"`,
+      `. A url() may only name an element in this file, as url(#id); one naming another file is a request a ` +
+        `browser makes when it opens this one.`,
     );
   }
   for (const match of body.matchAll(new RegExp(`</?(${XML_NAME})`, "g"))) {
+    // A comment or doctype passed the check above.
+    if (match[1].startsWith("!")) continue;
     if (!allowed.elements.has(match[1])) {
-      fail(
-        `${file}:${lineOf(match.index)} has the element <${match[1]}>, which is not in the ${allowed.label} ` +
-          `allowlist in scripts/verify.mjs. A browser opens this file as a document, so an element that links, ` +
-          `runs script or embeds is a page verify does not read; add a new element deliberately.`,
+      refuse(
+        match.index, `the element <${match[1]}>`,
+        `, which is not in the ${allowed.label} allowlist in scripts/verify.mjs. A browser opens this file as a ` +
+          `document, so an element that links, runs script or embeds is a page verify does not read; add a new ` +
+          `element deliberately.`,
       );
     }
   }
   for (const match of body.matchAll(new RegExp(`(${XML_NAME})[\t\n\r ]*=`, "g"))) {
     if (!allowed.attributes.has(match[1])) {
-      fail(
-        `${file}:${lineOf(match.index)} has the attribute ${match[1]}=, which is not in the ${allowed.label} ` +
-          `allowlist in scripts/verify.mjs. Add a new attribute deliberately, never one that links, loads or ` +
-          `runs script.`,
+      refuse(
+        match.index, `the attribute ${match[1]}=`,
+        `, which is not in the ${allowed.label} allowlist in scripts/verify.mjs. Add a new attribute ` +
+          `deliberately, never one that links, loads or runs script.`,
       );
     }
   }
-  for (const match of body.matchAll(/xmlns[\t\n\r ]*=[\t\n\r ]*(?:"([^"]*)"|'([^']*)'|())/g)) {
-    const value = match[1] ?? match[2] ?? "";
-    if (value !== allowed.namespace) {
-      fail(`${file}:${lineOf(match.index)} sets xmlns to ${JSON.stringify(value)}; it must be ${allowed.namespace}.`);
+  for (const match of body.matchAll(/(xmlns(?::[^\t\n\r <>"'=/]+)?)[\t\n\r ]*=[\t\n\r ]*(?:"([^"]*)"|'([^']*)'|())/g)) {
+    const value = match[2] ?? match[3] ?? "";
+    const expected = match[1] === "xmlns" ? allowed.namespace : allowed.pinned?.get(match[1]);
+    if (expected !== undefined && value !== expected) {
+      refuse(match.index, `${match[1]}=${JSON.stringify(value)}`, `; it must be ${expected}.`);
     }
   }
   // Without its namespace on the root, a browser builds elements that nothing
   // renders: harmless, but an SVG that silently stops drawing.
-  if (!new RegExp(`^[\\t\\n\\r ]*<${allowed.root}[\\t\\n\\r ][^<>]*xmlns[\\t\\n\\r ]*=`).test(body)) {
-    fail(`${file} must open with <${allowed.root} xmlns="${allowed.namespace}">, its root element in its own namespace.`);
+  // What may come before the root: comments and an allowed doctype, both
+  // already read above.
+  const prolog = body.slice(0, Math.max(rootAt, 0)).replace(/<!--[\s\S]*?-->/g, "")
+    .replace(/<!DOCTYPE[^>]*>/, "").trim();
+  if (rootAt === -1 || prolog !== "" ||
+      !new RegExp(`^<${allowed.root}[\\t\\n\\r ][^<>]*xmlns[\\t\\n\\r ]*=`).test(body.slice(rootAt))) {
+    problems.set("root", `${file} must open with <${allowed.root} xmlns="${allowed.namespace}">, its root element in its own namespace.`);
+  }
+  if (problems.size) {
+    fail([...problems.values()].join("\n") + (allowed.remedy ? `\n${allowed.remedy}` : ""));
   }
   return body;
 };
