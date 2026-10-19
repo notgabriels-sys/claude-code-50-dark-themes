@@ -207,4 +207,5 @@ Themes in this repo are free and stay free — MIT. If they saved you some fiddl
 a ⭐ helps other people find them.
 
 Contributions are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) before adding or changing a theme;
-the repository verifies the theme schema, gallery parity, installation command and payment links on every push.
+the repository verifies the theme schema, gallery parity, installation command and payment links on
+every pull request and every push to `main`.

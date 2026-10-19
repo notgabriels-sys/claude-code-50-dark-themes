@@ -586,6 +586,21 @@ if (productLicences.length) {
   }
 }
 
+// CI runs on pull requests and on pushes to main only (verify.yml's push
+// trigger is filtered to main). README and CONTRIBUTING said it ran "on every
+// push"; this branch had dozens of pushes and not one push-triggered run. When
+// the push trigger names branches, "every push" must say which.
+const verifyWorkflow = await readFile(new URL(".github/workflows/verify.yml", root), "utf8");
+if (/^\s*push:\s*\n\s*branches:/m.test(verifyWorkflow)) {
+  for (const file of ["README.md", "CONTRIBUTING.md"]) {
+    const text = (await readFile(new URL(file, root), "utf8")).replace(/\s+/g, " ");
+    const claim = text.match(/every push(?! to)/i);
+    if (claim) {
+      fail(`${file} says CI runs on "${claim[0]}", but verify.yml runs only on pull requests and pushes to main.`);
+    }
+  }
+}
+
 // Plugin themes load when Claude Code starts. Checked live on 2.1.302: after
 // `/plugin install` inside a running session ("Plugin is now active."), or
 // `claude plugin install` from a shell while a session is open, /theme lists

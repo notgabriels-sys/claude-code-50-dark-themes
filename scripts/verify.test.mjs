@@ -1035,3 +1035,17 @@ test("rejects a plugin install command given without the marketplace it needs", 
   assert.notEqual(result.code, 0, "the verifier accepted an install line that fails on a fresh machine");
   assert.match(result.stderr, /llms\.txt gives a plugin install command but not the marketplace add command/);
 });
+
+test("rejects docs that say CI runs on every push when it runs only on main", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const readme = join(fixtureRoot, "README.md");
+  const text = await readFile(readme, "utf8");
+  const sentence = "payment links on\nevery pull request and every push to `main`.";
+  assert.ok(text.includes(sentence), "fixture anchor moved; update this test");
+  await writeFile(readme, text.replace(sentence, "payment links on every push."));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a CI claim the workflow's push filter contradicts");
+  assert.match(result.stderr, /README\.md says CI runs on "every push"/);
+});
