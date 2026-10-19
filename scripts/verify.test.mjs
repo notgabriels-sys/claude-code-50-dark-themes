@@ -611,7 +611,12 @@ test("rejects a theme file the finder's file-name search cannot find", { timeout
   const result = await runVerifier(fixtureRoot);
 
   assert.notEqual(result.code, 0, "the verifier accepted a file name the finder derives differently");
-  assert.match(result.stderr, /Searching "neonnoir\.json" finds nothing/);
+  // Since #62 the quick picks load every theme through build-theme-pages.mjs,
+  // whose own slug check rejects the rename before the finder check runs.
+  assert.match(
+    result.stderr,
+    /Searching "neonnoir\.json" finds nothing|neonnoir\.json: file name does not match the slug of "Neon Noir"/,
+  );
 });
 
 test("rejects a live region on a nested summary inside a closed disclosure", { timeout: 90_000 }, async (t) => {

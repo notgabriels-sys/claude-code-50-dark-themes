@@ -116,7 +116,7 @@ export function contrast(first, second) {
 }
 // Ratios are truncated, not rounded, so a printed figure is never above the
 // measured one.
-function ratioText(ratio) {
+export function ratioText(ratio) {
   return `${(Math.floor(ratio * 100) / 100).toFixed(2)}:1`;
 }
 
