@@ -115,8 +115,9 @@ after transcoding while looking clean in the DAW.
 - [ ] Low end mono, no unintentional sub
 - [ ] Nothing is fixable at the source that you papered over instead
 
-If revisions keep circling the same 0.5 dB, the mix is done and the decision is
-`track-finishing-system` (a separate skill, not part of this plugin), not another plugin.
+If revisions keep circling the same 0.5 dB, the mix is done: stop reaching for
+another audio plugin and decide whether the track is finished
+(`track-finishing-system`, a separate skill, not part of this plugin).
 
 ## The user's own setup — ask, do not assume
 
@@ -131,6 +132,7 @@ the answers for the rest of the conversation.
 - Writing the delivery note or revision reply to a client → `mixing-mastering-reports` (a separate skill, not part of this plugin)
 - What to charge for the work → `rate-cards-service-menus` (a separate skill, not part of this plugin)
 
-A skill marked *separate* is not part of this plugin. If it is not installed,
-say so in a line and answer what this skill can, rather than acting as if it
-were there.
+A skill marked *separate* is not part of this plugin and is not published with
+it; it is named for setups that already have a skill by that name. If none is
+available, say in a line that the question is outside this plugin, and answer
+what this skill can rather than acting as if the other skill were there.

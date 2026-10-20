@@ -10,7 +10,7 @@ description: >-
   Betriebsausgaben, German tax deadlines, "do I charge VAT" for a German
   business, "how do I invoice this client" from Germany, "what can I write off"
   in Germany, or reading a letter from the Finanzamt. Also trigger when a quote,
-  rate, or payment surface for a business in Germany is being priced and the
+  rate, price list or checkout for a business in Germany is being priced and the
   tax treatment has not been settled. Does NOT cover rights income mechanics,
   or the wording of the German letter itself (german-correspondence).
 ---
@@ -20,7 +20,7 @@ description: >-
 ## Status of the user's own tax position — do not assume
 
 The user's USt status is **not known** unless the user states it. Prices that
-show no VAT are *consistent with* §19 Kleinunternehmerregelung but do not prove
+quoted with no VAT added are *consistent with* §19 Kleinunternehmerregelung but do not prove
 it. Treat it as unknown.
 
 - Never state on the user's behalf that they are or are not a Kleinunternehmer.
@@ -33,11 +33,11 @@ This is practical orientation, not Steuerberatung. For anything binding —
 an audit, a back-payment demand, a cross-border threshold — the answer is
 "confirm with a Steuerberater", said once, without hedging every sentence.
 
-**Not checked against the current statute.** The §19 section, the two invoice
-footers and the deadlines below were written without reading the current text
-of the UStG and the UStDV, and the §19 section itself notes that its thresholds
-have changed in recent years. Before relying on any of them — whether §19
-applies, what an invoice must carry, what has to be filed and when — confirm
+**Not checked against the current law.** This skill was written from memory,
+not read against the current statutes, and its §19 section itself notes that
+the thresholds have changed in recent years. Treat every rule in it — invoice
+fields, §19, cross-border VAT, Freiberufler or Gewerbe, the KSK, deductible
+expenses, deadlines — as orientation. Before the user relies on one, confirm
 the rules in force for the tax year in question with a Steuerberater or the
 Finanzamt, and tell the user that this is the step that remains.
 
@@ -98,10 +98,10 @@ and it is not optional. Watch it before it happens.
 Audio work sits on a genuine line. Artistic/creative output (composition,
 performance, artistic sound design) tends toward **freiberuflich** — no
 Gewerbeanmeldung, no Gewerbesteuer, EÜR only. Selling goods — sample packs,
-theme licences, merch, digital products — tends toward **Gewerbe**.
+presets, merch, other digital products — tends toward **Gewerbe**.
 
 Selling digital products alongside services can make the user a mixed case. That is
-a Steuerberater question, not a guess. Flag it when the shop side grows.
+a Steuerberater question, not a guess. Flag it when the product side of the business grows.
 
 ## Künstlersozialkasse (KSK)
 
@@ -147,6 +147,7 @@ audit.
 - Setting the prices themselves → `rate-cards-service-menus` (a separate skill, not part of this plugin)
 - Quoting a specific job → `audio-client-proposals` (a separate skill, not part of this plugin)
 
-A skill marked *separate* is not part of this plugin. If it is not installed,
-say so in a line and answer what this skill can, rather than acting as if it
-were there.
+A skill marked *separate* is not part of this plugin and is not published with
+it; it is named for setups that already have a skill by that name. If none is
+available, say in a line that the question is outside this plugin, and answer
+what this skill can rather than acting as if the other skill were there.

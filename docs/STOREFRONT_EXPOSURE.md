@@ -52,6 +52,7 @@ produces for the paid products before anything ships.
 |---|---|---|
 | `index.html` head — meta, OG, Twitter, canonical | humans sharing links, social unfurls | `verify` requires share-image alt text, exactly one canonical link, equal to the `CNAME` domain, and a Content-Security-Policy right after `meta charset` naming the reviewed inline scripts |
 | `index.html` JSON-LD | search engines; free plugin only | `verify` checks the plugin's version and download URL, allows one script-tag spelling and only the plain schema.org context, refuses microdata and RDFa, and requires exactly one ItemList on the site, checked against the theme files |
+| `index.html` "Start here" row | a few picks, each chosen by a measured contrast ratio | written by `scripts/build-quick-picks.mjs` from the theme files; `verify` compares the block with a fresh build and checks each pick's theme page exists |
 | `theme/` pages | one crawlable page per theme, and an index | written by `scripts/build-theme-pages.mjs` from the theme files; `verify` compares every page with a fresh build and reviews their one copy script by hash |
 | `sitemap.xml` | crawler discovery of the public pages and the theme pages | written by the same builder; `verify` holds it to a sitemap element allowlist, with no stylesheet, every `<loc>` to the site, and then compares it with a fresh build |
 | `robots.txt` | crawl permission; points at the sitemap | — |
@@ -118,10 +119,12 @@ is right and the edit was not cosmetic** — read what moved before touching the
 tables.
 
 The gallery renders from an inline JS array, so the storefront's own markup
-carries no per-theme content. Crawlable per-theme content lives in the
-generated `theme/` pages, built from the theme files. Do not duplicate cards
-into `index.html` markup — duplicated content that disagrees with the array is
-worse than absent content; link to the generated pages instead.
+carries no hand-written theme cards. Its crawlable per-theme content is
+generated: the ItemList JSON-LD (a name and deep link per theme, from
+`scripts/build-theme-index.mjs`), the "Start here" row of picks (from
+`scripts/build-quick-picks.mjs`), and the `theme/` pages. Do not hand-write
+cards into `index.html` markup — duplicated content that disagrees with the
+array is worse than absent content; link to the generated pages instead.
 
 ## Standard of evidence
 

@@ -93,7 +93,10 @@ Beendigungsdatums.` Send by post with proof for anything that matters.
 
 **Widerspruch.** Deadlines are short and strict — commonly one month from
 receipt. Lodging it in time matters more than reasoning it fully; the reasons
-can follow. Always name the decision and its date.
+can follow. Always name the decision and its date. The name of the remedy and
+its deadline here are written from memory and differ between authorities:
+read both off the letter's Rechtsbehelfsbelehrung where it has one, and treat
+this paragraph as orientation.
 
 **Mahnung.** Escalate in steps: neutral reminder → Mahnung with a firm date →
 notice of further steps. Keep the tone flat throughout. Anger costs you the
@@ -123,6 +126,7 @@ client and does not speed up payment.
 - Bewerbung, Lebenslauf, Anschreiben → `german-audio-job-applications` (a separate skill, not part of this plugin)
 - Invoice content and tax wording → `freelance-admin-de`
 
-A skill marked *separate* is not part of this plugin. If it is not installed,
-say so in a line and answer what this skill can, rather than acting as if it
-were there.
+A skill marked *separate* is not part of this plugin and is not published with
+it; it is named for setups that already have a skill by that name. If none is
+available, say in a line that the question is outside this plugin, and answer
+what this skill can rather than acting as if the other skill were there.

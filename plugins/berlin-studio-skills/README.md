@@ -19,10 +19,11 @@ claude plugin install berlin-studio-skills@notgabriels-themes
 The audio pair — `sound-design-recipes` and `mix-master-decisions` — and the
 admin pair — `freelance-admin-de` and `german-correspondence` — hand questions to
 each other, so asking "why does this kick sound thin" lands in the right one
-without naming it. Each skill also names the skills it would hand a question
-on to that are not in this plugin (rights and royalties, rate cards, release
-campaigns and the like), marks them as separate, and says so when one is not
-installed rather than acting as if it were there.
+without naming it. Each skill also names, marked as separate, a few skills
+from the author's own setup for questions outside this plugin (rights and
+royalties, rate cards, release campaigns and the like). Those are not
+published with it; where none is available, the skill says the question is
+outside this plugin and answers what it can.
 
 ## What these skills will not do
 
@@ -32,9 +33,9 @@ does not assume a USt status: prices that show no VAT are consistent with §19
 but do not prove it. They ask instead of inventing, and use your answers for
 the rest of the conversation.
 
-`freelance-admin-de`'s §19 section, invoice footers and deadlines have not been
-checked against the current statute, and the skill says so before you rely on
-them.
+None of these skills has been checked against the current statutes.
+`freelance-admin-de` and `german-correspondence` say so where they state legal
+rules, and ask you to confirm the rules in force before relying on them.
 
 Nothing here is tax or legal advice.
 

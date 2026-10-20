@@ -1288,15 +1288,141 @@ test("reads counts in a skill that ships to installers", { timeout: 90_000 }, as
   assert.match(result.stderr, /plugins\/berlin-studio-skills\/skills\/sound-design-recipes\/SKILL\.md:\d+ says "40 themes"/);
 });
 
+// The plugin README's skill table is read as GitHub renders it (cmark-gfm),
+// checked differentially against cmark-gfm and pandoc; these pin each rule.
+const skillsReadmeFile = "plugins/berlin-studio-skills/README.md";
+const editSkillsReadme = async (t, pairs) => {
+  const fixtureRoot = await makeFixture(t);
+  const path = join(fixtureRoot, skillsReadmeFile);
+  let text = await readFile(path, "utf8");
+  for (const [from, to] of pairs) {
+    assert.equal(text.split(from).length, 2, `fixture anchor must occur exactly once: ${from}`);
+    text = text.replace(from, () => to);
+  }
+  await writeFile(path, text);
+  return fixtureRoot;
+};
+const freelanceRow = "| `freelance-admin-de` |";
+
 test("rejects a plugin README that lists a skill the plugin does not ship", { timeout: 90_000 }, async (t) => {
   // Moving storefront-exposure out of the plugin left its row in this table,
   // and verify stayed green.
-  const fixtureRoot = await editPage(t, "plugins/berlin-studio-skills/README.md",
-    "| `freelance-admin-de` |",
-    "| `storefront-exposure` | SEO, structured data, sitemap |\n| `freelance-admin-de` |");
+  const fixtureRoot = await editSkillsReadme(t, [
+    [freelanceRow, `| \`storefront-exposure\` | SEO, structured data, sitemap |\n${freelanceRow}`],
+  ]);
   const result = await runVerifier(fixtureRoot);
   assert.notEqual(result.code, 0, "a README row for a skill that does not ship passed");
-  assert.match(result.stderr, /plugins\/berlin-studio-skills\/README\.md lists storefront-exposure, which the plugin does not ship/);
+  assert.match(result.stderr, /README\.md:\d+ lists "storefront-exposure" in its skill table, which is not a skill the plugin ships/);
+});
+
+test("rejects an unshipped skill's row in every spelling GitHub renders as a row", { timeout: 300_000 }, async (t) => {
+  // The first version of this check read one spelling; each of these passed it
+  // green and renders, in cmark-gfm, as a row naming the removed skill.
+  for (const row of [
+    "`storefront-exposure` | SEO |",
+    "  | `storefront-exposure` | SEO |",
+    "| [`storefront-exposure`](skills/storefront-exposure/) | SEO |",
+    "| **`storefront-exposure`** | SEO |",
+    "| storefront-exposure | SEO |",
+    "| ``storefront-exposure`` | SEO |",
+    "| `release-delivery`, `storefront-exposure` | SEO |",
+    "| `storefront-exposure` (SEO) | SEO |",
+    "| <code>storefront-exposure</code> | SEO |",
+    "|\u00a0`storefront-exposure` | SEO |",
+  ]) {
+    const fixtureRoot = await editSkillsReadme(t, [[freelanceRow, `${row}\n${freelanceRow}`]]);
+    const result = await runVerifier(fixtureRoot);
+    assert.notEqual(result.code, 0, `${JSON.stringify(row)} passed`);
+    assert.match(result.stderr, /README\.md:\d+ lists "[^"]*storefront-exposure[^"]*" in its skill table/, row);
+  }
+});
+
+test("rejects a skill table missing a row that prose elsewhere still names", { timeout: 90_000 }, async (t) => {
+  // The README's prose backticks four of the skills, which satisfied the old
+  // whole-file includes() after their rows were deleted.
+  const fixtureRoot = await editSkillsReadme(t, [
+    ["| `german-correspondence` | Formal German letters and email — Kündigung, Widerspruch, Mahnung |\n", ""],
+  ]);
+  const result = await runVerifier(fixtureRoot);
+  assert.notEqual(result.code, 0, "a deleted row passed because the prose names the skill");
+  assert.match(result.stderr, /does not list the packaged skill german-correspondence in its skill table/);
+});
+
+test("rejects a skill listed twice in the skill table", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await editSkillsReadme(t, [[freelanceRow, `| \`release-delivery\` | again |\n${freelanceRow}`]]);
+  const result = await runVerifier(fixtureRoot);
+  assert.notEqual(result.code, 0);
+  assert.match(result.stderr, /README\.md:\d+ lists release-delivery a second time/);
+});
+
+test("rejects a line straight after the skill table that renderers read differently", { timeout: 180_000 }, async (t) => {
+  // GitHub reads a pipe-less line here as a row and pandoc ends the table;
+  // for a quote line it is the other way round.
+  for (const line of ["release-delivery", "> | `release-delivery` | a quote |"]) {
+    const fixtureRoot = await editSkillsReadme(t, [
+      ["| Rechnung, §14 UStG fields, Kleinunternehmerregelung, KSK, deadlines |\n",
+        `| Rechnung, §14 UStG fields, Kleinunternehmerregelung, KSK, deadlines |\n${line}\n`],
+    ]);
+    const result = await runVerifier(fixtureRoot);
+    assert.notEqual(result.code, 0, line);
+    assert.match(result.stderr, /README\.md:\d+ follows the skill table with no blank line between/, line);
+  }
+});
+
+test("rejects a plugin README with no skill table", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await editSkillsReadme(t, [["| Skill | Use it for |", "| Name | Use it for |"]]);
+  const result = await runVerifier(fixtureRoot);
+  assert.notEqual(result.code, 0);
+  assert.match(result.stderr, /has no table whose header's first cell reads "Skill"/);
+});
+
+test("reads an undefined reference link and an escaped code mark as GitHub prints them", { timeout: 180_000 }, async (t) => {
+  for (const [cell, shown] of [
+    ["[release-delivery][nowhere]", "[release-delivery][nowhere]"],
+    ["\\`release-delivery\\`", "`release-delivery`"],
+    // An escaped pipe stays in the cell.
+    ["release-delivery\\| more", "release-delivery| more"],
+  ]) {
+    const fixtureRoot = await editSkillsReadme(t, [["| `release-delivery` |", `| ${cell} |`]]);
+    const result = await runVerifier(fixtureRoot);
+    assert.notEqual(result.code, 0, `${cell} passed`);
+    assert.ok(result.stderr.includes(`lists "${shown}" in its skill table`), result.stderr);
+  }
+});
+
+test("rejects a Skill header whose delimiter row has another cell count, which GitHub renders as no table", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await editSkillsReadme(t, [["| Skill | Use it for |\n|---|---|", "| Skill | Use it for |\n|---|---|---|"]]);
+  const result = await runVerifier(fixtureRoot);
+  assert.notEqual(result.code, 0);
+  assert.match(result.stderr, /has no table whose header's first cell reads "Skill"/);
+});
+
+test("accepts a line of backticks that is not a fence before the skill table", { timeout: 90_000 }, async (t) => {
+  // A backtick fence's info string cannot hold a backtick, so this line is a
+  // paragraph with a code span, and the table after it still renders.
+  const fixtureRoot = await editSkillsReadme(t, [["| Skill | Use it for |", "``` `claude plugin list` ```\n\n| Skill | Use it for |"]]);
+  const result = await runVerifier(fixtureRoot);
+  assert.equal(result.code, 0, result.stderr);
+});
+
+test("accepts a skill table GitHub renders as exactly the shipped skills, however spelled", { timeout: 90_000 }, async (t) => {
+  // Shipped rows in other spellings, a fenced example table before the real
+  // one, a commands table and a lone row after it: none of them changes what
+  // the rendered skill table lists.
+  const fixtureRoot = await editSkillsReadme(t, [
+    ["| `sound-design-recipes` |", "  [`sound-design-recipes`](skills/sound-design-recipes/) |"],
+    ["| `mix-master-decisions` |", "| **mix-master-decisions** |"],
+    ["| `release-delivery` |", "| <code>release-delivery</code> |"],
+    ["| `german-correspondence` |", "|\u00a0` german-correspondence ` |"],
+    [freelanceRow, "| [freelance-admin-de][fad] |"],
+    ["| Skill | Use it for |",
+      "```\n| Skill | Example |\n|---|---|\n| `your-skill` | not this plugin |\n```\n\n| Skill | Use it for |"],
+    ["## What these skills will not do",
+      "| Command | Does |\n|---|---|\n| `claude plugin update berlin-studio-skills@notgabriels-themes` | updates |\n\n" +
+        "| `music-rights-royalties` | a separate skill |\n\n[fad]: skills/freelance-admin-de/\n\n## What these skills will not do"],
+  ]);
+  const result = await runVerifier(fixtureRoot);
+  assert.equal(result.code, 0, result.stderr);
 });
 
 test("lists every stale count in a file in one run", { timeout: 90_000 }, async (t) => {

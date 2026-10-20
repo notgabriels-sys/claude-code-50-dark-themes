@@ -632,26 +632,131 @@ for (const readme of ["README.md", "plugins/berlin-studio-skills/README.md"]) {
     );
   }
 }
-// And every skill that ships is named in the plugin README's table, so the
-// sixth skill cannot be installed while the README still lists five.
-const skillsReadme = await readFile(new URL("plugins/berlin-studio-skills/README.md", root), "utf8");
-for (const name of sourceSkills) {
-  if (!skillsReadme.includes(`\`${name}\``)) {
-    fail(`plugins/berlin-studio-skills/README.md does not list the packaged skill ${name}.`);
+// And the plugin README's skill table lists exactly the skills that ship, so
+// a sixth skill cannot be installed while the table lists five, and a removed
+// one cannot stay listed. This was an includes() over the whole file and then
+// a line regex: a row could go missing while prose elsewhere named the skill,
+// and a row for a removed skill passed in ordinary spellings (no leading pipe,
+// a link, bold, no backticks, two names in a cell, HTML). The table is now read
+// as GitHub renders it, and was checked differentially against cmark-gfm and
+// pandoc on 2026-10-19: of 1,069 README variants, none was accepted while the
+// rendered table listed anything but the shipped skills, where the old checks
+// accepted 852. Lines the renderers disagree on — a pipe-less line, a quote,
+// list, HTML or indented line straight after the table — are refused rather
+// than guessed; end the table with a blank line.
+const readSkillTable = (markdown) => {
+  const lines = markdown.replace(/\r\n?/g, "\n").split("\n");
+  // Fenced code is not a table, whatever it holds.
+  let fence = null;
+  const visible = lines.map((line) => {
+    const marker = /^ {0,3}(`{3,}|~{3,})(.*)$/.exec(line);
+    if (fence) {
+      if (marker && marker[1][0] === fence[0] && marker[1].length >= fence.length && marker[2].trim() === "") {
+        fence = null;
+      }
+      return "";
+    }
+    if (marker && !(marker[1][0] === "`" && marker[2].includes("`"))) {
+      fence = marker[1];
+      return "";
+    }
+    return line;
+  });
+  const definitions = new Set(
+    [...markdown.matchAll(/^ {0,3}\[([^\]\n]+)\]:/gm)].map((match) => match[1].trim().toLowerCase()),
+  );
+  // A row's cells: an optional leading pipe, then text up to each unescaped pipe.
+  const cells = (line) => {
+    let text = line.replace(/^ {0,3}/, "");
+    if (text.startsWith("|")) text = text.slice(1);
+    const out = [];
+    let cell = "";
+    for (let i = 0; i < text.length; i += 1) {
+      if (text[i] === "\\" && text[i + 1] === "|") {
+        cell += "\\|";
+        i += 1;
+      } else if (text[i] === "|") {
+        out.push(cell);
+        cell = "";
+      } else {
+        cell += text[i];
+      }
+    }
+    if (cell.trim() !== "" || out.length === 0) out.push(cell);
+    return out;
+  };
+  const hasPipe = (line) => /(?:^|[^\\])\|/.test(line);
+  const delimiterRow = /^ {0,3}\|?[ \t]*:?-+:?[ \t]*(?:\|[ \t]*:?-+:?[ \t]*)*\|?[ \t]*$/;
+  // GitHub ends a table where another block opens; pandoc reads that line as a row.
+  const opensBlock =
+    /^ {0,3}(?:#{1,6}(?:[ \t]|$)|>|[-+*][ \t]|\d{1,9}[.)][ \t]|`{3}|~{3}|<|(?:[-*_][ \t]*){3,}$)|^(?: {4}|\t)/;
+  // What a reader sees in a cell: entities decoded, tags and link syntax gone
+  // (a reference link only when it is defined), code and emphasis marks
+  // dropped, a backslash-escaped mark kept as the mark.
+  const plain = (cell) => {
+    const text = decodeEntities(cell)
+      .replace(/<[^>]*>/g, "")
+      .replace(/!?\[([^\]\n]*)\]\([^)\n]*\)/g, "$1")
+      .replace(/!?\[([^\]\n]*)\]\[([^\]\n]*)\]/g, (all, label, ref) =>
+        definitions.has((ref || label).trim().toLowerCase()) ? label : all);
+    let out = "";
+    for (let i = 0; i < text.length; i += 1) {
+      if (text[i] === "\\" && /[!-/:-@[-`{-~]/.test(text[i + 1] ?? "")) {
+        out += text[i + 1];
+        i += 1;
+      } else if (!"`*_~".includes(text[i])) {
+        out += text[i];
+      }
+    }
+    return out.replace(/[\s\u00a0]+/g, " ").trim();
+  };
+  for (let i = 0; i + 1 < visible.length; i += 1) {
+    if (!hasPipe(visible[i]) || !delimiterRow.test(visible[i + 1])) continue;
+    const header = cells(visible[i]);
+    if (cells(visible[i + 1]).length !== header.length || plain(header[0]) !== "Skill") continue;
+    const rows = [];
+    const unclear = [];
+    for (let j = i + 2; j < visible.length && visible[j].trim() !== ""; j += 1) {
+      if (!hasPipe(visible[j]) || opensBlock.test(visible[j])) unclear.push(j + 1);
+      else rows.push({ line: j + 1, name: plain(cells(visible[j])[0]) });
+    }
+    return { rows, unclear };
   }
+  return null;
+};
+const skillsReadmePath = "plugins/berlin-studio-skills/README.md";
+const skillsReadme = await readFile(fileUrl(skillsReadmePath), "utf8");
+const skillTable = readSkillTable(skillsReadme);
+if (!skillTable) {
+  fail(
+    `${skillsReadmePath} has no table whose header's first cell reads "Skill"; it must list the ` +
+      `skills the plugin ships in one, a row per skill.`,
+  );
 }
-// And it lists nothing else. A skill removed from .claude/skills/ but left in
-// the table tells an installer they get something the plugin no longer ships;
-// moving storefront-exposure out on 2026-10-19 left its row in, and verify
-// stayed green. The name is taken to its closing backtick.
-for (const [, name] of skillsReadme.matchAll(/^\|[ \t]*`([^`\n]+)`[ \t]*\|/gm)) {
+const skillTableProblems = skillTable.unclear.map(
+  (line) =>
+    `${skillsReadmePath}:${line} follows the skill table with no blank line between, and GitHub and ` +
+      `other renderers disagree on whether it is a row; end the table with a blank line`,
+);
+const listedSkills = new Set();
+for (const { line, name } of skillTable.rows) {
   if (!sourceSkills.includes(name)) {
-    fail(
-      `plugins/berlin-studio-skills/README.md lists ${name}, which the plugin does not ship; ` +
-        `remove its row, or add the skill to .claude/skills/ and sync.`,
+    skillTableProblems.push(
+      `${skillsReadmePath}:${line} lists "${name}" in its skill table, which is not a skill the plugin ` +
+        `ships; each row's first cell must name exactly one shipped skill (remove the row, or add the ` +
+        `skill to .claude/skills/ and sync)`,
     );
+  } else if (listedSkills.has(name)) {
+    skillTableProblems.push(`${skillsReadmePath}:${line} lists ${name} a second time`);
+  }
+  listedSkills.add(name);
+}
+for (const name of sourceSkills) {
+  if (!listedSkills.has(name)) {
+    skillTableProblems.push(`${skillsReadmePath} does not list the packaged skill ${name} in its skill table`);
   }
 }
+if (skillTableProblems.length) fail(`${skillTableProblems.join("; ")}.`);
 
 // ---------------------------------------------------------------------------
 // Exactly what ships, and nothing else. `claude plugin install` copies every

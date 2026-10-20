@@ -126,6 +126,7 @@ what the user tells you for the rest of the conversation rather than guessing.
 - Mix balance, translation, master-bus problems → `mix-master-decisions`
 - Packaging sounds as a sellable product → `sample-pack-creation` (a separate skill, not part of this plugin)
 
-A skill marked *separate* is not part of this plugin. If it is not installed,
-say so in a line and answer what this skill can, rather than acting as if it
-were there.
+A skill marked *separate* is not part of this plugin and is not published with
+it; it is named for setups that already have a skill by that name. If none is
+available, say in a line that the question is outside this plugin, and answer
+what this skill can rather than acting as if the other skill were there.

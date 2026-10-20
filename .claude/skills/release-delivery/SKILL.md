@@ -116,6 +116,7 @@ finished. Hand off to `release-campaigns` (a separate skill, not part of this pl
 - Splits, GEMA/GVL registration, clearance → `music-rights-royalties` (a separate skill, not part of this plugin)
 - Client-facing delivery notes for paid mix/master work → `mixing-mastering-reports` (a separate skill, not part of this plugin)
 
-A skill marked *separate* is not part of this plugin. If it is not installed,
-say so in a line and answer what this skill can, rather than acting as if it
-were there.
+A skill marked *separate* is not part of this plugin and is not published with
+it; it is named for setups that already have a skill by that name. If none is
+available, say in a line that the question is outside this plugin, and answer
+what this skill can rather than acting as if the other skill were there.
