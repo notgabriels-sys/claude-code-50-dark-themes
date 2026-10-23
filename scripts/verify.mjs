@@ -327,51 +327,92 @@ for (const [, slug] of expectedQuickPicks.matchAll(/href="\/theme\/([a-z0-9-]+)\
 
 // ---------------------------------------------------------------------------
 // The READMEs on GitHub link every theme by name to its page on the site
-// (theme/<slug>/, rendered further down from the same theme files). A name
-// that opens another theme's page, a link to a page that does not exist, or a
-// theme left out of a list is a public claim gone wrong, so each list is held
-// to the theme files: README.md links all of them, the Vol. 2 plugin README
-// links its twelve, and the 50-theme plugin README links the page index.
+// (theme/<slug>/, rendered further down from the same theme files).
+// scripts/build-readme-theme-links.mjs renders the lists: the fifty and the
+// twelve in README.md, the Vol. 2 table in its plugin README. Each sits between
+// two HTML comments and must be exactly what the builder renders today, so a
+// README can never name a theme the pack no longer has, leave one out, or send
+// a name to another theme's page. A block only counts where it renders: a start
+// marker inside a code fence, a <pre>-style block or an open comment fails, as
+// does one without a blank line on each side (an HTML block before it could
+// run on into the list). Around the blocks the same rules hold for every
+// theme-page address in these three files: written as
+// [Name](https://gabs-utilities.com/theme/<slug>/) with the page's own name, or
+// as the index, and nothing else; a theme name in brackets is that link and
+// nothing else. The 50-theme plugin README has no list of its own and points
+// at the index instead.
 // ---------------------------------------------------------------------------
-const { loadThemes: loadLinkedThemes } = await import("./build-theme-pages.mjs");
-const themePageUrl = "https://gabs-utilities.com/theme/";
-const linkedThemes = await loadLinkedThemes(root);
-const themeByPageSlug = new Map(linkedThemes.map((theme) => [theme.slug, theme]));
-const readmeThemeLinkSurfaces = [
-  { path: "README.md", markdown: readme, required: linkedThemes, index: false },
-  {
-    path: "plugins/50-dark-themes/README.md",
-    markdown: await readFile(new URL("plugins/50-dark-themes/README.md", root), "utf8"),
-    required: [],
-    index: true,
-  },
-  {
-    path: "plugins/dark-themes-vol-2/README.md",
-    markdown: await readFile(new URL("plugins/dark-themes-vol-2/README.md", root), "utf8"),
-    required: linkedThemes.filter((theme) => theme.pack.id === "dark-themes-vol-2"),
-    index: false,
-  },
-];
-for (const { path, markdown, required, index } of readmeThemeLinkSurfaces) {
-  const linked = new Set();
-  let indexLinked = false;
-  for (const [, text, rest] of markdown.matchAll(/(?:\[([^\]]*)\]\()?https:\/\/gabs-utilities\.com\/theme\/([^\s)]*)/g)) {
-    if (rest === "") {
-      indexLinked = true;
-      continue;
+const readmeLinks = await import("./build-readme-theme-links.mjs");
+const readmeTexts = new Map([["README.md", readme]]);
+for (const path of readmeLinks.README_PATHS) {
+  if (!readmeTexts.has(path)) readmeTexts.set(path, await readFile(new URL(path, root), "utf8"));
+}
+let readmeLinkBuild;
+try {
+  readmeLinkBuild = await readmeLinks.buildReadmeThemeLinks(root);
+} catch (error) {
+  fail(`The README theme lists cannot be rendered: ${error.message}`);
+}
+for (const [path, text] of readmeTexts) {
+  // The markers and the generated blocks are compared line by line, so a carriage return would
+  // read as text after each marker and the builder's LF lines would never match.
+  if (text.includes("\r")) fail(`${path} has carriage returns (CR LF line endings); the READMEs use LF line endings only. Convert the file to LF.`);
+  const [problem] = readmeLinks.themeLinkProblems(text, readmeLinkBuild.themes);
+  if (problem) fail(`${path} ${problem}`);
+  // A marker promises a generated list, so one that no block registers is a list nobody renders.
+  for (const [marker, key] of text.matchAll(/<!-- theme-links:([^\s]*):(?:start|end) -->/g)) {
+    if (!readmeLinkBuild.blocks.some((block) => block.path === path && block.key === key)) {
+      fail(`${path} carries ${marker}, but no theme-links block with that key belongs in this file (see THEME_LINK_BLOCKS in scripts/build-readme-theme-links.mjs); remove it or register it.`);
     }
-    const slug = rest.match(/^([a-z0-9-]+)\/$/)?.[1];
-    const theme = slug === undefined ? undefined : themeByPageSlug.get(slug);
-    if (!theme) fail(`${path} links ${themePageUrl}${rest}, but no theme page has that address.`);
-    if (text !== undefined && text !== theme.name) {
-      fail(`${path} links ${themePageUrl}${rest} as "${text}"; that page is ${theme.name}'s.`);
+  }
+}
+for (const block of readmeLinkBuild.blocks) {
+  const text = readmeTexts.get(block.path);
+  const lines = text.split("\n");
+  const { flow } = readmeLinks.markdownFlow(text);
+  const where = `${block.path}, ${block.key} theme-links block`;
+  for (const marker of [block.start, block.end]) {
+    const count = text.split(marker).length - 1;
+    if (count === 0) {
+      fail(`${where}: no ${marker}. Write it on a line of its own with a blank line on each side and run node scripts/build-readme-theme-links.mjs.`);
     }
-    linked.add(theme.slug);
+    if (count > 1) fail(`${where}: ${marker} appears ${count} times; it appears once.`);
+    if (!lines.includes(marker)) fail(`${where}: ${marker} shares its line with other text; the marker is a line of its own.`);
   }
-  for (const theme of required) {
-    if (!linked.has(theme.slug)) fail(`${path} does not link ${theme.name}'s page (${themePageUrl}${theme.slug}/).`);
+  const startLine = lines.indexOf(block.start);
+  const endLine = lines.indexOf(block.end);
+  if (endLine < startLine) fail(`${where}: ${block.end} comes before ${block.start}.`);
+  const blank = (line) => /^[ \t]*$/.test(line);
+  if ((startLine > 0 && !blank(lines[startLine - 1])) || (endLine < lines.length - 1 && !blank(lines[endLine + 1]))) {
+    fail(`${where}: the block needs a blank line before ${block.start} and after ${block.end}, so the markers are blocks of their own.`);
   }
-  if (index && !indexLinked) fail(`${path} must link the theme page index ${themePageUrl} (the list of every page).`);
+  if (!flow[startLine]) {
+    fail(
+      `${where}: ${block.start} on line ${startLine + 1} sits inside a code fence, a <pre>-style block or an HTML comment opened earlier, ` +
+        "so the list would not render as links. Close it before the block.",
+    );
+  }
+  const written = text.slice(text.indexOf(block.start), text.indexOf(block.end) + block.end.length);
+  if (written !== block.rendered) {
+    fail(`${where}: stale. It is not what scripts/build-readme-theme-links.mjs renders from the theme files. Run it and commit the result.`);
+  }
+}
+{
+  const path = "plugins/50-dark-themes/README.md";
+  const text = readmeTexts.get(path);
+  const { flow } = readmeLinks.markdownFlow(text);
+  // A paragraph of its own: on a line of its own, in document flow, with a blank line (or the
+  // file's edge) on each side. Anything else can swallow it without a trace — a link reference
+  // definition whose label or title spans lines, a table, a lone tag the walk reads loosely.
+  const lines = text.split("\n");
+  const blank = (line) => /^[ \t]*$/.test(line);
+  const indexLine = lines.findIndex(
+    (line, index) =>
+      line === readmeLinks.THEME_PAGE_URL && flow[index] && (index === 0 || blank(lines[index - 1])) && (index === lines.length - 1 || blank(lines[index + 1])),
+  );
+  if (indexLine === -1) {
+    fail(`${path} must carry the theme page index ${readmeLinks.THEME_PAGE_URL} on a line of its own with a blank line before and after it, where it renders (the list of every page).`);
+  }
 }
 
 // Each pack's free zip is a release asset that scripts/build-release-zip.sh names after the

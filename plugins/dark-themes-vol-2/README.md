@@ -17,6 +17,8 @@ to copy it into `~/.claude/themes/` for editing.
 
 ## The themes
 
+<!-- theme-links:vol2-table:start -->
+
 | Theme | Mood |
 |---|---|
 | [Afterglow](https://gabs-utilities.com/theme/afterglow/) | Warm peach dusk after the sun drops |
@@ -31,6 +33,8 @@ to copy it into `~/.claude/themes/` for editing.
 | [Monsoon](https://gabs-utilities.com/theme/monsoon/) | Rain-washed green-gray |
 | [Neon Noir](https://gabs-utilities.com/theme/neon-noir/) | Magenta signage on wet asphalt |
 | [Ozone](https://gabs-utilities.com/theme/ozone/) | Electric periwinkle after the storm |
+
+<!-- theme-links:vol2-table:end -->
 
 Each name above opens the theme's own page: a specimen, the install commands, its palette and the
 measured contrast. Visual gallery, with the Vol. 2 section: https://gabs-utilities.com/#vol2

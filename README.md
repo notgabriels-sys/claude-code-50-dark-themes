@@ -123,6 +123,8 @@ with no build step. **[Live demo →](https://notgabriels-sys.github.io/dark-htm
 
 Each name opens the theme's own page: a specimen, the install commands, its palette and the measured contrast.
 
+<!-- theme-links:fifty:start -->
+
 [Absinthe](https://gabs-utilities.com/theme/absinthe/) · [Acid](https://gabs-utilities.com/theme/acid/) ·
 [Amber Room](https://gabs-utilities.com/theme/amber-room/) · [Anaglyph](https://gabs-utilities.com/theme/anaglyph/) ·
 [Blackout](https://gabs-utilities.com/theme/blackout/) · [Blueprint](https://gabs-utilities.com/theme/blueprint/) ·
@@ -149,7 +151,11 @@ Each name opens the theme's own page: a specimen, the install commands, its pale
 [Undertow](https://gabs-utilities.com/theme/undertow/) · [VU Meter](https://gabs-utilities.com/theme/vu-meter/) ·
 [Velvet](https://gabs-utilities.com/theme/velvet/) · [Verdigris](https://gabs-utilities.com/theme/verdigris/)
 
+<!-- theme-links:fifty:end -->
+
 ## The 12 Vol. 2 themes
+
+<!-- theme-links:vol2:start -->
 
 [Afterglow](https://gabs-utilities.com/theme/afterglow/) · [Aurora Borealis](https://gabs-utilities.com/theme/aurora-borealis/) ·
 [Basalt](https://gabs-utilities.com/theme/basalt/) · [Biolume](https://gabs-utilities.com/theme/biolume/) ·
@@ -157,6 +163,8 @@ Each name opens the theme's own page: a specimen, the install commands, its pale
 [Gaslight](https://gabs-utilities.com/theme/gaslight/) · [Heliotrope](https://gabs-utilities.com/theme/heliotrope/) ·
 [Magnetite](https://gabs-utilities.com/theme/magnetite/) · [Monsoon](https://gabs-utilities.com/theme/monsoon/) ·
 [Neon Noir](https://gabs-utilities.com/theme/neon-noir/) · [Ozone](https://gabs-utilities.com/theme/ozone/)
+
+<!-- theme-links:vol2:end -->
 
 A separate free plugin in the same marketplace, held to the same contrast floors.
 Preview them all: [plugins/dark-themes-vol-2/preview.png](plugins/dark-themes-vol-2/preview.png)
