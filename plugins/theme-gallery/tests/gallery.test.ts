@@ -137,7 +137,11 @@ test('marks the theme the settings select, from either pack', async ($, on) => {
   const cases = [
     { theme: 'custom:50-dark-themes:absinthe', key: 'theme-absinthe', line: 'Current theme: Absinthe, from 50 Dark Themes' },
     { theme: 'custom:dark-themes-vol-2:ozone', key: 'theme-ozone', line: 'Current theme: Ozone, from Dark Themes Vol. 2' },
-    { theme: 'custom:night-vision', key: 'theme-night-vision', line: 'Current theme: Night Vision, your copy in ~/.claude/themes' },
+    {
+      theme: 'custom:night-vision',
+      key: 'theme-night-vision',
+      line: 'Current theme: Night Vision (a theme file named night-vision.json in ~/.claude/themes)',
+    },
   ]
   for (const one of cases) {
     settings = { theme: one.theme }
@@ -207,6 +211,35 @@ test('shows the install commands for the packs the settings do not enable', asyn
   expect(await selected.find({ type: 'Text', text: install50 })).toBeDefined()
   expect(await selected.find({ type: 'Text', text: installVol2 })).toBeUndefined()
   await selected.unmount()
+})
+
+// The repository's manual install and install.sh copy the files into
+// ~/.claude/themes, which leaves no enabledPlugins entry behind.
+test('a theme file selected from ~/.claude/themes softens the install hints', async ($, on) => {
+  stubEngine(on)
+  settings = { theme: 'custom:absinthe' }
+
+  for (const surface of SURFACES) {
+    const ui = await $.ui.mount({ ...PANE, surface })
+    expect(
+      await ui.find({ type: 'Text', text: 'Current theme: Absinthe (a theme file named absinthe.json in ~/.claude/themes)' }),
+    ).toBeDefined()
+    expect(await ui.findAll({ type: 'Text', text: /first$/ })).toHaveLength(0)
+    expect(await ui.findAll({ type: 'Text', text: 'in /theme if copied, else install 50 Dark Themes' })).toHaveLength(49)
+    expect(await ui.findAll({ type: 'Text', text: 'in /theme if copied, else install Dark Themes Vol. 2' })).toHaveLength(12)
+    expect(await ui.find({ type: 'Text', text: /theme files you copied there are in \/theme already/ })).toBeDefined()
+    // The commands stay, for a user who would rather install the packs.
+    expect(await ui.find({ type: 'Text', text: '/plugin install 50-dark-themes@notgabriels-themes' })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: '/plugin install dark-themes-vol-2@notgabriels-themes' })).toBeDefined()
+    await ui.unmount()
+  }
+
+  // A pack the settings enable still says to pick the theme in /theme.
+  settings = { theme: 'custom:absinthe', enabledPlugins: { 'dark-themes-vol-2@notgabriels-themes': true } }
+  const mixed = await $.ui.mount({ ...PANE, surface: 'terminal' })
+  expect(await mixed.findAll({ type: 'Text', text: 'pick it in /theme' })).toHaveLength(12)
+  expect(await mixed.findAll({ type: 'Text', text: 'in /theme if copied, else install 50 Dark Themes' })).toHaveLength(49)
+  await mixed.unmount()
 })
 
 test('filters by accent family and back', async ($, on) => {

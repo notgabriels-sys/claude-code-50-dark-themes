@@ -45,10 +45,10 @@
       "source": "./plugins/theme-gallery",
       "version": "0.1.0",
       "displayName": "Dark Themes Gallery",
-      "description": "A /themes pane showing the 62 free dark themes with color swatches and the theme you have selected.",
+      "description": "A /themes pane showing the 62 free dark themes with color swatches, the theme you have selected and which packs your settings enable.",
       "author": {
         "name": "NotGabriels",
-        "url": "https://github.com/notgabriels-sys/claude-code-50-dark-themes"
+        "url": "https://github.com/notgabriels-sys"
       },
       "homepage": "https://github.com/notgabriels-sys/claude-code-50-dark-themes/tree/main/plugins/theme-gallery",
       "repository": "https://github.com/notgabriels-sys/claude-code-50-dark-themes",

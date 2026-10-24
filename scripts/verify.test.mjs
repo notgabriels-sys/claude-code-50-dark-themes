@@ -3,7 +3,7 @@ import { spawn } from "node:child_process";
 import { chmod, cp, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, relative, sep } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import test from "node:test";
 
 const projectRoot = fileURLToPath(new URL("../", import.meta.url));
@@ -769,4 +769,32 @@ test("rejects a theme gallery that ships a themes folder of its own", { timeout:
 
   assert.notEqual(result.code, 0, "the verifier accepted a gallery plugin that would pack as a theme pack");
   assert.match(result.stderr, /must not have a themes\/ folder/);
+});
+
+test("rejects a gallery icon drawn in a colour no free theme uses", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const { ICON_SIZE, encodePng, renderGalleryIcon } = await import("./build-gallery-icon.mjs");
+  const pixels = await renderGalleryIcon(pathToFileURL(`${fixtureRoot}${sep}`));
+  for (let row = 400; row < 528; row += 1) {
+    for (let column = 400; column < 528; column += 1) pixels.set([0xff, 0x00, 0xff], (row * ICON_SIZE + column) * 3);
+  }
+  await writeFile(join(fixtureRoot, "plugins", "theme-gallery", "logo.png"), encodePng(pixels, ICON_SIZE, ICON_SIZE));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a gallery icon with a colour outside the free themes");
+  assert.match(result.stderr, /logo\.png may only use free theme colours: #FF00FF covers 16384 pixels/);
+});
+
+test("rejects a gallery documentation link that points at the storefront README", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const manifestPath = join(fixtureRoot, "plugins", "theme-gallery", ".claude-plugin", "plugin.json");
+  const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+  manifest.documentationUrl = "https://github.com/notgabriels-sys/claude-code-50-dark-themes#readme";
+  await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a gallery documentationUrl on the repository root");
+  assert.match(result.stderr, /documentationUrl must be its own README/);
 });

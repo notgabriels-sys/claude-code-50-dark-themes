@@ -53,8 +53,13 @@ type Selection =
   | { kind: 'other'; value: string }
 
 // Claude Code names a plugin's theme `custom:<plugin>:<file name>` and a theme
-// file in ~/.claude/themes `custom:<file name>`, where a copy made with Ctrl+E
-// in /theme, or a file copied there by hand, also lands.
+// file in ~/.claude/themes `custom:<file name>`, which is where the repository's
+// manual install and install.sh copy the files. The second form is matched by
+// file name alone: any absinthe.json there reads as Absinthe, whatever colors it
+// holds, so the pane says only that a file of that name is selected. Editing a
+// plugin theme with Ctrl+E in /theme also saves a copy in ~/.claude/themes; this
+// mod does not assume that copy's file name, and one under another name reads
+// as "not one of the themes below".
 function selectionOf(setting: unknown): Selection {
   if (typeof setting !== 'string' || setting === '') return { kind: 'unset' }
   const parts = setting.split(':')
@@ -91,7 +96,7 @@ function currentLine(selection: Selection): string {
     case 'pack':
       return `Current theme: ${selection.theme.name}, from ${packTitle(selection.theme.pack)}`
     case 'copy':
-      return `Current theme: ${selection.theme.name}, your copy in ~/.claude/themes`
+      return `Current theme: ${selection.theme.name} (a theme file named ${selection.theme.slug}.json in ~/.claude/themes)`
     case 'other':
       return `Current theme: ${selection.value}, not one of the themes below`
   }
@@ -118,8 +123,9 @@ export const register: Register = on => {
         immediate: true,
       })
     } catch {
-      // The name is taken in this session: the gallery stays unreachable
-      // rather than taking another command's place.
+      // The name is taken in this session, for example by another plugin's
+      // /themes: the gallery stays unreachable rather than taking that
+      // command's place. The README's troubleshooting section says so.
     }
 
     return next(e)
@@ -150,6 +156,10 @@ export const register: Register = on => {
     const missing = PACKS.filter(pack => !installed.has(pack.id))
     const shown = THEMES.filter(theme => family === 'all' || theme.family === family)
     const filterLabel = FILTERS.find(filter => filter.id === family)?.label ?? 'All'
+    // A selected theme file in ~/.claude/themes shows that this user runs theme
+    // files copied there, so a pack the settings do not enable may still be in
+    // /theme: the hints and the Switching section say both.
+    const runsCopies = selection.kind === 'copy'
 
     // Short enough to fit beside the name in a pane docked next to the chat;
     // the Switching section below spells out the install commands.
@@ -159,7 +169,9 @@ export const register: Register = on => {
         ? 'current theme'
         : installed.has(theme.pack)
           ? 'pick it in /theme'
-          : `install ${packTitle(theme.pack)} first`
+          : runsCopies
+            ? `in /theme if copied, else install ${packTitle(theme.pack)}`
+            : `install ${packTitle(theme.pack)} first`
 
       return (
         <Box key={`theme-${theme.slug}`} flexDirection="row">
@@ -222,15 +234,19 @@ export const register: Register = on => {
             <Box flexDirection="column">
               <Text>
                 {missing.map(pack => pack.title).join(' and ')} {missing.length === 1 ? 'is' : 'are'} not
-                enabled in your settings. Install from the prompt of a terminal session:
+                enabled in your settings.{' '}
+                {runsCopies
+                  ? 'Your current theme is a file in ~/.claude/themes, so theme files you copied there are in /theme already. To install a pack instead, run these at the prompt of a terminal session:'
+                  : 'Install from the prompt of a terminal session:'}
               </Text>
               <Text color="suggestion">{`  ${MARKETPLACE_ADD}`}</Text>
               {missing.map(pack => (
-                <Text color="suggestion">{`  ${pack.install}`}</Text>
+                <Text key={`install-${pack.id}`} color="suggestion">{`  ${pack.install}`}</Text>
               ))}
               <Text dimColor>
-                Then restart Claude Code. Theme files copied into ~/.claude/themes by hand work too; this
-                check reads only your plugin settings.
+                {runsCopies
+                  ? 'Then restart Claude Code.'
+                  : 'Then restart Claude Code. Theme files copied into ~/.claude/themes by hand work too; this check reads only your plugin settings.'}
               </Text>
             </Box>
           )}

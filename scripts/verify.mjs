@@ -200,7 +200,30 @@ if (JSON.stringify(galleryHooks) !== JSON.stringify({ modules: ["./register.tsx"
 for (const file of ["README.md", "LICENSE"]) {
   if (!(await stat(new URL(file, galleryRoot)).then(() => true, () => false))) fail(`plugins/theme-gallery/${file} is missing.`);
 }
-await verifyPng("plugins/theme-gallery/logo.png", { label: "Gallery plugin icon", width: 1024, height: 1024 });
+// The listing's Documentation and homepage links go to the mod's own README,
+// never the repository root, whose README is the storefront.
+const galleryHome = "https://github.com/notgabriels-sys/claude-code-50-dark-themes/tree/main/plugins/theme-gallery";
+if (galleryManifest.documentationUrl !== `${galleryHome}#readme`) {
+  fail(`The gallery plugin's documentationUrl must be its own README, ${galleryHome}#readme.`);
+}
+if (galleryManifest.homepage !== galleryHome || marketplace.plugins[2].homepage !== galleryHome) {
+  fail(`The gallery plugin's homepage, in plugin.json and the marketplace, must be ${galleryHome}.`);
+}
+const { GALLERY_ICON_PATH, decodePng, iconColourProblems, loadFreeColours } = await import("./build-gallery-icon.mjs");
+await verifyPng(GALLERY_ICON_PATH, { label: "Gallery plugin icon", width: 1024, height: 1024 });
+// The free mod's icon carries only colours the free theme files publish, plus
+// the anti-aliased edges between them: no paid theme's colours, however the
+// image was made.
+let galleryIcon;
+try {
+  galleryIcon = decodePng(await readFile(new URL(GALLERY_ICON_PATH, root)));
+} catch (error) {
+  fail(`Gallery plugin icon cannot be decoded: ${error.message}.`);
+}
+const galleryIconProblems = iconColourProblems(galleryIcon, await loadFreeColours(root));
+if (galleryIconProblems.length > 0) {
+  fail(`${GALLERY_ICON_PATH} may only use free theme colours: ${galleryIconProblems.join("; ")}.`);
+}
 const { GALLERY_DATA_PATH, buildGalleryData, loadGalleryThemes } = await import("./build-gallery-data.mjs");
 const galleryDataThemes = await loadGalleryThemes(root);
 if (galleryDataThemes.length !== files.length + vol2Files.length) {
