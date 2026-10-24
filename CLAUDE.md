@@ -228,6 +228,9 @@ demand, and **fails the build** on:
 - **(added 2026-10-20)** a plugin's themes or skills that differ from the
   digest recorded for the version that ships them — see "A changed package
   needs a new version" below;
+- **(added 2026-10-24)** an inline `svg` element holding anything but plain shapes
+  with geometry and paint attributes — see "Main's #65, the Familiars page"
+  below;
 - the retired résumé checkout slug `notgabriel.gumroad.com/l/wmlrk`;
 - any of the three verified PayPal links going missing;
 - **(added 2026-08-24)** any of the three carrying a price other than its
@@ -587,7 +590,7 @@ Chromium refused a gallery whose hash `verify` had accepted. An end tag such as
 reads the first), left Chromium with no policy, and a script hidden from
 `htmlTags` inside a `noscript` ran and navigated to another host; a lone `<br>`
 there, with no text at all, does the same. And the rules that keep `htmlTags`
-reading what a browser builds (no inline `svg` or `math`, no comment opener
+reading what a browser builds (no inline `math`, inline `svg` only as shapes, no comment opener
 inside a script, no `noscript` or other inert container, two script spellings,
 no microdata) held only on the root pages, while `assets/social-preview.html`
 is served too: an entity in an SVG script, decoded before Chromium hashed it,
@@ -640,6 +643,53 @@ merely stale. `sitemap.xml` is now compared last. One control could no longer
 hold as written, since the builder owns every byte of the sitemap: it now
 changes only the declaration and expects "stale", which is reached only once
 the document checks pass, and a reader requiring double quotes fails it.
+
+**(merged 2026-10-24) Main's #65, the Familiars page.** #65 published
+`familiars.html`, and merged here it met four guards it had never run
+against. Its inline script — the light/dark switch, the kind filter, a pointer
+light on each card, the copy button and the familiar's eye — loads, fetches and
+navigates nothing; it is reviewed in `reviewedInlineScripts` and the page
+carries its policy. It loaded Familjen Grotesk and IBM Plex Mono from Google's
+servers, which hands every visitor's address to Google before the page shows,
+and which the link guard refuses; the twelve WOFF2 files it asked for (latin
+and latin-ext, from the fontsource packages, SIL Open Font License 1.1, the
+licences beside them in `assets/fonts/`) are now served from the site, and
+`.woff2` is an inert served type. And it draws its familiar and sigils as
+inline SVG, which this file refused outright, because inside one a browser
+reads `<style>`, `<title>` and CDATA as markup. Images would have lost the
+page's theme colours, the sigils drawn on hover and the eye that follows the
+cursor, so an inline `svg` element is now held to shapes instead: `htmlTags` marks the
+tags inside one, and each of them, start or end, must be one of nine shape
+elements carrying geometry and paint attributes or `aria-*`, with no `&`, `\`
+or `url(` in a value, nothing starting `<!` before its end tag, and that end
+tag; a `math` element stays refused. The logo #66 added had "cursor =" in a
+comment, which the SVG reader reads as an attribute (the cost of a reader that
+does not parse); the comment now reads without it.
+
+Differentially tested against Chromium (rule 13): 31,996 generated pages — 68
+tokens inside an inline `svg` (shapes; raw-text and integration-point
+elements; tags that leave foreign content; the page's own end tags; comments
+and CDATA; paint servers in five spellings; tags carrying a link, a handler or
+a script), alone, in pairs, inside each of 22 wrappers, inside two wrappers
+around 12 of them, and 20,000 random triples. A miss is a page the reader
+accepts while Chromium builds an SVG element the reader did not see as one, an
+HTML element where the reader read SVG, a `url(` in an SVG attribute, a
+request from an SVG element, or a script that runs. The reader accepted 802
+and missed none. The harness was proven on weakened readers first: allowing
+`<style>` and `<title>` gave 147 misses, tags that leave the svg 476, `&` in a
+value 83, `url(` 172, no tracking of the svg 18,330. Turning off the `<!` rule
+or the self-closing read gave none: the first is a second wall behind the
+element rule, recorded as shadowed; the second only ever refused more, and a
+test pins it. Outside the svg the run found only what the page's other checks
+govern: an on-site `<img src>`, and CSS `url()` in a style attribute on an
+HTML element, which this file records as not covered. On an 80-page sample,
+real `verify` agreed with the extracted reader 78 times and refused more in
+the other two (a `<font color>` after the svg). Checked in Chromium
+at 390 and 1280 px: all six font faces load from the site, no request leaves
+it, no policy violation or console error, and the filters, the theme switch,
+the copy button and the eye behave. The page scrolls up to 28 px sideways at
+390 px while its background drifts, on `main` too, before any of this; that
+is left to the page's owner. The harness lives in the scratchpad.
 
 **(added 2026-10-20) The cards print the terminal background.** The footer, the
 install guide (its text and its HowTo structured data) and `README.md` told
@@ -897,7 +947,8 @@ character references. So tags are now read with the HTML tokenizer's own rules
 (`htmlTags` in `verify.mjs`), microdata and RDFa attributes are refused
 outright (`property` only as Open Graph on `meta`, `rel` only as plain link
 types), inline `svg`/`math` elements are refused because a browser lifts tags out of
-them that a raw-text reader skips, and every JSON-LD block must use exactly
+them that a raw-text reader skips (inline `svg` is held to shapes since
+2026-10-24; see "Main's #65" above), and every JSON-LD block must use exactly
 `"https://schema.org"` as its only `@context` and write no key twice. A regex
 over HTML is the defect class here.
 
@@ -908,7 +959,7 @@ took `<title>` text as markup, so `<title>x<!--</title>` opened a comment that
 hid a real microdata list after it (a regression; the regex had caught it).
 Reading text as markup can hide markup. The reader now reads as a browser
 does, including which elements hold text, and refuses what it cannot model:
-inline `svg`/`math`, and `<!--` inside a `script`, where a browser's
+inline `math`, inline `svg` beyond plain shapes, and `<!--` inside a `script`, where a browser's
 escaped states run the script past its `</script>` and swallowed the theme
 list (pre-existing). It is checked differentially against Chromium; see rule
 13 above. That review's bypass lens was stopped by a safety classifier before

@@ -3365,6 +3365,73 @@ for (const [defect, page, to, message] of [
   });
 }
 
+// Inline <svg> is held to shapes since main's #65 drew its familiar and sigils
+// inline. Inside an svg a browser reads <style>, <title> and CDATA as markup,
+// leaves for HTML again at tags such as <p>, and fetches a paint server named
+// in url(); each of these is refused.
+for (const [defect, svg, message] of [
+  ["a style element", '<svg viewBox="0 0 9 9"><style>x</style></svg>', /holding <style>, <\/style>\./],
+  ["a title element", '<svg viewBox="0 0 9 9"><title>x</title></svg>', /holding <title>, <\/title>\./],
+  ["a foreignObject", '<svg viewBox="0 0 9 9"><foreignObject></foreignObject></svg>',
+    /holding <foreignobject>, <\/foreignobject>\./],
+  ["a tag that leaves the svg", '<svg viewBox="0 0 9 9"><p>x</p></svg>', /holding <p>, <\/p>\./],
+  ["an end tag of the page around it", '<svg viewBox="0 0 9 9"></div></svg>', /holding <\/div>\./],
+  ["a comment", '<svg viewBox="0 0 9 9"><!-- x --><path d="M0 0h9"/></svg>', /holding "<!" \(a comment or CDATA\)\./],
+  ["CDATA", '<svg viewBox="0 0 9 9"><![CDATA[x]]></svg>', /holding "<!" \(a comment or CDATA\)\./],
+  ["a style attribute", '<svg viewBox="0 0 9 9"><path style="fill:red" d="M0 0h9"/></svg>', /holding style on <path>\./],
+  ["an href", '<svg viewBox="0 0 9 9"><path href="https://example.invalid/" d="M0 0h9"/></svg>', /holding href on <path>/],
+  ["a handler", '<svg viewBox="0 0 9 9" onload="x()"><path d="M0 0h9"/></svg>', /holding onload on <svg>\./],
+  ["a paint server in another file", '<svg viewBox="0 0 9 9"><path fill="url(pay.svg#p)" d="M0 0h9"/></svg>',
+    /holding fill="url\(pay\.svg#p\)" on <path>\./],
+  ["url( spelled with a character reference", '<svg viewBox="0 0 9 9"><path fill="u&#114;l(pay.svg#p)" d="M0 0h9"/></svg>',
+    /holding fill="u&#114;l\(pay\.svg#p\)" on <path>\./],
+  ["url( spelled with a CSS escape", '<svg viewBox="0 0 9 9"><path fill="u\\72l(pay.svg#p)" d="M0 0h9"/></svg>',
+    /holding fill="u\\72l\(pay\.svg#p\)" on <path>\./],
+  ["another namespace", '<svg xmlns="http://www.w3.org/1999/xhtml" viewBox="0 0 9 9"><path d="M0 0h9"/></svg>',
+    /holding xmlns="http:\/\/www\.w3\.org\/1999\/xhtml"\./],
+  // Everything after an unclosed svg is inside it, the page's own end tags included.
+  ["no closing tag", '<svg viewBox="0 0 9 9"><path d="M0 0h9"/>', /holding <\/body>, <\/html>, no closing <\/svg>\./],
+]) {
+  test(`rejects an inline svg holding ${defect}`, { timeout: 90_000 }, async (t) => {
+    const fixtureRoot = await editPage(t, "assets/social-preview.html", "</body>", `${svg}\n</body>`);
+
+    const result = await runVerifier(fixtureRoot);
+
+    assert.notEqual(result.code, 0, `an inline svg holding ${defect} shipped green`);
+    assert.match(result.stderr, /assets\/social-preview\.html has an inline <svg> /);
+    assert.match(result.stderr, message);
+  });
+}
+
+test("accepts an inline svg of shapes with geometry and paint attributes", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await editPage(t, "assets/social-preview.html", "</body>",
+    '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><g transform="translate(1 1)">' +
+      '<path class="draw" d="M1 1h4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>' +
+      '<circle cx="4" cy="4" r="2" fill="var(--bg)"/><svg viewBox="0 0 4 4"><rect width="4" height="4" rx="1"/></svg>' +
+      "</g></svg>\n</body>");
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.equal(result.code, 0, `an inline svg of shapes was rejected: ${result.stderr}`);
+});
+
+// Outside an svg its attributes are as unknown as ever, and an <svg/> opens
+// nothing, so a tag after one is read as the page's.
+for (const [defect, markup] of [
+  ["an SVG attribute on an HTML element", '<div viewbox="0 0 9 9"></div>'],
+  ["an SVG attribute after an empty <svg/>", '<svg viewBox="0 0 9 9"/><div viewbox="0 0 9 9"></div>'],
+]) {
+  test(`rejects ${defect}`, { timeout: 90_000 }, async (t) => {
+    const fixtureRoot = await editPage(t, "assets/social-preview.html", "</body>", `${markup}\n</body>`);
+
+    const result = await runVerifier(fixtureRoot);
+
+    assert.notEqual(result.code, 0, `${defect} shipped green`);
+    assert.match(result.stderr, /has viewbox on <div>, an attribute this check does not know/);
+    assert.doesNotMatch(result.stderr, /has an inline <svg>/);
+  });
+}
+
 // The inert-element and script-spelling checks read the raw page, so a mention
 // in a comment counts. The message names the line and the way to write it.
 for (const [mention, comment, message] of [

@@ -2233,10 +2233,10 @@ const RAW_SCAN_NOTE =
 // text as markup is not the safe side: the first version did so for <title>,
 // and "<title>x<!--</title>" opened a comment that hid a real microdata list
 // after it (Chromium's DOM, checked). A differential run of this reader against
-// Chromium over 20,000 generated snippets found nothing else. Inline <svg> and
-// <math> are refused below, because inside them <style> is not raw text, and a
-// <script> may not hold "<!--", from which a browser can run it past its
-// </script>.
+// Chromium over 20,000 generated snippets found nothing else. Inline <math> is
+// refused below, and inline <svg> is held to a shape-only allowlist, because
+// inside them <style> is not raw text; and a <script> may not hold "<!--", from
+// which a browser can run it past its </script>.
 const HTML_SPACE = /[\t\n\f\r ]/;
 const TEXT_ELEMENTS = new Set(["script", "style", "title", "textarea", "xmp", "iframe", "noembed", "noframes"]);
 const htmlTags = (markup) => {
@@ -2252,6 +2252,7 @@ const htmlTags = (markup) => {
     const found = ending.exec(markup);
     at = found ? found.index + found[0].length : markup.length;
   };
+  let svgDepth = 0;
   while ((at = markup.indexOf("<", at)) !== -1) {
     const start = at;
     at++;
@@ -2272,8 +2273,10 @@ const htmlTags = (markup) => {
     }
     const name = readWhile((c) => !/[\t\n\f\r />]/.test(c)).toLowerCase();
     const attributes = [];
+    let selfClosing = false;
     while (at < markup.length && markup[at] !== ">") {
       if (/[\t\n\f\r /]/.test(markup[at])) {
+        if (markup[at] === "/" && markup[at + 1] === ">") selfClosing = true;
         at++;
         continue;
       }
@@ -2296,7 +2299,15 @@ const htmlTags = (markup) => {
       attributes.push({ name: attribute, value });
     }
     at++;
-    const tag = { name, closing, attributes, text: "", start, end: at };
+    // foreign: the tag sits inside an inline <svg> (the <svg> and </svg> tags
+    // included), where the page check below holds it to an SVG allowlist. An
+    // <svg/> is empty, as in a browser.
+    const opensSvg = !closing && name === "svg" && !selfClosing;
+    const tag = {
+      name, closing, selfClosing, attributes, text: "", start, end: at, foreign: svgDepth > 0 || name === "svg",
+    };
+    if (opensSvg) svgDepth++;
+    if (closing && name === "svg" && svgDepth > 0) svgDepth--;
     tags.push(tag);
     if (!closing && name === "plaintext") {
       tag.text = markup.slice(at);
@@ -2310,6 +2321,52 @@ const htmlTags = (markup) => {
     }
   }
   return tags;
+};
+// Inline <svg>, held to shapes. Inside one a browser reads <style>, <title> and
+// <script> as markup rather than text, honours CDATA, and leaves it for HTML
+// again at tags such as <p> or <font color> -- so the tags htmlTags reads there
+// match the elements a browser builds only while every tag is a plain shape.
+// familiars.html (main's #65) draws its familiar and sigils inline so its CSS
+// can colour, animate and move them; inline <svg> was refused outright until
+// 2026-10-24. Every tag in an inline <svg>, start or end, must be one of
+// INLINE_SVG_ELEMENTS and carry only INLINE_SVG_ATTRIBUTES (or aria-*); no value
+// may hold "&" (a character reference can spell url( ), "\" (a CSS escape can)
+// or url( (a paint server can be fetched from another file); the <svg> must be
+// closed; and nothing between <svg> and </svg> may start "<!", so there is no
+// comment or CDATA section. Anything else goes in a file shown with <img>.
+const INLINE_SVG_ELEMENTS = new Set(["svg", "g", "path", "rect", "circle", "ellipse", "line", "polyline", "polygon"]);
+const INLINE_SVG_ATTRIBUTES = new Set([
+  "class", "id", "xmlns", "viewbox", "preserveaspectratio", "width", "height", "x", "y", "rx", "ry", "cx", "cy",
+  "r", "x1", "y1", "x2", "y2", "d", "points", "transform", "fill", "fill-opacity", "fill-rule", "stroke",
+  "stroke-width", "stroke-linecap", "stroke-linejoin", "stroke-miterlimit", "stroke-dasharray",
+  "stroke-dashoffset", "stroke-opacity", "opacity", "clip-rule", "vector-effect", "shape-rendering",
+  "focusable", "role",
+]);
+const inlineSvgProblems = (markup, tags) => {
+  const problems = [];
+  let depth = 0;
+  let from = 0;
+  const region = (to) => {
+    if (markup.slice(from, to).includes("<!")) problems.push('"<!" (a comment or CDATA)');
+  };
+  for (const tag of tags) {
+    if (!tag.foreign) continue;
+    const written = `<${tag.closing ? "/" : ""}${tag.name}>`;
+    if (!INLINE_SVG_ELEMENTS.has(tag.name)) problems.push(written);
+    for (const { name, value } of tag.attributes) {
+      if (!INLINE_SVG_ATTRIBUTES.has(name) && !name.startsWith("aria-")) problems.push(`${name} on ${written}`);
+      else if (/[&\\]|url\(/i.test(value)) problems.push(`${name}="${value}" on ${written}`);
+      else if (name === "xmlns" && value !== "http://www.w3.org/2000/svg") problems.push(`xmlns="${value}"`);
+    }
+    if (tag.name !== "svg" || tag.selfClosing) continue;
+    if (!tag.closing && depth++ === 0) from = tag.end;
+    if (tag.closing && depth > 0 && --depth === 0) region(tag.start);
+  }
+  if (depth > 0) {
+    region(markup.length);
+    problems.push("no closing </svg>");
+  }
+  return [...new Set(problems)];
 };
 // Attributes that state structured data in microdata or RDFa. property and rel
 // are RDFa too, but the site needs them, so they are held to what it uses:
@@ -2536,12 +2593,21 @@ for (const page of linkedPages) {
         `markup this check does not read. Nothing on the site needs one; remove it. ${RAW_SCAN_NOTE}`,
     );
   }
-  for (const tag of htmlTags(markup)) {
-    if (!tag.closing && (tag.name === "svg" || tag.name === "math")) {
+  const pageTags = htmlTags(markup);
+  const svgProblems = inlineSvgProblems(markup, pageTags);
+  if (svgProblems.length) {
+    fail(
+      `${page} has an inline <svg> holding ${svgProblems.join(", ")}. Inside an inline <svg> a browser reads ` +
+        `<style>, <title> and CDATA as markup, so only shapes are allowed there: svg, g, path, rect, circle, ` +
+        `ellipse, line, polyline and polygon, with geometry and paint attributes, no "&", "\\" or url( in a ` +
+        `value, no comment or CDATA, and a closing </svg>. Put anything else in an .svg file shown with <img>.`,
+    );
+  }
+  for (const tag of pageTags) {
+    if (!tag.closing && tag.name === "math") {
       fail(
-        `${page} has an inline <${tag.name}>. Inside one a <style> is not raw text, so a browser ` +
-          `reads tags there that this check cannot. Use <img src="icon.svg">, or for an icon that ` +
-          `follows the text colour a CSS mask-image with background-color: currentColor.`,
+        `${page} has an inline <math>. Inside one a <style> is not raw text, so a browser ` +
+          `reads tags there that this check cannot. Show the formula as an image or as text.`,
       );
     }
     const names = tag.attributes.map(({ name }) => name);
@@ -2859,6 +2925,12 @@ for (const host of reviewedLinkHosts) {
 const reviewedInlineScripts = new Map([
   // The gallery: renders THEMES and VOL2_THEMES, filters and copies install commands.
   ["index.html", ["sha256-IuzE/u5N1mik+4VQKPk4nMJAX0zoz6BmCVoo+rL7LMw="]],
+  // Familiars (main's #65, read 2026-10-24): the light/dark switch, kept in
+  // localStorage; the kind filter; a pointer-following light on each card; the
+  // copy button, which writes the request address to the clipboard; and the
+  // familiar's eye, which follows the pointer and blinks. It loads, fetches and
+  // navigates nothing, and writes no markup.
+  ["familiars.html", ["sha256-tW017ch2iUy4IDsMqdWpXKZStidvDhnxjoIcLgbw5vY="]],
 ]);
 // Every page under theme/ is rendered by scripts/build-theme-pages.mjs (main's
 // #59) and runs one script, the same on each: its copy button, which writes a
@@ -2957,7 +3029,9 @@ for (const page of linkedPages) {
             `does not read. Nothing on the site needs it; use a plain link.`,
         );
       }
-      if (!URL_ATTRIBUTES.has(name) && !OTHER_ATTRIBUTES.has(name) &&
+      // Inside an inline <svg> the page check above holds every attribute to
+      // INLINE_SVG_ATTRIBUTES instead.
+      if (!tag.foreign && !URL_ATTRIBUTES.has(name) && !OTHER_ATTRIBUTES.has(name) &&
           !name.startsWith("data-") && !name.startsWith("aria-")) {
         fail(
           `${page} has ${name} on <${tag.name}>, an attribute this check does not know. Some attributes send a ` +
@@ -3364,6 +3438,10 @@ const SERVED_TYPES = new Map([
   ["gif", "inert"],
   ["ico", "inert"],
   ["mp3", "inert"],
+  // A web font, loaded only through a page's @font-face; opened directly it is
+  // saved, and it runs nothing. Self-hosted so a page asks no other host for
+  // its type (familiars.html loaded Google Fonts until 2026-10-24).
+  ["woff2", "inert"],
   ["json", "inert"],
   ["txt", "inert"],
   // text/javascript, shown as text when opened. A page loads it only through
