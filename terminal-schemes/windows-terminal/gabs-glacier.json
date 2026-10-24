@@ -1,0 +1,27 @@
+{
+    "schemes": [
+        {
+            "name": "Gabs Glacier",
+            "background": "#1F2529",
+            "foreground": "#E8ECED",
+            "cursorColor": "#A8DCE8",
+            "selectionBackground": "#3F4F55",
+            "black": "#282F35",
+            "red": "#CB7972",
+            "green": "#8CC98D",
+            "yellow": "#EDCD7D",
+            "blue": "#6994D3",
+            "purple": "#C18CC9",
+            "cyan": "#39B4BA",
+            "white": "#C8D3D9",
+            "brightBlack": "#859098",
+            "brightRed": "#EA958D",
+            "brightGreen": "#A6E5A7",
+            "brightYellow": "#FFE5A5",
+            "brightBlue": "#85B1F1",
+            "brightPurple": "#E0A9E8",
+            "brightCyan": "#5ED3D9",
+            "brightWhite": "#F5F6F7"
+        }
+    ]
+}

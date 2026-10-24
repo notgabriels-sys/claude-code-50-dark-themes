@@ -1,0 +1,23 @@
+# Gabs Glacier: terminal colors matched to its Claude Code theme
+palette = 0=#282F35
+palette = 1=#CB7972
+palette = 2=#8CC98D
+palette = 3=#EDCD7D
+palette = 4=#6994D3
+palette = 5=#C18CC9
+palette = 6=#39B4BA
+palette = 7=#C8D3D9
+palette = 8=#859098
+palette = 9=#EA958D
+palette = 10=#A6E5A7
+palette = 11=#FFE5A5
+palette = 12=#85B1F1
+palette = 13=#E0A9E8
+palette = 14=#5ED3D9
+palette = 15=#F5F6F7
+background = #1F2529
+foreground = #E8ECED
+cursor-color = #A8DCE8
+cursor-text = #1F2529
+selection-background = #3F4F55
+selection-foreground = #E8ECED

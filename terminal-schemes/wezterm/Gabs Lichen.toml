@@ -1,0 +1,32 @@
+# Gabs Lichen: terminal colors matched to its Claude Code theme
+[colors]
+foreground = "#EAECE9"
+background = "#20241E"
+cursor_bg = "#AFC49A"
+cursor_fg = "#20241E"
+cursor_border = "#AFC49A"
+selection_bg = "#474F40"
+selection_fg = "#EAECE9"
+ansi = [
+    "#2A2F27",
+    "#CA7778",
+    "#A1C47B",
+    "#F8C680",
+    "#6893D1",
+    "#C08BC8",
+    "#38B3B9",
+    "#CDD4C9"
+]
+brights = [
+    "#879083",
+    "#E99293",
+    "#BCDF95",
+    "#FFE1B9",
+    "#84AFF0",
+    "#DFA8E7",
+    "#5DD2D8",
+    "#F6F6F5"
+]
+
+[metadata]
+name = "Gabs Lichen"

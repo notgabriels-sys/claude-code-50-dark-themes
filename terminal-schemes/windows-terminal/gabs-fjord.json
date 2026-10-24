@@ -1,0 +1,27 @@
+{
+    "schemes": [
+        {
+            "name": "Gabs Fjord",
+            "background": "#1B2128",
+            "foreground": "#E8EBED",
+            "cursorColor": "#5A9EC8",
+            "selectionBackground": "#344F63",
+            "black": "#232B34",
+            "red": "#CA746D",
+            "green": "#9FC273",
+            "yellow": "#F9C279",
+            "blue": "#4197C8",
+            "purple": "#BF87C8",
+            "cyan": "#33B2A2",
+            "white": "#C7D1DE",
+            "brightBlack": "#808D9B",
+            "brightRed": "#E98F87",
+            "brightGreen": "#B9DD8D",
+            "brightYellow": "#FFDDB1",
+            "brightBlue": "#5FB3E7",
+            "brightPurple": "#DDA4E6",
+            "brightCyan": "#59D1BF",
+            "brightWhite": "#F5F6F7"
+        }
+    ]
+}

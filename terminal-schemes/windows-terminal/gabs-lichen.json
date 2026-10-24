@@ -1,0 +1,27 @@
+{
+    "schemes": [
+        {
+            "name": "Gabs Lichen",
+            "background": "#20241E",
+            "foreground": "#EAECE9",
+            "cursorColor": "#AFC49A",
+            "selectionBackground": "#474F40",
+            "black": "#2A2F27",
+            "red": "#CA7778",
+            "green": "#A1C47B",
+            "yellow": "#F8C680",
+            "blue": "#6893D1",
+            "purple": "#C08BC8",
+            "cyan": "#38B3B9",
+            "white": "#CDD4C9",
+            "brightBlack": "#879083",
+            "brightRed": "#E99293",
+            "brightGreen": "#BCDF95",
+            "brightYellow": "#FFE1B9",
+            "brightBlue": "#84AFF0",
+            "brightPurple": "#DFA8E7",
+            "brightCyan": "#5DD2D8",
+            "brightWhite": "#F6F6F5"
+        }
+    ]
+}

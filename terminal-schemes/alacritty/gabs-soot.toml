@@ -1,0 +1,33 @@
+# Gabs Soot: terminal colors matched to its Claude Code theme
+
+[colors.primary]
+background = "#1C1917"
+foreground = "#EDEAE9"
+
+[colors.cursor]
+text = "#1C1917"
+cursor = "#9C958C"
+
+[colors.selection]
+text = "#EDEAE9"
+background = "#4B4642"
+
+[colors.normal]
+black = "#272320"
+red = "#C17069"
+green = "#81BE82"
+yellow = "#E1C171"
+blue = "#618BC9"
+magenta = "#B783BF"
+cyan = "#2BAAB0"
+white = "#CDC8C4"
+
+[colors.bright]
+black = "#8B8480"
+red = "#DF8A84"
+green = "#9BD99C"
+yellow = "#F7D787"
+blue = "#7BA7E6"
+magenta = "#D59FDD"
+cyan = "#51C8CE"
+white = "#F7F6F5"

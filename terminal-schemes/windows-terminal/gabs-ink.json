@@ -1,0 +1,27 @@
+{
+    "schemes": [
+        {
+            "name": "Gabs Ink",
+            "background": "#161A22",
+            "foreground": "#E8E9ED",
+            "cursorColor": "#A9B8CE",
+            "selectionBackground": "#444C58",
+            "black": "#1E232E",
+            "red": "#C17069",
+            "green": "#82BE83",
+            "yellow": "#E1C171",
+            "blue": "#618BC9",
+            "purple": "#B783BF",
+            "cyan": "#2BAAB0",
+            "white": "#C2CAD8",
+            "brightBlack": "#7D8697",
+            "brightRed": "#DF8A84",
+            "brightGreen": "#9BD99C",
+            "brightYellow": "#F8D788",
+            "brightBlue": "#7BA7E6",
+            "brightPurple": "#D59FDD",
+            "brightCyan": "#51C8CE",
+            "brightWhite": "#F5F5F7"
+        }
+    ]
+}

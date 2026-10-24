@@ -1,0 +1,23 @@
+# Gabs Ink: terminal colors matched to its Claude Code theme
+palette = 0=#1E232E
+palette = 1=#C17069
+palette = 2=#82BE83
+palette = 3=#E1C171
+palette = 4=#618BC9
+palette = 5=#B783BF
+palette = 6=#2BAAB0
+palette = 7=#C2CAD8
+palette = 8=#7D8697
+palette = 9=#DF8A84
+palette = 10=#9BD99C
+palette = 11=#F8D788
+palette = 12=#7BA7E6
+palette = 13=#D59FDD
+palette = 14=#51C8CE
+palette = 15=#F5F5F7
+background = #161A22
+foreground = #E8E9ED
+cursor-color = #A9B8CE
+cursor-text = #161A22
+selection-background = #444C58
+selection-foreground = #E8E9ED

@@ -1,0 +1,27 @@
+{
+    "schemes": [
+        {
+            "name": "Gabs Nightshade",
+            "background": "#19161D",
+            "foreground": "#EBE8ED",
+            "cursorColor": "#976ECE",
+            "selectionBackground": "#47375E",
+            "black": "#231F29",
+            "red": "#D3625C",
+            "green": "#7CBE60",
+            "yellow": "#EABC42",
+            "blue": "#2B8DD9",
+            "purple": "#A97FE1",
+            "cyan": "#00AAA6",
+            "white": "#CAC4D1",
+            "brightBlack": "#888190",
+            "brightRed": "#F27D76",
+            "brightGreen": "#95D979",
+            "brightYellow": "#FFD35F",
+            "brightBlue": "#4CA9F7",
+            "brightPurple": "#C49CFF",
+            "brightCyan": "#00CAC5",
+            "brightWhite": "#F6F5F7"
+        }
+    ]
+}

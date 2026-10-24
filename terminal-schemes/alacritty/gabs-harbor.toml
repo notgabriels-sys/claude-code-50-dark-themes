@@ -1,0 +1,33 @@
+# Gabs Harbor: terminal colors matched to its Claude Code theme
+
+[colors.primary]
+background = "#1D242A"
+foreground = "#E8EBED"
+
+[colors.cursor]
+text = "#1D242A"
+cursor = "#62A8D8"
+
+[colors.selection]
+text = "#E8EBED"
+background = "#354E62"
+
+[colors.normal]
+black = "#252E36"
+red = "#CF756E"
+green = "#9EC676"
+yellow = "#FCC576"
+blue = "#4499CF"
+magenta = "#C389CC"
+cyan = "#29B6A8"
+white = "#C7D2DD"
+
+[colors.bright]
+black = "#828F9C"
+red = "#EE9189"
+green = "#B8E18F"
+yellow = "#FFE1BA"
+blue = "#62B6EE"
+magenta = "#E2A6EB"
+cyan = "#53D5C6"
+white = "#F5F6F7"

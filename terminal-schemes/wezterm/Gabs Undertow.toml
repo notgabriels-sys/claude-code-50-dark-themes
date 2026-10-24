@@ -1,0 +1,32 @@
+# Gabs Undertow: terminal colors matched to its Claude Code theme
+[colors]
+foreground = "#E8ECED"
+background = "#151E23"
+cursor_bg = "#A8D8E8"
+cursor_fg = "#151E23"
+cursor_border = "#A8D8E8"
+selection_bg = "#3C4F58"
+selection_fg = "#E8ECED"
+ansi = [
+    "#1D2930",
+    "#C4726B",
+    "#9CBD73",
+    "#F2BE7A",
+    "#4394C2",
+    "#BA85C2",
+    "#39AE9E",
+    "#BFCFD7"
+]
+brights = [
+    "#788B95",
+    "#E28D86",
+    "#B6D88D",
+    "#FFD8A6",
+    "#60B0E0",
+    "#D8A2E0",
+    "#5DCCBB",
+    "#F5F6F7"
+]
+
+[metadata]
+name = "Gabs Undertow"

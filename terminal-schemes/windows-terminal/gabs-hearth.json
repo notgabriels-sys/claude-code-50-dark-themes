@@ -1,0 +1,27 @@
+{
+    "schemes": [
+        {
+            "name": "Gabs Hearth",
+            "background": "#1D1C1B",
+            "foreground": "#ECEBEA",
+            "cursorColor": "#E07840",
+            "selectionBackground": "#65402D",
+            "black": "#282625",
+            "red": "#D8655F",
+            "green": "#6DC571",
+            "yellow": "#EEC145",
+            "blue": "#508CE3",
+            "purple": "#C67BD2",
+            "cyan": "#00AEB5",
+            "white": "#CECBC7",
+            "brightBlack": "#8B8782",
+            "brightRed": "#F68179",
+            "brightGreen": "#88E18B",
+            "brightYellow": "#FFD979",
+            "brightBlue": "#6CA8FF",
+            "brightPurple": "#E498EF",
+            "brightCyan": "#00CFD7",
+            "brightWhite": "#F6F6F6"
+        }
+    ]
+}

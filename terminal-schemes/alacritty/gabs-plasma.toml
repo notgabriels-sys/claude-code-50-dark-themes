@@ -1,0 +1,33 @@
+# Gabs Plasma: terminal colors matched to its Claude Code theme
+
+[colors.primary]
+background = "#221622"
+foreground = "#EDE8ED"
+
+[colors.cursor]
+text = "#221622"
+cursor = "#E858C8"
+
+[colors.selection]
+text = "#EDE8ED"
+background = "#6A315F"
+
+[colors.normal]
+black = "#2E1E2E"
+red = "#DE5E46"
+green = "#5EC565"
+yellow = "#F2BD15"
+blue = "#4489EC"
+magenta = "#E763C8"
+cyan = "#00ACB3"
+white = "#D3C5D2"
+
+[colors.bright]
+black = "#918190"
+red = "#FD7A60"
+green = "#79E17F"
+yellow = "#FFD66C"
+blue = "#69A6FF"
+magenta = "#FF88E1"
+cyan = "#00CCD4"
+white = "#F7F5F7"

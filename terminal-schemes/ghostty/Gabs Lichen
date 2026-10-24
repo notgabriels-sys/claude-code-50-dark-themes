@@ -1,0 +1,23 @@
+# Gabs Lichen: terminal colors matched to its Claude Code theme
+palette = 0=#2A2F27
+palette = 1=#CA7778
+palette = 2=#A1C47B
+palette = 3=#F8C680
+palette = 4=#6893D1
+palette = 5=#C08BC8
+palette = 6=#38B3B9
+palette = 7=#CDD4C9
+palette = 8=#879083
+palette = 9=#E99293
+palette = 10=#BCDF95
+palette = 11=#FFE1B9
+palette = 12=#84AFF0
+palette = 13=#DFA8E7
+palette = 14=#5DD2D8
+palette = 15=#F6F6F5
+background = #20241E
+foreground = #EAECE9
+cursor-color = #AFC49A
+cursor-text = #20241E
+selection-background = #474F40
+selection-foreground = #EAECE9

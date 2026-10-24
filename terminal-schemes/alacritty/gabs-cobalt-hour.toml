@@ -1,0 +1,33 @@
+# Gabs Cobalt Hour: terminal colors matched to its Claude Code theme
+
+[colors.primary]
+background = "#181F2F"
+foreground = "#E8E9ED"
+
+[colors.cursor]
+text = "#181F2F"
+cursor = "#5280FE"
+
+[colors.selection]
+text = "#E8E9ED"
+background = "#2E447B"
+
+[colors.normal]
+black = "#1F283D"
+red = "#E4615B"
+green = "#63CB6A"
+yellow = "#F7C322"
+blue = "#5A88FF"
+magenta = "#CF79DC"
+cyan = "#00B1B8"
+white = "#C7CFDF"
+
+[colors.bright]
+black = "#828A9D"
+red = "#FF8179"
+green = "#7EE684"
+yellow = "#FFDD88"
+blue = "#83A8FF"
+magenta = "#EE96FB"
+cyan = "#00D2DA"
+white = "#F5F5F7"

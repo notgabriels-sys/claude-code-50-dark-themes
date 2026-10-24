@@ -1,0 +1,32 @@
+# Gabs Verdigris: terminal colors matched to its Claude Code theme
+[colors]
+foreground = "#E8EDED"
+background = "#1C2625"
+cursor_bg = "#6FC4A8"
+cursor_fg = "#1C2625"
+cursor_border = "#6FC4A8"
+selection_bg = "#35524A"
+selection_fg = "#E8EDED"
+ansi = [
+    "#253230",
+    "#CE7770",
+    "#89CA8A",
+    "#EECC77",
+    "#6794D6",
+    "#C38BCB",
+    "#2DB5BB",
+    "#C5D6D4"
+]
+brights = [
+    "#7F9390",
+    "#ED938B",
+    "#A4E6A5",
+    "#FFE5A5",
+    "#82B1F5",
+    "#E2A8EB",
+    "#55D4DA",
+    "#F5F7F7"
+]
+
+[metadata]
+name = "Gabs Verdigris"

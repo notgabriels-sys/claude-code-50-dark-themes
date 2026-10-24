@@ -1,0 +1,27 @@
+{
+    "schemes": [
+        {
+            "name": "Gabs Terminal",
+            "background": "#171C17",
+            "foreground": "#E9EDE9",
+            "cursorColor": "#33D17A",
+            "selectionBackground": "#295537",
+            "black": "#202720",
+            "red": "#DF5D58",
+            "green": "#26CA73",
+            "yellow": "#F2BE16",
+            "blue": "#458AED",
+            "purple": "#CA75D8",
+            "cyan": "#00ACB7",
+            "white": "#C4CCC3",
+            "brightBlack": "#7F897E",
+            "brightRed": "#FF7971",
+            "brightGreen": "#4EE58C",
+            "brightYellow": "#FFD770",
+            "brightBlue": "#6BA7FF",
+            "brightPurple": "#E892F6",
+            "brightCyan": "#00CCD9",
+            "brightWhite": "#F5F7F5"
+        }
+    ]
+}

@@ -1,0 +1,32 @@
+# Gabs Blackout: terminal colors matched to its Claude Code theme
+[colors]
+foreground = "#EAEAEB"
+background = "#141415"
+cursor_bg = "#E0A83C"
+cursor_fg = "#141415"
+cursor_border = "#E0A83C"
+selection_bg = "#5B492A"
+selection_fg = "#EAEAEB"
+ansi = [
+    "#1E1E1F",
+    "#CE615B",
+    "#6ABE6E",
+    "#EFB649",
+    "#4D86D8",
+    "#BD77C8",
+    "#00A7AD",
+    "#C3C4C8"
+]
+brights = [
+    "#818187",
+    "#EC7C75",
+    "#83D887",
+    "#FFCE77",
+    "#67A1F6",
+    "#DB93E6",
+    "#00C7CF",
+    "#F6F6F6"
+]
+
+[metadata]
+name = "Gabs Blackout"

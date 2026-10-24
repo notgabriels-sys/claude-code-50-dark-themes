@@ -1,0 +1,26 @@
+# Gabs Crossfade: terminal colors matched to its Claude Code theme
+name: 'Gabs Crossfade'
+accent: '#3EC8E8'
+cursor: '#3EC8E8'
+background: '#1A1A1E'
+foreground: '#E9E9EC'
+details: darker
+terminal_colors:
+  normal:
+    black: '#232329'
+    red: '#DF5D58'
+    green: '#5EC665'
+    yellow: '#F2BE16'
+    blue: '#4589ED'
+    magenta: '#CA75D7'
+    cyan: '#00ACB3'
+    white: '#C8C9D0'
+  bright:
+    black: '#85868E'
+    red: '#FF7971'
+    green: '#79E17F'
+    yellow: '#FFD770'
+    blue: '#69A6FF'
+    magenta: '#E892F6'
+    cyan: '#00CCD4'
+    white: '#F5F5F6'

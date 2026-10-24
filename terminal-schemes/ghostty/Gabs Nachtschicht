@@ -1,0 +1,23 @@
+# Gabs Nachtschicht: terminal colors matched to its Claude Code theme
+palette = 0=#24282D
+palette = 1=#D76862
+palette = 2=#72C675
+palette = 3=#F3C150
+palette = 4=#558DE1
+palette = 5=#C67ED1
+palette = 6=#00AFB6
+palette = 7=#C8CED5
+palette = 8=#838A92
+palette = 9=#F5847C
+palette = 10=#8CE28F
+palette = 11=#FFDB8D
+palette = 12=#70A9FF
+palette = 13=#E49BEF
+palette = 14=#00D0D8
+palette = 15=#F5F6F7
+background = #1B1E22
+foreground = #E8EAED
+cursor-color = #E3B341
+cursor-text = #1B1E22
+selection-background = #564B33
+selection-foreground = #E8EAED

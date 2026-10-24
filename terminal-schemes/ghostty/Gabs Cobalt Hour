@@ -1,0 +1,23 @@
+# Gabs Cobalt Hour: terminal colors matched to its Claude Code theme
+palette = 0=#1F283D
+palette = 1=#E4615B
+palette = 2=#63CB6A
+palette = 3=#F7C322
+palette = 4=#5A88FF
+palette = 5=#CF79DC
+palette = 6=#00B1B8
+palette = 7=#C7CFDF
+palette = 8=#828A9D
+palette = 9=#FF8179
+palette = 10=#7EE684
+palette = 11=#FFDD88
+palette = 12=#83A8FF
+palette = 13=#EE96FB
+palette = 14=#00D2DA
+palette = 15=#F5F5F7
+background = #181F2F
+foreground = #E8E9ED
+cursor-color = #5280FE
+cursor-text = #181F2F
+selection-background = #2E447B
+selection-foreground = #E8E9ED

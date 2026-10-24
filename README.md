@@ -83,6 +83,13 @@ different contents it is backed up once as `<name>.json.bak` before being replac
 4. Select one. Edits to the files hot-reload; no restart needed
    (if `~/.claude/themes/` didn't exist before, restart Claude Code once)
 
+## Matching terminal colors
+
+Every one of the 62 themes also has a matched terminal color scheme (background, foreground, cursor,
+selection and the 16 ANSI colors) for iTerm2, Ghostty, kitty, Alacritty, WezTerm, Windows Terminal,
+VS Code, Warp, Konsole and Terminal.app, so your prompt, `git` and `ls` match Claude Code. Files and
+setup steps: [terminal-schemes/README.md](terminal-schemes/README.md).
+
 ## What each file sets
 
 - `claude` + shimmer: brand accent (spinner, assistant label) = theme accent

@@ -1,0 +1,32 @@
+# Gabs Tidepool: terminal colors matched to its Claude Code theme
+[colors]
+foreground = "#E8EDED"
+background = "#162222"
+cursor_bg = "#3FC8B0"
+cursor_fg = "#162222"
+cursor_border = "#3FC8B0"
+selection_bg = "#27554E"
+selection_fg = "#E8EDED"
+ansi = [
+    "#1E2E2E",
+    "#D36D72",
+    "#9BC265",
+    "#FFBF67",
+    "#5B90DD",
+    "#C483CE",
+    "#00B49C",
+    "#C0D4D3"
+]
+brights = [
+    "#778F8F",
+    "#F2888D",
+    "#B5DE80",
+    "#FFDCAF",
+    "#77ACFB",
+    "#E3A0ED",
+    "#3DD3B9",
+    "#F5F7F7"
+]
+
+[metadata]
+name = "Gabs Tidepool"

@@ -1,0 +1,32 @@
+# Gabs Ember: terminal colors matched to its Claude Code theme
+[colors]
+foreground = "#EDE9E8"
+background = "#1F1A19"
+cursor_bg = "#E8703C"
+cursor_fg = "#1F1A19"
+cursor_border = "#E8703C"
+selection_bg = "#693C2A"
+selection_fg = "#EDE9E8"
+ansi = [
+    "#2A2322",
+    "#DC605B",
+    "#66C56B",
+    "#F0BF31",
+    "#4B8BE8",
+    "#C878D4",
+    "#00ADB4",
+    "#D2C8C7"
+]
+brights = [
+    "#8F8582",
+    "#FB7C75",
+    "#80E185",
+    "#FFD875",
+    "#6CA8FF",
+    "#E695F3",
+    "#00CDD5",
+    "#F7F5F5"
+]
+
+[metadata]
+name = "Gabs Ember"

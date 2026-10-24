@@ -1,0 +1,27 @@
+{
+    "schemes": [
+        {
+            "name": "Gabs Soot",
+            "background": "#1C1917",
+            "foreground": "#EDEAE9",
+            "cursorColor": "#9C958C",
+            "selectionBackground": "#4B4642",
+            "black": "#272320",
+            "red": "#C17069",
+            "green": "#81BE82",
+            "yellow": "#E1C171",
+            "blue": "#618BC9",
+            "purple": "#B783BF",
+            "cyan": "#2BAAB0",
+            "white": "#CDC8C4",
+            "brightBlack": "#8B8480",
+            "brightRed": "#DF8A84",
+            "brightGreen": "#9BD99C",
+            "brightYellow": "#F7D787",
+            "brightBlue": "#7BA7E6",
+            "brightPurple": "#D59FDD",
+            "brightCyan": "#51C8CE",
+            "brightWhite": "#F7F6F5"
+        }
+    ]
+}

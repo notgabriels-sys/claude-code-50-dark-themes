@@ -1,0 +1,26 @@
+# Gabs Ember: terminal colors matched to its Claude Code theme
+name: 'Gabs Ember'
+accent: '#E8703C'
+cursor: '#E8703C'
+background: '#1F1A19'
+foreground: '#EDE9E8'
+details: darker
+terminal_colors:
+  normal:
+    black: '#2A2322'
+    red: '#DC605B'
+    green: '#66C56B'
+    yellow: '#F0BF31'
+    blue: '#4B8BE8'
+    magenta: '#C878D4'
+    cyan: '#00ADB4'
+    white: '#D2C8C7'
+  bright:
+    black: '#8F8582'
+    red: '#FB7C75'
+    green: '#80E185'
+    yellow: '#FFD875'
+    blue: '#6CA8FF'
+    magenta: '#E695F3'
+    cyan: '#00CDD5'
+    white: '#F7F5F5'

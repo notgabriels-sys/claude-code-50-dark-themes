@@ -1,0 +1,32 @@
+# Gabs Cobalt Hour: terminal colors matched to its Claude Code theme
+[colors]
+foreground = "#E8E9ED"
+background = "#181F2F"
+cursor_bg = "#5280FE"
+cursor_fg = "#181F2F"
+cursor_border = "#5280FE"
+selection_bg = "#2E447B"
+selection_fg = "#E8E9ED"
+ansi = [
+    "#1F283D",
+    "#E4615B",
+    "#63CB6A",
+    "#F7C322",
+    "#5A88FF",
+    "#CF79DC",
+    "#00B1B8",
+    "#C7CFDF"
+]
+brights = [
+    "#828A9D",
+    "#FF8179",
+    "#7EE684",
+    "#FFDD88",
+    "#83A8FF",
+    "#EE96FB",
+    "#00D2DA",
+    "#F5F5F7"
+]
+
+[metadata]
+name = "Gabs Cobalt Hour"

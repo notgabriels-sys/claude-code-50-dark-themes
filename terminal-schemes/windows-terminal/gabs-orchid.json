@@ -1,0 +1,27 @@
+{
+    "schemes": [
+        {
+            "name": "Gabs Orchid",
+            "background": "#1F1820",
+            "foreground": "#EDE8ED",
+            "cursorColor": "#C86AD8",
+            "selectionBackground": "#5D3863",
+            "black": "#2A212C",
+            "red": "#DF5C58",
+            "green": "#5EC665",
+            "yellow": "#F2BE16",
+            "blue": "#4589ED",
+            "purple": "#CF70DF",
+            "cyan": "#00ACB3",
+            "white": "#D2C6D4",
+            "brightBlack": "#908292",
+            "brightRed": "#FE7871",
+            "brightGreen": "#79E17F",
+            "brightYellow": "#FFD770",
+            "brightBlue": "#69A6FF",
+            "brightPurple": "#EE8DFE",
+            "brightCyan": "#00CCD4",
+            "brightWhite": "#F7F5F7"
+        }
+    ]
+}

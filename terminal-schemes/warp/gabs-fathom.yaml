@@ -1,0 +1,26 @@
+# Gabs Fathom: terminal colors matched to its Claude Code theme
+name: 'Gabs Fathom'
+accent: '#38A8C8'
+cursor: '#38A8C8'
+background: '#121B21'
+foreground: '#E8EBED'
+details: darker
+terminal_colors:
+  normal:
+    black: '#19262E'
+    red: '#CA6B65'
+    green: '#79C07B'
+    yellow: '#E5C062'
+    blue: '#5A8BD2'
+    magenta: '#BC7FC6'
+    cyan: '#00ABB2'
+    white: '#BCCBD6'
+  bright:
+    black: '#768895'
+    red: '#E8867F'
+    green: '#93DB95'
+    yellow: '#FCD779'
+    blue: '#75A7F0'
+    magenta: '#DA9CE3'
+    cyan: '#32CAD1'
+    white: '#F5F6F7'

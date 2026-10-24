@@ -1,0 +1,23 @@
+# Gabs Iris: terminal colors matched to its Claude Code theme
+palette = 0=#202031
+palette = 1=#D1665F
+palette = 2=#6FC273
+palette = 3=#E9BF4E
+palette = 4=#528ADB
+palette = 5=#C17BCB
+palette = 6=#00ABB2
+palette = 7=#C6C7D8
+palette = 8=#838498
+palette = 9=#F08179
+palette = 10=#89DD8C
+palette = 11=#FFD568
+palette = 12=#6DA6FA
+palette = 13=#DF97EA
+palette = 14=#00CBD3
+palette = 15=#F5F5F7
+background = #181825
+foreground = #E8E8ED
+cursor-color = #8C8CE8
+cursor-text = #181825
+selection-background = #43436C
+selection-foreground = #E8E8ED

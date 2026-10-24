@@ -1,0 +1,27 @@
+{
+    "schemes": [
+        {
+            "name": "Gabs Nachtschicht",
+            "background": "#1B1E22",
+            "foreground": "#E8EAED",
+            "cursorColor": "#E3B341",
+            "selectionBackground": "#564B33",
+            "black": "#24282D",
+            "red": "#D76862",
+            "green": "#72C675",
+            "yellow": "#F3C150",
+            "blue": "#558DE1",
+            "purple": "#C67ED1",
+            "cyan": "#00AFB6",
+            "white": "#C8CED5",
+            "brightBlack": "#838A92",
+            "brightRed": "#F5847C",
+            "brightGreen": "#8CE28F",
+            "brightYellow": "#FFDB8D",
+            "brightBlue": "#70A9FF",
+            "brightPurple": "#E49BEF",
+            "brightCyan": "#00D0D8",
+            "brightWhite": "#F5F6F7"
+        }
+    ]
+}

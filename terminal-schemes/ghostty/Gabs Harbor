@@ -1,0 +1,23 @@
+# Gabs Harbor: terminal colors matched to its Claude Code theme
+palette = 0=#252E36
+palette = 1=#CF756E
+palette = 2=#9EC676
+palette = 3=#FCC576
+palette = 4=#4499CF
+palette = 5=#C389CC
+palette = 6=#29B6A8
+palette = 7=#C7D2DD
+palette = 8=#828F9C
+palette = 9=#EE9189
+palette = 10=#B8E18F
+palette = 11=#FFE1BA
+palette = 12=#62B6EE
+palette = 13=#E2A6EB
+palette = 14=#53D5C6
+palette = 15=#F5F6F7
+background = #1D242A
+foreground = #E8EBED
+cursor-color = #62A8D8
+cursor-text = #1D242A
+selection-background = #354E62
+selection-foreground = #E8EBED

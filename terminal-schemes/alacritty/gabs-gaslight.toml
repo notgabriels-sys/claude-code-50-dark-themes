@@ -1,0 +1,33 @@
+# Gabs Gaslight: terminal colors matched to its Claude Code theme
+
+[colors.primary]
+background = "#1C1915"
+foreground = "#EDEBE8"
+
+[colors.cursor]
+text = "#1C1915"
+cursor = "#E7B54A"
+
+[colors.selection]
+text = "#EDEBE8"
+background = "#5B4A2A"
+
+[colors.normal]
+black = "#292521"
+red = "#D1665F"
+green = "#6FC273"
+yellow = "#F0BC4F"
+blue = "#528ADC"
+magenta = "#C17BCB"
+cyan = "#00ABB2"
+white = "#CDC8C0"
+
+[colors.bright]
+black = "#8B857C"
+red = "#F08179"
+green = "#89DD8C"
+yellow = "#FFD580"
+blue = "#6CA6FA"
+magenta = "#DF97EA"
+cyan = "#00CBD3"
+white = "#F7F6F5"

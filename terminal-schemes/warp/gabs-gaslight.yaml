@@ -1,0 +1,26 @@
+# Gabs Gaslight: terminal colors matched to its Claude Code theme
+name: 'Gabs Gaslight'
+accent: '#E7B54A'
+cursor: '#E7B54A'
+background: '#1C1915'
+foreground: '#EDEBE8'
+details: darker
+terminal_colors:
+  normal:
+    black: '#292521'
+    red: '#D1665F'
+    green: '#6FC273'
+    yellow: '#F0BC4F'
+    blue: '#528ADC'
+    magenta: '#C17BCB'
+    cyan: '#00ABB2'
+    white: '#CDC8C0'
+  bright:
+    black: '#8B857C'
+    red: '#F08179'
+    green: '#89DD8C'
+    yellow: '#FFD580'
+    blue: '#6CA6FA'
+    magenta: '#DF97EA'
+    cyan: '#00CBD3'
+    white: '#F7F6F5'

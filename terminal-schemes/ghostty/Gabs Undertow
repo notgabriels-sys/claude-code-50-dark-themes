@@ -1,0 +1,23 @@
+# Gabs Undertow: terminal colors matched to its Claude Code theme
+palette = 0=#1D2930
+palette = 1=#C4726B
+palette = 2=#9CBD73
+palette = 3=#F2BE7A
+palette = 4=#4394C2
+palette = 5=#BA85C2
+palette = 6=#39AE9E
+palette = 7=#BFCFD7
+palette = 8=#788B95
+palette = 9=#E28D86
+palette = 10=#B6D88D
+palette = 11=#FFD8A6
+palette = 12=#60B0E0
+palette = 13=#D8A2E0
+palette = 14=#5DCCBB
+palette = 15=#F5F6F7
+background = #151E23
+foreground = #E8ECED
+cursor-color = #A8D8E8
+cursor-text = #151E23
+selection-background = #3C4F58
+selection-foreground = #E8ECED

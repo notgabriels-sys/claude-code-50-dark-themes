@@ -1,0 +1,33 @@
+# Gabs Absinthe: terminal colors matched to its Claude Code theme
+
+[colors.primary]
+background = "#1D1F19"
+foreground = "#EBEDE8"
+
+[colors.cursor]
+text = "#1D1F19"
+cursor = "#C0D648"
+
+[colors.selection]
+text = "#EBEDE8"
+background = "#48502B"
+
+[colors.normal]
+black = "#282A22"
+red = "#DF635D"
+green = "#67C96D"
+yellow = "#F4C334"
+blue = "#4C8DEB"
+magenta = "#CB7BD8"
+cyan = "#00B0B7"
+white = "#CBCFC4"
+
+[colors.bright]
+black = "#868B7E"
+red = "#FE7F77"
+green = "#82E487"
+yellow = "#FFDC84"
+blue = "#70AAFF"
+magenta = "#EA98F7"
+cyan = "#00D1D9"
+white = "#F6F7F5"

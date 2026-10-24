@@ -1,0 +1,23 @@
+# Gabs Graphite: terminal colors matched to its Claude Code theme
+palette = 0=#27282B
+palette = 1=#C5736C
+palette = 2=#86C287
+palette = 3=#E6C576
+palette = 4=#648FCD
+palette = 5=#BB86C3
+palette = 6=#31AEB4
+palette = 7=#CBCED2
+palette = 8=#86898E
+palette = 9=#E38E87
+palette = 10=#9FDEA1
+palette = 11=#FCDC8C
+palette = 12=#7FABEB
+palette = 13=#D9A3E1
+palette = 14=#57CCD3
+palette = 15=#F5F6F6
+background = #1D1E20
+foreground = #E9EAEC
+cursor-color = #C9CFD6
+cursor-text = #1D1E20
+selection-background = #494B4F
+selection-foreground = #E9EAEC
