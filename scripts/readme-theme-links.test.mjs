@@ -301,7 +301,8 @@ test("markdownFlow reads indented code as a block of its own, where a link is te
   assert.deepEqual(markdownFlow("para\n\n    ```\nx\n\n```").inside, [null, null, "indented", null, null, "fence"], "a fence line indented four columns is code, not a fence; the later fence opens");
   assert.equal(markdownFlow("    code\n\n<!-- m -->").flow[2], true, "a marker after indented code renders");
   // Loose, like the lone-tag rule: after a list item or a block quote the walk reads an indented
-  // line as code, where CommonMark reads it as the container's content. That fails closed.
+  // line as code, where CommonMark reads it as the container's content. Rule 4 of themeLinkProblems
+  // fails the line itself, so the reading only names where a link sits.
   assert.deepEqual(markdownFlow("- item\n    content").inside, [null, "indented"]);
   assert.deepEqual(markdownFlow("> quote\n    content").inside, [null, "indented"]);
 });
@@ -314,6 +315,13 @@ test("themeLinkProblems holds every theme-page address and bracketed theme name 
     const problems = themeLinkProblems(text, themes);
     assert.ok(problems.length > 0, `${label}: a problem is reported`);
     assert.match(problems[0], pattern, label);
+  };
+  // Read right, but held by rule 4: every problem is a backtick that does not close on its line, a pipe in a
+  // code span or a line indented four columns, and nothing else (the link stays a link).
+  const onlyRule4 = (text, label = text) => {
+    const problems = themeLinkProblems(text, themes);
+    assert.ok(problems.length > 0, `${label}: rule 4 reports it`);
+    for (const problem of problems) assert.match(problem, /^line \d+ (?:writes `+ with nothing after it on that line to close it\.|writes a pipe inside the code span |is indented \d+ columns )/, label);
   };
 
   ok(`${velvet} is a theme.`);
@@ -477,12 +485,15 @@ test("themeLinkProblems holds every theme-page address and bracketed theme name 
   ok(`<details>\n<summary>Packs — UI kit & more</summary>\n\n| a & b | c |\n|---|---|\n`, "an ampersand before a space inside an HTML block, and one in a table");
   ok("```bash\ncd x && ./install.sh\n```", "ampersands inside a code fence");
   bad("Use `[V&#101;lvet](" + THEME_PAGE_URL + "velvet/)` in prose.", /bracket inside the code span/, "a theme link inside a code span, which GitHub shows as text");
-  bad(`para\n\n    [V&#101;lvet](${THEME_PAGE_URL}velvet/)`, /writes the theme link \[Velvet\]\(https:\/\/gabs-utilities\.com\/theme\/velvet\/\) inside the indented code block begun on line 3, where it is text, not a link/, "a theme link in indented code, which GitHub shows as text with the reference undecoded");
-  bad(`para\n\n\t${velvet}`, /inside the indented code block begun on line 3/, "a theme link indented by a tab");
-  bad(`para\n\n    See ${THEME_PAGE_URL}`, /writes the site's address inside the indented code block begun on line 3, where it is text/, "the index in indented code");
-  bad(`para\n\n    [Velvet](https://example.com)`, /writes Velvet's name in brackets inside the indented code block begun on line 3, where it is text/, "a theme name in brackets in indented code");
-  ok(`para\n    ${velvet}`, "an indented line after paragraph text is the paragraph's, so the link is a link");
-  bad("## Start `\n    code\n[Velvet](https://example.com) `", /line 3 writes Velvet's name in brackets as \[Velvet\]\(https:\/\/example\.com\)/, "a code span does not pair backticks across indented code, so the link after it is read as a link");
+  bad(`para\n\n    [V&#101;lvet](${THEME_PAGE_URL}velvet/)`, /^line 3 is indented 4 columns outside a code fence\. At the top level that is indented code, where Markdown shows as text/, "a theme link in indented code, which GitHub shows as text with the reference undecoded");
+  bad(`para\n\n\t${velvet}`, /^line 3 is indented 4 columns outside a code fence/, "a theme link indented by a tab");
+  bad(`para\n\n    See ${THEME_PAGE_URL}`, /^line 3 is indented 4 columns outside a code fence/, "the index in indented code");
+  bad(`para\n\n    [Velvet](https://example.com)`, /^line 3 is indented 4 columns outside a code fence/, "a theme name in brackets in indented code");
+  bad(`para\n    ${velvet}`, /^line 2 is indented 4 columns outside a code fence\. At the top level that is indented code/, "an indented line after paragraph text is the paragraph's to the walk, so the link is a link; the indentation itself fails (rule 4)");
+  assert.ok(
+    themeLinkProblems("## Start `\n    code\n[Velvet](https://example.com) `", themes).some((problem) => /^line 3 writes Velvet's name in brackets as \[Velvet\]\(https:\/\/example\.com\)/.test(problem)),
+    "a code span does not pair backticks across indented code, so the link after it is read as a link",
+  );
   bad("```\n[Velvet](" + THEME_PAGE_URL + "velvet/)\n```", /writes the theme link \[Velvet\]\([^)]*\) inside the ``` code fence opened on line 1/, "a theme link inside a code fence; the fence's backticks are no code span");
   bad("`<https://gabs-utilities.com/x.html>`", /site's address inside a code span/, "a site autolink inside a code span");
   bad(`<div align="center">\n${velvet} · [Acid](${THEME_PAGE_URL}acid/)\n</div>`, /writes the theme link \[Velvet\]\(https:\/\/gabs-utilities\.com\/theme\/velvet\/\) inside the <div> HTML block begun on line 1/, "theme links inside an HTML block, which GitHub shows as text");
@@ -497,9 +508,9 @@ test("themeLinkProblems holds every theme-page address and bracketed theme name 
   bad(`<!-- x --> ${velvet}`, /theme link \[Velvet\]\([^)]*\) inside the <!-- HTML block begun on line 1/, "a theme link after a comment that opens its line, which GitHub reads as one HTML block");
   bad("```" + velvet + "\ncode\n```", /theme link \[Velvet\]\([^)]*\) inside the ``` code fence opened on line 1/, "a theme link in a fence's info string, which GitHub does not show");
   // Backticks pair within one stretch of inline text: never across a blank line or a fence.
-  ok("a ` b\n\n" + velvet + " ` c", "lone backticks in two paragraphs do not pair, so the link between them is a link");
-  ok("a ` b\n\n```\ncode\n```\n\nc ` " + velvet, "lone backticks on either side of a fence do not pair, and the fence's own backticks pair with nothing");
-  ok("<pre>`</pre>\n" + velvet + " ` x", "a backtick inside a <pre> block pairs with nothing in the prose after it");
+  onlyRule4("a ` b\n\n" + velvet + " ` c", "lone backticks in two paragraphs do not pair, so the link between them is a link");
+  onlyRule4("a ` b\n\n```\ncode\n```\n\nc ` " + velvet, "lone backticks on either side of a fence do not pair, and the fence's own backticks pair with nothing");
+  onlyRule4("<pre>`</pre>\n" + velvet + " ` x", "a backtick inside a <pre> block pairs with nothing in the prose after it");
   bad(
     `An opening paragraph with no brackets at all in it, long enough that a span measured from the wrong start would land inside it and find nothing to object to.\n\nWritten as \`${velvet}\`.`,
     /line 3 writes a bracket inside the code span|line 3 writes the theme link \[Velvet\]\([^)]*\) inside a code span/,
@@ -555,6 +566,84 @@ test("themeLinkProblems holds every theme-page address and bracketed theme name 
   assert.equal(problems.length, 2);
   assert.match(problems[0], /^line 1 /);
   assert.match(problems[1], /^line 3 /);
+});
+
+test("themeLinkProblems fails what reads one way at the top level and another under a list item, a quote or a table (rule 4)", async () => {
+  const themes = await loadThemes(root);
+  const velvet = link("Velvet", "velvet");
+  const ok = (text, label = text) => assert.deepEqual(themeLinkProblems(text, themes), [], label);
+  const bad = (text, pattern, label = text) => {
+    const problems = themeLinkProblems(text, themes);
+    assert.ok(problems.length > 0, `${label}: a problem is reported`);
+    assert.match(problems[0], pattern, label);
+  };
+  const unclosed = (line) => new RegExp(String.raw`^line ${line} writes \x60 with nothing after it on that line to close it\. Whether it pairs with a backtick on another line depends on`);
+  const indented = (line, columns) => new RegExp(String.raw`^line ${line} is indented ${columns} columns outside a code fence\. At the top level that is indented code`);
+  const onlyIndentation = (text, label) => {
+    const problems = themeLinkProblems(text, themes);
+    assert.ok(problems.length > 0, `${label}: rule 4 reports it`);
+    for (const problem of problems) assert.match(problem, /^line \d+ is indented \d+ columns /, label);
+  };
+  const afterMarker = (line, columns) => new RegExp(String.raw`^line ${line} is indented ${columns} columns after its block-quote or list marker, where GFM opens indented code inside the quote or the item and shows its Markdown as text\.`);
+
+  // A code span across a line the walk reads as indented code, which GFM keeps in the paragraph
+  // (a pipe line with no delimiter row, a list item, a quote and an autolink line are paragraph text):
+  // the backticks pair and the link shows as code.
+  for (const first of ["Themes | `open", "- item `open", "> quote `open", "<https://example.com> `open"]) {
+    bad(`${first}\n    more\n${velvet} close\x60\n`, unclosed(1), `${first}: the span runs on across an indented continuation line`);
+  }
+  bad(`Themes | \x60open ${velvet}\n    more\nclose\x60\n`, /^line 1 writes \x60 with nothing after it on that line/, "the link on the span's first line");
+  bad(`- Pick a theme, for example \x60${velvet}\n    \x60 is a good start.\n`, unclosed(1), "a span closed on a four-space continuation line of a list item");
+  // A code span across a heading, a thematic break, a setext underline or a table row: GFM ends the
+  // block there, so a backtick left open on one side does not pair with the other, and the pairing
+  // after it shifts. Rendered with micromark and GFM, each shows the link as code.
+  bad(`## A \x60\nx \x60 ${velvet} \x60y\x60\n`, unclosed(1), "a backtick left open in a heading");
+  bad(`x \x60\n***\ny \x60 ${velvet} \x60z\x60\n`, unclosed(1), "a backtick left open before a thematic break");
+  bad(`Title \x60\n===\ny \x60 ${velvet} \x60z\x60\n`, unclosed(1), "a backtick left open in a setext heading");
+  bad(`| a | b |\n| --- | --- |\n| \x60 | c |\n| d \x60 ${velvet} \x60 | e |\n`, unclosed(3), "a backtick left open in a table row");
+  bad(`| a | b |\n| --- | --- |\n| \x60a | b \x60 ${velvet} \x60 |\n`, /^line 3 writes a pipe inside the code span \x60a \| b \x60\. In a table row GFM splits the cells at every pipe/, "a code span across a table cell's pipe");
+  ok("`a` and ``b ` c``\nnext `d`", "spans that close on their own lines, one of them holding a backtick");
+  ok("| `a` | `b` |\n| --- | --- |\n| `c` | d |", "spans inside table cells");
+  ok("```\n` | `\n```", "a backtick or a pipe inside a fence is the fence's");
+  ok("<pre>\n`\n</pre>", "a backtick inside a <pre> block is the block's");
+
+  // A line indented four columns, which under a list item is the item's: a fence or a <pre> opened
+  // there runs on past the item's next line, and the link in it shows as text.
+  bad(`- item\n\n    \x60\x60\x60\n  ${velvet}\n`, indented(3, 4), "a fence indented four columns under a list item");
+  bad(`- item\n    \x60\x60\x60\n  ${velvet}\n`, indented(2, 4), "a fence indented four columns right after a list item");
+  bad(`- item\n\n    <pre>\n\n  ${velvet}\n`, indented(3, 4), "a <pre> indented four columns under a list item");
+  bad(`- item\n  <span>\n    <pre>\n\n  ${velvet}\n`, indented(3, 4), "a <pre> indented four columns inside a loosely opened HTML block");
+  bad(`| a | b |\n|---|---|\nbar\n    ${velvet}\n`, indented(4, 4), "after a table row written without a pipe, which GFM reads as a row, so the line is code");
+  bad("para\n\n\tcode", indented(3, 4), "a tab is four columns");
+  // The link on such a line is not named as text: under a list item it is a link, so the line's
+  // indentation is the one problem.
+  onlyIndentation(`para\n\n    ${velvet}`, "a theme link on a line indented after a blank line");
+  onlyIndentation(`1. Update Claude Code\n    - Try ${velvet} first`, "a nested item indented four columns, whose link GitHub renders as a link");
+  onlyIndentation(`1. Select one.\n\n    ${velvet} is a good start.`, "a continuation paragraph indented four columns");
+  ok("- item\n   three spaces in", "three columns is the item's text and opens nothing");
+  ok("```\n    code\n```", "an indented line inside a fence is the fence's");
+  ok("<pre>\n    code\n</pre>", "an indented line inside a <pre> block is the block's");
+  ok("<!--\n    note\n-->", "an indented line inside a comment is the comment's");
+
+  // Indented code after a block-quote or list marker on the same line: the link shows as code.
+  bad(`> quote\n>\n>     ${velvet}\n`, afterMarker(3, 4), "four columns after a quote marker and its space");
+  bad(`>     ${velvet}\n`, afterMarker(1, 4), "a quote that starts with indented code");
+  bad(`-     ${velvet}\n`, afterMarker(1, 4), "a list item that starts with indented code: the marker, then five columns");
+  bad(`1.     ${velvet}\n`, afterMarker(1, 4), "an ordered item that starts with indented code");
+  bad(`>     ${THEME_PAGE_URL}\n`, afterMarker(1, 4), "the index in a quote's indented code");
+  bad(`>\t\t${velvet}\n`, afterMarker(1, 7), "tabs after a quote marker");
+  bad(`-\t\t${velvet}\n`, afterMarker(1, 7), "tabs after a list marker");
+  bad(`-\t  ${velvet}\n`, afterMarker(1, 5), "a tab and spaces after a list marker");
+  bad(`> - >     ${velvet}\n`, afterMarker(1, 4), "nested markers");
+  ok(`-    ${velvet}`, "four columns after a list marker are the item's text");
+  ok(`>    ${velvet}`, "the quote's own space, then three columns, are the quote's text");
+  ok(`> ${velvet}\n>     \n> more`, "a quote line of spaces is blank");
+  ok("- - -\n\n* * *", "thematic breaks made of list-marker characters");
+
+  // GitHub reads CR LF as one line ending and skips a byte order mark at the start of the file.
+  bad(`para\r\n\r\n    ${velvet}\r\n`, /^line 1 writes a carriage return\. GFM reads CR LF as one line ending/, "a blank line that ends in a carriage return");
+  bad(`\uFEFF    ${velvet}\n\n# Title`, /^line 1 starts with a byte order mark \(U\+FEFF\)\. GitHub skips it/, "a byte order mark before an indented first line");
+  bad("\uFEFF```\n" + velvet, /^line 1 starts with a byte order mark/, "a byte order mark before a fence");
 });
 
 // --- the verifier, red then green ----------------------------------------------------------
@@ -814,7 +903,7 @@ test("the shapes a third review found fail in the files themselves: a lone tag a
   // The plugin README's index line indented into a code block, or after a lone tag, does not render.
   const path = "plugins/50-dark-themes/README.md";
   await editOnce(fixtureRoot, path, `\n${THEME_PAGE_URL}\n`, `\n    ${THEME_PAGE_URL}\n`);
-  await expectRed(fixtureRoot, /plugins\/50-dark-themes\/README\.md line \d+ writes the site's address inside the indented code block begun on line \d+, where it is text/);
+  await expectRed(fixtureRoot, /plugins\/50-dark-themes\/README\.md line \d+ is indented 4 columns outside a code fence\. At the top level that is indented code/);
   await editOnce(fixtureRoot, path, `\n    ${THEME_PAGE_URL}\n`, `\n${THEME_PAGE_URL}\n`);
   // A lone tag after the sentence is that paragraph's text and the address, in a paragraph of its own,
   // still renders; after a blank line the tag opens an HTML block that swallows the address.
@@ -830,5 +919,14 @@ test("the shapes a third review found fail in the files themselves: a lone tag a
 test("a theme link indented four spaces after a blank line is code on GitHub, and the verifier says so", async (t) => {
   const fixtureRoot = await makeFixture(t);
   await editOnce(fixtureRoot, "README.md", "\n## More dark tools\n", `\n    ${link("Velvet", "velvet")} is a theme.\n\n## More dark tools\n`);
-  await expectRed(fixtureRoot, /README\.md line \d+ writes the theme link \[Velvet\]\(https:\/\/gabs-utilities\.com\/theme\/velvet\/\) inside the indented code block begun on line \d+, where it is text, not a link/);
+  await expectRed(fixtureRoot, /README\.md line \d+ is indented 4 columns outside a code fence\. At the top level that is indented code, where Markdown shows as text/);
+});
+
+test("a backtick left open in a heading, or indented code after a quote marker, shows a theme link as code on GitHub, and the verifier says so", async (t) => {
+  const heading = await makeFixture(t);
+  await editOnce(heading, "README.md", "\n## More dark tools\n", `\n## Pick one \x60\n\nA start \x60 ${link("Velvet", "velvet")} \x60here\x60.\n\n## More dark tools\n`);
+  await expectRed(heading, /README\.md line \d+ writes \x60 with nothing after it on that line to close it\./);
+  const quote = await makeFixture(t);
+  await editOnce(quote, "plugins/50-dark-themes/README.md", "\n\nSource and manual installation:", `\n\n> Tip:\n>\n>     ${link("Velvet", "velvet")}\n\nSource and manual installation:`);
+  await expectRed(quote, /plugins\/50-dark-themes\/README\.md line \d+ is indented 4 columns after its block-quote or list marker, where GFM opens indented code inside the quote or the item and shows its Markdown as text\./);
 });
