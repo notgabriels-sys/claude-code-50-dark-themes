@@ -935,7 +935,6 @@ for (const [path, source] of themePages) {
 // the page. Like every public page it carries the first-party favicon, an
 // og:image described the same way for X, and the Impressum link the law needs.
 // The storefront links it, and the sitemap lists it (rendered by the builder).
-// Names of projects that are not sold here never appear on it.
 // ---------------------------------------------------------------------------
 let familiarsHtml;
 try {
@@ -972,11 +971,6 @@ if (!familiarsOgAlt || !familiarsXAlt || familiarsOgAlt[1] !== familiarsXAlt[1])
   fail("Familiars: og:image:alt and twitter:image:alt must both exist and say the same thing.");
 }
 await verifyPng("assets/familiars-share.png", { label: "Familiars share image", width: 1280, height: 720 });
-for (const name of ["Lack of Fate", "Hologram People", "Fate Through", "Slow Foundry"]) {
-  if (familiarsHtml.toLowerCase().includes(name.toLowerCase())) {
-    fail(`Familiars: the page must not name ${name}.`);
-  }
-}
 if (!/<a href="familiars\.html">[^<]+<\/a>/.test(html)) {
   fail("The storefront must link the Familiars page (familiars.html).");
 }

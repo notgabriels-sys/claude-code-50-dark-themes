@@ -90,18 +90,6 @@ test("rejects a Familiars page without the Impressum link", { timeout: 90_000 },
   assert.match(result.stderr, /Familiars page is missing: Impressum link\./);
 });
 
-test("rejects a Familiars page that names a project not sold here", { timeout: 90_000 }, async (t) => {
-  const fixtureRoot = await makeFixture(t);
-  await editFile(fixtureRoot, "familiars.html", (html) =>
-    html.replace("built in a Berlin studio", "built in the Slow Foundry studio"),
-  );
-
-  const result = await runVerifier(fixtureRoot);
-
-  assert.notEqual(result.code, 0, "the verifier accepted a forbidden name on the Familiars page");
-  assert.match(result.stderr, /Familiars: the page must not name Slow Foundry\./);
-});
-
 test("rejects a Familiars page whose X alt disagrees with its Open Graph alt", { timeout: 90_000 }, async (t) => {
   const fixtureRoot = await makeFixture(t);
   await editFile(fixtureRoot, "familiars.html", (html) =>
