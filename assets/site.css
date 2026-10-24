@@ -1,0 +1,204 @@
+/* The site's shared base: palette, type, ambient light, the light/dark switch and motion.
+   A page links it before its own <style> and keeps its own layout on top. The look is the
+   Familiars page's: graphite carries the page, violet marks what is live or a label, the warm
+   ember appears once or twice per view. Light is a full second theme, not an inversion.
+   scripts/site-style.mjs holds this file to that palette, to readable contrast in both themes
+   and to motion that only runs when the visitor allows it. */
+
+/* ---------- fonts: served from this site, no third-party request ---------- */
+@font-face {
+  font-family: "Familjen Grotesk";
+  src: url("fonts/FamiljenGrotesk-VF.ttf") format("truetype");
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "IBM Plex Mono";
+  src: url("fonts/IBMPlexMono-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "IBM Plex Mono";
+  src: url("fonts/IBMPlexMono-Medium.ttf") format("truetype");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ---------- tokens ---------- */
+:root {
+  --ground: #0F0F13;      /* page */
+  --ground-2: #16161C;    /* cards, buttons */
+  --raise: #1C1C24;       /* raised panels */
+  --ink: #EDEBF3;         /* text */
+  --mute: #9C99AA;        /* secondary text */
+  --faint: #9C99AA;       /* small print: as readable as secondary text */
+  --hair: #2A2933;        /* 1px borders, dividers */
+  --accent: #A898FF;      /* violet: labels, focus, live states, links */
+  --accent-soft: rgba(168, 152, 255, 0.16);
+  --accent-dim: color-mix(in srgb, var(--accent) 42%, var(--hair));
+  --ember: #FFB46B;       /* the one warm point */
+  --ember-soft: rgba(255, 180, 107, 0.28);
+  --halo: 0.55;
+  --radius-card: 14px;
+  --radius-panel: 18px;
+  --display: "Familjen Grotesk", "Helvetica Neue", Arial, sans-serif;
+  --body: "Familjen Grotesk", "Helvetica Neue", Arial, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --ground: #F2F1F6;
+    --ground-2: #FFFFFF;
+    --raise: #F8F7FB;
+    --ink: #16151C;
+    --mute: #5C5A6A;
+    --faint: #5C5A6A;
+    --hair: #DAD8E2;
+    --accent: #5A45D6;
+    --accent-soft: rgba(90, 69, 214, 0.12);
+    --ember: #B8601A;
+    --ember-soft: rgba(184, 96, 26, 0.22);
+    --halo: 0.32;
+    color-scheme: light;
+  }
+}
+:root[data-theme="light"] {
+  --ground: #F2F1F6;
+  --ground-2: #FFFFFF;
+  --raise: #F8F7FB;
+  --ink: #16151C;
+  --mute: #5C5A6A;
+  --faint: #5C5A6A;
+  --hair: #DAD8E2;
+  --accent: #5A45D6;
+  --accent-soft: rgba(90, 69, 214, 0.12);
+  --ember: #B8601A;
+  --ember-soft: rgba(184, 96, 26, 0.22);
+  --halo: 0.32;
+  color-scheme: light;
+}
+
+/* A terminal shown on a page (.cmd, or anything marked .specimen) is a dark specimen in either
+   theme: inside one, the tokens keep their dark values, so its text stays light on its surface. */
+.specimen,
+.cmd {
+  --ink: #EDEBF3;
+  --mute: #9C99AA;
+  --faint: #9C99AA;
+  --hair: #2A2933;
+  --accent: #A898FF;
+  --accent-soft: rgba(168, 152, 255, 0.16);
+  color-scheme: dark;
+}
+
+/* ---------- base ---------- */
+body {
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--body);
+}
+/* Colours cross-fade when the visitor flips the switch (the script sets data-theme-fade first),
+   not when a remembered choice is applied as the page loads. */
+:root[data-theme-fade] body { transition: background-color 0.5s ease, color 0.5s ease; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+/* ---------- ambient light: <div class="lights" aria-hidden="true"> with three spans, early in
+   <body>; the page lifts its content above it (position: relative; z-index: 1) ---------- */
+.lights { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+.lights span { position: absolute; border-radius: 50%; filter: blur(70px); opacity: var(--halo); }
+.lights .l1 { width: 46vmax; height: 46vmax; left: -12vmax; top: -16vmax; background: radial-gradient(circle, var(--accent-soft), transparent 70%); }
+.lights .l2 { width: 34vmax; height: 34vmax; right: -10vmax; top: 30vh; background: radial-gradient(circle, var(--ember-soft), transparent 70%); }
+.lights .l3 { width: 40vmax; height: 40vmax; left: 20vw; bottom: -22vmax; background: radial-gradient(circle, var(--accent-soft), transparent 70%); }
+
+/* ---------- the light/dark switch: a floating pill, bottom right ---------- */
+.theme-switch {
+  position: fixed;
+  right: max(16px, env(safe-area-inset-right, 0px));
+  bottom: max(16px, env(safe-area-inset-bottom, 0px));
+  z-index: 50;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 5px 16px 5px 5px;
+  border: 1px solid var(--accent-dim);
+  border-radius: 999px;
+  background: var(--raise);
+  color: var(--ink);
+  font: 600 14px var(--body);
+  cursor: pointer;
+  box-shadow: 0 0 0 4px var(--accent-soft), 0 18px 40px -24px rgba(15, 15, 19, 0.6);
+  transition: border-color 0.2s, background-color 0.5s, color 0.5s;
+}
+/* The page's script unhides the switch; without the script it stays hidden, since it would do nothing. */
+.theme-switch[hidden] { display: none; }
+.theme-switch:hover { border-color: var(--accent); }
+.theme-switch-knob {
+  position: relative;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--ground);
+  flex: none;
+}
+/* Drawn without markup: a sun (a disc and eight rays) while the page is dark, a crescent while
+   it is light; each names the theme the switch turns on. */
+.theme-switch-knob::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  margin: -4px 0 0 -4px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow:
+    0 -9px 0 -2.5px currentColor, 0 9px 0 -2.5px currentColor,
+    9px 0 0 -2.5px currentColor, -9px 0 0 -2.5px currentColor,
+    6.4px 6.4px 0 -2.5px currentColor, -6.4px -6.4px 0 -2.5px currentColor,
+    6.4px -6.4px 0 -2.5px currentColor, -6.4px 6.4px 0 -2.5px currentColor;
+}
+:root[data-eff="light"] .theme-switch-knob::before {
+  width: 16px;
+  height: 16px;
+  margin: -8px 0 0 -8px;
+  background: transparent;
+  box-shadow: inset -5px -2px 0 0 currentColor;
+}
+
+/* ---------- surfaces with a pointer light: the page's script marks them .lit and sets --mx and
+   --my as the pointer moves; the page gives them their own border and background. The light
+   itself shows only when the visitor allows motion; the border answers the pointer either way. */
+.lit { --mx: 50%; --my: 50%; position: relative; overflow: hidden; }
+.lit::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(260px circle at var(--mx) var(--my), var(--accent-soft), transparent 70%);
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+}
+.lit:hover { border-color: var(--accent); }
+.lit > * { position: relative; }
+
+/* ---------- motion, only when the visitor allows it ---------- */
+@media (prefers-reduced-motion: no-preference) {
+  .lights .l1 { animation: drift-a 26s ease-in-out infinite alternate; }
+  .lights .l2 { animation: drift-b 32s ease-in-out infinite alternate; }
+  .lights .l3 { animation: drift-a 38s ease-in-out infinite alternate-reverse; }
+  @keyframes drift-a { to { transform: translate(8vw, 6vh) scale(1.1); } }
+  @keyframes drift-b { to { transform: translate(-10vw, -8vh) scale(0.92); } }
+  .lit { transition: border-color 0.25s, transform 0.25s; }
+  .lit:hover { transform: translateY(-2px); }
+  .lit:hover::before { opacity: 1; }
+  .theme-switch { transition: border-color 0.2s, background-color 0.5s, color 0.5s, transform 0.2s; }
+  .theme-switch:hover { transform: translateY(-2px); }
+}

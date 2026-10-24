@@ -73,10 +73,16 @@ function cssColour(variable, source = html) {
   return variableMatch[1];
 }
 
-const storefrontFaint = cssColour("faint");
+// The storefront's page colours are declared in its shared stylesheet, and the
+// first declaration of each is the dark theme these floors were set for;
+// scripts/site-style.mjs holds the light theme to its own. The syntax palette
+// and the terminal surface stay in index.html.
+const siteCss = await readFile(new URL("assets/site.css", root), "utf8");
+const storefrontColour = (token) => cssColour(token, siteCss + html);
+const storefrontFaint = storefrontColour("faint");
 for (const surfaceName of ["ground", "ground-2"]) {
   comparisons += 1;
-  const surface = cssColour(surfaceName);
+  const surface = storefrontColour(surfaceName);
   const ratio = contrast(storefrontFaint, surface);
   if (ratio < 4.5) {
     failures.push(
@@ -103,7 +109,7 @@ for (const token of semanticTokens) {
   const foreground = cssColour(token);
   for (const surfaceName of ["terminal-surface", "ground", "ground-2"]) {
     comparisons += 1;
-    const surface = cssColour(surfaceName);
+    const surface = storefrontColour(surfaceName);
     const ratio = contrast(foreground, surface);
     if (ratio < 4.5) {
       failures.push(

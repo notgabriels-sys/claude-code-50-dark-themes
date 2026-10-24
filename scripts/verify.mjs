@@ -563,6 +563,26 @@ for (const path of htmlFiles) {
   if (marker) fail(`${path} carries ${marker} but is not one of the dated pages in scripts/page-dates.mjs; add it to DATED_PAGES so its dates are held to the same rule, or take the date out.`);
 }
 
+// ---------------------------------------------------------------------------
+// The site's look: assets/site.css holds the Familiars page's palette, both themes, contrast
+// that holds in each, and motion that runs only when the visitor allows it; the pages on it link
+// it first, carry the lights and the theme switch, and serve their own fonts under the OFL. The
+// rules and their messages live in scripts/site-style.mjs.
+// ---------------------------------------------------------------------------
+const siteStyle = await import("./site-style.mjs");
+const siteCss = await readFile(new URL(siteStyle.STYLESHEET, root), "utf8");
+for (const problem of siteStyle.stylesheetProblems(siteCss)) fail(problem);
+const siteFontFiles = Object.fromEntries(
+  await Promise.all(
+    (await readdir(new URL("assets/fonts/", root))).map(async (name) => [name, name.endsWith(".txt") ? await readFile(new URL(`assets/fonts/${name}`, root), "utf8") : true]),
+  ),
+);
+for (const problem of siteStyle.fontProblems(siteCss, siteFontFiles)) fail(problem);
+const siteFonts = siteStyle.fontFaces(siteCss).flatMap(({ urls }) => urls);
+for (const path of siteStyle.SITE_PAGES) {
+  for (const problem of siteStyle.pageProblems(await readFile(new URL(path, root), "utf8"), path, siteFonts)) fail(problem);
+}
+
 if (!readme.includes("mkdir -p ~/.claude/themes")) {
   fail("The manual install command must create ~/.claude/themes before copying files.");
 }
