@@ -1,36 +1,62 @@
 # 50 dark themes for Claude Code
 
 [![Verify themes and shop](https://github.com/notgabriels-sys/claude-code-50-dark-themes/actions/workflows/verify.yml/badge.svg)](https://github.com/notgabriels-sys/claude-code-50-dark-themes/actions/workflows/verify.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
+**62 hand-tuned dark themes for Claude Code's `/theme` picker** (the 50 plus 12 in Vol. 2), free and MIT licensed.
+
+Every palette is contrast-checked against its terminal background and has a matched terminal color scheme.
+
+<picture>
+  <source media="(prefers-reduced-motion: reduce)" srcset="assets/hero.png">
+  <img src="assets/hero.gif" alt="Rendered preview of a Claude Code session in real theme colors: the welcome line in the theme's accent, a prompt, a reply, a tool result, the prompt box with /theme typed into it, and the theme's name, on its recommended terminal background. The animation cycles through eight of the free themes (Deep Field, Ember, Aurora Borealis, Neon Noir, Lagoon, Acid, Ultraviolet and Graphite); the still image shows Deep Field.">
+</picture>
+
+## Install
+
+Type these two commands inside Claude Code:
+
+```text
+/plugin marketplace add notgabriels-sys/claude-code-50-dark-themes
+/plugin install 50-dark-themes@notgabriels-themes
+```
+
+For the 12 Vol. 2 themes as well:
+
+```text
+/plugin install dark-themes-vol-2@notgabriels-themes
+```
+
+Then run `/theme` and pick one. Needs Claude Code v2.1.118 or later.
+
+**→ Visual gallery: [gabs-utilities.com](https://gabs-utilities.com/)** (all 62 themes, previewed in their own colors).
+
+## About the plugin
 
 Custom themes for the Claude Code CLI. The chat app (claude.ai / desktop) only supports
 Light / Dark / System, so these install into Claude Code, which does support custom themes.
 
 Requires **Claude Code v2.1.118 or later**, the release that introduced named custom themes.
 
-**→ Visual gallery and storefront: [gabs-utilities.com](https://gabs-utilities.com/)** (all 50, plus the 12 Vol. 2 themes, previewed in their own colors).
+The plugin keeps the pack together and makes updates available through the marketplace. Press `Ctrl+E`
+on a plugin theme if you want an editable copy in `~/.claude/themes/`.
 
-Every theme also has its own page, with its palette and roles, contrast measured against the
-recommended terminal background, and the install commands: **[gabs-utilities.com/theme/](https://gabs-utilities.com/theme/)**.
-
-Prefer a zip to a `git clone`? The same 50 themes are a **free download** on the
-**[v1.0.1 GitHub release →](https://github.com/notgabriels-sys/claude-code-50-dark-themes/releases/tag/themes-plugin-v1.0.1)**
-(`claude-code-dark-themes-v1.0.1.zip`). The native-plugin route below is the recommended install.
-
-## Quick install — Claude Code plugin
-
-Run these in your terminal:
+The same install from your terminal, outside Claude Code:
 
 ```bash
 claude plugin marketplace add notgabriels-sys/claude-code-50-dark-themes
 claude plugin install 50-dark-themes@notgabriels-themes
 ```
 
-Then run `/theme` in Claude Code and pick one. The plugin keeps the pack together and makes updates
-available through the marketplace. Press `Ctrl+E` on a plugin theme if you want an editable copy in
-`~/.claude/themes/`.
-
 Step-by-step install, terminal background and troubleshooting guide:
 <https://gabs-utilities.com/claude-code-theme-install-guide.html>
+
+Every theme also has its own page, with its palette and roles, contrast measured against the
+recommended terminal background, and the install commands: **[gabs-utilities.com/theme/](https://gabs-utilities.com/theme/)**.
+
+Prefer a zip to a `git clone`? The same 50 themes are a **free download** on the
+**[v1.0.1 GitHub release →](https://github.com/notgabriels-sys/claude-code-50-dark-themes/releases/tag/themes-plugin-v1.0.1)**
+(`claude-code-dark-themes-v1.0.1.zip`). The native-plugin route above is the recommended install.
 
 Prefer to have your agent do it? The **[Claude Code Theme Setup Assistant](https://agensi.io/skills/claude-code-theme-setup-assistant)** (on Agensi)
 picks a theme with you, installs it, checks it shows in `/theme` and gives you the matching terminal
