@@ -259,6 +259,39 @@ const listingIconProblems = (bytes) => {
   }
   return problems;
 };
+// Reads one pixel of a listing icon that listingIconProblems found clean, as
+// "#RRGGBB": the rows are unfiltered as PNG defines, each from the row above.
+const pngPixels = (bytes) => {
+  const data = [];
+  let header;
+  for (let at = pngSignature.length; at < bytes.length; at += 12 + bytes.readUInt32BE(at)) {
+    const type = bytes.toString("latin1", at + 4, at + 8);
+    const body = bytes.subarray(at + 8, at + 8 + bytes.readUInt32BE(at));
+    if (type === "IHDR") header = body;
+    if (type === "IDAT") data.push(body);
+  }
+  const width = header.readUInt32BE(0);
+  const height = header.readUInt32BE(4);
+  const channels = header[9] === 6 ? 4 : 3;
+  const stride = width * channels;
+  const rows = inflateSync(Buffer.concat(data));
+  const pixels = Buffer.alloc(height * stride);
+  for (let y = 0; y < height; y++) {
+    const filter = rows[y * (stride + 1)];
+    for (let x = 0; x < stride; x++) {
+      const left = x >= channels ? pixels[y * stride + x - channels] : 0;
+      const up = y > 0 ? pixels[(y - 1) * stride + x] : 0;
+      const upLeft = x >= channels && y > 0 ? pixels[(y - 1) * stride + x - channels] : 0;
+      const guess = left + up - upLeft;
+      const [toLeft, toUp, toUpLeft] = [left, up, upLeft].map((value) => Math.abs(guess - value));
+      const paeth = toLeft <= toUp && toLeft <= toUpLeft ? left : toUp <= toUpLeft ? up : upLeft;
+      const predictor = [0, left, up, (left + up) >> 1, paeth][filter];
+      pixels[y * stride + x] = (rows[y * (stride + 1) + 1 + x] + predictor) & 0xff;
+    }
+  }
+  return (x, y) =>
+    `#${[0, 1, 2].map((i) => pixels[y * stride + x * channels + i].toString(16).padStart(2, "0")).join("").toUpperCase()}`;
+};
 
 const files = (await readdir(root)).filter(isThemeFile).sort();
 
@@ -1001,7 +1034,8 @@ if (JSON.stringify([...expectedPackageFiles.keys()].sort()) !==
 // 2.1.310's `claude plugin validate --profile directory`: 512 to 2048 px a
 // side, under 2 MB, PNG or JPEG, and the directory keeps the first icon it is
 // given, so a wrong one cannot be replaced later. Main's #67 gave both theme
-// packs the setup assistant's square logo; the skills plugin's is a meter in VU
+// packs the setup assistant's square logo, since 2026-10-24 drawn in Petrol's
+// colours (LISTING_ICON_THEME, below); the skills plugin's is a meter in VU
 // Meter's green, red and grey, with an amber band of its own.
 for (const plugin of expectedPlugins) {
   const icon = `plugins/${plugin.name}/logo.png`;
@@ -1192,6 +1226,66 @@ if (galleryThemes.length !== 50) {
 const galleryNames = new Set(galleryThemes.map(([name]) => name));
 for (const name of rootNames) {
   if (!galleryNames.has(name)) fail(`Gallery is missing the ${name} theme.`);
+}
+
+// The theme packs' listing icon follows one of the 50 themes (Gabriel,
+// 2026-10-24: "It needs to follow one of our themes for claude code. Probably
+// something dark blueish or bluegreen?"). Both packs carry the one icon, so the
+// Vol. 2 listing wears a theme from the 50. Each part is one of the theme's
+// colours, read here from the theme's own files rather than from whatever drew
+// the icon, so a retuned theme turns the icon red until it is drawn again: the
+// ground is its recommended terminal background (its gallery row), the chevron
+// its text and the top chip its claude accent (its theme file), and the middle
+// and bottom chips its matched terminal bright green and blue (ANSI 10 and 4,
+// from its Ghostty scheme; the theme file sets no green or blue). Each part is
+// read at its centre in the 512-unit drawing, doubled, in the shipped PNG and
+// in the SVG it is drawn from.
+const LISTING_ICON_THEME = "Petrol";
+const LISTING_ICON_SOURCE = "assets/theme-packs-icon.svg";
+{
+  const row = galleryThemes.find(([name]) => name === LISTING_ICON_THEME);
+  const theme = JSON.parse(
+    await readFile(fileUrl(`${LISTING_ICON_THEME.toLowerCase().replace(/ /g, "-")}.json`), "utf8"),
+  );
+  const scheme = await readFile(fileUrl(`terminal-schemes/ghostty/Gabs ${LISTING_ICON_THEME}`), "utf8");
+  const ansi = (n) => scheme.match(new RegExp(`^palette = ${n}=(#[0-9A-Fa-f]{6})$`, "m"))?.[1]?.toUpperCase();
+  const parts = [
+    ["ground", [[16, 16], [1007, 1007]], row?.[5]?.toUpperCase(), "recommended terminal background, its gallery row"],
+    ["chevron", [[334, 432]], theme.overrides.text.toUpperCase(), "text"],
+    ["top chip", [[640, 333]], theme.overrides.claude.toUpperCase(), "claude accent"],
+    ["middle chip", [[640, 512]], ansi(10), "terminal bright green, ANSI 10"],
+    ["bottom chip", [[640, 691]], ansi(4), "terminal blue, ANSI 4"],
+  ];
+  for (const [part, , want, role] of parts) {
+    if (!want) fail(`${LISTING_ICON_THEME} has no ${role} for the listing icon's ${part} to follow.`);
+  }
+  const drawn = [...(await readFile(fileUrl(LISTING_ICON_SOURCE), "utf8")).matchAll(/(?:fill|stroke)="([^"]*)"/g)]
+    .map(([, value]) => value.toUpperCase())
+    .filter((value) => value !== "NONE");
+  if (JSON.stringify(drawn) !== JSON.stringify(parts.map(([, , want]) => want))) {
+    fail(
+      `${LISTING_ICON_SOURCE} draws ${drawn.join(", ")}; following ${LISTING_ICON_THEME} (LISTING_ICON_THEME in ` +
+        `scripts/verify.mjs), its ground, chevron and three chips must be ${parts.map(([, , want]) => want).join(", ")}, ` +
+        "in that order.",
+    );
+  }
+  for (const name of themePluginNames) {
+    const icon = `plugins/${name}/logo.png`;
+    const bytes = await readFile(fileUrl(icon));
+    if (listingIconProblems(bytes).length) continue;
+    const pixel = pngPixels(bytes);
+    for (const [part, points, want, role] of parts) {
+      for (const [x, y] of points) {
+        if (pixel(x, y) !== want) {
+          fail(
+            `${icon} follows ${LISTING_ICON_THEME} (LISTING_ICON_THEME in scripts/verify.mjs), so its ${part} at ` +
+              `${x},${y} must be ${want}, ${LISTING_ICON_THEME}'s ${role}; it is ${pixel(x, y)}. Set ` +
+              `${LISTING_ICON_SOURCE} to the theme's colours and draw it again with node scripts/render-listing-icons.mjs.`,
+          );
+        }
+      }
+    }
+  }
 }
 
 // The Vol. 2 storefront section must mirror the packaged expansion exactly.

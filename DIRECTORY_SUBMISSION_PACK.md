@@ -270,7 +270,8 @@ What the portal reads, and where it stands here:
 - **README** of at least 40 words outside code blocks, and a **LICENSE** in the
   plugin folder: both present in each plugin.
 - **Icon**: `logo.png`, a 1024 px square in each plugin, named by
-  `plugin.json`'s `icon` (the shop's square logo for both theme packs).
+  `plugin.json`'s `icon`: for both theme packs the shop's square logo, drawn
+  in the colours of Petrol, one of the 50 (`assets/theme-packs-icon.svg`).
   Claude Code's own validator says an icon may become the listing icon only
   once, the first time the plugin is saved or submitted in the portal.
 - **Files**: images, JSON and text only; none near the 256 KiB limit for

@@ -204,7 +204,10 @@ The command checks:
   theme pack's homepage is its gallery on the `CNAME` domain), as are a theme pack's documentation
   and support addresses, that each plugin ships `logo.png`, named by plugin.json's `icon`, as a
   clean 1024×1024 8-bit PNG under 2 MB with no text, EXIF, time or colour-profile chunk (the
-  plugin directory keeps the first icon it is given), that
+  plugin directory keeps the first icon it is given), that the theme packs' icon and its source,
+  `assets/theme-packs-icon.svg`, are drawn in Petrol's colours as Petrol's own files give them
+  (after changing the SVG, run `node scripts/render-listing-icons.mjs`, which needs Playwright),
+  that
   `previews.json` holds one row per shipped Vol. 2 theme and no other, and that a plugin's version
   only moves forward;
 - the shop's payment surfaces: each PayPal card against the price read back off PayPal, and each

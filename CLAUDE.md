@@ -729,6 +729,45 @@ linked the Agensi listing, which the link guard allows only from the root
 pages and `README.md`; it now names Agensi and points at the repository
 README, which links it.
 
+**(added 2026-10-24) The theme packs' icon follows Petrol.** Gabriel, on
+seeing the pack icon (the setup assistant's mark on near-black, in three
+accents from its own exclusive themes): "It needs to follow one of our themes
+for claude code. Probably something dark blueish or bluegreen?" 39 candidates
+were drawn on the mark's geometry from 15 themes whose terminal background is
+dark blue or blue-green (Iris and Ozone, nearer indigo, were left out), ground
+from the theme's background,
+chevron from its text, and chips in three mappings (its own accent ramp; its
+accent with its terminal magenta and yellow; its accent with its terminal
+bright blue and green). Four judges scored all of them, one lens each (theme
+fidelity, legibility at 32 and 64 px, brand, colour science), and two
+challengers attacked the leader. Petrol's bright-blue mapping led (6.88 of
+10), but a challenger showed its top two chips 2 L* apart, merging in
+greyscale and under tritan simulation, and argued for Sonar, whose ground
+reads near-black at 32 px and is 3.0 CIEDE2000 from GitHub's dark page.
+Re-ordering Petrol's own colours fixed the merge: the shipped icon is ground
+#152528 (Petrol's terminal background), chevron #E8EDED (its text), and chips
+#2FB8C6 (its claude accent), #9BE59C and #6491DD (its terminal bright green
+and blue, ANSI 10 and 4). Chip L* 68.7, 84.7, 60.1; the closest adjacent pair
+is 30.1 CIEDE2000, about 33 and 36 under protan and deutan simulation (Machado
+2009, full severity) and 12.4 under tritan; chips 5.0:1 or more against the
+ground, chevron 13.4:1. Two more challengers, one on what a viewer sees at 32
+px and one recomputing every number from the repo's files, found no defect
+that changes it; their wording corrections are taken: the green and blue come
+from Petrol's matched terminal scheme, not from the theme file, which sets no
+green or blue, and both packs carry the one icon, so the Vol. 2 listing wears
+a theme from the 50. The harnesses and sheets live in the scratchpad.
+
+`assets/theme-packs-icon.svg` is the source and `scripts/render-listing-icons.mjs`
+draws it with Chromium and writes the PNG itself (IHDR, IDAT and IEND only;
+each row takes the filter with the smallest sum, so the shipped file uses
+four of PNG's five). It needs Playwright, which CI does not have. `verify`
+reads Petrol's colours from Petrol's files (`petrol.json`, its gallery row and
+its Ghostty scheme), not from the drawing, and holds the SVG's five colours
+and the PNG's pixels at the centre of each part, and at two corners, to them.
+A retuned Petrol therefore turns the icon red until it is drawn again. Its
+tests draw icons pixel by pixel with every row filter in turn, so a wrong
+predictor reads a wrong colour.
+
 **(merged 2026-10-24) Main's #70, the README's first screen.** #70 opened the
 README with a rendered hero (`assets/hero.gif`, a still `assets/hero.png`, both
 drawn by `scripts/build-readme-hero.py`) and the three `/plugin` commands, and
@@ -946,8 +985,9 @@ first icon it is given: each plugin then shipped `.claude-plugin/icon.png`, a
 1024 px square drawn from its own palettes (the 50 accents and the 12 as hue
 rings, a meter in VU Meter's green, red and grey for the skills, with an amber
 band of its own), and `verify` holds each to a 1024 px PNG under 2 MB. (Main's
-#67 gave the theme packs the shop's square logo as `logo.png` the same day; see
-"Main's #67 and #68" below.)
+#67 gave the theme packs the shop's square logo as `logo.png` the same day,
+now drawn in Petrol's colours; see "Main's #67 and #68" and "The theme packs'
+icon follows Petrol" below.)
 (Corrected 2026-10-24: this and the commit said the meter was in VU Meter's
 colours, and that `verify` held each icon to a 1024 px PNG when it read only
 the first 24 bytes; the icon is now read whole, see the review below.) All three plugins and the marketplace then pass

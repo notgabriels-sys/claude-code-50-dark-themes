@@ -3830,6 +3830,101 @@ for (const [defect, edit, message] of [
   });
 }
 
+// The theme packs' listing icon follows Petrol. These icons are drawn here
+// pixel by pixel: each part is a square around the point verify reads, on the
+// ground, and row y is filtered with PNG filter y % 5, so the reader is held to
+// every filter PNG defines (a wrong predictor reads a wrong colour).
+const PETROL = { ground: "#152528", chevron: "#E8EDED", top: "#2FB8C6", middle: "#9BE59C", bottom: "#6491DD" };
+const ICON_PARTS = [["chevron", 334, 432], ["top", 640, 333], ["middle", 640, 512], ["bottom", 640, 691], ["corner", 1007, 1007]];
+const drawIcon = (colours) => {
+  const size = 1024;
+  const stride = size * 3;
+  const pixels = Buffer.alloc(size * stride);
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const part = ICON_PARTS.find(([, px, py]) => Math.abs(x - px) <= 8 && Math.abs(y - py) <= 8);
+      pixels.write((colours[part ? part[0] : "ground"] ?? colours.ground).slice(1), y * stride + x * 3, "hex");
+    }
+  }
+  const rows = Buffer.alloc(size * (stride + 1));
+  for (let y = 0; y < size; y++) {
+    const filter = y % 5;
+    rows[y * (stride + 1)] = filter;
+    for (let x = 0; x < stride; x++) {
+      const left = x >= 3 ? pixels[y * stride + x - 3] : 0;
+      const up = y > 0 ? pixels[(y - 1) * stride + x] : 0;
+      const upLeft = x >= 3 && y > 0 ? pixels[(y - 1) * stride + x - 3] : 0;
+      const guess = left + up - upLeft;
+      const [a, b, c] = [left, up, upLeft].map((value) => Math.abs(guess - value));
+      const paeth = a <= b && a <= c ? left : b <= c ? up : upLeft;
+      rows[y * (stride + 1) + 1 + x] = (pixels[y * stride + x] - [0, left, up, (left + up) >> 1, paeth][filter]) & 0xff;
+    }
+  }
+  const header = Buffer.alloc(13);
+  header.writeUInt32BE(size, 0);
+  header.writeUInt32BE(size, 4);
+  header[8] = 8;
+  header[9] = 2;
+  return Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), pngChunk("IHDR", header),
+    pngChunk("IDAT", deflateSync(rows)), pngChunk("IEND", Buffer.alloc(0))]);
+};
+
+test("accepts a listing icon in Petrol's colours whatever PNG filter each row uses", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  for (const pack of ["50-dark-themes", "dark-themes-vol-2"]) {
+    await writeFile(join(fixtureRoot, `plugins/${pack}/logo.png`), drawIcon(PETROL));
+  }
+  const result = await runVerifier(fixtureRoot);
+  assert.equal(result.code, 0, result.stderr);
+});
+
+for (const [defect, colours, message] of [
+  ["on the setup assistant's black", { ...PETROL, ground: "#0A0A0B" },
+    /plugins\/50-dark-themes\/logo\.png follows Petrol \(LISTING_ICON_THEME in scripts\/verify\.mjs\), so its ground at 16,16 must be #152528, Petrol's recommended terminal background, its gallery row; it is #0A0A0B\./],
+  ["with a chevron in another colour", { ...PETROL, chevron: "#FFFFFF" }, /its chevron at 334,432 must be #E8EDED, Petrol's text; it is #FFFFFF\./],
+  ["with a top chip in another colour", { ...PETROL, top: "#52D2E0" }, /its top chip at 640,333 must be #2FB8C6, Petrol's claude accent; it is #52D2E0\./],
+  ["with a middle chip in another colour", { ...PETROL, middle: "#A48ED7" }, /its middle chip at 640,512 must be #9BE59C, Petrol's terminal bright green, ANSI 10; it is #A48ED7\./],
+  ["with a bottom chip in another colour", { ...PETROL, bottom: "#F7A63B" }, /its bottom chip at 640,691 must be #6491DD, Petrol's terminal blue, ANSI 4; it is #F7A63B\./],
+]) {
+  test(`rejects a theme pack's listing icon ${defect}`, { timeout: 90_000 }, async (t) => {
+    const fixtureRoot = await makeFixture(t);
+    await writeFile(join(fixtureRoot, "plugins/50-dark-themes/logo.png"), drawIcon(colours));
+    const result = await runVerifier(fixtureRoot);
+    assert.notEqual(result.code, 0, `a listing icon ${defect} passed`);
+    assert.match(result.stderr, message);
+  });
+}
+
+test("rejects a listing icon whose far corner leaves the theme's ground", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  await writeFile(join(fixtureRoot, "plugins/dark-themes-vol-2/logo.png"), drawIcon({ ...PETROL, corner: "#0A0A0B" }));
+  const result = await runVerifier(fixtureRoot);
+  assert.notEqual(result.code, 0, "an icon with a black far corner passed");
+  assert.match(result.stderr, /plugins\/dark-themes-vol-2\/logo\.png follows Petrol .*its ground at 1007,1007 must be #152528, Petrol's recommended terminal background, its gallery row; it is #0A0A0B\./);
+});
+
+test("rejects a listing icon source that leaves the theme it follows", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const source = join(fixtureRoot, "assets/theme-packs-icon.svg");
+  const text = await readFile(source, "utf8");
+  assert.equal(text.split('fill="#9BE59C"').length, 2, "fixture anchor must occur exactly once");
+  await writeFile(source, text.replace('fill="#9BE59C"', 'fill="#A48ED7"'));
+  const result = await runVerifier(fixtureRoot);
+  assert.notEqual(result.code, 0, "an icon source in another colour passed");
+  assert.match(result.stderr, /assets\/theme-packs-icon\.svg draws #152528, #E8EDED, #2FB8C6, #A48ED7, #6491DD; following Petrol \(LISTING_ICON_THEME in scripts\/verify\.mjs\), its ground, chevron and three chips must be #152528, #E8EDED, #2FB8C6, #9BE59C, #6491DD, in that order\./);
+});
+
+test("reads the listing icon's chips from the theme's own terminal scheme", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const scheme = join(fixtureRoot, "terminal-schemes/ghostty/Gabs Petrol");
+  const text = await readFile(scheme, "utf8");
+  assert.equal(text.split("palette = 4=#6491DD\n").length, 2, "fixture anchor must occur exactly once");
+  await writeFile(scheme, text.replace("palette = 4=#6491DD\n", "palette = 4=#5A88D4\n"));
+  const result = await runVerifier(fixtureRoot);
+  assert.notEqual(result.code, 0, "a retuned scheme left the icon unchecked");
+  assert.match(result.stderr, /its ground, chevron and three chips must be #152528, #E8EDED, #2FB8C6, #9BE59C, #5A88D4, in that order\./);
+});
+
 test("rejects a Vol. 2 preview colour for a theme the pack does not ship", { timeout: 90_000 }, async (t) => {
   const fixtureRoot = await makeFixture(t);
   const previews = join(fixtureRoot, "plugins/dark-themes-vol-2/previews.json");
