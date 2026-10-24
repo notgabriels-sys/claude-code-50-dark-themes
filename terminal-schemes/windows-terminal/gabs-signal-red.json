@@ -1,0 +1,27 @@
+{
+    "schemes": [
+        {
+            "name": "Gabs Signal Red",
+            "background": "#1A1B1E",
+            "foreground": "#E9EAEC",
+            "cursorColor": "#E64F54",
+            "selectionBackground": "#663334",
+            "black": "#232529",
+            "red": "#EA5357",
+            "green": "#5FC666",
+            "yellow": "#F3BF19",
+            "blue": "#458AED",
+            "purple": "#CB75D8",
+            "cyan": "#00ADB4",
+            "white": "#C8CACF",
+            "brightBlack": "#84878D",
+            "brightRed": "#FF7978",
+            "brightGreen": "#7AE280",
+            "brightYellow": "#FFD875",
+            "brightBlue": "#6BA7FF",
+            "brightPurple": "#E992F6",
+            "brightCyan": "#00CDD5",
+            "brightWhite": "#F5F6F6"
+        }
+    ]
+}

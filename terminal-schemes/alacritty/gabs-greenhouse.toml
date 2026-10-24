@@ -1,0 +1,33 @@
+# Gabs Greenhouse: terminal colors matched to its Claude Code theme
+
+[colors.primary]
+background = "#1A2320"
+foreground = "#E8EDEC"
+
+[colors.cursor]
+text = "#1A2320"
+cursor = "#58C89A"
+
+[colors.selection]
+text = "#E8EDEC"
+background = "#305445"
+
+[colors.normal]
+black = "#232F2B"
+red = "#D56F68"
+green = "#7BC97E"
+yellow = "#F0C860"
+blue = "#5C91DE"
+magenta = "#C684D0"
+cyan = "#00B3BA"
+white = "#C5D5CF"
+
+[colors.bright]
+black = "#7E9089"
+red = "#F48B83"
+green = "#96E498"
+yellow = "#FFE093"
+blue = "#77ADFE"
+magenta = "#E5A1EF"
+cyan = "#20D4DC"
+white = "#F5F7F6"

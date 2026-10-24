@@ -1,0 +1,26 @@
+# Gabs Dubplate: terminal colors matched to its Claude Code theme
+name: 'Gabs Dubplate'
+accent: '#E8D44A'
+cursor: '#E8D44A'
+background: '#1B1A18'
+foreground: '#ECEBE9'
+details: darker
+terminal_colors:
+  normal:
+    black: '#262422'
+    red: '#D8625C'
+    green: '#68C46D'
+    yellow: '#DAC637'
+    blue: '#4C8AE4'
+    magenta: '#C579D1'
+    cyan: '#00ACB3'
+    white: '#CBC9C4'
+  bright:
+    black: '#888680'
+    red: '#F77E76'
+    green: '#82DF86'
+    yellow: '#F0DD54'
+    blue: '#69A6FF'
+    magenta: '#E495F0'
+    cyan: '#00CCD4'
+    white: '#F6F6F5'

@@ -1,0 +1,23 @@
+# Gabs Aurora Borealis: terminal colors matched to its Claude Code theme
+palette = 0=#202A24
+palette = 1=#D4625C
+palette = 2=#48C483
+palette = 3=#EBBD42
+palette = 4=#4E89DF
+palette = 5=#C279CE
+palette = 6=#00AAB5
+palette = 7=#BECBC3
+palette = 8=#79887F
+palette = 9=#F27E76
+palette = 10=#65DF9C
+palette = 11=#FFD464
+palette = 12=#68A5FD
+palette = 13=#E195EC
+palette = 14=#00CAD6
+palette = 15=#F5F7F6
+background = #131A16
+foreground = #E8EDEA
+cursor-color = #6FE8A5
+cursor-text = #131A16
+selection-background = #30543F
+selection-foreground = #E8EDEA

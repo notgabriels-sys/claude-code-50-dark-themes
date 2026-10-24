@@ -1,0 +1,23 @@
+# Gabs Furnace: terminal colors matched to its Claude Code theme
+palette = 0=#2A1D1F
+palette = 1=#EB4E2B
+palette = 2=#5BC363
+palette = 3=#FFB333
+palette = 4=#4287EA
+palette = 5=#C773D5
+palette = 6=#00A9AF
+palette = 7=#D3C3C4
+palette = 8=#937F81
+palette = 9=#FF7556
+palette = 10=#76DE7C
+palette = 11=#FFD090
+palette = 12=#65A4FF
+palette = 13=#E68FF3
+palette = 14=#00C9D1
+palette = 15=#F7F5F5
+background = #1E1516
+foreground = #EDE8E8
+cursor-color = #FF5A36
+cursor-text = #1E1516
+selection-background = #703227
+selection-foreground = #EDE8E8

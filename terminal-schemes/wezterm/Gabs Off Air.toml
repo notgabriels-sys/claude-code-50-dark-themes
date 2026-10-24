@@ -1,0 +1,32 @@
+# Gabs Off Air: terminal colors matched to its Claude Code theme
+[colors]
+foreground = "#ECEAEA"
+background = "#201E1D"
+cursor_bg = "#D7635A"
+cursor_fg = "#201E1D"
+cursor_border = "#D7635A"
+selection_bg = "#643A35"
+selection_fg = "#ECEAEA"
+ansi = [
+    "#2B2827",
+    "#DB675D",
+    "#6FC873",
+    "#F1C448",
+    "#528EE5",
+    "#C87DD4",
+    "#00B0B7",
+    "#D1CDCA"
+]
+brights = [
+    "#8E8885",
+    "#FA8378",
+    "#89E38D",
+    "#FFDC84",
+    "#71ABFF",
+    "#E79AF2",
+    "#00D1D9",
+    "#F6F6F6"
+]
+
+[metadata]
+name = "Gabs Off Air"

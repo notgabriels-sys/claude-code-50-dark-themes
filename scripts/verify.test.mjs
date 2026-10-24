@@ -3058,6 +3058,37 @@ for (const [defect, path, content, message] of [
   });
 }
 
+// iTerm2 and Terminal.app schemes are Apple property lists (main's #68). Each of
+// these would let a browser that opened one as XML build or fetch something.
+const PLIST_HEAD = '<?xml version="1.0" encoding="UTF-8"?>\n' +
+  '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n';
+const PLIST_BODY = '<plist version="1.0">\n<dict>\n<key>Name</key>\n<string>Pay</string>\n</dict>\n</plist>\n';
+for (const [defect, content, message] of [
+  ["a stylesheet instruction", PLIST_HEAD + '<?xml-stylesheet type="text/xsl" href="pay.xsl"?>\n' + PLIST_BODY, /holds "<\?" other than/],
+  ["an internal doctype subset", '<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist [<!ENTITY a "b">]>\n' + PLIST_BODY,
+    /holds "<!" other than Apple's plist doctype/],
+  ["an XHTML script", PLIST_HEAD + '<plist version="1.0"><html:script xmlns:html="http://www.w3.org/1999/xhtml">x</html:script></plist>\n',
+    /holds xmlns, <html:script>\. /],
+  ["a script element", PLIST_HEAD + "<plist><script>x</script></plist>\n", /holds <script>\. /],
+  ["a character reference", PLIST_HEAD + "<plist><string>&#60;</string></plist>\n", /holds a character reference/],
+  ["no XML declaration", PLIST_BODY, /holds no <\?xml version="1\.0" encoding="UTF-8"\?> first/],
+]) {
+  test(`rejects a property list holding ${defect}`, { timeout: 90_000 }, async (t) => {
+    const fixtureRoot = await addFile(t, "terminal-schemes/iterm2/Pay.itermcolors", content);
+    const result = await runVerifier(fixtureRoot);
+    assert.notEqual(result.code, 0, `a property list holding ${defect} passed`);
+    assert.match(result.stderr, /terminal-schemes\/iterm2\/Pay\.itermcolors is read as an Apple property list and/);
+    assert.match(result.stderr, message);
+  });
+}
+
+test("accepts a property list with base64 data and an attribute, as Terminal.app writes them", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await addFile(t, "terminal-schemes/terminal-app/Plain.terminal",
+    PLIST_HEAD + '<plist version="1.0">\n<dict>\n<key>BackgroundColor</key>\n<data>\nYnBsaXN0MDDUAQIDBAUGBwpYJHZlcnNpb24=\n</data>\n</dict>\n</plist>\n');
+  const result = await runVerifier(fixtureRoot);
+  assert.equal(result.code, 0, `a plain property list was rejected: ${result.stderr}`);
+});
+
 test("rejects a symlink Pages serves", { timeout: 90_000 }, async (t) => {
   const fixtureRoot = await makeFixture(t);
   // To a plain-text file, so only the symlink branch can catch it.
@@ -3665,6 +3696,38 @@ for (const [plugin, field, value, pinned] of [
   });
 }
 
+// main's #67 added three addresses the plugin directory reads from plugin.json
+// alone; the marketplace schema refuses them, so they are set on one side.
+for (const [plugin, field, key, value, expected] of [
+  ["50-dark-themes", "documentation url", "documentationUrl", "https://pay.example/guide", "exactly https://gabs-utilities.com/claude-code-theme-install-guide.html"],
+  ["dark-themes-vol-2", "support url", "supportUrl", "https://pay.example/support", "exactly https://github.com/notgabriels-sys/claude-code-50-dark-themes/issues"],
+  ["dark-themes-vol-2", "icon", "icon", "https://pay.example/icon.png", "exactly ./logo.png"],
+  ["berlin-studio-skills", "documentation url", "documentationUrl", "https://pay.example/guide", "absent"],
+]) {
+  test(`rejects ${plugin}'s ${field} set to ${JSON.stringify(value)} in plugin.json`, { timeout: 90_000 }, async (t) => {
+    const fixtureRoot = await makeFixture(t);
+    await editJson(join(fixtureRoot, `plugins/${plugin}/.claude-plugin/plugin.json`), (manifest) => {
+      manifest[key] = value;
+    });
+    const result = await runVerifier(fixtureRoot);
+    assert.notEqual(result.code, 0, `${plugin} with ${key} ${JSON.stringify(value)} passed`);
+    assert.ok(
+      result.stderr.includes(`${plugin}'s ${field} is ${JSON.stringify(value)}; it must be ${expected}, in plugin.json.`),
+      result.stderr,
+    );
+  });
+}
+
+test("rejects a marketplace entry carrying a key only plugin.json may carry", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  await editJson(join(fixtureRoot, ".claude-plugin/marketplace.json"), (marketplace) => {
+    marketplace.plugins.find((entry) => entry.name === "50-dark-themes").icon = "./logo.png";
+  });
+  const result = await runVerifier(fixtureRoot);
+  assert.notEqual(result.code, 0, "a marketplace entry with an icon passed");
+  assert.match(result.stderr, /The marketplace entry for 50-dark-themes declares "icon", which only plugin\.json may carry/);
+});
+
 test("rejects an author or owner address that is not this repository's owner", { timeout: 90_000 }, async (t) => {
   const fixtureRoot = await makeFixture(t);
   await editJson(join(fixtureRoot, "plugins/50-dark-themes/.claude-plugin/plugin.json"), (manifest) => {
@@ -3691,19 +3754,19 @@ test("rejects an author or owner address that is not this repository's owner", {
 test("rejects a plugin listing icon that is not a 1024 px square PNG", { timeout: 90_000 }, async (t) => {
   const fixtureRoot = await makeFixture(t);
   await cp(join(fixtureRoot, "plugins/dark-themes-vol-2/preview.png"),
-    join(fixtureRoot, "plugins/berlin-studio-skills/.claude-plugin/icon.png"));
+    join(fixtureRoot, "plugins/berlin-studio-skills/logo.png"));
   const result = await runVerifier(fixtureRoot);
   assert.notEqual(result.code, 0, "a non-square listing icon passed");
-  assert.match(result.stderr, /berlin-studio-skills's listing icon must be 1024x1024: plugins\/berlin-studio-skills\/\.claude-plugin\/icon\.png/);
+  assert.match(result.stderr, /berlin-studio-skills's listing icon must be 1024x1024: plugins\/berlin-studio-skills\/logo\.png/);
 });
 
 test("rejects a plugin listing icon of 2 MB or more", { timeout: 90_000 }, async (t) => {
   const fixtureRoot = await makeFixture(t);
-  const icon = join(fixtureRoot, "plugins/50-dark-themes/.claude-plugin/icon.png");
+  const icon = join(fixtureRoot, "plugins/50-dark-themes/logo.png");
   await writeFile(icon, Buffer.concat([await readFile(icon), Buffer.alloc(2 * 1024 * 1024)]));
   const result = await runVerifier(fixtureRoot);
   assert.notEqual(result.code, 0, "a listing icon over the directory's size limit passed");
-  assert.match(result.stderr, /plugins\/50-dark-themes\/\.claude-plugin\/icon\.png is \d+ bytes; the plugin directory takes a listing icon under 2 MB/);
+  assert.match(result.stderr, /plugins\/50-dark-themes\/logo\.png is \d+ bytes; the plugin directory takes a listing icon under 2 MB/);
 });
 
 // The listing icon is read whole. Each of these passed the 24-byte header check
@@ -3748,11 +3811,11 @@ for (const [defect, edit, message] of [
 ]) {
   test(`rejects a plugin listing icon ${defect}`, { timeout: 90_000 }, async (t) => {
     const fixtureRoot = await makeFixture(t);
-    const icon = join(fixtureRoot, "plugins/50-dark-themes/.claude-plugin/icon.png");
+    const icon = join(fixtureRoot, "plugins/50-dark-themes/logo.png");
     await writeFile(icon, edit(await readFile(icon)));
     const result = await runVerifier(fixtureRoot);
     assert.notEqual(result.code, 0, `a listing icon ${defect} passed`);
-    assert.match(result.stderr, /plugins\/50-dark-themes\/\.claude-plugin\/icon\.png is not a clean 1024 px PNG: /);
+    assert.match(result.stderr, /plugins\/50-dark-themes\/logo\.png is not a clean 1024 px PNG: /);
     assert.match(result.stderr, message);
   });
 }

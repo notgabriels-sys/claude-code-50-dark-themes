@@ -1,0 +1,32 @@
+# Gabs Deep Field: terminal colors matched to its Claude Code theme
+[colors]
+foreground = "#E8E9ED"
+background = "#141724"
+cursor_bg = "#7A8CFF"
+cursor_fg = "#141724"
+cursor_border = "#7A8CFF"
+selection_bg = "#394273"
+selection_fg = "#E8E9ED"
+ansi = [
+    "#1B1F31",
+    "#DB5C57",
+    "#5FC366",
+    "#EEBC22",
+    "#6D7EF0",
+    "#CF71C9",
+    "#00AAB0",
+    "#C2C7D7"
+]
+brights = [
+    "#7E8497",
+    "#F97871",
+    "#7ADE7F",
+    "#FFD35F",
+    "#899CFF",
+    "#ED8EE7",
+    "#00CAD2",
+    "#F5F5F7"
+]
+
+[metadata]
+name = "Gabs Deep Field"

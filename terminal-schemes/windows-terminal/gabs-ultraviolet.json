@@ -1,0 +1,27 @@
+{
+    "schemes": [
+        {
+            "name": "Gabs Ultraviolet",
+            "background": "#1B1523",
+            "foreground": "#EAE8ED",
+            "cursorColor": "#9D6BFF",
+            "selectionBackground": "#4A3673",
+            "black": "#251D30",
+            "red": "#DD5A55",
+            "green": "#5BC363",
+            "yellow": "#EFBB0C",
+            "blue": "#4387EA",
+            "purple": "#C773D5",
+            "cyan": "#00AAB0",
+            "white": "#CBC4D5",
+            "brightBlack": "#888194",
+            "brightRed": "#FC766F",
+            "brightGreen": "#76DE7C",
+            "brightYellow": "#FFD35F",
+            "brightBlue": "#65A4FF",
+            "brightPurple": "#E68FF3",
+            "brightCyan": "#00CAD2",
+            "brightWhite": "#F6F5F7"
+        }
+    ]
+}

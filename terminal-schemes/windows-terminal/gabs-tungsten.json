@@ -1,0 +1,27 @@
+{
+    "schemes": [
+        {
+            "name": "Gabs Tungsten",
+            "background": "#1C1A17",
+            "foreground": "#ECEBE9",
+            "cursorColor": "#FFB374",
+            "selectionBackground": "#5E4834",
+            "black": "#272420",
+            "red": "#CD6A63",
+            "green": "#76C279",
+            "yellow": "#E8C05B",
+            "blue": "#578BD6",
+            "purple": "#BE7EC9",
+            "cyan": "#00ACB3",
+            "white": "#CCC9C3",
+            "brightBlack": "#8A867F",
+            "brightRed": "#EB857D",
+            "brightGreen": "#90DC92",
+            "brightYellow": "#FFD772",
+            "brightBlue": "#72A7F4",
+            "brightPurple": "#DD9AE7",
+            "brightCyan": "#1ACCD4",
+            "brightWhite": "#F6F6F5"
+        }
+    ]
+}

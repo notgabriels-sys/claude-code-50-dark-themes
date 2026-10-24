@@ -1,0 +1,27 @@
+{
+    "schemes": [
+        {
+            "name": "Gabs Petrol",
+            "background": "#152528",
+            "foreground": "#E8EDED",
+            "cursorColor": "#2FB8C6",
+            "selectionBackground": "#22545A",
+            "black": "#1C3135",
+            "red": "#D3726B",
+            "green": "#80CA83",
+            "yellow": "#F0CA69",
+            "blue": "#6491DD",
+            "purple": "#C587CF",
+            "cyan": "#00B3C3",
+            "white": "#C0D6DA",
+            "brightBlack": "#789296",
+            "brightRed": "#F28E86",
+            "brightGreen": "#9BE59C",
+            "brightYellow": "#FFE29A",
+            "brightBlue": "#7FAEFB",
+            "brightPurple": "#E4A4EE",
+            "brightCyan": "#3BD3E2",
+            "brightWhite": "#F5F7F7"
+        }
+    ]
+}

@@ -690,6 +690,44 @@ it, no policy violation or console error, and the filters, the theme switch,
 the copy button and the eye behave. The page scrolls up to 28 px sideways at
 390 px while its background drifts, on `main` too, before any of this; that
 is left to the page's owner. The harness lives in the scratchpad.
+Mutation-tested (rule 5), 14 branches each gutted alone: the element,
+attribute, value, namespace, `<!`, end-tag and self-closing rules and the
+`math` refusal each turn their own tests red (the element rule also the older
+tests for microdata in an svg and for an svg on any served page; the `<!`
+rule, shadowed in the differential, its two);
+dropping the svg tracking, holding svg tags to `OTHER_ATTRIBUTES`, refusing
+`aria-*` there, never closing an svg, unserving `.woff2` and unreviewing the
+page's script each turn the real tree red.
+
+**(merged 2026-10-24) Main's #67 and #68, the directory fields and the
+terminal schemes.** #67 readied the theme packs for Anthropic's plugin
+directory: each `plugin.json` names the shop's square logo, `logo.png` at the
+plugin root, as its `icon`, the install guide as its `documentationUrl` and
+the issue tracker as its `supportUrl`, and each README gained use cases,
+troubleshooting and a support line. Merged here, main's logo replaced this
+branch's per-pack icons, and the skills plugin's icon moved to `logo.png` with
+an `icon` key, so all three read the same way and each is still read whole.
+The three keys are metadata, but `claude plugin validate --strict` (Claude
+Code 2.1.310) refuses them in a marketplace entry, so they are `plugin.json`'s
+alone (`MANIFEST_ONLY_KEYS`): the agreement check skips them, a marketplace
+entry carrying one fails, and each is pinned to one exact string — the
+skills plugin's documentation and support addresses to none.
+
+#68 published `terminal-schemes/`, 620 files: a scheme for each of the 62
+free themes in ten terminals, MIT. Pages serves every one, and
+`SERVED_TYPES` knew none of their types. `.toml`, `.yaml`, `.conf` and
+`.colorscheme` are inert, by the types mime-db gives them (not read back
+live: the site is out of this session's reach and Firecrawl had no credits);
+`.json` already was, and Ghostty's files have no extension, as `LICENSE` has
+none. `.itermcolors` and `.terminal` are XML property lists, which a browser
+would build into a document if Pages typed them as XML, so each is read by a
+plist reader of its own: the exact declaration and Apple's doctype, no other
+`<!` or `<?`, no `xmlns`, no character reference, and only plist element
+names. The SVG and sitemap reader would have refused every one, since a
+plist's base64 `data` reads there as an attribute. Main's schemes README
+linked the Agensi listing, which the link guard allows only from the root
+pages and `README.md`; it now names Agensi and points at the repository
+README, which links it.
 
 **(added 2026-10-20) The cards print the terminal background.** The footer, the
 install guide (its text and its HowTo structured data) and `README.md` told
@@ -884,10 +922,12 @@ keywords `color-theme`, `contrast`, `wcag` and `accessibility` (and the tags
 `contrast` and `wcag`); none of this is in a payload, so no version moves.
 Claude Code 2.1.310's `claude plugin validate --profile directory` warned
 that no plugin had an icon, and that the official plugin directory keeps the
-first icon it is given: each plugin now ships `.claude-plugin/icon.png`, a
+first icon it is given: each plugin then shipped `.claude-plugin/icon.png`, a
 1024 px square drawn from its own palettes (the 50 accents and the 12 as hue
 rings, a meter in VU Meter's green, red and grey for the skills, with an amber
-band of its own), and `verify` holds each to a 1024 px PNG under 2 MB.
+band of its own), and `verify` holds each to a 1024 px PNG under 2 MB. (Main's
+#67 gave the theme packs the shop's square logo as `logo.png` the same day; see
+"Main's #67 and #68" below.)
 (Corrected 2026-10-24: this and the commit said the meter was in VU Meter's
 colours, and that `verify` held each icon to a 1024 px PNG when it read only
 the first 24 bytes; the icon is now read whole, see the review below.) All three plugins and the marketplace then pass
@@ -976,6 +1016,14 @@ it) reported 26 findings; all 26 held, 7 of them in part. Fixed:
   submission pack said both READMEs did; the pack no longer implies a passing
   version goes live by itself; and the readability issue form now says issues
   are public and asks for a cropped screenshot or a hex value.
+
+Mutation-tested (rule 5), 19 branches of those fixes each gutted alone: each
+turns exactly its own tests red — the forward-only version check, the version
+format and the numeric comparison one test each, the homepage pin its seven,
+the repository pin one, the author and owner pins the one test that covers
+both, reading the icon whole its seven and each of its seven parts one, the
+duplicate preview key one, each of the two storefront contracts one, and an
+undefined follow-up one.
 
 Three pushed commit messages say more than the evidence and are corrected
 here, not rewritten: 4e150d7 calls the skills icon VU Meter's colours and the

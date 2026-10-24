@@ -1,0 +1,27 @@
+{
+    "schemes": [
+        {
+            "name": "Gabs Darkroom",
+            "background": "#1E1615",
+            "foreground": "#EDE8E8",
+            "cursorColor": "#F26D5B",
+            "selectionBackground": "#6B3830",
+            "black": "#2B2322",
+            "red": "#DE5B4A",
+            "green": "#60C367",
+            "yellow": "#EEBC25",
+            "blue": "#4688E7",
+            "purple": "#C675D3",
+            "cyan": "#00AAB0",
+            "white": "#D2C4C2",
+            "brightBlack": "#92807E",
+            "brightRed": "#FD7764",
+            "brightGreen": "#7BDE80",
+            "brightYellow": "#FFD464",
+            "brightBlue": "#66A4FF",
+            "brightPurple": "#E591F2",
+            "brightCyan": "#00CAD2",
+            "brightWhite": "#F7F5F5"
+        }
+    ]
+}

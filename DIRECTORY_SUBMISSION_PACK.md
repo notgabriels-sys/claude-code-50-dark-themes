@@ -269,7 +269,8 @@ What the portal reads, and where it stands here:
   which is what the security scan looks for.
 - **README** of at least 40 words outside code blocks, and a **LICENSE** in the
   plugin folder: both present in each plugin.
-- **Icon**: `.claude-plugin/icon.png`, a 1024 px square in each plugin.
+- **Icon**: `logo.png`, a 1024 px square in each plugin, named by
+  `plugin.json`'s `icon` (the shop's square logo for both theme packs).
   Claude Code's own validator says an icon may become the listing icon only
   once, the first time the plugin is saved or submitted in the portal.
 - **Files**: images, JSON and text only; none near the 256 KiB limit for

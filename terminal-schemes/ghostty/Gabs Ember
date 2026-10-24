@@ -1,0 +1,23 @@
+# Gabs Ember: terminal colors matched to its Claude Code theme
+palette = 0=#2A2322
+palette = 1=#DC605B
+palette = 2=#66C56B
+palette = 3=#F0BF31
+palette = 4=#4B8BE8
+palette = 5=#C878D4
+palette = 6=#00ADB4
+palette = 7=#D2C8C7
+palette = 8=#8F8582
+palette = 9=#FB7C75
+palette = 10=#80E185
+palette = 11=#FFD875
+palette = 12=#6CA8FF
+palette = 13=#E695F3
+palette = 14=#00CDD5
+palette = 15=#F7F5F5
+background = #1F1A19
+foreground = #EDE9E8
+cursor-color = #E8703C
+cursor-text = #1F1A19
+selection-background = #693C2A
+selection-foreground = #EDE9E8

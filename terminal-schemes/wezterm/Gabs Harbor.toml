@@ -1,0 +1,32 @@
+# Gabs Harbor: terminal colors matched to its Claude Code theme
+[colors]
+foreground = "#E8EBED"
+background = "#1D242A"
+cursor_bg = "#62A8D8"
+cursor_fg = "#1D242A"
+cursor_border = "#62A8D8"
+selection_bg = "#354E62"
+selection_fg = "#E8EBED"
+ansi = [
+    "#252E36",
+    "#CF756E",
+    "#9EC676",
+    "#FCC576",
+    "#4499CF",
+    "#C389CC",
+    "#29B6A8",
+    "#C7D2DD"
+]
+brights = [
+    "#828F9C",
+    "#EE9189",
+    "#B8E18F",
+    "#FFE1BA",
+    "#62B6EE",
+    "#E2A6EB",
+    "#53D5C6",
+    "#F5F6F7"
+]
+
+[metadata]
+name = "Gabs Harbor"

@@ -1,0 +1,32 @@
+# Gabs Blueprint: terminal colors matched to its Claude Code theme
+[colors]
+foreground = "#E8EAED"
+background = "#15202E"
+cursor_bg = "#52C2F0"
+cursor_fg = "#15202E"
+cursor_border = "#52C2F0"
+selection_bg = "#2A5068"
+selection_fg = "#E8EAED"
+ansi = [
+    "#1B2A3C",
+    "#D26E67",
+    "#7AC77D",
+    "#EDC660",
+    "#5B8FDB",
+    "#C482CE",
+    "#00B1B8",
+    "#C4D0DE"
+]
+brights = [
+    "#7E8C9D",
+    "#F18981",
+    "#94E297",
+    "#FFDE8C",
+    "#76ABF9",
+    "#E29FEC",
+    "#24D1D9",
+    "#F5F6F7"
+]
+
+[metadata]
+name = "Gabs Blueprint"

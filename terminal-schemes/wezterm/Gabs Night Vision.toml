@@ -1,0 +1,32 @@
+# Gabs Night Vision: terminal colors matched to its Claude Code theme
+[colors]
+foreground = "#E9ECEA"
+background = "#151916"
+cursor_bg = "#52E07A"
+cursor_fg = "#151916"
+cursor_border = "#52E07A"
+selection_bg = "#2D5536"
+selection_fg = "#E9ECEA"
+ansi = [
+    "#1E2420",
+    "#DD5B56",
+    "#30C762",
+    "#F0BC10",
+    "#4388EB",
+    "#C873D5",
+    "#00A9B4",
+    "#C2C9C3"
+]
+brights = [
+    "#7E8780",
+    "#FC7770",
+    "#54E27B",
+    "#FFD464",
+    "#67A5FF",
+    "#E690F4",
+    "#00C9D5",
+    "#F5F6F6"
+]
+
+[metadata]
+name = "Gabs Night Vision"

@@ -201,9 +201,10 @@ The command checks:
   `.gitmodules` file or an empty directory under `plugins/` (the shape a git submodule takes);
 - a fresh-machine-safe installation command;
 - that each plugin's homepage, repository and author address is exactly the one `verify` pins (a
-  theme pack's homepage is its gallery on the `CNAME` domain), that each plugin ships
-  `.claude-plugin/icon.png` as a clean 1024×1024 8-bit PNG under 2 MB with no text, EXIF, time or
-  colour-profile chunk (the plugin directory keeps the first icon it is given), that
+  theme pack's homepage is its gallery on the `CNAME` domain), as are a theme pack's documentation
+  and support addresses, that each plugin ships `logo.png`, named by plugin.json's `icon`, as a
+  clean 1024×1024 8-bit PNG under 2 MB with no text, EXIF, time or colour-profile chunk (the
+  plugin directory keeps the first icon it is given), that
   `previews.json` holds one row per shipped Vol. 2 theme and no other, and that a plugin's version
   only moves forward;
 - the shop's payment surfaces: each PayPal card against the price read back off PayPal, and each

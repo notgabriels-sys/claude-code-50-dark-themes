@@ -1,0 +1,32 @@
+# Gabs Monsoon: terminal colors matched to its Claude Code theme
+[colors]
+foreground = "#E8EDEA"
+background = "#161C19"
+cursor_bg = "#8FBFA9"
+cursor_fg = "#161C19"
+cursor_border = "#8FBFA9"
+selection_bg = "#3E5148"
+selection_fg = "#E8EDEA"
+ansi = [
+    "#232B27",
+    "#C3706A",
+    "#82BF83",
+    "#E2C272",
+    "#628CCA",
+    "#B883C0",
+    "#2CABB1",
+    "#C2CCC7"
+]
+brights = [
+    "#7D8982",
+    "#E08B84",
+    "#9CDA9D",
+    "#F9D888",
+    "#7CA8E8",
+    "#D69FDE",
+    "#53C9CF",
+    "#F5F7F6"
+]
+
+[metadata]
+name = "Gabs Monsoon"

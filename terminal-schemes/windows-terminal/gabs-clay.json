@@ -1,0 +1,27 @@
+{
+    "schemes": [
+        {
+            "name": "Gabs Clay",
+            "background": "#24201E",
+            "foreground": "#EDEAE9",
+            "cursorColor": "#C97B5A",
+            "selectionBackground": "#614336",
+            "black": "#2F2A27",
+            "red": "#D0716A",
+            "green": "#80C782",
+            "yellow": "#EDC86A",
+            "blue": "#6091D8",
+            "purple": "#C385CC",
+            "cyan": "#00B2B9",
+            "white": "#D6CFCC",
+            "brightBlack": "#928A85",
+            "brightRed": "#EE8D85",
+            "brightGreen": "#9AE39C",
+            "brightYellow": "#FFE093",
+            "brightBlue": "#7BADF7",
+            "brightPurple": "#E1A2EB",
+            "brightCyan": "#3DD1D8",
+            "brightWhite": "#F7F6F5"
+        }
+    ]
+}

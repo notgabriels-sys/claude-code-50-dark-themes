@@ -1,0 +1,27 @@
+{
+    "schemes": [
+        {
+            "name": "Gabs Deep Field",
+            "background": "#141724",
+            "foreground": "#E8E9ED",
+            "cursorColor": "#7A8CFF",
+            "selectionBackground": "#394273",
+            "black": "#1B1F31",
+            "red": "#DB5C57",
+            "green": "#5FC366",
+            "yellow": "#EEBC22",
+            "blue": "#6D7EF0",
+            "purple": "#CF71C9",
+            "cyan": "#00AAB0",
+            "white": "#C2C7D7",
+            "brightBlack": "#7E8497",
+            "brightRed": "#F97871",
+            "brightGreen": "#7ADE7F",
+            "brightYellow": "#FFD35F",
+            "brightBlue": "#899CFF",
+            "brightPurple": "#ED8EE7",
+            "brightCyan": "#00CAD2",
+            "brightWhite": "#F5F5F7"
+        }
+    ]
+}

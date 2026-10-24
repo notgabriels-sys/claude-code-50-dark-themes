@@ -1,0 +1,23 @@
+# Gabs Amber Room: terminal colors matched to its Claude Code theme
+palette = 0=#2C2821
+palette = 1=#D66862
+palette = 2=#72C676
+palette = 3=#F8BF53
+palette = 4=#548DE0
+palette = 5=#C57ED0
+palette = 6=#00AFB6
+palette = 7=#D1CCC3
+palette = 8=#8E887D
+palette = 9=#F4847C
+palette = 10=#8CE18F
+palette = 11=#FFD998
+palette = 12=#6FA9FE
+palette = 13=#E39BEE
+palette = 14=#00D0D8
+palette = 15=#F7F6F5
+background = #201D18
+foreground = #EDEBE8
+cursor-color = #E0A83C
+cursor-text = #201D18
+selection-background = #5C4929
+selection-foreground = #EDEBE8

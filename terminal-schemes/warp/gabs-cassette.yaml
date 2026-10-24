@@ -1,0 +1,26 @@
+# Gabs Cassette: terminal colors matched to its Claude Code theme
+name: 'Gabs Cassette'
+accent: '#E8853C'
+cursor: '#E8853C'
+background: '#231F1A'
+foreground: '#EFE4D2'
+details: darker
+terminal_colors:
+  normal:
+    black: '#2F2923'
+    red: '#DC6766'
+    green: '#8CC55E'
+    yellow: '#FFBF52'
+    blue: '#538FE7'
+    magenta: '#CA7ED5'
+    cyan: '#00B3A8'
+    white: '#D1CBC2'
+  bright:
+    black: '#92897F'
+    red: '#FB8380'
+    green: '#A7E179'
+    yellow: '#FFDCA6'
+    blue: '#73ACFF'
+    magenta: '#E89CF4'
+    cyan: '#00D4C8'
+    white: '#F8F3EB'

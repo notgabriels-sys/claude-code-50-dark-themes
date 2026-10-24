@@ -1,0 +1,26 @@
+# Gabs Afterglow: terminal colors matched to its Claude Code theme
+name: 'Gabs Afterglow'
+accent: '#F0956B'
+cursor: '#F0956B'
+background: '#1F1A18'
+foreground: '#EDEAE8'
+details: darker
+terminal_colors:
+  normal:
+    black: '#2A2422'
+    red: '#CF6963'
+    green: '#75C378'
+    yellow: '#E9C158'
+    blue: '#578BD9'
+    magenta: '#C07ECA'
+    cyan: '#00ACB4'
+    white: '#D2C8C5'
+  bright:
+    black: '#8F8580'
+    red: '#ED847D'
+    green: '#8FDE91'
+    yellow: '#FFD875'
+    blue: '#70A7F6'
+    magenta: '#DE9BE9'
+    cyan: '#00CCD4'
+    white: '#F7F6F5'

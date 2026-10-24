@@ -1,0 +1,26 @@
+# Gabs Clay: terminal colors matched to its Claude Code theme
+name: 'Gabs Clay'
+accent: '#C97B5A'
+cursor: '#C97B5A'
+background: '#24201E'
+foreground: '#EDEAE9'
+details: darker
+terminal_colors:
+  normal:
+    black: '#2F2A27'
+    red: '#D0716A'
+    green: '#80C782'
+    yellow: '#EDC86A'
+    blue: '#6091D8'
+    magenta: '#C385CC'
+    cyan: '#00B2B9'
+    white: '#D6CFCC'
+  bright:
+    black: '#928A85'
+    red: '#EE8D85'
+    green: '#9AE39C'
+    yellow: '#FFE093'
+    blue: '#7BADF7'
+    magenta: '#E1A2EB'
+    cyan: '#3DD1D8'
+    white: '#F7F6F5'

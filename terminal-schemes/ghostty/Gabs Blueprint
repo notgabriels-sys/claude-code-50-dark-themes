@@ -1,0 +1,23 @@
+# Gabs Blueprint: terminal colors matched to its Claude Code theme
+palette = 0=#1B2A3C
+palette = 1=#D26E67
+palette = 2=#7AC77D
+palette = 3=#EDC660
+palette = 4=#5B8FDB
+palette = 5=#C482CE
+palette = 6=#00B1B8
+palette = 7=#C4D0DE
+palette = 8=#7E8C9D
+palette = 9=#F18981
+palette = 10=#94E297
+palette = 11=#FFDE8C
+palette = 12=#76ABF9
+palette = 13=#E29FEC
+palette = 14=#24D1D9
+palette = 15=#F5F6F7
+background = #15202E
+foreground = #E8EAED
+cursor-color = #52C2F0
+cursor-text = #15202E
+selection-background = #2A5068
+selection-foreground = #E8EAED

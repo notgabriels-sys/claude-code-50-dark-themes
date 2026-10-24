@@ -1,0 +1,32 @@
+# Gabs Clay: terminal colors matched to its Claude Code theme
+[colors]
+foreground = "#EDEAE9"
+background = "#24201E"
+cursor_bg = "#C97B5A"
+cursor_fg = "#24201E"
+cursor_border = "#C97B5A"
+selection_bg = "#614336"
+selection_fg = "#EDEAE9"
+ansi = [
+    "#2F2A27",
+    "#D0716A",
+    "#80C782",
+    "#EDC86A",
+    "#6091D8",
+    "#C385CC",
+    "#00B2B9",
+    "#D6CFCC"
+]
+brights = [
+    "#928A85",
+    "#EE8D85",
+    "#9AE39C",
+    "#FFE093",
+    "#7BADF7",
+    "#E1A2EB",
+    "#3DD1D8",
+    "#F7F6F5"
+]
+
+[metadata]
+name = "Gabs Clay"

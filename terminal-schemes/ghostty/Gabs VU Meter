@@ -1,0 +1,23 @@
+# Gabs VU Meter: terminal colors matched to its Claude Code theme
+palette = 0=#202021
+palette = 1=#E94B50
+palette = 2=#37C655
+palette = 3=#EEBA07
+palette = 4=#4186E9
+palette = 5=#C672D4
+palette = 6=#00A8B1
+palette = 7=#C5C5C9
+palette = 8=#838388
+palette = 9=#FF716F
+palette = 10=#58E16F
+palette = 11=#FFD159
+palette = 12=#63A2FF
+palette = 13=#E58EF2
+palette = 14=#00C8D2
+palette = 15=#F6F6F6
+background = #161617
+foreground = #EAEAEB
+cursor-color = #46D160
+cursor-text = #161617
+selection-background = #2D5433
+selection-foreground = #EAEAEB

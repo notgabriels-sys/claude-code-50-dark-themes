@@ -375,9 +375,18 @@ if (marketplace.name !== "notgabriels-themes") fail("Unexpected marketplace name
 const site = (await readFile(new URL("CNAME", root), "utf8")).trim();
 const REPOSITORY_URL = "https://github.com/notgabriels-sys/claude-code-50-dark-themes";
 const OWNER_URL = "https://github.com/notgabriels-sys";
+// The theme packs also name the install guide and the issue tracker, for the
+// plugin directory (main's #67); the skills plugin names neither.
+const themePackLinks = {
+  documentationUrl: `https://${site}/claude-code-theme-install-guide.html`,
+  supportUrl: `${REPOSITORY_URL}/issues`,
+};
 const expectedPlugins = [
-  { name: "50-dark-themes", source: "./plugins/50-dark-themes", homepage: `https://${site}/` },
-  { name: "dark-themes-vol-2", source: "./plugins/dark-themes-vol-2", homepage: `https://${site}/#vol2` },
+  { name: "50-dark-themes", source: "./plugins/50-dark-themes", homepage: `https://${site}/`, ...themePackLinks },
+  {
+    name: "dark-themes-vol-2", source: "./plugins/dark-themes-vol-2", homepage: `https://${site}/#vol2`,
+    ...themePackLinks,
+  },
   {
     name: "berlin-studio-skills", source: "./plugins/berlin-studio-skills",
     homepage: `${REPOSITORY_URL}/tree/main/plugins/berlin-studio-skills`,
@@ -647,9 +656,14 @@ const shippedCounts = {
 // key gets this message rather than the agreement check's "make them agree".
 // Why they exist is under "Exactly what ships" below.
 const PLUGIN_METADATA_KEYS = [
-  "author", "description", "displayName", "homepage", "keywords", "license",
-  "name", "repository", "version",
+  "author", "description", "displayName", "documentationUrl", "homepage", "icon", "keywords", "license",
+  "name", "repository", "supportUrl", "version",
 ];
+// Fields the plugin directory reads from plugin.json alone (main's #67): the
+// marketplace schema does not know them, and `claude plugin validate --strict`
+// (2.1.310) refuses them in a marketplace entry. So the agreement check skips
+// them, and an entry may not carry them.
+const MANIFEST_ONLY_KEYS = new Set(["experimental", "icon", "documentationUrl", "supportUrl"]);
 const LISTING_ONLY_KEYS = ["category", "source", "tags"];
 const themePluginNames = new Set(["50-dark-themes", "dark-themes-vol-2"]);
 for (const [index, expected] of expectedPlugins.entries()) {
@@ -689,8 +703,16 @@ for (const [index, expected] of expectedPlugins.entries()) {
       );
     }
   }
+  for (const key of Object.keys(entry)) {
+    if (MANIFEST_ONLY_KEYS.has(key)) {
+      fail(
+        `The marketplace entry for ${expected.name} declares "${key}", which only plugin.json may carry; ` +
+          "the marketplace schema does not know it and `claude plugin validate --strict` refuses it there.",
+      );
+    }
+  }
   for (const [key, value] of Object.entries(manifest)) {
-    if (key === "experimental") continue;
+    if (MANIFEST_ONLY_KEYS.has(key)) continue;
     if (JSON.stringify(entry[key]) !== JSON.stringify(value)) {
       fail(
         `Marketplace entry for ${expected.name} disagrees with its plugin manifest on ${key}: ` +
@@ -698,16 +720,21 @@ for (const [index, expected] of expectedPlugins.entries()) {
       );
     }
   }
-  // The homepages read the github.io project address until 2026-10-24.
-  for (const [field, value, pinned] of [
-    ["homepage", manifest.homepage, expected.homepage],
-    ["repository", manifest.repository, REPOSITORY_URL],
-    ["author url", manifest.author?.url, OWNER_URL],
+  // The homepages read the github.io project address until 2026-10-24. The last
+  // three are plugin.json's alone, and the skills plugin names no documentation
+  // or support address.
+  for (const [field, value, pinned, where] of [
+    ["homepage", manifest.homepage, expected.homepage, "plugin.json and in its marketplace entry"],
+    ["repository", manifest.repository, REPOSITORY_URL, "plugin.json and in its marketplace entry"],
+    ["author url", manifest.author?.url, OWNER_URL, "plugin.json and in its marketplace entry"],
+    ["documentation url", manifest.documentationUrl, expected.documentationUrl, "plugin.json"],
+    ["support url", manifest.supportUrl, expected.supportUrl, "plugin.json"],
+    ["icon", manifest.icon, "./logo.png", "plugin.json"],
   ]) {
     if (value !== pinned) {
       fail(
-        `${expected.name}'s ${field} is ${JSON.stringify(value)}; it must be exactly ${pinned}, in ` +
-          `plugin.json and in its marketplace entry. /plugin shows it to every installer.`,
+        `${expected.name}'s ${field} is ${JSON.stringify(value)}; it must be ` +
+          `${pinned === undefined ? "absent" : `exactly ${pinned}`}, in ${where}. /plugin shows it to every installer.`,
       );
     }
   }
@@ -957,7 +984,7 @@ for (const name of sourceSkills) {
     skillPackageFiles.push(`skills/${name}/${file}`);
   }
 }
-const packageBasics = [".claude-plugin/icon.png", ".claude-plugin/plugin.json", "LICENSE", "README.md"];
+const packageBasics = [".claude-plugin/plugin.json", "LICENSE", "README.md", "logo.png"];
 const expectedPackageFiles = new Map([
   ["50-dark-themes", [...packageBasics, ...files.map((file) => `themes/${file}`)]],
   ["dark-themes-vol-2", [
@@ -970,12 +997,14 @@ if (JSON.stringify([...expectedPackageFiles.keys()].sort()) !==
   fail("expectedPackageFiles in scripts/verify.mjs must name exactly the plugins in expectedPlugins.");
 }
 // Each plugin carries the square PNG the official plugin directory takes as its
-// listing icon. Read 2026-10-24 from Claude Code 2.1.310's `claude plugin
-// validate --profile directory`: 512 to 2048 px a side, under 2 MB, PNG or
-// JPEG, and the directory keeps the first icon it is given, so a wrong one
-// cannot be replaced later. Ours are 1024 px, drawn from the packs' palettes.
+// listing icon, named by plugin.json's "icon". Read 2026-10-24 from Claude Code
+// 2.1.310's `claude plugin validate --profile directory`: 512 to 2048 px a
+// side, under 2 MB, PNG or JPEG, and the directory keeps the first icon it is
+// given, so a wrong one cannot be replaced later. Main's #67 gave both theme
+// packs the setup assistant's square logo; the skills plugin's is a meter in VU
+// Meter's green, red and grey, with an amber band of its own.
 for (const plugin of expectedPlugins) {
-  const icon = `plugins/${plugin.name}/.claude-plugin/icon.png`;
+  const icon = `plugins/${plugin.name}/logo.png`;
   await verifyPng(icon, { label: `${plugin.name}'s listing icon`, width: 1024, height: 1024 });
   const { size } = await stat(fileUrl(icon));
   if (size >= 2 * 1024 * 1024) {
@@ -3550,6 +3579,21 @@ const SERVED_TYPES = new Map([
   // saved, and it runs nothing. Self-hosted so a page asks no other host for
   // its type (familiars.html loaded Google Fonts until 2026-10-24).
   ["woff2", "inert"],
+  // Terminal colour schemes (main's #68, terminal-schemes/): config files a
+  // terminal reads. GitHub Pages types a file by its extension from mime-db:
+  // .toml as application/toml and .colorscheme, which mime-db does not know,
+  // as application/octet-stream, both saved; .conf as text/plain and .yaml as
+  // text/yaml, shown as text or saved. Not read back live (2026-10-24: the site
+  // is out of this session's reach and Firecrawl out of credits), so no
+  // reading of them may matter: none can open as a page.
+  ["toml", "inert"],
+  ["yaml", "inert"],
+  ["conf", "inert"],
+  ["colorscheme", "inert"],
+  // iTerm2's and Terminal.app's schemes are XML property lists, read below as
+  // plists, so that even served as XML they build no page.
+  ["itermcolors", "plist"],
+  ["terminal", "plist"],
   ["json", "inert"],
   ["txt", "inert"],
   // text/javascript, shown as text when opened. A page loads it only through
@@ -3636,6 +3680,42 @@ const SITEMAP_DOCUMENT = {
   attributes: new Set(["xmlns"]),
 };
 const XML_NAME = /[^\t\n\r <>"'=/]*/.source;
+// An Apple property list (an iTerm2 or Terminal.app colour scheme). The SVG
+// reader would refuse one for the "=" in its base64 <data>, so a plist is held
+// to less, and to enough: the exact declaration and Apple's public doctype, no
+// other "<!" or "<?" (no internal subset, CDATA or stylesheet), no xmlns, no
+// character reference, and only plist element names. With no namespace and no
+// stylesheet, a browser that opened one as XML would build a bare tree with
+// nothing to run or load, whatever its attributes say.
+const PLIST_ELEMENTS = new Set(["plist", "dict", "key", "string", "real", "integer", "data", "true", "false", "array", "date"]);
+const PLIST_DOCTYPE = '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">';
+const checkPropertyList = (file, bytes) => {
+  let text;
+  try {
+    text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  } catch {
+    fail(`${file} is not UTF-8; save the property list as UTF-8.`);
+  }
+  const problems = new Set();
+  const declaration = text.match(/^<\?xml version="1\.0" encoding="UTF-8"\?>/)?.[0];
+  if (!declaration) problems.add('no <?xml version="1.0" encoding="UTF-8"?> first');
+  const body = text.slice(declaration?.length ?? 0);
+  for (const match of body.matchAll(/<[!?]/g)) {
+    if (match[0] === "<!" && body.startsWith(PLIST_DOCTYPE, match.index)) continue;
+    problems.add(`"${match[0]}" other than Apple's plist doctype`);
+  }
+  if (/xmlns/i.test(body)) problems.add("xmlns");
+  if (/&(?!(?:amp|lt|gt|quot|apos);)/.test(body)) problems.add("a character reference");
+  for (const match of body.matchAll(new RegExp(`<(?![!?])/?(${XML_NAME})`, "g"))) {
+    if (!PLIST_ELEMENTS.has(match[1])) problems.add(`<${match[1]}>`);
+  }
+  if (problems.size) {
+    fail(
+      `${file} is read as an Apple property list and holds ${[...problems].join(", ")}. A plist may hold only ` +
+        "plist elements, under the exact declaration and Apple's doctype, so that no reading of it builds a page.",
+    );
+  }
+};
 const checkXmlDocument = (file, bytes, allowed) => {
   let text;
   try {
@@ -3764,6 +3844,7 @@ for (const file of servedFiles) {
     );
   }
   if (reading === "svg") checkXmlDocument(file, bytes, SVG_DOCUMENT);
+  if (reading === "plist") checkPropertyList(file, bytes);
   if (reading === "sitemap") {
     const body = checkXmlDocument(file, bytes, SITEMAP_DOCUMENT);
     const locations = [...body.matchAll(/<loc>([^<]*)<\/loc>/g)];

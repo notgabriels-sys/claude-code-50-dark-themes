@@ -1,0 +1,27 @@
+{
+    "schemes": [
+        {
+            "name": "Gabs Gaslight",
+            "background": "#1C1915",
+            "foreground": "#EDEBE8",
+            "cursorColor": "#E7B54A",
+            "selectionBackground": "#5B4A2A",
+            "black": "#292521",
+            "red": "#D1665F",
+            "green": "#6FC273",
+            "yellow": "#F0BC4F",
+            "blue": "#528ADC",
+            "purple": "#C17BCB",
+            "cyan": "#00ABB2",
+            "white": "#CDC8C0",
+            "brightBlack": "#8B857C",
+            "brightRed": "#F08179",
+            "brightGreen": "#89DD8C",
+            "brightYellow": "#FFD580",
+            "brightBlue": "#6CA6FA",
+            "brightPurple": "#DF97EA",
+            "brightCyan": "#00CBD3",
+            "brightWhite": "#F7F6F5"
+        }
+    ]
+}

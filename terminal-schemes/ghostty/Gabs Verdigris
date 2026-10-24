@@ -1,0 +1,23 @@
+# Gabs Verdigris: terminal colors matched to its Claude Code theme
+palette = 0=#253230
+palette = 1=#CE7770
+palette = 2=#89CA8A
+palette = 3=#EECC77
+palette = 4=#6794D6
+palette = 5=#C38BCB
+palette = 6=#2DB5BB
+palette = 7=#C5D6D4
+palette = 8=#7F9390
+palette = 9=#ED938B
+palette = 10=#A4E6A5
+palette = 11=#FFE5A5
+palette = 12=#82B1F5
+palette = 13=#E2A8EB
+palette = 14=#55D4DA
+palette = 15=#F5F7F7
+background = #1C2625
+foreground = #E8EDED
+cursor-color = #6FC4A8
+cursor-text = #1C2625
+selection-background = #35524A
+selection-foreground = #E8EDED

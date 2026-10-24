@@ -27,3 +27,29 @@ One page per theme, with a specimen, the install commands, its palette and the m
 https://gabs-utilities.com/theme/
 
 Source and manual installation: https://github.com/notgabriels-sys/claude-code-50-dark-themes
+
+## Use it
+
+1. **Pick a theme.** Run `/theme`, move through the list and press Enter on the one you want.
+   Switch again at any time the same way.
+2. **Make it your own.** Plugin themes are read-only. Press `Ctrl+E` on one in `/theme` to copy it
+   into `~/.claude/themes/`, then edit the copy's colors.
+3. **Match your terminal.** Set your terminal's background to the theme's background color, listed
+   on each theme's page, so panels and text look as designed. Step-by-step for each terminal:
+   https://gabs-utilities.com/claude-code-theme-install-guide.html
+4. **Remove it.** Run `claude plugin uninstall 50-dark-themes@notgabriels-themes`, then pick another
+   theme in `/theme`.
+
+## Troubleshooting
+
+- **The themes aren't in `/theme`.** Custom themes need Claude Code v2.1.118 or later
+  (`claude --version`, then `claude update`). Restart Claude Code after installing the plugin.
+- **Colors look washed out or gray.** Your terminal background doesn't match the theme, or the
+  terminal isn't showing 24-bit color (Terminal.app before macOS 26, and some tmux or SSH setups).
+- **"Auto (match terminal)" doesn't pick these themes.** Expected: Auto only switches between
+  Claude Code's built-in light and dark themes. Pick a custom theme in `/theme` and it stays selected.
+
+## Support
+
+Questions, bugs and theme requests: https://github.com/notgabriels-sys/claude-code-50-dark-themes/issues
+

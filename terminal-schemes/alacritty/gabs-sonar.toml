@@ -1,0 +1,33 @@
+# Gabs Sonar: terminal colors matched to its Claude Code theme
+
+[colors.primary]
+background = "#121921"
+foreground = "#E8EBED"
+
+[colors.cursor]
+text = "#121921"
+cursor = "#40E0C0"
+
+[colors.selection]
+text = "#E8EBED"
+background = "#265351"
+
+[colors.normal]
+black = "#19232E"
+red = "#D1636A"
+green = "#91BC55"
+yellow = "#FBB652"
+blue = "#5089DC"
+magenta = "#C07ACB"
+cyan = "#00AD91"
+white = "#BCC9D7"
+
+[colors.bright]
+black = "#788696"
+red = "#EF7E84"
+green = "#ABD66F"
+yellow = "#FFD298"
+blue = "#6BA5FA"
+magenta = "#DE96E9"
+cyan = "#12CDAD"
+white = "#F5F6F7"
