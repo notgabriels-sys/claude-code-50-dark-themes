@@ -1,0 +1,26 @@
+# Gabs Nachtschicht: terminal colors matched to its Claude Code theme
+name: 'Gabs Nachtschicht'
+accent: '#E3B341'
+cursor: '#E3B341'
+background: '#1B1E22'
+foreground: '#E8EAED'
+details: darker
+terminal_colors:
+  normal:
+    black: '#24282D'
+    red: '#D76862'
+    green: '#72C675'
+    yellow: '#F3C150'
+    blue: '#558DE1'
+    magenta: '#C67ED1'
+    cyan: '#00AFB6'
+    white: '#C8CED5'
+  bright:
+    black: '#838A92'
+    red: '#F5847C'
+    green: '#8CE28F'
+    yellow: '#FFDB8D'
+    blue: '#70A9FF'
+    magenta: '#E49BEF'
+    cyan: '#00D0D8'
+    white: '#F5F6F7'

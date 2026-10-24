@@ -1,0 +1,32 @@
+# Gabs Fathom: terminal colors matched to its Claude Code theme
+[colors]
+foreground = "#E8EBED"
+background = "#121B21"
+cursor_bg = "#38A8C8"
+cursor_fg = "#121B21"
+cursor_border = "#38A8C8"
+selection_bg = "#244F5E"
+selection_fg = "#E8EBED"
+ansi = [
+    "#19262E",
+    "#CA6B65",
+    "#79C07B",
+    "#E5C062",
+    "#5A8BD2",
+    "#BC7FC6",
+    "#00ABB2",
+    "#BCCBD6"
+]
+brights = [
+    "#768895",
+    "#E8867F",
+    "#93DB95",
+    "#FCD779",
+    "#75A7F0",
+    "#DA9CE3",
+    "#32CAD1",
+    "#F5F6F7"
+]
+
+[metadata]
+name = "Gabs Fathom"

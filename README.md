@@ -89,6 +89,13 @@ pack stops the run before anything changes.
 4. Select one. Edits to the files hot-reload; no restart needed
    (if `~/.claude/themes/` didn't exist before, restart Claude Code once)
 
+## Matching terminal colors
+
+Every one of the 62 themes also has a matched terminal color scheme (background, foreground, cursor,
+selection and the 16 ANSI colors) for iTerm2, Ghostty, kitty, Alacritty, WezTerm, Windows Terminal,
+VS Code, Warp, Konsole and Terminal.app, so your prompt, `git` and `ls` match Claude Code. Files and
+setup steps: [terminal-schemes/README.md](terminal-schemes/README.md).
+
 ## What each file sets
 
 - `claude` + shimmer: brand accent (spinner, assistant label) = theme accent
@@ -188,6 +195,16 @@ claude plugin install dark-themes-vol-2@notgabriels-themes
 ```
 
 If Claude Code was open while you installed, restart it: plugin themes load when it starts.
+
+## Familiars: Claude skills for sound work
+
+**Familiars** is the catalogue these themes sit in, at https://gabs-utilities.com/familiars.html : Claude
+skills and plugins built in a Berlin studio for people who make and deliver sound. Each one has a
+form, a name and one narrow job, works inside your specs instead of inventing sample rates or
+loudness targets, and keeps what you said apart from what it inferred. Six are in early access by
+email (track finishing, release concepts, audio evaluation, mix and master reports, studio German,
+and a studio ops plugin that covers a techno studio from demo triage to the tech rider); the dark
+theme is public under MIT.
 
 ## More dark tools
 

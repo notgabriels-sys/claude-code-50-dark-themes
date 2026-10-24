@@ -1,0 +1,26 @@
+# Gabs Blueprint: terminal colors matched to its Claude Code theme
+name: 'Gabs Blueprint'
+accent: '#52C2F0'
+cursor: '#52C2F0'
+background: '#15202E'
+foreground: '#E8EAED'
+details: darker
+terminal_colors:
+  normal:
+    black: '#1B2A3C'
+    red: '#D26E67'
+    green: '#7AC77D'
+    yellow: '#EDC660'
+    blue: '#5B8FDB'
+    magenta: '#C482CE'
+    cyan: '#00B1B8'
+    white: '#C4D0DE'
+  bright:
+    black: '#7E8C9D'
+    red: '#F18981'
+    green: '#94E297'
+    yellow: '#FFDE8C'
+    blue: '#76ABF9'
+    magenta: '#E29FEC'
+    cyan: '#24D1D9'
+    white: '#F5F6F7'

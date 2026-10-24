@@ -1,0 +1,26 @@
+# Gabs Blackout: terminal colors matched to its Claude Code theme
+name: 'Gabs Blackout'
+accent: '#E0A83C'
+cursor: '#E0A83C'
+background: '#141415'
+foreground: '#EAEAEB'
+details: darker
+terminal_colors:
+  normal:
+    black: '#1E1E1F'
+    red: '#CE615B'
+    green: '#6ABE6E'
+    yellow: '#EFB649'
+    blue: '#4D86D8'
+    magenta: '#BD77C8'
+    cyan: '#00A7AD'
+    white: '#C3C4C8'
+  bright:
+    black: '#818187'
+    red: '#EC7C75'
+    green: '#83D887'
+    yellow: '#FFCE77'
+    blue: '#67A1F6'
+    magenta: '#DB93E6'
+    cyan: '#00C7CF'
+    white: '#F6F6F6'

@@ -1,0 +1,32 @@
+# Gabs Orchid: terminal colors matched to its Claude Code theme
+[colors]
+foreground = "#EDE8ED"
+background = "#1F1820"
+cursor_bg = "#C86AD8"
+cursor_fg = "#1F1820"
+cursor_border = "#C86AD8"
+selection_bg = "#5D3863"
+selection_fg = "#EDE8ED"
+ansi = [
+    "#2A212C",
+    "#DF5C58",
+    "#5EC665",
+    "#F2BE16",
+    "#4589ED",
+    "#CF70DF",
+    "#00ACB3",
+    "#D2C6D4"
+]
+brights = [
+    "#908292",
+    "#FE7871",
+    "#79E17F",
+    "#FFD770",
+    "#69A6FF",
+    "#EE8DFE",
+    "#00CCD4",
+    "#F7F5F7"
+]
+
+[metadata]
+name = "Gabs Orchid"

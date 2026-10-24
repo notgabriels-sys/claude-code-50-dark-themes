@@ -1,0 +1,23 @@
+# Gabs Anaglyph: terminal colors matched to its Claude Code theme
+palette = 0=#222226
+palette = 1=#ED4C40
+palette = 2=#5CC464
+palette = 3=#F0BC10
+palette = 4=#4388EB
+palette = 5=#C873D6
+palette = 6=#00AAB0
+palette = 7=#C7C7CC
+palette = 8=#83848A
+palette = 9=#FF7567
+palette = 10=#77DF7D
+palette = 11=#FFD464
+palette = 12=#67A5FF
+palette = 13=#E690F4
+palette = 14=#00CAD2
+palette = 15=#F5F5F6
+background = #18181B
+foreground = #E9E9EC
+cursor-color = #FF5548
+cursor-text = #18181B
+selection-background = #6D342F
+selection-foreground = #E9E9EC

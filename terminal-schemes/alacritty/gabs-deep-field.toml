@@ -1,0 +1,33 @@
+# Gabs Deep Field: terminal colors matched to its Claude Code theme
+
+[colors.primary]
+background = "#141724"
+foreground = "#E8E9ED"
+
+[colors.cursor]
+text = "#141724"
+cursor = "#7A8CFF"
+
+[colors.selection]
+text = "#E8E9ED"
+background = "#394273"
+
+[colors.normal]
+black = "#1B1F31"
+red = "#DB5C57"
+green = "#5FC366"
+yellow = "#EEBC22"
+blue = "#6D7EF0"
+magenta = "#CF71C9"
+cyan = "#00AAB0"
+white = "#C2C7D7"
+
+[colors.bright]
+black = "#7E8497"
+red = "#F97871"
+green = "#7ADE7F"
+yellow = "#FFD35F"
+blue = "#899CFF"
+magenta = "#ED8EE7"
+cyan = "#00CAD2"
+white = "#F5F5F7"

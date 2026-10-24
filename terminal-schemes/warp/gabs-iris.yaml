@@ -1,0 +1,26 @@
+# Gabs Iris: terminal colors matched to its Claude Code theme
+name: 'Gabs Iris'
+accent: '#8C8CE8'
+cursor: '#8C8CE8'
+background: '#181825'
+foreground: '#E8E8ED'
+details: darker
+terminal_colors:
+  normal:
+    black: '#202031'
+    red: '#D1665F'
+    green: '#6FC273'
+    yellow: '#E9BF4E'
+    blue: '#528ADB'
+    magenta: '#C17BCB'
+    cyan: '#00ABB2'
+    white: '#C6C7D8'
+  bright:
+    black: '#838498'
+    red: '#F08179'
+    green: '#89DD8C'
+    yellow: '#FFD568'
+    blue: '#6DA6FA'
+    magenta: '#DF97EA'
+    cyan: '#00CBD3'
+    white: '#F5F5F7'

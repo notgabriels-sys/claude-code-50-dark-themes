@@ -1,0 +1,27 @@
+{
+    "schemes": [
+        {
+            "name": "Gabs Static",
+            "background": "#212121",
+            "foreground": "#EBEBEB",
+            "cursorColor": "#E4E6E8",
+            "selectionBackground": "#4C4C4D",
+            "black": "#2B2B2B",
+            "red": "#CE7270",
+            "green": "#99C473",
+            "yellow": "#F9C371",
+            "blue": "#6191D6",
+            "purple": "#C286CB",
+            "cyan": "#1DB4A8",
+            "white": "#D2D1CC",
+            "brightBlack": "#8D8C86",
+            "brightRed": "#ED8D8B",
+            "brightGreen": "#B3DF8D",
+            "brightYellow": "#FFDEAE",
+            "brightBlue": "#7CADF5",
+            "brightPurple": "#E0A3EA",
+            "brightCyan": "#4CD3C6",
+            "brightWhite": "#F6F6F6"
+        }
+    ]
+}

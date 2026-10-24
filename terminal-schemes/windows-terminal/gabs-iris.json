@@ -1,0 +1,27 @@
+{
+    "schemes": [
+        {
+            "name": "Gabs Iris",
+            "background": "#181825",
+            "foreground": "#E8E8ED",
+            "cursorColor": "#8C8CE8",
+            "selectionBackground": "#43436C",
+            "black": "#202031",
+            "red": "#D1665F",
+            "green": "#6FC273",
+            "yellow": "#E9BF4E",
+            "blue": "#528ADB",
+            "purple": "#C17BCB",
+            "cyan": "#00ABB2",
+            "white": "#C6C7D8",
+            "brightBlack": "#838498",
+            "brightRed": "#F08179",
+            "brightGreen": "#89DD8C",
+            "brightYellow": "#FFD568",
+            "brightBlue": "#6DA6FA",
+            "brightPurple": "#DF97EA",
+            "brightCyan": "#00CBD3",
+            "brightWhite": "#F5F5F7"
+        }
+    ]
+}

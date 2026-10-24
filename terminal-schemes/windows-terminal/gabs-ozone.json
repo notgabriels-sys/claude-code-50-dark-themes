@@ -1,0 +1,27 @@
+{
+    "schemes": [
+        {
+            "name": "Gabs Ozone",
+            "background": "#16161F",
+            "foreground": "#E9E9ED",
+            "cursorColor": "#8E97F2",
+            "selectionBackground": "#42456B",
+            "black": "#252531",
+            "red": "#CF645E",
+            "green": "#6EBF71",
+            "yellow": "#E7BC4C",
+            "blue": "#787FDA",
+            "purple": "#C677BF",
+            "cyan": "#00A9AF",
+            "white": "#C4C5D5",
+            "brightBlack": "#818294",
+            "brightRed": "#ED7F77",
+            "brightGreen": "#87DA8A",
+            "brightYellow": "#FDD364",
+            "brightBlue": "#919BF8",
+            "brightPurple": "#E493DD",
+            "brightCyan": "#00C9D1",
+            "brightWhite": "#F5F5F7"
+        }
+    ]
+}

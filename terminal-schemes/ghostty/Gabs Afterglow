@@ -1,0 +1,23 @@
+# Gabs Afterglow: terminal colors matched to its Claude Code theme
+palette = 0=#2A2422
+palette = 1=#CF6963
+palette = 2=#75C378
+palette = 3=#E9C158
+palette = 4=#578BD9
+palette = 5=#C07ECA
+palette = 6=#00ACB4
+palette = 7=#D2C8C5
+palette = 8=#8F8580
+palette = 9=#ED847D
+palette = 10=#8FDE91
+palette = 11=#FFD875
+palette = 12=#70A7F6
+palette = 13=#DE9BE9
+palette = 14=#00CCD4
+palette = 15=#F7F6F5
+background = #1F1A18
+foreground = #EDEAE8
+cursor-color = #F0956B
+cursor-text = #1F1A18
+selection-background = #654435
+selection-foreground = #EDEAE8

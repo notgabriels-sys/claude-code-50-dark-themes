@@ -1,0 +1,26 @@
+# Gabs Amber Room: terminal colors matched to its Claude Code theme
+name: 'Gabs Amber Room'
+accent: '#E0A83C'
+cursor: '#E0A83C'
+background: '#201D18'
+foreground: '#EDEBE8'
+details: darker
+terminal_colors:
+  normal:
+    black: '#2C2821'
+    red: '#D66862'
+    green: '#72C676'
+    yellow: '#F8BF53'
+    blue: '#548DE0'
+    magenta: '#C57ED0'
+    cyan: '#00AFB6'
+    white: '#D1CCC3'
+  bright:
+    black: '#8E887D'
+    red: '#F4847C'
+    green: '#8CE18F'
+    yellow: '#FFD998'
+    blue: '#6FA9FE'
+    magenta: '#E39BEE'
+    cyan: '#00D0D8'
+    white: '#F7F6F5'

@@ -1,0 +1,27 @@
+{
+    "schemes": [
+        {
+            "name": "Gabs Heliotrope",
+            "background": "#1B161F",
+            "foreground": "#ECE8ED",
+            "cursorColor": "#DA9BE8",
+            "selectionBackground": "#5A4362",
+            "black": "#292330",
+            "red": "#CE6660",
+            "green": "#71C074",
+            "yellow": "#E6BE53",
+            "blue": "#5389D7",
+            "purple": "#BC7CCA",
+            "cyan": "#00AAB0",
+            "white": "#CCC4D4",
+            "brightBlack": "#8B8193",
+            "brightRed": "#EC817A",
+            "brightGreen": "#8BDB8E",
+            "brightYellow": "#FDD46A",
+            "brightBlue": "#6EA5F5",
+            "brightPurple": "#DA98E8",
+            "brightCyan": "#00CAD2",
+            "brightWhite": "#F6F5F7"
+        }
+    ]
+}

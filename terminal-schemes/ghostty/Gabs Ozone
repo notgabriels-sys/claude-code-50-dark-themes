@@ -1,0 +1,23 @@
+# Gabs Ozone: terminal colors matched to its Claude Code theme
+palette = 0=#252531
+palette = 1=#CF645E
+palette = 2=#6EBF71
+palette = 3=#E7BC4C
+palette = 4=#787FDA
+palette = 5=#C677BF
+palette = 6=#00A9AF
+palette = 7=#C4C5D5
+palette = 8=#818294
+palette = 9=#ED7F77
+palette = 10=#87DA8A
+palette = 11=#FDD364
+palette = 12=#919BF8
+palette = 13=#E493DD
+palette = 14=#00C9D1
+palette = 15=#F5F5F7
+background = #16161F
+foreground = #E9E9ED
+cursor-color = #8E97F2
+cursor-text = #16161F
+selection-background = #42456B
+selection-foreground = #E9E9ED

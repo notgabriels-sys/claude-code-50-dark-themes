@@ -1,0 +1,33 @@
+# Gabs Fjord: terminal colors matched to its Claude Code theme
+
+[colors.primary]
+background = "#1B2128"
+foreground = "#E8EBED"
+
+[colors.cursor]
+text = "#1B2128"
+cursor = "#5A9EC8"
+
+[colors.selection]
+text = "#E8EBED"
+background = "#344F63"
+
+[colors.normal]
+black = "#232B34"
+red = "#CA746D"
+green = "#9FC273"
+yellow = "#F9C279"
+blue = "#4197C8"
+magenta = "#BF87C8"
+cyan = "#33B2A2"
+white = "#C7D1DE"
+
+[colors.bright]
+black = "#808D9B"
+red = "#E98F87"
+green = "#B9DD8D"
+yellow = "#FFDDB1"
+blue = "#5FB3E7"
+magenta = "#DDA4E6"
+cyan = "#59D1BF"
+white = "#F5F6F7"

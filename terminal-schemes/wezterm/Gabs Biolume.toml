@@ -1,0 +1,32 @@
+# Gabs Biolume: terminal colors matched to its Claude Code theme
+[colors]
+foreground = "#E8EDEC"
+background = "#141B1A"
+cursor_bg = "#35E0C0"
+cursor_fg = "#141B1A"
+cursor_border = "#35E0C0"
+selection_bg = "#27554B"
+selection_fg = "#E8EDEC"
+ansi = [
+    "#202A28",
+    "#D4636A",
+    "#92BD54",
+    "#FEB651",
+    "#508ADE",
+    "#C27ACE",
+    "#00AE93",
+    "#BFCCCA"
+]
+brights = [
+    "#7A8986",
+    "#F27F84",
+    "#ABD86F",
+    "#FFD39A",
+    "#6BA6FD",
+    "#E196EC",
+    "#01CFAF",
+    "#F5F7F6"
+]
+
+[metadata]
+name = "Gabs Biolume"

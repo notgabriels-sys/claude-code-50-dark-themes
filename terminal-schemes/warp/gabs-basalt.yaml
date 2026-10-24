@@ -1,0 +1,26 @@
+# Gabs Basalt: terminal colors matched to its Claude Code theme
+name: 'Gabs Basalt'
+accent: '#AEB9C4'
+cursor: '#AEB9C4'
+background: '#17191C'
+foreground: '#E9EBED'
+details: darker
+terminal_colors:
+  normal:
+    black: '#24282D'
+    red: '#C16F68'
+    green: '#81BE82'
+    yellow: '#E0C070'
+    blue: '#608AC8'
+    magenta: '#B682BE'
+    cyan: '#2AA9AF'
+    white: '#C5C8CE'
+  bright:
+    black: '#81858C'
+    red: '#DE8A83'
+    green: '#9AD89B'
+    yellow: '#F7D687'
+    blue: '#7AA6E5'
+    magenta: '#D49EDC'
+    cyan: '#50C7CD'
+    white: '#F5F6F7'

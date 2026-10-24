@@ -1086,7 +1086,9 @@ test("rejects docs that say CI runs on every push when it runs only on main", { 
 // The anchors come from today's values and tolerate any rewrap of README.
 const lowestIndicator = indicatorTextBelowAA[0];
 const spaced = (text) => new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/ /g, "\\s+"));
-const indicatorCount = new RegExp(`\\b([a-z]+|\\d+)(\\s+)of(\\s+)the(\\s+)${themeTotal}(\\s+)themes\\b`, "i");
+// Anchored on "keep": README has other "<n> of the <total> themes" sentences
+// (the terminal schemes' "Every one of the 62 themes"), and only this one is the claim.
+const indicatorCount = new RegExp(`\\b([a-z]+|\\d+)(\\s+)of(\\s+)the(\\s+)${themeTotal}(\\s+)themes(\\s+)keep\\b`, "i");
 const lowestClaim = spaced(`${lowestIndicator.ratio.toFixed(2)}:1 in ${lowestIndicator.name}`);
 
 async function editReadmeClaim(fixtureRoot, pattern, replacement) {
@@ -1128,7 +1130,7 @@ async function accentsFor(fixtureRoot, names) {
 test("rejects a README count of below-AA permission and planMode text that the palettes contradict", { timeout: 90_000 }, async (t) => {
   const fixtureRoot = await makeFixture(t);
   const wrong = indicatorTextBelowAA.length + 1;
-  await editReadmeClaim(fixtureRoot, indicatorCount, `${wrong}$2of$3the$4${themeTotal}$5themes`);
+  await editReadmeClaim(fixtureRoot, indicatorCount, `${wrong}$2of$3the$4${themeTotal}$5themes$6keep`);
 
   const result = await runVerifier(fixtureRoot);
 

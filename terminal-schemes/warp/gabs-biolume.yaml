@@ -1,0 +1,26 @@
+# Gabs Biolume: terminal colors matched to its Claude Code theme
+name: 'Gabs Biolume'
+accent: '#35E0C0'
+cursor: '#35E0C0'
+background: '#141B1A'
+foreground: '#E8EDEC'
+details: darker
+terminal_colors:
+  normal:
+    black: '#202A28'
+    red: '#D4636A'
+    green: '#92BD54'
+    yellow: '#FEB651'
+    blue: '#508ADE'
+    magenta: '#C27ACE'
+    cyan: '#00AE93'
+    white: '#BFCCCA'
+  bright:
+    black: '#7A8986'
+    red: '#F27F84'
+    green: '#ABD86F'
+    yellow: '#FFD39A'
+    blue: '#6BA6FD'
+    magenta: '#E196EC'
+    cyan: '#01CFAF'
+    white: '#F5F7F6'

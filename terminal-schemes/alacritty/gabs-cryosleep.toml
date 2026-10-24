@@ -1,0 +1,33 @@
+# Gabs Cryosleep: terminal colors matched to its Claude Code theme
+
+[colors.primary]
+background = "#151B21"
+foreground = "#E8EBED"
+
+[colors.cursor]
+text = "#151B21"
+cursor = "#9CCBF0"
+
+[colors.selection]
+text = "#E8EBED"
+background = "#3C4D5C"
+
+[colors.normal]
+black = "#232B33"
+red = "#C27069"
+green = "#94BC75"
+yellow = "#ECBE75"
+blue = "#4990C3"
+magenta = "#B883C0"
+cyan = "#32ACA2"
+white = "#C0CBD5"
+
+[colors.bright]
+black = "#7B8894"
+red = "#DF8B84"
+green = "#AED78F"
+yellow = "#FFD594"
+blue = "#65ACE0"
+magenta = "#D69FDE"
+cyan = "#56CAC0"
+white = "#F5F6F7"

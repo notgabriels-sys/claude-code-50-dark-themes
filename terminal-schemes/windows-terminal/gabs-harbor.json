@@ -1,0 +1,27 @@
+{
+    "schemes": [
+        {
+            "name": "Gabs Harbor",
+            "background": "#1D242A",
+            "foreground": "#E8EBED",
+            "cursorColor": "#62A8D8",
+            "selectionBackground": "#354E62",
+            "black": "#252E36",
+            "red": "#CF756E",
+            "green": "#9EC676",
+            "yellow": "#FCC576",
+            "blue": "#4499CF",
+            "purple": "#C389CC",
+            "cyan": "#29B6A8",
+            "white": "#C7D2DD",
+            "brightBlack": "#828F9C",
+            "brightRed": "#EE9189",
+            "brightGreen": "#B8E18F",
+            "brightYellow": "#FFE1BA",
+            "brightBlue": "#62B6EE",
+            "brightPurple": "#E2A6EB",
+            "brightCyan": "#53D5C6",
+            "brightWhite": "#F5F6F7"
+        }
+    ]
+}

@@ -1,0 +1,32 @@
+# Gabs Glacier: terminal colors matched to its Claude Code theme
+[colors]
+foreground = "#E8ECED"
+background = "#1F2529"
+cursor_bg = "#A8DCE8"
+cursor_fg = "#1F2529"
+cursor_border = "#A8DCE8"
+selection_bg = "#3F4F55"
+selection_fg = "#E8ECED"
+ansi = [
+    "#282F35",
+    "#CB7972",
+    "#8CC98D",
+    "#EDCD7D",
+    "#6994D3",
+    "#C18CC9",
+    "#39B4BA",
+    "#C8D3D9"
+]
+brights = [
+    "#859098",
+    "#EA958D",
+    "#A6E5A7",
+    "#FFE5A5",
+    "#85B1F1",
+    "#E0A9E8",
+    "#5ED3D9",
+    "#F5F6F7"
+]
+
+[metadata]
+name = "Gabs Glacier"

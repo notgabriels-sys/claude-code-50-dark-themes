@@ -1,0 +1,23 @@
+# Gabs Fathom: terminal colors matched to its Claude Code theme
+palette = 0=#19262E
+palette = 1=#CA6B65
+palette = 2=#79C07B
+palette = 3=#E5C062
+palette = 4=#5A8BD2
+palette = 5=#BC7FC6
+palette = 6=#00ABB2
+palette = 7=#BCCBD6
+palette = 8=#768895
+palette = 9=#E8867F
+palette = 10=#93DB95
+palette = 11=#FCD779
+palette = 12=#75A7F0
+palette = 13=#DA9CE3
+palette = 14=#32CAD1
+palette = 15=#F5F6F7
+background = #121B21
+foreground = #E8EBED
+cursor-color = #38A8C8
+cursor-text = #121B21
+selection-background = #244F5E
+selection-foreground = #E8EBED

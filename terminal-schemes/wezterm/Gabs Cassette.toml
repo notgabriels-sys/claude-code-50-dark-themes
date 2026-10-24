@@ -1,0 +1,32 @@
+# Gabs Cassette: terminal colors matched to its Claude Code theme
+[colors]
+foreground = "#EFE4D2"
+background = "#231F1A"
+cursor_bg = "#E8853C"
+cursor_fg = "#231F1A"
+cursor_border = "#E8853C"
+selection_bg = "#624129"
+selection_fg = "#EFE4D2"
+ansi = [
+    "#2F2923",
+    "#DC6766",
+    "#8CC55E",
+    "#FFBF52",
+    "#538FE7",
+    "#CA7ED5",
+    "#00B3A8",
+    "#D1CBC2"
+]
+brights = [
+    "#92897F",
+    "#FB8380",
+    "#A7E179",
+    "#FFDCA6",
+    "#73ACFF",
+    "#E89CF4",
+    "#00D4C8",
+    "#F8F3EB"
+]
+
+[metadata]
+name = "Gabs Cassette"

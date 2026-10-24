@@ -1,0 +1,33 @@
+# Gabs Mulberry: terminal colors matched to its Claude Code theme
+
+[colors.primary]
+background = "#24191F"
+foreground = "#EDE8EB"
+
+[colors.cursor]
+text = "#24191F"
+cursor = "#D25E85"
+
+[colors.selection]
+text = "#EDE8EB"
+background = "#643445"
+
+[colors.normal]
+black = "#302129"
+red = "#D9645E"
+green = "#6BC670"
+yellow = "#EFC141"
+blue = "#4F8CE4"
+magenta = "#C67BD2"
+cyan = "#00AEB5"
+white = "#D9C7D0"
+
+[colors.bright]
+black = "#96828D"
+red = "#F88078"
+green = "#86E189"
+yellow = "#FFD979"
+blue = "#6DA8FF"
+magenta = "#E598F1"
+cyan = "#00CFD7"
+white = "#F7F5F6"

@@ -1,0 +1,27 @@
+{
+    "schemes": [
+        {
+            "name": "Gabs Sonar",
+            "background": "#121921",
+            "foreground": "#E8EBED",
+            "cursorColor": "#40E0C0",
+            "selectionBackground": "#265351",
+            "black": "#19232E",
+            "red": "#D1636A",
+            "green": "#91BC55",
+            "yellow": "#FBB652",
+            "blue": "#5089DC",
+            "purple": "#C07ACB",
+            "cyan": "#00AD91",
+            "white": "#BCC9D7",
+            "brightBlack": "#788696",
+            "brightRed": "#EF7E84",
+            "brightGreen": "#ABD66F",
+            "brightYellow": "#FFD298",
+            "brightBlue": "#6BA5FA",
+            "brightPurple": "#DE96E9",
+            "brightCyan": "#12CDAD",
+            "brightWhite": "#F5F6F7"
+        }
+    ]
+}

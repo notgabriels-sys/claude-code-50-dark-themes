@@ -1,0 +1,26 @@
+# Gabs Lichen: terminal colors matched to its Claude Code theme
+name: 'Gabs Lichen'
+accent: '#AFC49A'
+cursor: '#AFC49A'
+background: '#20241E'
+foreground: '#EAECE9'
+details: darker
+terminal_colors:
+  normal:
+    black: '#2A2F27'
+    red: '#CA7778'
+    green: '#A1C47B'
+    yellow: '#F8C680'
+    blue: '#6893D1'
+    magenta: '#C08BC8'
+    cyan: '#38B3B9'
+    white: '#CDD4C9'
+  bright:
+    black: '#879083'
+    red: '#E99293'
+    green: '#BCDF95'
+    yellow: '#FFE1B9'
+    blue: '#84AFF0'
+    magenta: '#DFA8E7'
+    cyan: '#5DD2D8'
+    white: '#F6F6F5'

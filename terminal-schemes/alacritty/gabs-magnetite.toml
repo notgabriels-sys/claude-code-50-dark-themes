@@ -1,0 +1,33 @@
+# Gabs Magnetite: terminal colors matched to its Claude Code theme
+
+[colors.primary]
+background = "#16181C"
+foreground = "#E8EAED"
+
+[colors.cursor]
+text = "#16181C"
+cursor = "#6FA8DC"
+
+[colors.selection]
+text = "#E8EAED"
+background = "#384D61"
+
+[colors.normal]
+black = "#22262C"
+red = "#C46C65"
+green = "#88BC74"
+yellow = "#E8BC69"
+blue = "#498DC8"
+magenta = "#B880C1"
+cyan = "#0EAAA7"
+white = "#C4C7CE"
+
+[colors.bright]
+black = "#80858D"
+red = "#E2877F"
+green = "#A2D68D"
+yellow = "#FFD27F"
+blue = "#65A9E5"
+magenta = "#D69CDF"
+cyan = "#42C8C3"
+white = "#F5F6F7"

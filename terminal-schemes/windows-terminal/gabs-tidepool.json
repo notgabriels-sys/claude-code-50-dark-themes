@@ -1,0 +1,27 @@
+{
+    "schemes": [
+        {
+            "name": "Gabs Tidepool",
+            "background": "#162222",
+            "foreground": "#E8EDED",
+            "cursorColor": "#3FC8B0",
+            "selectionBackground": "#27554E",
+            "black": "#1E2E2E",
+            "red": "#D36D72",
+            "green": "#9BC265",
+            "yellow": "#FFBF67",
+            "blue": "#5B90DD",
+            "purple": "#C483CE",
+            "cyan": "#00B49C",
+            "white": "#C0D4D3",
+            "brightBlack": "#778F8F",
+            "brightRed": "#F2888D",
+            "brightGreen": "#B5DE80",
+            "brightYellow": "#FFDCAF",
+            "brightBlue": "#77ACFB",
+            "brightPurple": "#E3A0ED",
+            "brightCyan": "#3DD3B9",
+            "brightWhite": "#F5F7F7"
+        }
+    ]
+}

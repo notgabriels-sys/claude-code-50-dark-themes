@@ -1,0 +1,33 @@
+# Gabs Nightshade: terminal colors matched to its Claude Code theme
+
+[colors.primary]
+background = "#19161D"
+foreground = "#EBE8ED"
+
+[colors.cursor]
+text = "#19161D"
+cursor = "#976ECE"
+
+[colors.selection]
+text = "#EBE8ED"
+background = "#47375E"
+
+[colors.normal]
+black = "#231F29"
+red = "#D3625C"
+green = "#7CBE60"
+yellow = "#EABC42"
+blue = "#2B8DD9"
+magenta = "#A97FE1"
+cyan = "#00AAA6"
+white = "#CAC4D1"
+
+[colors.bright]
+black = "#888190"
+red = "#F27D76"
+green = "#95D979"
+yellow = "#FFD35F"
+blue = "#4CA9F7"
+magenta = "#C49CFF"
+cyan = "#00CAC5"
+white = "#F6F5F7"

@@ -1,0 +1,26 @@
+# Gabs Tungsten: terminal colors matched to its Claude Code theme
+name: 'Gabs Tungsten'
+accent: '#FFB374'
+cursor: '#FFB374'
+background: '#1C1A17'
+foreground: '#ECEBE9'
+details: darker
+terminal_colors:
+  normal:
+    black: '#272420'
+    red: '#CD6A63'
+    green: '#76C279'
+    yellow: '#E8C05B'
+    blue: '#578BD6'
+    magenta: '#BE7EC9'
+    cyan: '#00ACB3'
+    white: '#CCC9C3'
+  bright:
+    black: '#8A867F'
+    red: '#EB857D'
+    green: '#90DC92'
+    yellow: '#FFD772'
+    blue: '#72A7F4'
+    magenta: '#DD9AE7'
+    cyan: '#1ACCD4'
+    white: '#F6F6F5'

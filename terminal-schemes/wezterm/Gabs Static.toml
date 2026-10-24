@@ -1,0 +1,32 @@
+# Gabs Static: terminal colors matched to its Claude Code theme
+[colors]
+foreground = "#EBEBEB"
+background = "#212121"
+cursor_bg = "#E4E6E8"
+cursor_fg = "#212121"
+cursor_border = "#E4E6E8"
+selection_bg = "#4C4C4D"
+selection_fg = "#EBEBEB"
+ansi = [
+    "#2B2B2B",
+    "#CE7270",
+    "#99C473",
+    "#F9C371",
+    "#6191D6",
+    "#C286CB",
+    "#1DB4A8",
+    "#D2D1CC"
+]
+brights = [
+    "#8D8C86",
+    "#ED8D8B",
+    "#B3DF8D",
+    "#FFDEAE",
+    "#7CADF5",
+    "#E0A3EA",
+    "#4CD3C6",
+    "#F6F6F6"
+]
+
+[metadata]
+name = "Gabs Static"

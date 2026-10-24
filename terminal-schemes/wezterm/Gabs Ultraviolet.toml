@@ -1,0 +1,32 @@
+# Gabs Ultraviolet: terminal colors matched to its Claude Code theme
+[colors]
+foreground = "#EAE8ED"
+background = "#1B1523"
+cursor_bg = "#9D6BFF"
+cursor_fg = "#1B1523"
+cursor_border = "#9D6BFF"
+selection_bg = "#4A3673"
+selection_fg = "#EAE8ED"
+ansi = [
+    "#251D30",
+    "#DD5A55",
+    "#5BC363",
+    "#EFBB0C",
+    "#4387EA",
+    "#C773D5",
+    "#00AAB0",
+    "#CBC4D5"
+]
+brights = [
+    "#888194",
+    "#FC766F",
+    "#76DE7C",
+    "#FFD35F",
+    "#65A4FF",
+    "#E68FF3",
+    "#00CAD2",
+    "#F6F5F7"
+]
+
+[metadata]
+name = "Gabs Ultraviolet"

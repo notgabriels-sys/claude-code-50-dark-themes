@@ -1,0 +1,27 @@
+{
+    "schemes": [
+        {
+            "name": "Gabs Afterglow",
+            "background": "#1F1A18",
+            "foreground": "#EDEAE8",
+            "cursorColor": "#F0956B",
+            "selectionBackground": "#654435",
+            "black": "#2A2422",
+            "red": "#CF6963",
+            "green": "#75C378",
+            "yellow": "#E9C158",
+            "blue": "#578BD9",
+            "purple": "#C07ECA",
+            "cyan": "#00ACB4",
+            "white": "#D2C8C5",
+            "brightBlack": "#8F8580",
+            "brightRed": "#ED847D",
+            "brightGreen": "#8FDE91",
+            "brightYellow": "#FFD875",
+            "brightBlue": "#70A7F6",
+            "brightPurple": "#DE9BE9",
+            "brightCyan": "#00CCD4",
+            "brightWhite": "#F7F6F5"
+        }
+    ]
+}

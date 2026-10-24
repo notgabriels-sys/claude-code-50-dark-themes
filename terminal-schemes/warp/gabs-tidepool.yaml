@@ -1,0 +1,26 @@
+# Gabs Tidepool: terminal colors matched to its Claude Code theme
+name: 'Gabs Tidepool'
+accent: '#3FC8B0'
+cursor: '#3FC8B0'
+background: '#162222'
+foreground: '#E8EDED'
+details: darker
+terminal_colors:
+  normal:
+    black: '#1E2E2E'
+    red: '#D36D72'
+    green: '#9BC265'
+    yellow: '#FFBF67'
+    blue: '#5B90DD'
+    magenta: '#C483CE'
+    cyan: '#00B49C'
+    white: '#C0D4D3'
+  bright:
+    black: '#778F8F'
+    red: '#F2888D'
+    green: '#B5DE80'
+    yellow: '#FFDCAF'
+    blue: '#77ACFB'
+    magenta: '#E3A0ED'
+    cyan: '#3DD3B9'
+    white: '#F5F7F7'

@@ -1,0 +1,27 @@
+{
+    "schemes": [
+        {
+            "name": "Gabs Mulberry",
+            "background": "#24191F",
+            "foreground": "#EDE8EB",
+            "cursorColor": "#D25E85",
+            "selectionBackground": "#643445",
+            "black": "#302129",
+            "red": "#D9645E",
+            "green": "#6BC670",
+            "yellow": "#EFC141",
+            "blue": "#4F8CE4",
+            "purple": "#C67BD2",
+            "cyan": "#00AEB5",
+            "white": "#D9C7D0",
+            "brightBlack": "#96828D",
+            "brightRed": "#F88078",
+            "brightGreen": "#86E189",
+            "brightYellow": "#FFD979",
+            "brightBlue": "#6DA8FF",
+            "brightPurple": "#E598F1",
+            "brightCyan": "#00CFD7",
+            "brightWhite": "#F7F5F6"
+        }
+    ]
+}

@@ -1,0 +1,27 @@
+{
+    "schemes": [
+        {
+            "name": "Gabs Basalt",
+            "background": "#17191C",
+            "foreground": "#E9EBED",
+            "cursorColor": "#AEB9C4",
+            "selectionBackground": "#484D52",
+            "black": "#24282D",
+            "red": "#C16F68",
+            "green": "#81BE82",
+            "yellow": "#E0C070",
+            "blue": "#608AC8",
+            "purple": "#B682BE",
+            "cyan": "#2AA9AF",
+            "white": "#C5C8CE",
+            "brightBlack": "#81858C",
+            "brightRed": "#DE8A83",
+            "brightGreen": "#9AD89B",
+            "brightYellow": "#F7D687",
+            "brightBlue": "#7AA6E5",
+            "brightPurple": "#D49EDC",
+            "brightCyan": "#50C7CD",
+            "brightWhite": "#F5F6F7"
+        }
+    ]
+}

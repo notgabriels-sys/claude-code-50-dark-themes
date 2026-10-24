@@ -1,0 +1,27 @@
+{
+    "schemes": [
+        {
+            "name": "Gabs Ember",
+            "background": "#1F1A19",
+            "foreground": "#EDE9E8",
+            "cursorColor": "#E8703C",
+            "selectionBackground": "#693C2A",
+            "black": "#2A2322",
+            "red": "#DC605B",
+            "green": "#66C56B",
+            "yellow": "#F0BF31",
+            "blue": "#4B8BE8",
+            "purple": "#C878D4",
+            "cyan": "#00ADB4",
+            "white": "#D2C8C7",
+            "brightBlack": "#8F8582",
+            "brightRed": "#FB7C75",
+            "brightGreen": "#80E185",
+            "brightYellow": "#FFD875",
+            "brightBlue": "#6CA8FF",
+            "brightPurple": "#E695F3",
+            "brightCyan": "#00CDD5",
+            "brightWhite": "#F7F5F5"
+        }
+    ]
+}

@@ -1,0 +1,26 @@
+# Gabs Night Vision: terminal colors matched to its Claude Code theme
+name: 'Gabs Night Vision'
+accent: '#52E07A'
+cursor: '#52E07A'
+background: '#151916'
+foreground: '#E9ECEA'
+details: darker
+terminal_colors:
+  normal:
+    black: '#1E2420'
+    red: '#DD5B56'
+    green: '#30C762'
+    yellow: '#F0BC10'
+    blue: '#4388EB'
+    magenta: '#C873D5'
+    cyan: '#00A9B4'
+    white: '#C2C9C3'
+  bright:
+    black: '#7E8780'
+    red: '#FC7770'
+    green: '#54E27B'
+    yellow: '#FFD464'
+    blue: '#67A5FF'
+    magenta: '#E690F4'
+    cyan: '#00C9D5'
+    white: '#F5F6F6'

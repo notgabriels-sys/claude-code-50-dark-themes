@@ -1,0 +1,26 @@
+# Gabs Ozone: terminal colors matched to its Claude Code theme
+name: 'Gabs Ozone'
+accent: '#8E97F2'
+cursor: '#8E97F2'
+background: '#16161F'
+foreground: '#E9E9ED'
+details: darker
+terminal_colors:
+  normal:
+    black: '#252531'
+    red: '#CF645E'
+    green: '#6EBF71'
+    yellow: '#E7BC4C'
+    blue: '#787FDA'
+    magenta: '#C677BF'
+    cyan: '#00A9AF'
+    white: '#C4C5D5'
+  bright:
+    black: '#818294'
+    red: '#ED7F77'
+    green: '#87DA8A'
+    yellow: '#FDD364'
+    blue: '#919BF8'
+    magenta: '#E493DD'
+    cyan: '#00C9D1'
+    white: '#F5F5F7'

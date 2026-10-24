@@ -1,0 +1,27 @@
+{
+    "schemes": [
+        {
+            "name": "Gabs Graphite",
+            "background": "#1D1E20",
+            "foreground": "#E9EAEC",
+            "cursorColor": "#C9CFD6",
+            "selectionBackground": "#494B4F",
+            "black": "#27282B",
+            "red": "#C5736C",
+            "green": "#86C287",
+            "yellow": "#E6C576",
+            "blue": "#648FCD",
+            "purple": "#BB86C3",
+            "cyan": "#31AEB4",
+            "white": "#CBCED2",
+            "brightBlack": "#86898E",
+            "brightRed": "#E38E87",
+            "brightGreen": "#9FDEA1",
+            "brightYellow": "#FCDC8C",
+            "brightBlue": "#7FABEB",
+            "brightPurple": "#D9A3E1",
+            "brightCyan": "#57CCD3",
+            "brightWhite": "#F5F6F6"
+        }
+    ]
+}

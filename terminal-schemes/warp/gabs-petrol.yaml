@@ -1,0 +1,26 @@
+# Gabs Petrol: terminal colors matched to its Claude Code theme
+name: 'Gabs Petrol'
+accent: '#2FB8C6'
+cursor: '#2FB8C6'
+background: '#152528'
+foreground: '#E8EDED'
+details: darker
+terminal_colors:
+  normal:
+    black: '#1C3135'
+    red: '#D3726B'
+    green: '#80CA83'
+    yellow: '#F0CA69'
+    blue: '#6491DD'
+    magenta: '#C587CF'
+    cyan: '#00B3C3'
+    white: '#C0D6DA'
+  bright:
+    black: '#789296'
+    red: '#F28E86'
+    green: '#9BE59C'
+    yellow: '#FFE29A'
+    blue: '#7FAEFB'
+    magenta: '#E4A4EE'
+    cyan: '#3BD3E2'
+    white: '#F5F7F7'

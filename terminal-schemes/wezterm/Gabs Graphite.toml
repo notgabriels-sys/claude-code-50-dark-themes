@@ -1,0 +1,32 @@
+# Gabs Graphite: terminal colors matched to its Claude Code theme
+[colors]
+foreground = "#E9EAEC"
+background = "#1D1E20"
+cursor_bg = "#C9CFD6"
+cursor_fg = "#1D1E20"
+cursor_border = "#C9CFD6"
+selection_bg = "#494B4F"
+selection_fg = "#E9EAEC"
+ansi = [
+    "#27282B",
+    "#C5736C",
+    "#86C287",
+    "#E6C576",
+    "#648FCD",
+    "#BB86C3",
+    "#31AEB4",
+    "#CBCED2"
+]
+brights = [
+    "#86898E",
+    "#E38E87",
+    "#9FDEA1",
+    "#FCDC8C",
+    "#7FABEB",
+    "#D9A3E1",
+    "#57CCD3",
+    "#F5F6F6"
+]
+
+[metadata]
+name = "Gabs Graphite"

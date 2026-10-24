@@ -1,0 +1,32 @@
+# Gabs Furnace: terminal colors matched to its Claude Code theme
+[colors]
+foreground = "#EDE8E8"
+background = "#1E1516"
+cursor_bg = "#FF5A36"
+cursor_fg = "#1E1516"
+cursor_border = "#FF5A36"
+selection_bg = "#703227"
+selection_fg = "#EDE8E8"
+ansi = [
+    "#2A1D1F",
+    "#EB4E2B",
+    "#5BC363",
+    "#FFB333",
+    "#4287EA",
+    "#C773D5",
+    "#00A9AF",
+    "#D3C3C4"
+]
+brights = [
+    "#937F81",
+    "#FF7556",
+    "#76DE7C",
+    "#FFD090",
+    "#65A4FF",
+    "#E68FF3",
+    "#00C9D1",
+    "#F7F5F5"
+]
+
+[metadata]
+name = "Gabs Furnace"

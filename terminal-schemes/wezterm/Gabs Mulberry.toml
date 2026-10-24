@@ -1,0 +1,32 @@
+# Gabs Mulberry: terminal colors matched to its Claude Code theme
+[colors]
+foreground = "#EDE8EB"
+background = "#24191F"
+cursor_bg = "#D25E85"
+cursor_fg = "#24191F"
+cursor_border = "#D25E85"
+selection_bg = "#643445"
+selection_fg = "#EDE8EB"
+ansi = [
+    "#302129",
+    "#D9645E",
+    "#6BC670",
+    "#EFC141",
+    "#4F8CE4",
+    "#C67BD2",
+    "#00AEB5",
+    "#D9C7D0"
+]
+brights = [
+    "#96828D",
+    "#F88078",
+    "#86E189",
+    "#FFD979",
+    "#6DA8FF",
+    "#E598F1",
+    "#00CFD7",
+    "#F7F5F6"
+]
+
+[metadata]
+name = "Gabs Mulberry"

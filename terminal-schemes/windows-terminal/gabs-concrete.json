@@ -1,0 +1,27 @@
+{
+    "schemes": [
+        {
+            "name": "Gabs Concrete",
+            "background": "#222425",
+            "foreground": "#EAEBEB",
+            "cursorColor": "#7FA6B8",
+            "selectionBackground": "#414E54",
+            "black": "#2C2E30",
+            "red": "#CB7872",
+            "green": "#8BC98D",
+            "yellow": "#ECCC7C",
+            "blue": "#6994D2",
+            "purple": "#C18CC9",
+            "cyan": "#39B4BA",
+            "white": "#CDD2D4",
+            "brightBlack": "#898F91",
+            "brightRed": "#E9948C",
+            "brightGreen": "#A6E5A7",
+            "brightYellow": "#FFE4A1",
+            "brightBlue": "#85B0F1",
+            "brightPurple": "#E0A9E8",
+            "brightCyan": "#5ED3D9",
+            "brightWhite": "#F6F6F6"
+        }
+    ]
+}
