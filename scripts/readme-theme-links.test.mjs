@@ -279,6 +279,32 @@ test("markdownFlow knows where a column-0 line renders as a block of its own", (
   assert.equal(markdownFlow("x:\n\n   code line\n<span>\nhttps://gabs-utilities.com/theme/\n").flow[4], true, "three spaces are paragraph text, so the tag is text");
 });
 
+test("markdownFlow reads indented code as a block of its own, where a link is text", () => {
+  // Four columns after a blank line, a heading or a closed block open indented code, which runs
+  // through blank lines to the first line indented less. The opening line begins in flow, as a
+  // fence's does; the block holds what follows.
+  assert.deepEqual(markdownFlow("para\n\n    code\n\nafter").inside, [null, null, "indented", "indented", null]);
+  assert.deepEqual(markdownFlow("para\n\n    code\n\nafter").flow, [true, true, true, false, true]);
+  assert.deepEqual(markdownFlow("para\n\n\tcode").inside, [null, null, "indented"], "a tab is four columns");
+  assert.deepEqual(markdownFlow("para\n\n \tcode").inside, [null, null, "indented"], "a space and a tab are four columns");
+  assert.deepEqual(markdownFlow("para\n\n   three").inside, [null, null, null], "three spaces are paragraph text");
+  assert.deepEqual(markdownFlow("para\n    lazy").inside, [null, null], "an indented line after paragraph text continues the paragraph");
+  assert.deepEqual(markdownFlow("# Title\n    code").inside, [null, "indented"], "after a heading no paragraph is open");
+  assert.deepEqual(markdownFlow("```\nx\n```\n    code").inside, ["fence", "fence", "fence", "indented"], "after a closed fence");
+  assert.deepEqual(markdownFlow("    code\n\n\n    more\n\nafter").blocks.map((block) => block && block.line), [1, 1, 1, 1, 1, null], "blank lines inside do not end it; the first line indented less does");
+  assert.deepEqual(markdownFlow("    code\n  \nx").inside, ["indented", "indented", null], "a line of spaces is blank");
+  assert.deepEqual(markdownFlow("```\n    x\n```").inside, ["fence", "fence", "fence"], "an indented line inside a fence is the fence's");
+  assert.deepEqual(markdownFlow("<div>\n    x\n\ny").inside, ["html-to-blank", "html-to-blank", "html-to-blank", null], "an indented line inside an HTML block is the block's");
+  assert.deepEqual(markdownFlow("a | b\n<span>\n    x\n").hidden, [], "an indented line inside a loosely opened block opens nothing: to CommonMark it would continue the paragraph");
+  assert.equal(markdownFlow("para\n\n    code").open, null, "indented code ends at the end of the file");
+  assert.deepEqual(markdownFlow("para\n\n    ```\nx\n\n```").inside, [null, null, "indented", null, null, "fence"], "a fence line indented four columns is code, not a fence; the later fence opens");
+  assert.equal(markdownFlow("    code\n\n<!-- m -->").flow[2], true, "a marker after indented code renders");
+  // Loose, like the lone-tag rule: after a list item or a block quote the walk reads an indented
+  // line as code, where CommonMark reads it as the container's content. That fails closed.
+  assert.deepEqual(markdownFlow("- item\n    content").inside, [null, "indented"]);
+  assert.deepEqual(markdownFlow("> quote\n    content").inside, [null, "indented"]);
+});
+
 test("themeLinkProblems holds every theme-page address and bracketed theme name to the one written form", async () => {
   const themes = await loadThemes(root);
   const velvet = link("Velvet", "velvet");
@@ -450,6 +476,11 @@ test("themeLinkProblems holds every theme-page address and bracketed theme name 
   ok(`<details>\n<summary>Packs — UI kit & more</summary>\n\n| a & b | c |\n|---|---|\n`, "an ampersand before a space inside an HTML block, and one in a table");
   ok("```bash\ncd x && ./install.sh\n```", "ampersands inside a code fence");
   bad("Use `[V&#101;lvet](" + THEME_PAGE_URL + "velvet/)` in prose.", /bracket inside the code span/, "a theme link inside a code span, which GitHub shows as text");
+  bad(`para\n\n    [V&#101;lvet](${THEME_PAGE_URL}velvet/)`, /writes the theme link \[Velvet\]\(https:\/\/gabs-utilities\.com\/theme\/velvet\/\) inside the indented code block begun on line 3, where it is text, not a link/, "a theme link in indented code, which GitHub shows as text with the reference undecoded");
+  bad(`para\n\n\t${velvet}`, /inside the indented code block begun on line 3/, "a theme link indented by a tab");
+  bad(`para\n\n    See ${THEME_PAGE_URL}`, /writes the site's address inside the indented code block begun on line 3, where it is text/, "the index in indented code");
+  bad(`para\n\n    [Velvet](https://example.com)`, /writes Velvet's name in brackets inside the indented code block begun on line 3, where it is text/, "a theme name in brackets in indented code");
+  ok(`para\n    ${velvet}`, "an indented line after paragraph text is the paragraph's, so the link is a link");
   bad("```\n[Velvet](" + THEME_PAGE_URL + "velvet/)\n```", /writes the theme link \[Velvet\]\([^)]*\) inside the ``` code fence opened on line 1/, "a theme link inside a code fence; the fence's backticks are no code span");
   bad("`<https://gabs-utilities.com/x.html>`", /site's address inside a code span/, "a site autolink inside a code span");
   bad(`<div align="center">\n${velvet} · [Acid](${THEME_PAGE_URL}acid/)\n</div>`, /writes the theme link \[Velvet\]\(https:\/\/gabs-utilities\.com\/theme\/velvet\/\) inside the <div> HTML block begun on line 1/, "theme links inside an HTML block, which GitHub shows as text");
@@ -781,7 +812,7 @@ test("the shapes a third review found fail in the files themselves: a lone tag a
   // The plugin README's index line indented into a code block, or after a lone tag, does not render.
   const path = "plugins/50-dark-themes/README.md";
   await editOnce(fixtureRoot, path, `\n${THEME_PAGE_URL}\n`, `\n    ${THEME_PAGE_URL}\n`);
-  await expectRed(fixtureRoot, /must carry the theme page index .* where it renders/);
+  await expectRed(fixtureRoot, /plugins\/50-dark-themes\/README\.md line \d+ writes the site's address inside the indented code block begun on line \d+, where it is text/);
   await editOnce(fixtureRoot, path, `\n    ${THEME_PAGE_URL}\n`, `\n${THEME_PAGE_URL}\n`);
   // A lone tag after the sentence is that paragraph's text and the address, in a paragraph of its own,
   // still renders; after a blank line the tag opens an HTML block that swallows the address.
@@ -792,4 +823,10 @@ test("the shapes a third review found fail in the files themselves: a lone tag a
   await expectRed(fixtureRoot, /site's address inside the <img> HTML block begun on line \d+|must carry the theme page index .* where it renders/);
   await editOnce(fixtureRoot, path, `contrast:\n\n${tag}\n${THEME_PAGE_URL}\n`, `contrast:\n\n${THEME_PAGE_URL}\n`);
   await expectGreen(fixtureRoot);
+});
+
+test("a theme link indented four spaces after a blank line is code on GitHub, and the verifier says so", async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  await editOnce(fixtureRoot, "README.md", "\n## More dark tools\n", `\n    ${link("Velvet", "velvet")} is a theme.\n\n## More dark tools\n`);
+  await expectRed(fixtureRoot, /README\.md line \d+ writes the theme link \[Velvet\]\(https:\/\/gabs-utilities\.com\/theme\/velvet\/\) inside the indented code block begun on line \d+, where it is text, not a link/);
 });

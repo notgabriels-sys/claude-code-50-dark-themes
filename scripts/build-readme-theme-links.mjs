@@ -197,8 +197,10 @@ export async function buildReadmeThemeLinks(root) {
 
 // Which lines of a Markdown document start in document flow, and which sit
 // inside something that swallows link syntax: a fenced code block (``` or ~~~,
-// closed by a fence of the same character at least as long) or one of the
-// seven kinds of HTML block CommonMark knows — <pre>, <script>, <style> and
+// closed by a fence of the same character at least as long), an indented code
+// block (a line indented four columns or more, a tab counting as four, where
+// no paragraph is open; it runs through blank lines to the first line indented
+// less) or one of the seven kinds of HTML block CommonMark knows — <pre>, <script>, <style> and
 // <textarea> to a closing tag of any of the four, a comment to -->, a
 // processing instruction to ?>, a declaration to >, CDATA to ]]>, a
 // block-level tag such as <div> or <p> to the next blank line, and any other
@@ -217,6 +219,11 @@ export async function buildReadmeThemeLinks(root) {
 // text after a block tag on its line (<div> [Name](...)), after <pre>, after
 // <!-- or in a fence's info string is not Markdown, and a <!-- x --> or
 // <pre>x</pre> that opens and closes on one line is a block of that line.
+// Indented code opens under the same loose reading: after any line that is
+// not paragraph text, a line indented four columns is code, where CommonMark
+// reads a line indented under a list item or a block quote as that
+// container's content. That fails closed: a link written there is reported as
+// text, and the READMEs write their prose at column 0.
 //
 // Container prefixes (list markers, "> ") are not tracked. A fence or tag
 // opened inside a container closes with the container, before any column-0
@@ -267,8 +274,8 @@ export function markdownFlow(markdown) {
   const lines = markdown.split("\n");
   // Whether each line begins in flow: nothing opened on an earlier line is still open.
   const flow = [];
-  // What each line belongs to: null in flow, else "fence", "html" or
-  // "html-to-blank". The line that opens a block belongs to it, as does the
+  // What each line belongs to: null in flow, else "fence", "indented", "html"
+  // or "html-to-blank". The line that opens a block belongs to it, as does the
   // whole of a block that opens and closes on one line (<!-- x -->, <pre>x</pre>).
   const inside = [];
   // The block each line belongs to (kind, token and opening line), or null.
@@ -295,6 +302,8 @@ export function markdownFlow(markdown) {
     if (declaration) return htmlTo("<!", />/, line.slice(declaration[0].length), index);
     if (BLOCK_TAG_LINE.test(line)) return toBlank(line, index);
     if (ANY_TAG_LINE.test(line) && !(index > 0 && previousInFlow && paragraphText(lines[index - 1]))) return toBlank(line, index);
+    // Indented code cannot interrupt a paragraph either.
+    if (!isBlank(line) && indentOf(line) >= 4 && !(index > 0 && previousInFlow && paragraphText(lines[index - 1]))) return { kind: "indented", token: "indented", line: index + 1 };
     return null;
   };
   for (let index = 0; index < lines.length; index++) {
@@ -302,6 +311,8 @@ export function markdownFlow(markdown) {
     if (state?.kind === "fence" && state.indent > 0 && !isBlank(line) && indentOf(line) < state.indent) {
       ambiguous.push({ line: index + 1, fence: state });
     }
+    // Indented code ends at the first line that is neither blank nor indented four columns; that line is read afresh.
+    if (state?.kind === "indented" && !isBlank(line) && indentOf(line) < 4) state = null;
     flow.push(state === null);
     if (state === null) {
       const opened = opens(line, index, index > 0 && flow[index - 1]);
@@ -317,19 +328,23 @@ export function markdownFlow(markdown) {
       else {
         // The block may be paragraph text to CommonMark (see the header), in
         // which case an opener on this line takes effect and hides what follows.
+        // (An indented line opens nothing: in a paragraph it is a lazy continuation.)
         const would = opens(line, index, false);
-        if (would && !would.closed && would.kind !== "html-to-blank") hidden.push({ line: index + 1, opens: would.token, inside: state });
+        if (would && !would.closed && would.kind !== "html-to-blank" && would.kind !== "indented") hidden.push({ line: index + 1, opens: would.token, inside: state });
       }
     } else if (state.kind === "fence") {
       const close = line.match(FENCE_CLOSE);
       if (close && close[1].length === state.indent && close[2][0] === state.token[0] && close[2].length >= state.token.length) state = null;
+    } else if (state.kind === "indented") {
+      // Runs on: this line is blank or indented four columns (anything else ended the block above).
     } else if (state.close.test(line)) {
       state = null;
     }
   }
-  // A block that ends at a blank line also ends at the end of the document, so
-  // only one that waits for a closing token counts as left open.
-  return { flow, inside, blocks, ambiguous, hidden, open: state && state.kind !== "html-to-blank" ? state : null };
+  // A block that ends at a blank line or at a line indented less also ends at
+  // the end of the document, so only one that waits for a closing token counts
+  // as left open.
+  return { flow, inside, blocks, ambiguous, hidden, open: state && state.kind !== "html-to-blank" && state.kind !== "indented" ? state : null };
 }
 
 const SITE = "https://gabs-utilities.com/";
@@ -393,8 +408,8 @@ const TAG_OR_AUTOLINK =
   /<(?:[A-Za-z][A-Za-z0-9-]*(?:\s+[A-Za-z_:][A-Za-z0-9_.:-]*(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'=<>`]+))?)*\s*\/?>|\/[A-Za-z][A-Za-z0-9-]*\s*>|!--[^\n]*?-->|[A-Za-z][A-Za-z0-9+.-]{1,31}:[^\s<>]*>)/g;
 // Code spans as CommonMark pairs them: a run of backticks closes at the next
 // run of exactly its length, or is text. A code span is inline content of
-// one block, so it never crosses a blank line, a fence line or a line of a
-// <pre>-style, comment or declaration block; `segments` are the stretches of
+// one block, so it never crosses a blank line, a fence line, a line of indented
+// code or a line of a <pre>-style, comment or declaration block; `segments` are the stretches of
 // text between those, and backticks pair within one stretch. (A tag line the
 // walk reads as an HTML block may be paragraph text to GFM, so it stays in
 // its stretch.) Escaped backticks and backticks inside tags are rejected
@@ -457,9 +472,9 @@ const escapeRegExp = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 //    to the end of the file; either hides whatever follows it. A fence or
 //    <pre>-style opener inside an HTML block the walk opened loosely fails,
 //    since CommonMark may honour it (see markdownFlow).
-// Inside a code span, a code block or an HTML block, Markdown is text: a theme
-// link or the site's address written there fails, since the reader sees the
-// raw syntax and no link.
+// Inside a code span, a code block (fenced or indented) or an HTML block,
+// Markdown is text: a theme link or the site's address written there fails,
+// since the reader sees the raw syntax and no link.
 export function themeLinkProblems(markdown, themes) {
   const problems = [];
   const bySlug = new Map(themes.map((theme) => [theme.slug, theme]));
@@ -487,7 +502,7 @@ export function themeLinkProblems(markdown, themes) {
   };
   const { inside, blocks, ambiguous, hidden, open } = markdownFlow(markdown);
   // The stretches of lines that can carry inline text (see codeSpans).
-  const inlineLine = (index) => !isBlank(lines[index]) && inside[index] !== "fence" && inside[index] !== "html";
+  const inlineLine = (index) => !isBlank(lines[index]) && inside[index] !== "fence" && inside[index] !== "indented" && inside[index] !== "html";
   const segments = [];
   for (let index = 0; index < lines.length; index++) {
     if (!inlineLine(index)) continue;
@@ -503,7 +518,9 @@ export function themeLinkProblems(markdown, themes) {
   // Names the text region an index sits in, for a message.
   const where = (index) => {
     const block = blocks[lineOf(index) - 1];
-    return block ? `inside the ${block.token} ${block.kind === "fence" ? "code fence opened" : "HTML block begun"} on line ${block.line}` : "inside a code span";
+    if (!block) return "inside a code span";
+    const begun = block.kind === "fence" ? `${block.token} code fence opened` : block.kind === "indented" ? "indented code block begun" : `${block.token} HTML block begun`;
+    return `inside the ${begun} on line ${block.line}`;
   };
   const before = (index) => (index === 0 ? "" : shown[index - 1]);
   const covered = [];
