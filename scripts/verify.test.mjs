@@ -3493,3 +3493,13 @@ test("rejects an SVG whose root is not svg", { timeout: 90_000 }, async (t) => {
   assert.notEqual(result.code, 0, "an SVG rooted in a <g> shipped green");
   assert.match(result.stderr, /assets\/pay\.svg must open with <svg xmlns="http:\/\/www\.w3\.org\/2000\/svg">/);
 });
+
+test("rejects a gallery card that does not print its terminal background", { timeout: 90_000 }, async (t) => {
+  // The footer, the install guide and README tell readers to set the terminal
+  // background to the hex each card shows, and no card printed it.
+  const fixtureRoot = await editPage(t, "index.html",
+    '<span class="bghex">${bg}</span>', '<span class="bghex">${accent}</span>');
+  const result = await runVerifier(fixtureRoot);
+  assert.notEqual(result.code, 0, "a card printing its accent as the terminal background passed");
+  assert.match(result.stderr, /Storefront contract is missing: gallery-card terminal background/);
+});

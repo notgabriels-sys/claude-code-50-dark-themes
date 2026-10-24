@@ -963,6 +963,9 @@ const storefrontContracts = [
   [/<a class="skip-link" href="#main-content">/, "keyboard skip link"],
   [/<main id="main-content">/, "main landmark"],
   [/<h3 class="tname">\$\{esc\(name\)\}<\/h3>/, "gallery-card headings"],
+  // The footer, the install guide and README tell readers to set the terminal
+  // background to the hex the gallery shows; the card must print it as text.
+  [/<a class="bg-link" href="\/theme\/\$\{themeSlug\}\/">Terminal background <span class="bghex">\$\{bg\}<\/span>/, "gallery-card terminal background"],
   [/<span class="sr-only" id="copyStatus" aria-live="polite"><\/span>/, "copy-status live region"],
   [/<meta property="og:image:alt" content="[^"]+">/, "Open Graph image alternative"],
   [/<meta name="twitter:image:alt" content="[^"]+">/, "X image alternative"],
@@ -971,7 +974,7 @@ const missingStorefrontContracts = storefrontContracts
   .filter(([pattern]) => !pattern.test(html))
   .map(([, label]) => label);
 if (missingStorefrontContracts.length) {
-  fail(`Storefront accessibility contract is missing: ${missingStorefrontContracts.join(", ")}.`);
+  fail(`Storefront contract is missing: ${missingStorefrontContracts.join(", ")}.`);
 }
 const mainLandmarks = html.match(/<main(?:\s|>)/g) ?? [];
 if (mainLandmarks.length !== 1) {
@@ -2647,7 +2650,7 @@ for (const host of reviewedLinkHosts) {
 // and form posts. This reviews; it does not read what a script does.
 const reviewedInlineScripts = new Map([
   // The gallery: renders THEMES and VOL2_THEMES, filters and copies install commands.
-  ["index.html", ["sha256-V8bZZsjNTr3HAwTnMFReSIV+PlAuV1o1UimLudKymSw="]],
+  ["index.html", ["sha256-IuzE/u5N1mik+4VQKPk4nMJAX0zoz6BmCVoo+rL7LMw="]],
 ]);
 // Every page under theme/ is rendered by scripts/build-theme-pages.mjs (main's
 // #59) and runs one script, the same on each: its copy button, which writes a

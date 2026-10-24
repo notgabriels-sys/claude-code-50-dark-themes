@@ -640,6 +640,20 @@ hold as written, since the builder owns every byte of the sitemap: it now
 changes only the declaration and expects "stale", which is reached only once
 the document checks pass, and a reader requiring double quotes fails it.
 
+**(added 2026-10-20) The cards print the terminal background.** The footer, the
+install guide (its text and its HowTo structured data) and `README.md` told
+readers to set the terminal to the surface hex shown in the gallery, and no
+card printed it: each showed only its accent. Each card now ends with "Terminal
+background #RRGGBB", linked to the theme's page, and the footer links the
+theme-page index. The hex is the row's sixth value, the one the contrast checks
+measure against, set in the theme's own inactive and text colours. A storefront
+contract holds the template to it, and the gallery script's hash and the policy
+moved with it. Checked in Chromium at 390 and 1280 px on all 62 cards: each
+prints its row's hex (for Vol. 2, equal to `previews.json`), each link answers
+200, nothing scrolls sideways, no policy violation; search, filters, copy and
+deep links behave as before. Gutting the
+contract line turns exactly its own test red (rule 5).
+
 **Sixteen failure cases were proven** by breaking `index.html`, `README.md` and
 `impressum.html` in turn and confirming the build goes red, then restoring:
 grid price, developer-picks price, `aria-label` number, `aria-label` currency,

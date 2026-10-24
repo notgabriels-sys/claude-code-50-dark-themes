@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="script-src 'sha256-V8bZZsjNTr3HAwTnMFReSIV+PlAuV1o1UimLudKymSw='; worker-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="script-src 'sha256-IuzE/u5N1mik+4VQKPk4nMJAX0zoz6BmCVoo+rL7LMw='; worker-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>50 Dark Themes for Claude Code</title>
 <meta name="description" content="Browse and install 50 hand-tuned dark themes for Claude Code as a native plugin, plus the free Vol. 2 expansion pack. Free, MIT licensed, and verified with 894 role-aware contrast comparisons.">
@@ -361,6 +361,10 @@
     margin-left:1px;vertical-align:-3px;opacity:.8;
   }
   .term .hint{margin-top:8px;font-size:10.5px;color:var(--mut)}
+  .term .bg-link{display:inline-flex;align-items:center;gap:6px;margin-top:6px;min-height:24px;font-size:10.5px;color:var(--mut);text-decoration:none}
+  .term .bghex{color:var(--fg);letter-spacing:.04em}
+  .term .bg-link:hover .bghex{text-decoration:underline}
+  .term .bg-link:focus-visible{outline:2px solid var(--a);outline-offset:3px}
 
   .tools{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));column-gap:32px}
   .tool{display:block;padding:18px 0;border:0;border-top:1px solid var(--hair);border-radius:0;
@@ -763,7 +767,7 @@
 
   <footer>
     <span>50 dark themes for Claude Code</span>
-    <span>Set your terminal background to each theme's surface hex for the full effect.</span>
+    <span>Set your terminal background to the hex on each theme's card for the full effect; <a href="/theme/">every theme's page</a> lists it too.</span>
     <span><a href="claude-code-theme-install-guide.html">Install guide</a></span>
     <span><a href="https://audio.gabs-utilities.com/">Audio services</a></span>
     <span><a href="https://tools.gabs-utilities.com/">Tools + Code</a></span>
@@ -879,6 +883,7 @@ const renderTheme = ([name,accent,shimmer,text,mute,bg]) => {
         <span class="gt">&gt;</span><span class="txt">theme ${themeSlug}</span><span class="caret" aria-hidden="true"></span><span class="copy-label">Copy command</span>
       </button>
       <div class="hint">/theme &nbsp;·&nbsp; ⏎ send &nbsp;·&nbsp; esc to interrupt</div>
+      <a class="bg-link" href="/theme/${themeSlug}/">Terminal background <span class="bghex">${bg}</span><span class="sr-only">, ${esc(name)} theme page</span></a>
     </div>
   </article>`;
 };
