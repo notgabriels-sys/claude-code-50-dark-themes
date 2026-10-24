@@ -121,17 +121,50 @@ with no build step. **[Live demo →](https://notgabriels-sys.github.io/dark-htm
 
 ## The 50 themes
 
-Absinthe · Acid · Amber Room · Anaglyph · Blackout · Blueprint · Cassette · Clay ·
-Cobalt Hour · Concrete · Coral · Crossfade · Deep Field · Dubplate · Ember · Fathom ·
-Fjord · Furnace · Glacier · Graphite · Greenhouse · Harbor · Hearth · Ink · Iris ·
-Lagoon · Lichen · Moss · Mulberry · Nachtschicht · Night Vision · Nightshade · Off Air ·
-Orchid · Oxide · Petrol · Plasma · Signal Red · Sonar · Soot · Static · Terminal ·
-Tidepool · Tungsten · Ultraviolet · Undergrowth · Undertow · VU Meter · Velvet · Verdigris
+Each name opens the theme's own page: a specimen, the install commands, its palette and the measured contrast.
+
+<!-- theme-links:fifty:start -->
+
+[Absinthe](https://gabs-utilities.com/theme/absinthe/) · [Acid](https://gabs-utilities.com/theme/acid/) ·
+[Amber Room](https://gabs-utilities.com/theme/amber-room/) · [Anaglyph](https://gabs-utilities.com/theme/anaglyph/) ·
+[Blackout](https://gabs-utilities.com/theme/blackout/) · [Blueprint](https://gabs-utilities.com/theme/blueprint/) ·
+[Cassette](https://gabs-utilities.com/theme/cassette/) · [Clay](https://gabs-utilities.com/theme/clay/) ·
+[Cobalt Hour](https://gabs-utilities.com/theme/cobalt-hour/) · [Concrete](https://gabs-utilities.com/theme/concrete/) ·
+[Coral](https://gabs-utilities.com/theme/coral/) · [Crossfade](https://gabs-utilities.com/theme/crossfade/) ·
+[Deep Field](https://gabs-utilities.com/theme/deep-field/) · [Dubplate](https://gabs-utilities.com/theme/dubplate/) ·
+[Ember](https://gabs-utilities.com/theme/ember/) · [Fathom](https://gabs-utilities.com/theme/fathom/) ·
+[Fjord](https://gabs-utilities.com/theme/fjord/) · [Furnace](https://gabs-utilities.com/theme/furnace/) ·
+[Glacier](https://gabs-utilities.com/theme/glacier/) · [Graphite](https://gabs-utilities.com/theme/graphite/) ·
+[Greenhouse](https://gabs-utilities.com/theme/greenhouse/) · [Harbor](https://gabs-utilities.com/theme/harbor/) ·
+[Hearth](https://gabs-utilities.com/theme/hearth/) · [Ink](https://gabs-utilities.com/theme/ink/) ·
+[Iris](https://gabs-utilities.com/theme/iris/) · [Lagoon](https://gabs-utilities.com/theme/lagoon/) ·
+[Lichen](https://gabs-utilities.com/theme/lichen/) · [Moss](https://gabs-utilities.com/theme/moss/) ·
+[Mulberry](https://gabs-utilities.com/theme/mulberry/) · [Nachtschicht](https://gabs-utilities.com/theme/nachtschicht/) ·
+[Night Vision](https://gabs-utilities.com/theme/night-vision/) · [Nightshade](https://gabs-utilities.com/theme/nightshade/) ·
+[Off Air](https://gabs-utilities.com/theme/off-air/) · [Orchid](https://gabs-utilities.com/theme/orchid/) ·
+[Oxide](https://gabs-utilities.com/theme/oxide/) · [Petrol](https://gabs-utilities.com/theme/petrol/) ·
+[Plasma](https://gabs-utilities.com/theme/plasma/) · [Signal Red](https://gabs-utilities.com/theme/signal-red/) ·
+[Sonar](https://gabs-utilities.com/theme/sonar/) · [Soot](https://gabs-utilities.com/theme/soot/) ·
+[Static](https://gabs-utilities.com/theme/static/) · [Terminal](https://gabs-utilities.com/theme/terminal/) ·
+[Tidepool](https://gabs-utilities.com/theme/tidepool/) · [Tungsten](https://gabs-utilities.com/theme/tungsten/) ·
+[Ultraviolet](https://gabs-utilities.com/theme/ultraviolet/) · [Undergrowth](https://gabs-utilities.com/theme/undergrowth/) ·
+[Undertow](https://gabs-utilities.com/theme/undertow/) · [VU Meter](https://gabs-utilities.com/theme/vu-meter/) ·
+[Velvet](https://gabs-utilities.com/theme/velvet/) · [Verdigris](https://gabs-utilities.com/theme/verdigris/)
+
+<!-- theme-links:fifty:end -->
 
 ## The 12 Vol. 2 themes
 
-Afterglow · Aurora Borealis · Basalt · Biolume · Cryosleep · Darkroom · Gaslight ·
-Heliotrope · Magnetite · Monsoon · Neon Noir · Ozone
+<!-- theme-links:vol2:start -->
+
+[Afterglow](https://gabs-utilities.com/theme/afterglow/) · [Aurora Borealis](https://gabs-utilities.com/theme/aurora-borealis/) ·
+[Basalt](https://gabs-utilities.com/theme/basalt/) · [Biolume](https://gabs-utilities.com/theme/biolume/) ·
+[Cryosleep](https://gabs-utilities.com/theme/cryosleep/) · [Darkroom](https://gabs-utilities.com/theme/darkroom/) ·
+[Gaslight](https://gabs-utilities.com/theme/gaslight/) · [Heliotrope](https://gabs-utilities.com/theme/heliotrope/) ·
+[Magnetite](https://gabs-utilities.com/theme/magnetite/) · [Monsoon](https://gabs-utilities.com/theme/monsoon/) ·
+[Neon Noir](https://gabs-utilities.com/theme/neon-noir/) · [Ozone](https://gabs-utilities.com/theme/ozone/)
+
+<!-- theme-links:vol2:end -->
 
 A separate free plugin in the same marketplace, held to the same contrast floors.
 Preview them all: [plugins/dark-themes-vol-2/preview.png](plugins/dark-themes-vol-2/preview.png)
