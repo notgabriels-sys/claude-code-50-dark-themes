@@ -156,7 +156,8 @@ const marketplace = JSON.parse(await readFile(new URL(".claude-plugin/marketplac
 const pluginManifest = JSON.parse(await readFile(new URL(".claude-plugin/plugin.json", pluginRoot), "utf8"));
 const vol2Manifest = JSON.parse(await readFile(new URL(".claude-plugin/plugin.json", vol2Root), "utf8"));
 if (marketplace.name !== "notgabriels-themes") fail("Unexpected marketplace name.");
-if (marketplace.plugins?.length !== 2) fail("The marketplace must expose exactly two plugins.");
+// Two theme packs, then the free gallery mod that shows them.
+if (marketplace.plugins?.length !== 3) fail("The marketplace must expose exactly three plugins: two theme packs and the theme gallery.");
 if (marketplace.plugins[0].name !== "50-dark-themes") fail("Unexpected marketplace plugin name.");
 if (marketplace.plugins[0].source !== "./plugins/50-dark-themes") fail("Unexpected plugin source path.");
 if (pluginManifest.name !== "50-dark-themes") fail("Unexpected plugin manifest name.");
@@ -172,6 +173,64 @@ if (vol2Manifest.experimental?.themes !== "./themes/") fail("Vol. 2 plugin manif
 if (!/^\d+\.\d+\.\d+$/.test(vol2Manifest.version)) fail("Vol. 2 plugin version must use semantic versioning.");
 if (marketplace.plugins[1].version !== vol2Manifest.version) {
   fail("Marketplace and Vol. 2 plugin manifest versions must match.");
+}
+
+// ---------------------------------------------------------------------------
+// Dark Themes Gallery — a mod that draws the free themes; it ships none.
+// ---------------------------------------------------------------------------
+const galleryRoot = new URL("../plugins/theme-gallery/", import.meta.url);
+const galleryManifest = JSON.parse(await readFile(new URL(".claude-plugin/plugin.json", galleryRoot), "utf8"));
+if (marketplace.plugins[2].name !== "theme-gallery") fail("Unexpected gallery marketplace plugin name.");
+if (marketplace.plugins[2].source !== "./plugins/theme-gallery") fail("Unexpected gallery plugin source path.");
+if (galleryManifest.name !== "theme-gallery") fail("Unexpected gallery plugin manifest name.");
+if (!/^\d+\.\d+\.\d+$/.test(galleryManifest.version)) fail("Gallery plugin version must use semantic versioning.");
+if (marketplace.plugins[2].version !== galleryManifest.version) {
+  fail("Marketplace and gallery plugin manifest versions must match.");
+}
+// A themes/ folder would make the release zip pack the gallery as a theme pack, and a
+// theme declared here would be a second copy of a theme that can drift from its pack.
+if (galleryManifest.experimental?.themes !== undefined) fail("The gallery plugin must not declare themes of its own.");
+if (await stat(new URL("themes/", galleryRoot)).then(() => true, () => false)) {
+  fail("The gallery plugin must not have a themes/ folder; it reads its data from hooks/themes.ts.");
+}
+const galleryHooks = JSON.parse(await readFile(new URL("hooks/hooks.json", galleryRoot), "utf8"));
+if (JSON.stringify(galleryHooks) !== JSON.stringify({ modules: ["./register.tsx"] })) {
+  fail('plugins/theme-gallery/hooks/hooks.json must name exactly one hooks module, "./register.tsx", and no command hooks.');
+}
+for (const file of ["README.md", "LICENSE"]) {
+  if (!(await stat(new URL(file, galleryRoot)).then(() => true, () => false))) fail(`plugins/theme-gallery/${file} is missing.`);
+}
+// The listing's Documentation and homepage links go to the mod's own README,
+// never the repository root, whose README is the storefront.
+const galleryHome = "https://github.com/notgabriels-sys/claude-code-50-dark-themes/tree/main/plugins/theme-gallery";
+if (galleryManifest.documentationUrl !== `${galleryHome}#readme`) {
+  fail(`The gallery plugin's documentationUrl must be its own README, ${galleryHome}#readme.`);
+}
+if (galleryManifest.homepage !== galleryHome || marketplace.plugins[2].homepage !== galleryHome) {
+  fail(`The gallery plugin's homepage, in plugin.json and the marketplace, must be ${galleryHome}.`);
+}
+const { GALLERY_ICON_PATH, decodePng, iconColourProblems, loadFreeColours } = await import("./build-gallery-icon.mjs");
+await verifyPng(GALLERY_ICON_PATH, { label: "Gallery plugin icon", width: 1024, height: 1024 });
+// The free mod's icon carries only colours the free theme files publish, plus
+// the anti-aliased edges between them: no paid theme's colours, however the
+// image was made.
+let galleryIcon;
+try {
+  galleryIcon = decodePng(await readFile(new URL(GALLERY_ICON_PATH, root)));
+} catch (error) {
+  fail(`Gallery plugin icon cannot be decoded: ${error.message}.`);
+}
+const galleryIconProblems = iconColourProblems(galleryIcon, await loadFreeColours(root));
+if (galleryIconProblems.length > 0) {
+  fail(`${GALLERY_ICON_PATH} may only use free theme colours: ${galleryIconProblems.join("; ")}.`);
+}
+const { GALLERY_DATA_PATH, buildGalleryData, loadGalleryThemes } = await import("./build-gallery-data.mjs");
+const galleryDataThemes = await loadGalleryThemes(root);
+if (galleryDataThemes.length !== files.length + vol2Files.length) {
+  fail(`The gallery must show every free theme: ${files.length + vol2Files.length} files, ${galleryDataThemes.length} gallery entries.`);
+}
+if ((await readFile(new URL(GALLERY_DATA_PATH, root), "utf8").catch(() => "")) !== (await buildGalleryData(root))) {
+  fail(`${GALLERY_DATA_PATH} is out of date with the theme files. Run node scripts/build-gallery-data.mjs.`);
 }
 
 const html = await readFile(new URL("index.html", root), "utf8");
@@ -977,7 +1036,7 @@ if (!/<a href="familiars\.html">[^<]+<\/a>/.test(html)) {
 
 console.log(
   `Verified ${files.length} themes, ${pluginFiles.length} plugin themes, ${vol2Files.length} Vol. 2 themes, ` +
-    `${galleryThemes.length} gallery cards, ` +
+    `${galleryThemes.length} gallery cards, ${galleryDataThemes.length} /themes gallery entries, ` +
     `${verifiedGumroadSlugs.size} Gumroad products, ${verifiedPayPalIds.length} PayPal links, ` +
     `the stated ${roleAwareComparisonCount}-check claims, and the safe install command.`,
 );
