@@ -261,7 +261,7 @@ const ANY_TAG_LINE = /^ {0,3}(?:<[A-Za-z][A-Za-z0-9-]*(?:\s+[A-Za-z_:][A-Za-z0-9
 const LIST_MARKER = String.raw`(?:[-+*]|\d{1,9}[.)])`;
 const FENCE_OPEN = new RegExp(String.raw`^( {0,3}(?:${LIST_MARKER} {1,4})?)(\x60{3,}|~{3,})(.*)$`);
 const FENCE_CLOSE = /^( {0,3})(`{3,}|~{3,})[ \t]*$/;
-const RAW_TAG = /^ {0,3}<(pre|script|style|textarea)(?=[\s>]|$)/i;
+const RAW_TAG = /^ {0,3}<(pre|script|style|textarea)(?=[ \t>]|$)/i;
 const RAW_TAG_CLOSE = /<\/(?:pre|script|style|textarea)>/i;
 const isBlank = (line) => /^[ \t]*$/.test(line);
 const indentOf = (line) => line.match(/^[ \t]*/)[0].replace(/\t/g, "    ").length;
@@ -282,6 +282,9 @@ const NOT_PARAGRAPH = [
 // reads four columns there as indented code inside the quote or the item, and
 // a list marker followed by five columns opens an item that starts with
 // indented code. A tab counts as four columns, which can only over-count.
+// Only a space or a tab is indentation to GFM: a no-break space, a form feed
+// or any other character after the spaces is the first character of the
+// content, so the lookahead names the space and nothing else.
 const indentAfterMarkers = (line) => {
   let rest = line.replace(/\t/g, "    ");
   let marked = false;
@@ -292,7 +295,7 @@ const indentAfterMarkers = (line) => {
       marked = true;
       continue;
     }
-    const item = rest.match(new RegExp(String.raw`^ {0,3}${LIST_MARKER}( +)(?=\S)`));
+    const item = rest.match(new RegExp(String.raw`^ {0,3}${LIST_MARKER}( +)(?=[^ ])`));
     if (!item) break;
     if (item[1].length >= 5) return item[1].length - 1;
     rest = rest.slice(item[0].length);

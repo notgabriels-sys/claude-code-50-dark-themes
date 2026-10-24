@@ -205,6 +205,8 @@ test("markdownFlow knows where a column-0 line renders as a block of its own", (
     ["<style> left open", ["<style>", "x"], false],
     ["<textarea> left open", ["<textarea>", "x"], false],
     ["<preview> is not a <pre> block", ["<preview>", "x"], true],
+    ["<pre followed by a no-break space is not a <pre> block", ["<pre\u00A0x", "x"], true],
+    ["<pre followed by a tab is a <pre> block", ["<pre\tx>", "x"], false],
     ["HTML comment left open", ["<!-- note", "x"], false],
     ["HTML comment closed", ["<!-- note -->"], true],
     ["HTML comment closed on a later line", ["<!--", "note", "-->"], true],
@@ -585,6 +587,19 @@ test("themeLinkProblems fails what reads one way at the top level and another un
     for (const problem of problems) assert.match(problem, /^line \d+ is indented \d+ columns /, label);
   };
   const afterMarker = (line, columns) => new RegExp(String.raw`^line ${line} is indented ${columns} columns after its block-quote or list marker, where GFM opens indented code inside the quote or the item and shows its Markdown as text\.`);
+
+  // Only a space or a tab is indentation: after a marker and five spaces, a no-break space, a form
+  // feed, a vertical tab, an ideographic space or a byte order mark is the first character of the
+  // item's indented code. micromark and pandoc both show the link as code.
+  for (const [name, character] of [["a no-break space", "\u00A0"], ["a form feed", "\f"], ["a vertical tab", "\v"], ["an ideographic space", "\u3000"], ["a byte order mark", "\uFEFF"]]) {
+    bad(`-     ${character}${velvet}\n`, afterMarker(1, 4), `${name} after a dash and five spaces`);
+  }
+  bad(`1.      \u00A0${velvet}\n`, afterMarker(1, 5), "a no-break space after an ordered marker and six spaces");
+  bad(`> -     \u3000${velvet}\n`, afterMarker(1, 4), "an ideographic space after a quote, a dash and five spaces");
+  bad(`1. -\t \f   ${velvet}\n`, afterMarker(1, 4), "a form feed after a nested marker, a tab and a space");
+  // A <pre> line the walk took for a block (JS \s takes in the no-break space) kept the code span on
+  // its next line out of the check; GFM reads it as paragraph text, and the span runs on over the link.
+  assert.ok(themeLinkProblems(`<pre\u00A0x\nText with a \x60 here\n</pre>\n${velvet} \x60 end \x60\n`, themes).some((problem) => unclosed(2).test(problem)), "<pre followed by a no-break space");
 
   // A code span across a line the walk reads as indented code, which GFM keeps in the paragraph
   // (a pipe line with no delimiter row, a list item, a quote and an autolink line are paragraph text):
