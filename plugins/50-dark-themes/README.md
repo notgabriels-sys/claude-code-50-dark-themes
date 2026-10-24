@@ -7,8 +7,9 @@ This plugin adds all 50 themes to Claude Code's `/theme` picker. The themes are 
 /plugin install 50-dark-themes@notgabriels-themes
 ```
 
-Run `/theme` and select any theme from the pack. Plugin themes are read-only; press `Ctrl+E` on one
-to copy it into `~/.claude/themes/` for editing.
+Then restart Claude Code: plugin themes load when it starts, so the session you installed from
+won't list them. Run `/theme` and select any theme from the pack. Plugin themes are read-only; press
+`Ctrl+E` on one to copy it into `~/.claude/themes/` for editing.
 
 Visual gallery: https://gabs-utilities.com/
 

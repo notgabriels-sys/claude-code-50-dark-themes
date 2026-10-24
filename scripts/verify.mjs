@@ -1,4 +1,5 @@
 import { readdir, readFile, stat } from "node:fs/promises";
+import { createContext, Script } from "node:vm";
 
 const root = new URL("../", import.meta.url);
 const pluginRoot = new URL("../plugins/50-dark-themes/", import.meta.url);
@@ -114,8 +115,9 @@ async function validateThemeFile(file, fileUrl) {
 for (const file of files) {
   await validateThemeFile(file, new URL(file, root));
 }
-// The storefront gallery covers the flagship 50; Vol. 2 names validated below
-// share the uniqueness set but are not gallery cards.
+// The storefront's flagship gallery covers these 50. Vol. 2 names, validated
+// below, join the same uniqueness set and have their own storefront section,
+// checked against VOL2_THEMES further down.
 const rootNames = new Set(names);
 
 const pluginFiles = (await readdir(pluginThemesRoot))
@@ -150,6 +152,12 @@ for (const file of vol2Files) {
     fail(`Vol. 2 theme ${theme.name} needs a six-digit hex preview terminal colour in previews.json.`);
   }
   vol2ThemesByName.set(theme.name, theme);
+}
+// previews.json must hold exactly the packaged themes, as CONTRIBUTING says.
+// The loop above only looks entries up, so a theme renamed or removed left its
+// old key behind and nothing noticed.
+for (const name of Object.keys(vol2Previews)) {
+  if (!vol2ThemesByName.has(name)) fail(`Vol. 2 previews.json has an entry for ${name}, which no packaged theme uses.`);
 }
 
 const marketplace = JSON.parse(await readFile(new URL(".claude-plugin/marketplace.json", root), "utf8"));
@@ -289,6 +297,33 @@ if (!html.includes("claude plugin install dark-themes-vol-2@notgabriels-themes")
 }
 
 // ---------------------------------------------------------------------------
+// The quick picks below, and the theme pages and sitemap further down, are
+// compared byte for byte with what their builders render, and the builders
+// write LF. Git for Windows checks text files out with CRLF by default
+// (core.autocrlf=true). On such a checkout of an untouched main, this script
+// called the quick picks and then every theme page stale, and 58 of main's 67
+// tests failed with it. So .gitattributes must keep text files LF in every
+// checkout. The last catch-all rule is the one Git applies.
+// ---------------------------------------------------------------------------
+const gitattributes = await readFile(new URL(".gitattributes", root), "utf8").catch(() => "");
+const gitattributeRules = gitattributes
+  .split(/\r?\n/)
+  .map((line) => line.trim())
+  .filter((line) => line && !line.startsWith("#"))
+  .map((line) => line.split(/\s+/));
+const catchAll = gitattributeRules.filter(([pattern]) => pattern === "*").at(-1) ?? [];
+if (
+  !catchAll.includes("eol=lf") ||
+  catchAll.some((attribute) => attribute === "-text" || attribute === "binary") ||
+  gitattributeRules.some((rule) => rule.includes("eol=crlf"))
+) {
+  fail(
+    ".gitattributes must keep text files LF in every checkout (`* text=auto eol=lf`): the generated pages are " +
+      "compared byte for byte, so on a CRLF checkout (Git for Windows' default) every one of them reads as stale.",
+  );
+}
+
+// ---------------------------------------------------------------------------
 // The "Start here" row in index.html names five themes and a measured contrast
 // ratio for each; scripts/build-quick-picks.mjs chooses and words them from
 // the theme files. Both are public claims, so the block between its markers
@@ -313,7 +348,10 @@ if (
   fail("index.html carries more than one quick-picks row or marker pair; the row appears once, between one pair of markers.");
 }
 const expectedQuickPicks = await buildQuickPicks(root);
-if (html.slice(quickPicksStart, quickPicksEnd + QUICK_PICKS_END.length) !== expectedQuickPicks) {
+// index.html is edited by hand, so an editor may save it with CRLF; Git stores
+// it LF either way. Compare the block's lines, not its line endings.
+const quickPicksOnDisk = html.slice(quickPicksStart, quickPicksEnd + QUICK_PICKS_END.length).replace(/\r\n/g, "\n");
+if (quickPicksOnDisk !== expectedQuickPicks) {
   fail(
     "The quick picks in index.html are stale: they are not what scripts/build-quick-picks.mjs renders " +
       "from the theme files. Run it and commit the result.",
@@ -670,6 +708,29 @@ for (const file of publicHtmlFiles) {
     }
   }
 }
+// The free Gumroad ZIP of the themes was withdrawn as unverified (#53), along
+// with its slug above. A sentence offering it with no link slips past the link
+// check: the install guide's FAQ structured data still said "The Gumroad ZIP can
+// be downloaded for zero by choosing the free price." No page may offer it.
+for (const file of [...publicHtmlFiles, "README.md", "llms.txt"]) {
+  const text = (await readFile(new URL(file, root), "utf8")).replace(/<[^>]+>/g, "").replace(/\s+/g, " ");
+  const offer = text.match(
+    /gumroad[^.]{0,80}(?:for zero|free price|\$0|name your price|free download)|(?:for zero|free price|\$0|name your price|free download)[^.]{0,80}gumroad/i,
+  );
+  if (offer) {
+    fail(`${file} still offers the withdrawn free Gumroad download ("${offer[0]}"). Point to the GitHub release instead.`);
+  }
+  // The terminal app owns its background; README and both articles say so, and
+  // tell the reader to set it. The storefront card for the paid Agensi setup
+  // assistant said the skill "sets your terminal background", though its own
+  // listing says it tells you the hex to set and changes no terminal config
+  // unless asked. Telling the reader to set it ("Set your terminal background")
+  // stays legal; saying a theme, plugin or skill sets it does not.
+  const setsBackground = text.match(/\b(?:sets|changes|configures)\s+(?:your|the)\s+terminal(?:'s|’s)?\s+(?:application'?s?\s+)?background/i);
+  if (setsBackground) {
+    fail(`${file} claims a tool "${setsBackground[0]}". Only the terminal app sets its background; say what to set it to instead.`);
+  }
+}
 for (const match of readme.matchAll(/https:\/\/notgabriel\.gumroad\.com\/l\/([a-z0-9-]+)/g)) {
   const slug = match[1];
   if (!verifiedGumroadSlugs.has(slug)) {
@@ -682,13 +743,16 @@ for (const id of verifiedPayPalIds) {
   }
 }
 
-const { roleAwareComparisonCount } = await import("./verify-contrast.mjs");
+const { roleAwareComparisonCount, indicatorTextBelowAA, indicatorTextFloor } = await import("./verify-contrast.mjs");
 
 // ---------------------------------------------------------------------------
-// Stated numbers are public claims. The share card shipped "726 role-aware
-// checks" for days after the real figure became 894, because nothing tied the
-// printed number to the computed one. Every surface that states a count is now
-// checked against what the verifier actually ran.
+// Stated numbers are public claims. The share card once printed "726
+// role-aware checks" after the real figure had become 894 — caught on a branch,
+// but only because someone happened to look; nothing tied the printed number to
+// the computed one. Checked here: the role-aware count on the storefront and the
+// share card, the share card's "<50> + <12> themes", and the storefront's Vol. 2
+// heading. The flagship's "50" is also the product's name throughout; it stays
+// true because the theme-file check above pins the flagship at exactly fifty.
 // ---------------------------------------------------------------------------
 const socialCard = await readFile(new URL("assets/social-preview.html", root), "utf8");
 const claimSurfaces = [
@@ -715,6 +779,22 @@ for (const [page, source] of claimSurfaces) {
   }
 }
 
+// The storefront's Vol. 2 heading states that pack's size in words, and it is
+// the storefront's only statement of it. A dozen or so other files — README,
+// both articles, llms.txt, the plugin descriptions and README, the planning
+// docs — give the same size in free prose, which no pattern here reads
+// reliably; CONTRIBUTING's add-a-theme step gives the search that finds them.
+const numberWords = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten",
+  "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen", "twenty"];
+const vol2Heading = html.match(/Vol\.(?:&nbsp;|\s)2\s*—\s*([a-z]+|\d+)\s+new atmospheres/i);
+if (!vol2Heading) {
+  fail("index.html states no Vol. 2 pack size in its heading; the count guard would be inert.");
+}
+const vol2Stated = /^\d+$/.test(vol2Heading[1]) ? Number(vol2Heading[1]) : numberWords.indexOf(vol2Heading[1].toLowerCase());
+if (vol2Stated !== vol2Files.length) {
+  fail(`index.html's Vol. 2 heading says "${vol2Heading[1]}" new atmospheres; the pack ships ${vol2Files.length}.`);
+}
+
 // The share card names both pack sizes: "<50> + <12> themes".
 const cardThemeCounts = socialCard.match(/<b>(\d+)\s*\+\s*(\d+)<\/b>\s*themes/);
 if (!cardThemeCounts) {
@@ -725,6 +805,44 @@ if (Number(cardThemeCounts[1]) !== files.length || Number(cardThemeCounts[2]) !=
     `The social card claims ${cardThemeCounts[1]} + ${cardThemeCounts[2]} themes; ` +
       `the repository ships ${files.length} + ${vol2Files.length}.`,
   );
+}
+
+// README promises AA for foreground accents and calls `permission` and
+// `planMode` the second accent, but verify-contrast.mjs holds both to the 3:1
+// non-text floor, and Claude Code draws text in them ("⏸ plan mode on", plan
+// titles, dialog titles). While that floor is below 4.5, README has to say so,
+// with the number of themes that keep that text below AA and the lowest ratio,
+// both as verify-contrast.mjs computes them. The claim is read from whichever
+// paragraph names both tokens with the non-text floor and states a count, so
+// another paragraph mentioning the floor does not get checked in its place.
+const indicatorCountClaim = /\b([a-z]+|\d+) of the (\d+) themes\b/i;
+const indicatorParagraphs = readme
+  .split(/\n\s*\n/)
+  .map((paragraph) => paragraph.replace(/\s+/g, " "))
+  .filter((paragraph) => /non-text floor/i.test(paragraph) && paragraph.includes("`permission`") && paragraph.includes("`planMode`"));
+const indicatorClaim = indicatorParagraphs.find((paragraph) => indicatorCountClaim.test(paragraph));
+const themeTotal = files.length + vol2Files.length;
+if (indicatorTextFloor >= 4.5) {
+  if (indicatorParagraphs.length) {
+    fail(`README.md still says \`permission\` and \`planMode\` are held to the non-text floor; verify-contrast.mjs holds them at ${indicatorTextFloor}:1.`);
+  }
+} else if (!indicatorParagraphs.length) {
+  fail("README.md's contrast-floor paragraph must say that `permission` and `planMode` are held to the non-text floor.");
+} else if (indicatorTextBelowAA.length) {
+  const lowest = indicatorTextBelowAA[0];
+  const stated = indicatorClaim?.match(indicatorCountClaim);
+  const statedCount = stated && (/^\d+$/.test(stated[1]) ? Number(stated[1]) : numberWords.indexOf(stated[1].toLowerCase()));
+  if (!stated || statedCount !== indicatorTextBelowAA.length || Number(stated[2]) !== themeTotal) {
+    fail(
+      `README.md must say that ${indicatorTextBelowAA.length} of the ${themeTotal} themes keep ` +
+        `\`permission\`/\`planMode\` text below AA${stated ? `; it says "${stated[0]}"` : ""}.`,
+    );
+  }
+  if (!indicatorClaim.includes(`${lowest.ratio.toFixed(2)}:1 in ${lowest.name}`)) {
+    fail(`README.md must give the lowest \`permission\`/\`planMode\` ratio: ${lowest.ratio.toFixed(2)}:1 in ${lowest.name}.`);
+  }
+} else if (indicatorParagraphs.some((paragraph) => indicatorCountClaim.test(paragraph) || /\d\.\d\d:1|below (?:AA|4\.5:1)/i.test(paragraph))) {
+  fail("README.md says some `permission`/`planMode` text is below AA, but every theme now holds it at 4.5:1.");
 }
 
 // The finder hides non-matching cards by setting the `hidden` property. That
@@ -794,6 +912,89 @@ if (!/matches by filename, not contents/i.test(installerHeader)) {
   fail("install.sh --help must say --uninstall matches by filename, not contents; without it the destructive path reads safer than it is.");
 }
 
+// The themes, the plugins and the installer are MIT, but the repository is not:
+// every product folder ships its own licence, and those forbid resale or
+// redistribution. The article's FAQ structured data said "The complete theme
+// set and source repository are free under the MIT license" while its visible
+// answer named only the MIT parts. Wherever a product licence is not MIT, no
+// public page (structured data included) may call the repository MIT.
+const productLicences = [];
+for (const entry of await readdir(new URL("products/", root), { withFileTypes: true })) {
+  if (!entry.isDirectory()) continue;
+  const licence = new URL(`products/${entry.name}/LICENSE.txt`, root);
+  try {
+    if (!/^\s*MIT License/.test(await readFile(licence, "utf8"))) productLicences.push(entry.name);
+  } catch {}
+}
+if (productLicences.length) {
+  for (const file of [...publicHtmlFiles, "README.md", "llms.txt", "plugins/50-dark-themes/README.md", "plugins/dark-themes-vol-2/README.md"]) {
+    const text = (await readFile(new URL(file, root), "utf8")).replace(/<[^>]+>/g, "").replace(/\s+/g, " ");
+    const claim = text.match(/repositor(?:y|ies)\b[^.]{0,40}\bMIT\b|\bMIT\b[^.]{0,40}\brepositor(?:y|ies)\b/i);
+    if (claim) {
+      fail(
+        `${file} says the repository is MIT ("${claim[0]}"), but products/${productLicences[0]} and ` +
+          `${productLicences.length - 1} other product folder(s) carry their own non-MIT licences. Name the MIT parts instead.`,
+      );
+    }
+  }
+}
+
+// CI runs on pull requests and on pushes to main only (verify.yml's push
+// trigger is filtered to main). README and CONTRIBUTING said it ran "on every
+// push"; this branch had dozens of pushes and not one push-triggered run. When
+// the push trigger names branches, "every push" must say which.
+const verifyWorkflow = await readFile(new URL(".github/workflows/verify.yml", root), "utf8");
+if (/^\s*push:\s*\n\s*branches:/m.test(verifyWorkflow)) {
+  for (const file of ["README.md", "CONTRIBUTING.md"]) {
+    const text = (await readFile(new URL(file, root), "utf8")).replace(/\s+/g, " ");
+    const claim = text.match(/every push(?! to)/i);
+    if (claim) {
+      fail(`${file} says CI runs on "${claim[0]}", but verify.yml runs only on pull requests and pushes to main.`);
+    }
+  }
+}
+
+// Plugin themes load when Claude Code starts. Checked live on 2.1.302: after
+// `/plugin install` inside a running session ("Plugin is now active."), or
+// `claude plugin install` from a shell while a session is open, /theme lists
+// none of the pack until Claude Code restarts. So every page that hands out a
+// plugin install command must say, close to the command, to restart.
+// Tags are dropped rather than spaced, so a syntax-highlighted command
+// (`<span>50</span>-dark-themes`) still reads as one.
+for (const file of [
+  "README.md",
+  "llms.txt",
+  "plugins/50-dark-themes/README.md",
+  "plugins/dark-themes-vol-2/README.md",
+  "index.html",
+  "claude-code-theme-install-guide.html",
+]) {
+  let text = await readFile(new URL(file, root), "utf8");
+  if (file.endsWith(".html")) {
+    text = text
+      .replace(/<!--[\s\S]*?-->/g, "")
+      .replace(/<(script|style)\b[\s\S]*?<\/\1\s*>/gi, "")
+      .replace(/<[^>]+>/g, "")
+      .replace(/&nbsp;|&#160;/g, " ");
+  }
+  text = text.replace(/\s+/g, " ");
+  const commands = [...text.matchAll(/plugin install [\w-]+@notgabriels-themes/g)];
+  if (!commands.length) fail(`${file} no longer shows a plugin install command; update the restart check in verify.mjs.`);
+  // Run alone on a fresh machine, the install fails: "Plugin not found in
+  // marketplace". llms.txt gave only that line, for agents that run it verbatim.
+  if (!text.includes("marketplace add notgabriels-sys/claude-code-50-dark-themes")) {
+    fail(`${file} gives a plugin install command but not the marketplace add command it needs first.`);
+  }
+  for (const command of commands) {
+    if (!/restart/i.test(text.slice(command.index, command.index + 700))) {
+      fail(
+        `${file} gives "${command[0]}" without saying to restart Claude Code if it was open. Plugin themes ` +
+          "load when Claude Code starts, so a session open during the install lists none of them in /theme.",
+      );
+    }
+  }
+}
+
 // The install guide's manual fallback is a procedure people follow verbatim on
 // a page that search can land them on directly. It used to open with
 // `cp *.json ~/.claude/themes/` and never say where the files come from — the
@@ -839,7 +1040,8 @@ if (!verifiedGumroadSlugs.has("zvbti")) {
   }
 }
 
-// One image, one description. preview.png is shared by every public page; it
+// One image, one description. preview.png is shared by every public page that
+// carries a share image (impressum.html carries none); it
 // was described three different ways, two of them as "a gallery preview" of a
 // card that has never been a gallery. Alt text drifts silently because nobody
 // sees it — so pages that share an image must state the same alt, and a page
@@ -868,6 +1070,471 @@ for (const file of publicHtmlFiles) {
   if (!seen) sharedImageAlts.set(image[1], { file, alt: ogAlt[1] });
 }
 
+// Claude Code's /theme takes no argument. Run live on 2.1.302 with the pack
+// installed, `/theme deep-field` opened the same picker as `/theme`, left the
+// current theme ticked and saved nothing. Every gallery card still copied
+// `/theme <slug>` under 'Applied theme "<Name>"' — sixty-two buttons handing out
+// a command that applies nothing. Copy the bare command; name the theme to pick.
+if (/\/theme \$\{|["'`]\/theme [a-z0-9][a-z0-9-]*["'`]/.test(html)) {
+  fail(
+    "index.html copies a /theme command with a theme argument. Claude Code's /theme ignores " +
+      "arguments, so it applies nothing. Copy /theme and name the theme to choose.",
+  );
+}
+// Card checks read what the page renders, not one spelling of its source.
+// Review rounds showed every regex over the template either missed a refactor
+// (`${esc(themeSlug)}`, `${slug(name)}`) or rejected correct styling
+// (`<span class="hex">`), and evaluating a slice of the script broke on CRLF
+// line endings, helpers defined elsewhere and browser globals. So run the
+// page's inline scripts in order, as the browser does, in a node:vm context
+// against a stand-in DOM that records what they write, and take renderTheme,
+// THEMES and VOL2_THEMES from them. Three rules keep that honest:
+// - a script that runs too long, throws or rejects is reported, never hangs
+//   or crashes the build;
+// - #grid and #vol2Grid must hold exactly THEMES.map(renderTheme) and
+//   VOL2_THEMES.map(renderTheme), so the cards checked are the cards shown;
+// - every rendered card must still show its theme's name, so a DOM call the
+//   stand-in does not model fails loudly instead of rendering blank cards
+//   that pass.
+const pageScriptTimeout = 2000;
+// A real tree ends, and loops that walk it stop on null.
+const treeWalks = new Set([
+  "firstChild", "lastChild", "firstElementChild", "lastElementChild", "parentNode", "parentElement",
+  "nextSibling", "previousSibling", "nextElementSibling", "previousElementSibling", "offsetParent",
+]);
+const standIn = (props = Object.create(null)) =>
+  new Proxy(function () {}, {
+    get(target, key) {
+      if (Object.hasOwn(props, key)) return props[key];
+      if (key === Symbol.iterator) return function* () {};
+      if (key === Symbol.toPrimitive) return () => "";
+      if (typeof key === "symbol" || key === "then") return undefined;
+      if (treeWalks.has(key)) return null;
+      return (props[key] = standIn());
+    },
+    set(target, key, value) {
+      props[key] = value;
+      return true;
+    },
+    apply: () => standIn(),
+    construct: () => standIn(),
+  });
+const withProps = (props) => standIn(Object.assign(Object.create(null), props));
+const pageElements = new Map();
+const pageElement = (id) => {
+  if (!pageElements.has(id)) {
+    const props = Object.create(null);
+    pageElements.set(id, { props, element: standIn(props) });
+  }
+  return pageElements.get(id).element;
+};
+// Enough of a new element for the usual escaping idioms: set textContent or
+// append text (a string or a createTextNode()), then read innerHTML.
+const escapeText = (text) =>
+  text.replace(/[&<>\u00a0]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\u00a0": "&nbsp;" })[c]);
+const textNodes = new WeakMap();
+const createdTextNode = (value) => {
+  const node = withProps({ nodeType: 3, data: String(value), textContent: String(value) });
+  textNodes.set(node, String(value));
+  return node;
+};
+const createdElement = () => {
+  const props = Object.create(null);
+  let text = "";
+  let markup = "";
+  const textOf = (item) =>
+    typeof item === "string" || typeof item === "number" ? String(item) : textNodes.get(item) ?? "";
+  const append = (...items) => {
+    for (const item of items) {
+      text += textOf(item);
+      markup += escapeText(textOf(item));
+    }
+  };
+  const textAccess = {
+    get: () => text,
+    set: (value) => {
+      text = String(value);
+      markup = escapeText(text);
+    },
+  };
+  Object.defineProperties(props, {
+    textContent: textAccess,
+    innerText: textAccess,
+    innerHTML: { get: () => markup, set: (value) => (markup = text = String(value)) },
+  });
+  Object.assign(props, {
+    nodeType: 1,
+    append,
+    appendChild: (node) => (append(node), node),
+    replaceChildren: (...items) => {
+      text = markup = "";
+      append(...items);
+    },
+    insertAdjacentText: (position, value) => {
+      if (/^afterbegin$/i.test(position)) {
+        text = String(value) + text;
+        markup = escapeText(String(value)) + markup;
+      } else if (/^beforeend$/i.test(position)) append(value);
+    },
+  });
+  return standIn(props);
+};
+// DOMContentLoaded and load fire once the scripts have run.
+const loadListeners = [];
+const addEventListener = (type, listener) => {
+  if (/^(?:DOMContentLoaded|load)$/.test(type)) loadListeners.push(listener);
+};
+const pageDocument = withProps({
+  addEventListener,
+  readyState: "loading",
+  getElementById: (id) => pageElement(String(id)),
+  querySelector: (selector) =>
+    /^#[\w-]+$/.test(String(selector).trim()) ? pageElement(String(selector).trim().slice(1)) : standIn(),
+  createElement: createdElement,
+  createTextNode: createdTextNode,
+});
+const pageStorage = () =>
+  withProps({ length: 0, getItem: () => null, key: () => null, setItem() {}, removeItem() {}, clear() {} });
+const pageGlobals = {
+  document: pageDocument,
+  console: { log() {}, info() {}, warn() {}, error() {}, debug() {} },
+  localStorage: pageStorage(),
+  sessionStorage: pageStorage(),
+  matchMedia: (query) => withProps({ matches: false, media: String(query) }),
+  // Never settles, so code waiting on the network simply never resumes.
+  fetch: () => new Promise(() => {}),
+};
+pageGlobals.window = pageGlobals.self = withProps({ ...pageGlobals, addEventListener });
+for (const name of [
+  "navigator", "location", "history", "getComputedStyle", "requestAnimationFrame", "cancelAnimationFrame",
+  "setTimeout", "clearTimeout", "setInterval", "clearInterval", "queueMicrotask", "IntersectionObserver",
+  "ResizeObserver", "MutationObserver", "Event", "CustomEvent", "HTMLElement", "Element", "Node", "performance",
+  "alert", "scrollTo",
+]) {
+  pageGlobals[name] = standIn();
+}
+Object.assign(pageGlobals, { URL, URLSearchParams, TextEncoder, TextDecoder, atob, btoa });
+const pageContext = createContext(pageGlobals, { microtaskMode: "afterEvaluate" });
+let pageScriptError;
+const runInPage = (source, filename = "index.html") => {
+  try {
+    return { value: new Script(source, { filename }).runInContext(pageContext, { timeout: pageScriptTimeout }) };
+  } catch (error) {
+    return { error };
+  }
+};
+const recordPageRejection = (reason) => {
+  pageScriptError ??= reason;
+};
+process.on("unhandledRejection", recordPageRejection);
+// A browser runs no script inside a comment or a <template>.
+const runnableMarkup = html.replace(/<!--[\s\S]*?-->/g, "").replace(/<template\b[\s\S]*?<\/template\s*>/gi, "");
+for (const [, attributes, source] of runnableMarkup.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi)) {
+  const type = attributes.match(/\btype\s*=\s*["']?([^"'\s>]+)/i)?.[1];
+  if (/\bsrc\s*=/i.test(attributes) || (type && !/^(?:text|application)\/(?:java|ecma)script$/i.test(type))) continue;
+  const { error } = runInPage(source);
+  pageScriptError ??= error;
+}
+pageGlobals.__fireLoadListeners = () => {
+  for (const listener of loadListeners.splice(0)) {
+    try {
+      if (typeof listener === "function") listener.call(pageDocument, withProps({ type: "load" }));
+    } catch (error) {
+      pageScriptError ??= error;
+    }
+  }
+};
+const listenerRun = runInPage("__fireLoadListeners()");
+pageScriptError ??= listenerRun.error;
+await new Promise((resolve) => setImmediate(resolve));
+process.off("unhandledRejection", recordPageRejection);
+const pageScriptNote = pageScriptError
+  ? ` The page script failed first: ${pageScriptError?.message ?? pageScriptError}.`
+  : "";
+const bindings = runInPage("({ renderTheme, THEMES, VOL2_THEMES })");
+if (bindings.error) {
+  fail(
+    `index.html's script did not define renderTheme, THEMES and VOL2_THEMES when verify.mjs ran it ` +
+      `(${bindings.error.message}).${pageScriptNote} Update the card checks in verify.mjs.`,
+  );
+}
+// Rendered inside the page, by the page's own .map(), so every argument it
+// passes is the one the browser passes.
+const rendered = runInPage("({ grid: THEMES.map(renderTheme), vol2Grid: VOL2_THEMES.map(renderTheme) })");
+if (rendered.error) {
+  fail(
+    `renderTheme() could not render the gallery when verify.mjs ran it (${rendered.error.message}).` +
+      `${pageScriptNote} Update the card checks.`,
+  );
+}
+const squeeze = (markup) => String(markup).replace(/>\s+</g, "><").trim();
+const renderedCards = [];
+for (const [gridId, listName] of [["grid", "THEMES"], ["vol2Grid", "VOL2_THEMES"]]) {
+  const rows = [...bindings.value[listName]];
+  const cards = [...rendered.value[gridId]];
+  const shown = pageElements.get(gridId)?.props.innerHTML;
+  if (cards.some((card) => typeof card !== "string") || squeeze(cards.join("")) !== squeeze(shown ?? "")) {
+    fail(
+      `#${gridId} in index.html does not hold ${listName}.map(renderTheme), so verify.mjs cannot tell which ` +
+        `cards the page shows.${pageScriptNote} Update the card checks to follow the new rendering.`,
+    );
+  }
+  rows.forEach((row, index) => renderedCards.push({ row, markup: cards[index] }));
+}
+
+// Text as a reader gets it: comments, <style> and <script> removed, block
+// boundaries as line breaks, other tags as spaces, character references
+// decoded, and source whitespace collapsed as a browser collapses it: a
+// newline in the HTML source counts as a line break only inside <pre> or
+// <textarea>, where a browser keeps it. Attribute values
+// are read separately, because a screen reader announces an aria-label and a
+// share card shows a meta description.
+const namedEntities = {
+  nbsp: "\u00a0", thinsp: "\u2009", ensp: "\u2002", emsp: "\u2003", ldquo: "\u201c", rdquo: "\u201d",
+  lsquo: "\u2018", rsquo: "\u2019", quot: '"', apos: "'", middot: "\u00b7", mdash: "\u2014", ndash: "\u2013",
+  gt: ">", lt: "<",
+};
+const fromCodePoint = (code, reference) => (code <= 0x10ffff ? String.fromCodePoint(code) : reference);
+const decodeEntities = (text) =>
+  text
+    .replace(/&#(\d+);?/g, (reference, code) => fromCodePoint(Number(code), reference))
+    .replace(/&#x([0-9a-f]+);?/gi, (reference, code) => fromCodePoint(parseInt(code, 16), reference))
+    .replace(/&([a-z]+);/gi, (reference, name) => namedEntities[name.toLowerCase()] ?? reference)
+    .replace(/&amp;/gi, "&");
+const withoutCode = (markup) =>
+  markup.replace(/<!--[\s\S]*?-->/g, " ").replace(/<(style|script)\b[\s\S]*?<\/\1\s*>/gi, " ");
+const anyTag = /<(\/?)([a-z][a-z0-9-]*)\b((?:[^>"']|"[^"]*"|'[^']*')*)>/gi;
+const blockTag = new RegExp(
+  "^(?:address|article|aside|blockquote|br|button|caption|dd|details|dialog|div|dl|dt|fieldset|figcaption|figure|" +
+    "footer|form|h[1-6]|header|hr|li|main|nav|ol|p|pre|section|summary|table|tbody|td|tfoot|th|thead|tr|ul)$",
+  "i",
+);
+const blockBreak = "\u0000";
+const keepPreformatted = (markup) =>
+  markup.replace(/<(pre|textarea)\b[\s\S]*?<\/\1\s*>/gi, (block) => block.replace(/\r\n?|\n/g, blockBreak));
+const visibleText = (markup) =>
+  decodeEntities(
+    keepPreformatted(withoutCode(markup))
+      .replace(anyTag, (tag, closing, name) => (blockTag.test(name) ? blockBreak : " "))
+      .replace(/<![^>]*>/g, " "),
+  )
+    .replace(/\s+/g, " ")
+    .replace(/ ?\u0000[\s\u0000]*/g, "\n");
+const startTag = /<[a-z][a-z0-9-]*(?:\s+[^\s"'=/>]+(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'>]+))?)*\s*\/?>/gi;
+const attributeValues = (markup) =>
+  [...withoutCode(markup).matchAll(startTag)].flatMap(([tag]) =>
+    [...tag.matchAll(/\s[^\s"'=/>]+\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+))/g)].map((attribute) =>
+      decodeEntities(attribute[1] ?? attribute[2] ?? attribute[3]).replace(/\s+/g, " "),
+    ),
+  );
+// The text of every element that displays a command: code, kbd, samp, pre,
+// buttons, and anything whose class names a prompt or a command.
+const voidTag = /^(?:area|base|br|col|embed|hr|img|input|link|meta|source|track|wbr)$/i;
+const commandTexts = (markup) => {
+  const source = keepPreformatted(withoutCode(markup));
+  const open = [];
+  const texts = [];
+  for (const tag of source.matchAll(anyTag)) {
+    const [whole, closing, name, attributes] = tag;
+    if (closing) {
+      const at = open.findLastIndex((entry) => entry.name === name.toLowerCase());
+      if (at < 0) continue;
+      for (const entry of open.splice(at)) {
+        if (entry.command) texts.push(visibleText(source.slice(entry.from, tag.index)));
+      }
+    } else if (!voidTag.test(name) && !/\/\s*$/.test(attributes)) {
+      const className = attributes.match(/\bclass\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+))/i);
+      const command =
+        /^(?:button|code|kbd|pre|samp)$/i.test(name) ||
+        /prompt|command/i.test(className?.[1] ?? className?.[2] ?? className?.[3] ?? "");
+      open.push({ name: name.toLowerCase(), command, from: tag.index + whole.length });
+    }
+  }
+  return texts;
+};
+const jsonLdStrings = [];
+const collectStrings = (value) => {
+  if (typeof value === "string") jsonLdStrings.push(value);
+  else if (value && typeof value === "object") Object.values(value).forEach(collectStrings);
+};
+const jsonLdBlock = /<script\b[^>]*\btype\s*=\s*["']?application\/ld\+json\b[^>]*>([\s\S]*?)<\/script\s*>/gi;
+for (const [, body] of html.matchAll(jsonLdBlock)) {
+  try {
+    collectStrings(JSON.parse(body));
+  } catch {
+    jsonLdStrings.push(body);
+  }
+}
+
+// A stand-in DOM that loses text renders blank cards that every check below
+// would pass. Each card names its theme, so a card without its name means the
+// stand-in no longer models what the renderer does.
+for (const { row, markup } of renderedCards) {
+  if (!visibleText(markup).includes(row[0])) {
+    fail(
+      `verify.mjs rendered the ${row[0]} card without its name, so its stand-in DOM no longer models what ` +
+        `renderTheme() does (or the card stopped naming its theme).${pageScriptNote} Update the card checks.`,
+    );
+  }
+}
+
+// The same command shown rather than copied — the cards' old `> theme <slug>`
+// prompt, the hero's `> theme deep-field`, `<code>/theme graphite</code>` —
+// teaches the same dead end. A theme's slug or name counts as an argument
+// right after `/theme`, after `theme` behind a `>` prompt glyph, and a
+// hyphenated slug after `theme` counts anywhere, since it is never prose.
+// Inside an element that displays a command, a slug as typed (lowercase)
+// after `theme` counts however the prompt glyph is drawn; a capitalised
+// name there is a label ("Save theme Absinthe"), not a command. None of
+// these reach across a line break. Prose that names a theme, such as
+// 'Applied theme Graphite', "the theme Static", or "Run /theme" with the
+// name on the next line, stays legal.
+const themeSlugs = [...files, ...vol2Files].map((file) => file.replace(/\.json$/, ""));
+const asAlternatives = (words) =>
+  [...new Set(words)]
+    .sort((a, b) => b.length - a.length)
+    .map((word) => word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/ /g, "[^\\S\\n]+"))
+    .join("|");
+const themeArgument = `(${asAlternatives([...themeSlugs, ...renderedCards.map(({ row }) => row[0])])})(?![\\w-])`;
+const anywherePatterns = [
+  new RegExp(`(?:/|>)[^\\S\\n]*theme[^\\S\\n]+${themeArgument}`, "i"),
+  new RegExp(`\\btheme[^\\S\\n]+(${asAlternatives(themeSlugs.filter((slug) => slug.includes("-")))})(?![\\w-])`, "i"),
+];
+const commandPattern = new RegExp(`\\b(?:theme|Theme|THEME)[^\\S\\n]+(${asAlternatives(themeSlugs)})(?![\\w-])`);
+const readable = (where, markup) => [
+  { where, text: visibleText(markup), patterns: anywherePatterns },
+  ...attributeValues(markup).map((text) => ({ where: `${where}, in an attribute`, text, patterns: anywherePatterns })),
+  ...commandTexts(markup).map((text) => ({ where, text, patterns: [commandPattern] })),
+];
+for (const { where, text, patterns } of [
+  ...readable("the page", html),
+  ...jsonLdStrings.map((text) => ({ where: "its JSON-LD", text, patterns: anywherePatterns })),
+  ...renderedCards.flatMap(({ row, markup }) => readable(row[0], markup)),
+]) {
+  for (const pattern of patterns) {
+    const shown = text.match(pattern);
+    if (shown) {
+      fail(
+        `index.html shows "theme ${shown[1]}" as a command (${where}). Claude Code's /theme ignores the ` +
+          `argument; show /theme and name the theme to choose.${pageScriptNote}`,
+      );
+    }
+  }
+}
+
+// The install guide (its HowTo steps included) and the semantic-colours
+// article tell readers to set their terminal to "the theme's surface hex from
+// the gallery". The cards only ever printed the accent hex; the surface value
+// lived in an inline style nobody can read without devtools, so a reader
+// following the steps would paint their terminal in a bright accent colour.
+// Wherever a public page promises it, every rendered card must show
+// "surface" followed closely by that card's own surface hex, as visible text
+// (an attribute or a comment does not count; any styling around it does).
+const surfacePromisedBy = [];
+for (const file of publicHtmlFiles) {
+  const source = await readFile(new URL(file, root), "utf8");
+  if (/surface hex/i.test(source)) surfacePromisedBy.push(file);
+}
+if (surfacePromisedBy.length) {
+  for (const { row, markup } of renderedCards) {
+    const bg = row[5];
+    if (!new RegExp(`surface\\b[^#]{0,12}${bg}(?![0-9a-f])`, "i").test(visibleText(markup))) {
+      fail(
+        `${surfacePromisedBy.join(", ")} promise a surface hex in the gallery, but the ${row[0]} card does not ` +
+          `print "surface ${bg}" as visible text.${pageScriptNote}`,
+      );
+    }
+  }
+}
+
+// A live region only announces while it is in the accessibility tree, and the
+// body of a closed <details> is not. The copy confirmation lived inside the
+// closed-by-default theme archive, so copying from a Vol. 2 card — which sits
+// outside the archive and is always visible — announced nothing at all.
+// A <summary> renders while closed, so a live region in a top-level summary is
+// fine. role="status|alert|log" and <output> are live regions too. Walk the
+// markup (comments, <style> and <script> removed) so nesting is counted
+// properly and a "<details>" mentioned in CSS or JS cannot trip the check.
+for (const file of publicHtmlFiles) {
+  const source = await readFile(new URL(file, root), "utf8");
+  const markup = source.replace(/<!--[\s\S]*?-->/g, "").replace(/<(style|script)\b[\s\S]*?<\/\1>/gi, "");
+  let depth = 0;
+  let inSummary = 0;
+  // Every start tag's attributes are inspected, <details> and <summary> included:
+  // a region on a nested <summary> inside the closed body is just as silent.
+  for (const [tagText, closing, tagName, attrs] of markup.matchAll(/<(\/?)([a-z][a-z0-9-]*)\b([^>]*)>/gi)) {
+    const tag = tagName.toLowerCase();
+    if (closing) {
+      if (tag === "details") depth = Math.max(0, depth - 1);
+      if (tag === "summary") inSummary = Math.max(0, inSummary - 1);
+      continue;
+    }
+    if (tag === "summary") inSummary += 1;
+    const live =
+      tag === "output" ||
+      /\baria-live\s*=\s*["']?(?!off\b)[a-z]/i.test(attrs) ||
+      /\brole\s*=\s*["']?(?:status|alert|log)\b/i.test(attrs);
+    if (live && (depth > 1 || (depth === 1 && !inSummary))) {
+      fail(`${file} puts a live region inside a <details> body, silent whenever the disclosure is closed: ${tagText}`);
+    }
+    if (tag === "details") depth += 1;
+  }
+}
+
+// The share image's alt text said its colour strip showed "the pack's accent
+// colors". The strip is the site's own syntax-role palette: seven of its eight
+// colours appear in no theme at all, and the eighth is a text colour. If any
+// alt text claims theme accents again, every colour in the strip must be one.
+const accentClaims = [];
+for (const file of publicHtmlFiles) {
+  const source = await readFile(new URL(file, root), "utf8");
+  if (/image:alt" content="[^"]*accent colou?rs/i.test(source)) accentClaims.push(file);
+}
+if (accentClaims.length) {
+  const tokens = new Map([...socialCard.matchAll(/--([a-z-]+):(#[0-9a-f]{6})/gi)].map(([, k, v]) => [k, v.toUpperCase()]));
+  const strip = [...socialCard.matchAll(/\.roles i:nth-child\(\d+\)\{background:var\(--([a-z-]+)\)\}/g)].map(([, k]) => tokens.get(k));
+  const accents = new Set();
+  for (const file of files) accents.add(JSON.parse(await readFile(new URL(file, root), "utf8")).overrides.claude.toUpperCase());
+  for (const file of vol2Files) accents.add(JSON.parse(await readFile(new URL(file, vol2ThemesRoot), "utf8")).overrides.claude.toUpperCase());
+  const strangers = strip.filter((hex) => !accents.has(hex));
+  if (!strip.length || strangers.length) {
+    fail(
+      `${accentClaims.join(", ")} describe the share card's strip as theme accent colours, but ` +
+        `${strangers.length || "all"} of its colours are not any theme's accent (${strangers.join(", ")}).`,
+    );
+  }
+}
+
+// The finder says it searches by file name. Readers meet the files as
+// `graphite.json` (the repo, the manual-install `cp *.json`), so the search
+// text must carry the real name, extension included, not just the stem.
+// Check the behaviour rather than one spelling of the promise: any visible
+// mention of file names arms it; the card's search text itself must carry
+// `${themeSlug}.json`; and every real theme file must be what the page's own
+// slug() produces from the theme's name, or that search finds nothing.
+const visibleCopy = html.replace(/<!--[\s\S]*?-->/g, "").replace(/<(style|script)\b[\s\S]*?<\/\1>/gi, "");
+if (/file ?names?/i.test(visibleCopy)) {
+  const searchable = html.match(/const searchable = `([^`]*)`/);
+  if (!searchable) {
+    fail("index.html promises file-name search, but no card search text (const searchable) was found; the guard would be inert.");
+  } else if (!searchable[1].includes("${themeSlug}.json")) {
+    fail("index.html says the finder searches by file name, but the cards' search text lacks ${themeSlug}.json.");
+  }
+  const pageSlug = 'const slug = n => n.toLowerCase().replace(/ /g,"-");';
+  if (!html.includes(pageSlug)) {
+    fail("index.html's slug() changed; update the mirror in verify.mjs so file-name search is still checked.");
+  }
+  const mirrorSlug = (name) => name.toLowerCase().replace(/ /g, "-");
+  for (const [dir, list] of [[root, files], [vol2ThemesRoot, vol2Files]]) {
+    for (const file of list) {
+      const { name } = JSON.parse(await readFile(new URL(file, dir), "utf8"));
+      if (`${mirrorSlug(name)}.json` !== file) {
+        fail(`Searching "${file}" finds nothing: the page derives "${mirrorSlug(name)}.json" from "${name}".`);
+      }
+    }
+  }
+}
+
 // ---------------------------------------------------------------------------
 // One page per theme under theme/<slug>/ is rendered from the theme files by
 // scripts/build-theme-pages.mjs. A page states hex values, measured ratios and
@@ -876,7 +1543,20 @@ for (const file of publicHtmlFiles) {
 // for a theme that does not, and sitemap.xml must list each one (the builder
 // owns the sitemap for that reason).
 // ---------------------------------------------------------------------------
-const { buildThemePages } = await import("./build-theme-pages.mjs");
+const { buildThemePages, CONTRAST_CHECKS: pageFloors } = await import("./build-theme-pages.mjs");
+const { contrastFloors } = await import("./verify-contrast.mjs");
+// Each theme page prints its floors and says they are the ones
+// verify-contrast.mjs checks. The builder keeps its own list, so hold it to that
+// one: the same tokens, floors and surfaces, in the same order.
+const floorKey = ({ token, floor, surfaces }) => `${token} ${floor} ${surfaces.join("+")}`;
+if (pageFloors.map(floorKey).join("|") !== contrastFloors.map(floorKey).join("|")) {
+  const pageOnly = pageFloors.map(floorKey).filter((key) => !contrastFloors.map(floorKey).includes(key));
+  const checkedOnly = contrastFloors.map(floorKey).filter((key) => !pageFloors.map(floorKey).includes(key));
+  fail(
+    "scripts/build-theme-pages.mjs states contrast floors that scripts/verify-contrast.mjs does not check " +
+      `(pages only: ${pageOnly.join(", ") || "none"}; checked only: ${checkedOnly.join(", ") || "none"}).`,
+  );
+}
 const themePages = await buildThemePages(root);
 for (const [path, expected] of themePages) {
   let actual;
@@ -908,6 +1588,68 @@ for (const entry of themeDirectoryEntries) {
 // unverified product links, and the shared share image described one way.
 for (const [path, source] of themePages) {
   if (!path.endsWith(".html")) continue;
+  // The dead command again: #59's pages showed `> theme <slug>` in the
+  // specimen and offered `/theme <slug>` as a copy panel on all 62 pages, a
+  // command that opens the same picker as `/theme` and applies nothing.
+  for (const { where, text, patterns } of readable("the page", source)) {
+    for (const pattern of patterns) {
+      const shown = text.match(pattern);
+      if (shown) {
+        fail(
+          `${path} shows "theme ${shown[1]}" as a command (${where}). Claude Code's /theme ignores the ` +
+            "argument; show /theme and name the theme to choose.",
+        );
+      }
+    }
+  }
+  // The plugin restart note, as for the root pages above: #59's pages and
+  // their index gave the install command and went straight to /theme.
+  const pageText = source
+    .replace(/<(script|style)\b[\s\S]*?<\/\1\s*>/gi, "")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;|&#160;/g, " ")
+    .replace(/\s+/g, " ");
+  // The single-file route's own "restart it once" (about a new themes folder)
+  // sits within reach, so the note must be about the open session or plugins.
+  const pluginRestart = /[^.]*\brestart\b[^.]*\b(?:open|plugin)|[^.]*\b(?:open|plugin)\b[^.]*\brestart/i;
+  for (const command of pageText.matchAll(/plugin install [\w-]+@notgabriels-themes/g)) {
+    if (!pluginRestart.test(pageText.slice(command.index, command.index + 700))) {
+      fail(
+        `${path} gives "${command[0]}" without saying to restart Claude Code if it was open. Plugin themes ` +
+          "load when Claude Code starts, so a session open during the install lists none of them in /theme.",
+      );
+    }
+  }
+  // Token roles, as items 7 and 26 found them in Claude Code 2.1.302: `subtle`
+  // is drawn as text far more than as hairlines, and `permission` and
+  // `planMode` colour text although they are held to the non-text floor.
+  // #59's pages called `subtle` "decorative … carries no meaning" and labelled
+  // both rows plain "WCAG AA, non-text".
+  const subtleRole = source.match(/<code>subtle<\/code><\/td><td>([^<]*)<\/td>/);
+  if (subtleRole && /decorative|no meaning|reserved/i.test(subtleRole[1])) {
+    fail(`${path} describes subtle as "${subtleRole[1]}"; Claude Code draws de-emphasised text in it.`);
+  }
+  for (const row of source.matchAll(/<td>(permission|planMode) on terminal background<\/td>(?:<td[^>]*>[\s\S]*?<\/td>){3}<td class="ok">([^<]*)<\/td>/g)) {
+    if (!/\btext\b/i.test(row[2].replace(/non-text/gi, ""))) {
+      fail(`${path} labels its ${row[1]} row "${row[2]}" as if it were non-text only; Claude Code also draws text in it.`);
+    }
+  }
+  // Copy buttons need a way to tell a screen reader the copy happened: their
+  // aria-label outlasts the visible "Copied", and #59's pages had no live
+  // region, as the storefront's Vol. 2 copies once did (item 3).
+  if (source.includes("data-copy=")) {
+    const liveRegion = source.match(/<[a-z]+\b[^>]*\bid="([\w-]+)"[^>]*\baria-live="(?:polite|assertive)"[^>]*>|<[a-z]+\b[^>]*\baria-live="(?:polite|assertive)"[^>]*\bid="([\w-]+)"[^>]*>/);
+    const regionId = liveRegion && (liveRegion[1] || liveRegion[2]);
+    if (!regionId || !source.includes(`getElementById("${regionId}")`)) {
+      fail(`${path} has copy buttons but no live region the copy script writes to, so a screen reader hears nothing when a copy succeeds or fails.`);
+    }
+  }
+  // index.html defines #plugin as the 50-theme plugin. #59 had all 12 Vol. 2
+  // pages and the two-pack index declare they were about it.
+  if (source.includes('"@id": "https://gabs-utilities.com/#plugin"')
+    && (source.includes("dark-themes-vol-2@notgabriels-themes") || path === "theme/index.html")) {
+    fail(`${path} says in its structured data that it is about #plugin, the 50-theme plugin, which does not hold every theme it covers.`);
+  }
   if (!source.includes('rel="icon" type="image/svg+xml" href="/favicon.svg"')) {
     fail(`${path} must expose the first-party SVG favicon.`);
   }

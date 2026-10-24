@@ -5,7 +5,8 @@ site/documentation change per pull request.
 
 ## Prerequisites
 
-- Claude Code v2.1.118 or later
+- Claude Code v2.1.118 or later to use the themes, and v2.1.143 or later to run
+  `claude plugin validate .` below: older validators reject the manifests' `displayName` key
 - Node.js 22 or later for the repository verifier
 
 ## Changing a theme
@@ -48,8 +49,16 @@ Rules:
   background, including on transparent terminals.
 - Keep primary text at 7:1, foreground accents and readable secondary text at 4.5:1,
   and functional borders or indicators at 3:1 against the matching gallery background.
-- Reserve `subtle` for non-essential decorative hairlines. Use `inactive` for readable secondary
-  text; do not place meaningful text or required control boundaries in `subtle`.
+- `permission` and `planMode` are checked at 3:1, but Claude Code also draws text in them ("⏸ plan
+  mode on", plan and dialog titles). README says how many themes keep that text below 4.5:1, out
+  of how many, and the lowest ratio with its theme. The verifier checks all four against the
+  palettes, so adding a theme always means updating that sentence (its total moves), and changing
+  a theme's `permission`/`planMode` colour or its recommended background can. Holding them at
+  4.5:1 instead would be a pack-wide decision.
+- `subtle` is not contrast-checked, and the pack keeps it very faint. Claude Code draws text in it
+  far more than borders — rejection notices ("User rejected Claude's plan:"), sandbox and settings
+  notices, usage statistics, key hints — so match the existing themes rather than tuning it per
+  theme: how faint it is is a pack-wide decision.
 - Do not invent new override keys. Claude Code silently discards unknown keys.
 
 ## Updating the gallery
@@ -67,8 +76,8 @@ Vol. 2 is the expansion pack, and the place for a new theme. It is a second plug
 marketplace, so it is not size-capped the way the flagship fifty are.
 
 A Vol. 2 theme is the same file, held to the same rules above — same override-key contract, same
-`dark` base, same six-digit hex colours, same contrast floors, same reserved `subtle`. What differs
-is where the pieces live:
+`dark` base, same six-digit hex colours, same contrast floors, same faint, unchecked `subtle`.
+What differs is where the pieces live:
 
 - The theme file goes in `plugins/dark-themes-vol-2/themes/`, and **only** there. Do not add it to
   the repository root; the root is the flagship fifty, and the verifier fails if that count moves.
@@ -77,15 +86,23 @@ is where the pieces live:
 - Add a matching row to the `VOL2_THEMES` array near the bottom of `index.html`, in the same
   `[name, claude, claudeShimmer, text, inactive, terminal]` shape as the flagship gallery. The
   verifier requires the array, the packaged themes and `previews.json` to agree exactly.
-- Display names must be unique across **both** packs. The two plugins can be installed together, so
-  two themes named the same would be indistinguishable in `/theme`.
+- Display names must be unique across **both** packs. The two plugins can be installed together, and
+  `/theme` would then list two rows with the same name, told apart only by their small
+  "from <plugin>" label.
 - Bump the version in `plugins/dark-themes-vol-2/.claude-plugin/plugin.json` and the matching entry
   in `.claude-plugin/marketplace.json` together; the verifier requires them to match.
 - Update the numbers the public pages state, in the same change. A theme adds fourteen contrast
-  comparisons, so the role-aware check count moves, and the share card names each pack's size. Both
-  are CI-enforced — see "Numbers stated on public pages" below. Adding a theme and running
+  comparisons, so the role-aware check count moves; the share card names each pack's size; the
+  storefront's Vol. 2 heading spells that pack's size out in words; and README's contrast paragraph
+  says how many of all the themes keep `permission`/`planMode` text below AA. All four are
+  CI-enforced — see "Numbers stated on public pages" below. Adding a theme and running
   `node scripts/verify.mjs` without this step fails with, for example,
   `index.html claims 894 role-aware checks; the verifier runs 908.`
+  The Vol. 2 size also appears in prose that CI does not check, in a dozen or so files — among them
+  README.md, both public articles, `llms.txt`, both plugin descriptions, the Vol. 2 plugin's README
+  and the planning docs — spelled "twelve", "Twelve" or "12". Find every one with
+  `grep -rIniwE 'twelve|12' --exclude-dir=.git --exclude-dir=products --exclude-dir=scripts .`
+  and update them by hand; skip the unrelated hits (prices, CSS sizes).
 
 `scripts/sync-plugin-themes.mjs` does not apply here — it mirrors the root fifty into their plugin,
 and a Vol. 2 theme is authored in its plugin directly.
@@ -109,11 +126,16 @@ node scripts/build-theme-pages.mjs
 
 ## Numbers stated on public pages
 
-The storefront, the share card and the meta descriptions state a role-aware check count and theme
-counts. These are claims to a reader, so the verifier ties them to the computed values: if a change
-moves the number of contrast comparisons or the size of either pack, the stated numbers must be
-updated in the same change or CI fails. Removing a claim fails too, so the guard cannot be silenced
-by deletion.
+The storefront and the share card state a role-aware check count; the share card states both pack
+sizes, and the storefront's Vol. 2 heading states that pack's size in words. README's contrast
+paragraph states how many of all the themes keep `permission`/`planMode` text below AA, and the
+lowest ratio with its theme. These are claims to a reader, so the verifier ties each one to the
+computed value: if a change moves the number of contrast comparisons, the size of either pack or a
+`permission`/`planMode` ratio, the stated numbers must be updated in the same change or CI fails.
+Removing a claim fails too, so the guard cannot be silenced by deletion.
+
+The flagship's "50" also appears throughout as the product's name. It is not checked line by line;
+it stays true because the verifier pins the flagship at exactly fifty theme files.
 
 The share card is rendered from `assets/social-preview.html`, not screenshotted from the site. Edit
 that source, then regenerate `preview.png` at 1280×720 — the declared `og:image:width` and
@@ -144,11 +166,13 @@ The command checks:
 - a fresh-machine-safe installation command;
 - the verified shop payment surfaces;
 - valid 1280×720 PNG assets for the curated developer picks;
-- that stated check and theme counts on public pages match the computed values;
+- that the stated check count, the share card's pack sizes, the storefront's Vol. 2 size, and
+  README's below-AA `permission`/`planMode` count and lowest ratio match the computed values;
 - that share images carry alternative text, and that one image is described one way.
 - that every page under `theme/` is a fresh render of its theme file and `sitemap.xml` lists each one.
 
-GitHub Actions runs the regression tests and the same repository check on every push and pull request.
+GitHub Actions runs the regression tests and the same repository check on every pull request and
+every push to `main`.
 
 For a visual check, copy the changed theme into `~/.claude/themes/`, run `/theme`, and inspect normal
 text, user messages, tool calls, permission prompts and plan mode. If the themes directory did not

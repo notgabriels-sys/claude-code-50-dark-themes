@@ -17,7 +17,10 @@ contrast, terminal background ownership and transparent-terminal surfaces.
 
 The same marketplace also carries Dark Themes Vol. 2, a free expansion plugin
 with twelve additional dark themes held to the same contrast standards.
-Install with: claude plugin install dark-themes-vol-2@notgabriels-themes
+Install with (the marketplace command first, once; the install fails without it):
+claude plugin marketplace add notgabriels-sys/claude-code-50-dark-themes
+claude plugin install dark-themes-vol-2@notgabriels-themes
+(restart any open Claude Code session afterwards: plugin themes load at startup)
 
 Every theme in both packs has its own page at https://gabs-utilities.com/theme/<slug>/
 (index: https://gabs-utilities.com/theme/), listing its thirteen palette overrides and

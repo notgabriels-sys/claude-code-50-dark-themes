@@ -12,8 +12,9 @@ all-new palettes. Free and MIT licensed.
 /plugin install dark-themes-vol-2@notgabriels-themes
 ```
 
-Run `/theme` and select any theme from the pack. Plugin themes are read-only; press `Ctrl+E` on one
-to copy it into `~/.claude/themes/` for editing.
+Then restart Claude Code: plugin themes load when it starts, so the session you installed from
+won't list them. Run `/theme` and select any theme from the pack. Plugin themes are read-only; press
+`Ctrl+E` on one to copy it into `~/.claude/themes/` for editing.
 
 ## The themes
 

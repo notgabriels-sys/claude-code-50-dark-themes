@@ -25,8 +25,9 @@ claude plugin marketplace add notgabriels-sys/claude-code-50-dark-themes
 claude plugin install 50-dark-themes@notgabriels-themes
 ```
 
-Then run `/theme` in Claude Code and pick one. The plugin keeps the pack together and makes updates
-available through the marketplace. Press `Ctrl+E` on a plugin theme if you want an editable copy in
+Then run `/theme` in Claude Code and pick one. If Claude Code was already open, restart it first:
+plugin themes load when it starts. The plugin keeps the pack together and makes updates available
+through the marketplace. Press `Ctrl+E` on a plugin theme if you want an editable copy in
 `~/.claude/themes/`.
 
 Step-by-step install, terminal background and troubleshooting guide:
@@ -46,6 +47,8 @@ Magnetite, Monsoon, Neon Noir, Ozone), held to the same contrast standards:
 claude plugin install dark-themes-vol-2@notgabriels-themes
 ```
 
+If Claude Code was open while you installed, restart it: plugin themes load when it starts.
+
 ## Manual install
 
 ```bash
@@ -63,17 +66,20 @@ git clone https://github.com/notgabriels-sys/claude-code-50-dark-themes
 cd claude-code-50-dark-themes && ./install.sh
 ```
 
-Then run `/theme` in Claude Code and pick one.
+Then run `/theme` in Claude Code and pick one. If `~/.claude/themes/` didn't exist before,
+restart Claude Code once first; the installer tells you when.
 
 ```bash
 ./install.sh --list            # show the 50 names
 ./install.sh acid deep-field   # install only those
-./install.sh --uninstall       # remove them again
+./install.sh --uninstall       # remove them all again
+./install.sh --uninstall acid  # remove only those
 ```
 
 It copies into `~/.claude/themes/`, and if a file of the same name is already there with
 different contents it is backed up once as `<name>.json.bak` before being replaced.
-`--uninstall` removes the themes and leaves the backups alone.
+`--uninstall` removes the themes and leaves the backups alone. A name that isn't in the
+pack stops the run before anything changes.
 
 ## Install (step by step)
 
@@ -93,7 +99,7 @@ setup steps: [terminal-schemes/README.md](terminal-schemes/README.md).
 ## What each file sets
 
 - `claude` + shimmer: brand accent (spinner, assistant label) = theme accent
-- `text` / `inactive` / `subtle`: foreground, readable secondary text, non-essential faint hairlines
+- `text` / `inactive` / `subtle`: foreground, readable secondary text, and the faintest tier of secondary text
 - `promptBorder`, `suggestion`, `rate_limit_fill`: accent-matched
 - `permission`, `planMode`: second accent where the theme has one
 - `userMessageBackground` (+hover): raised surface, one step above the theme `bg`
@@ -103,8 +109,15 @@ so status colors stay semantically green/red/yellow in every theme.
 
 The repository verifier checks each palette against its recommended terminal background:
 AAA contrast for primary text, AA for foreground accents and readable secondary text, and the
-WCAG non-text floor for functional borders and indicators. `subtle` is reserved for decorative
-hairlines; it is never used as the readable secondary-text color.
+WCAG non-text floor for functional borders and indicators. `permission` and `planMode` are held
+to that non-text floor too. Claude Code's token reference describes `permission` as dialog
+borders and `planMode` as the plan-mode accent, messages and dialogs, but both colour text:
+`planMode` draws the "⏸ plan mode on" status and plan titles such as "Plan to implement", and
+`permission` draws dialog titles such as "Permissions" and notices such as "Retrying…". Nine of
+the 62 themes keep that text below AA, down to 3.01:1 in Acid. `subtle` is not checked, and these
+themes keep it very faint. Claude Code draws text in it far more than borders: rejection
+notices ("User rejected Claude's plan:"), sandbox and settings notices, usage statistics and
+key hints. With this pack installed that text reads at low contrast.
 
 ## Note on backgrounds
 
@@ -181,6 +194,7 @@ or in the [gallery's expansion section](https://gabs-utilities.com/#vol2).
 claude plugin install dark-themes-vol-2@notgabriels-themes
 ```
 
+If Claude Code was open while you installed, restart it: plugin themes load when it starts.
 
 ## Familiars: Claude skills for sound work
 
@@ -255,4 +269,5 @@ Themes in this repo are free and stay free — MIT. If they saved you some fiddl
 a ⭐ helps other people find them.
 
 Contributions are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) before adding or changing a theme;
-the repository verifies the theme schema, gallery parity, installation command and payment links on every push.
+the repository verifies the theme schema, gallery parity, installation command and payment links on
+every pull request and every push to `main`.

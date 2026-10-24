@@ -17,13 +17,13 @@
 <meta property="og:image" content="https://gabs-utilities.com/preview.png">
 <meta property="og:image:width" content="1280">
 <meta property="og:image:height" content="720">
-<meta property="og:image:alt" content="Title card: 50 dark themes for Claude Code, with the plugin install command and a strip of the pack&#39;s accent colors">
+<meta property="og:image:alt" content="Title card: 50 dark themes for Claude Code, with the plugin install command and a strip of the site&#39;s interface colors">
 <meta property="og:site_name" content="Gabs Utilities">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Dubplate — dark theme for Claude Code">
 <meta name="twitter:description" content="Dubplate: a free dark theme for Claude Code with a warm #E8D44A accent on a #1B1A18 terminal. Palette roles, measured contrast and the one-line install.">
 <meta name="twitter:image" content="https://gabs-utilities.com/preview.png">
-<meta name="twitter:image:alt" content="Title card: 50 dark themes for Claude Code, with the plugin install command and a strip of the pack&#39;s accent colors">
+<meta name="twitter:image:alt" content="Title card: 50 dark themes for Claude Code, with the plugin install command and a strip of the site&#39;s interface colors">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -137,6 +137,7 @@
   .neighbours a:hover{color:var(--ink)}
   footer{margin-top:clamp(56px,9vw,100px);padding-top:24px;border-top:1px solid var(--hair);display:flex;flex-wrap:wrap;gap:10px 28px;color:var(--faint);font-size:11px}
   footer a{color:var(--faint)}
+  .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
   .index-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:4px 24px;margin:0 0 8px}
   .index-grid a{display:flex;align-items:center;gap:10px;min-height:44px;padding:4px 0;color:var(--ink);text-decoration:none;border-top:1px solid var(--hair);font-size:13px}
   .index-grid a:hover{color:var(--accent)}
@@ -175,30 +176,31 @@
           <div class="row"><span class="acc">●</span> <span class="fg">Applied theme &ldquo;Dubplate&rdquo;</span></div>
           <div class="row"><span class="mut">&nbsp;&nbsp;3 files changed · staged</span></div>
           <div class="usermsg">&gt; show me the diff</div>
-          <div class="prompt-box"><span class="gt">&gt;</span><span class="txt">theme dubplate</span><span class="caret" aria-hidden="true"></span></div>
-          <div class="hint">/theme &nbsp;·&nbsp; ⏎ send &nbsp;·&nbsp; esc to interrupt</div>
+          <div class="prompt-box"><span class="gt">&gt;</span><span class="txt">/theme</span><span class="caret" aria-hidden="true"></span></div>
+          <div class="hint">then choose &ldquo;Dubplate&rdquo;</div>
         </div>
       </article>
     </div>
 
     <section aria-labelledby="install-title">
       <h2 id="install-title">Install Dubplate.</h2>
-      <p>Requires Claude Code v2.1.118 or later. The marketplace command is needed once per machine; the plugin command installs the whole 50 Dark Themes pack, and <code>/theme</code> inside Claude Code switches to this one.</p>
+      <p>Requires Claude Code v2.1.118 or later. The marketplace command is needed once per machine; the plugin command installs the whole 50 Dark Themes pack. Then run <code>/theme</code> in Claude Code and choose &ldquo;Dubplate&rdquo; from the list.</p>
       <div class="cmd"><span><span class="prompt">$ </span><code>claude plugin marketplace add notgabriels-sys/claude-code-50-dark-themes</code></span><button class="copy" type="button" data-copy="claude plugin marketplace add notgabriels-sys/claude-code-50-dark-themes" aria-label="Copy: marketplace command">Copy</button></div>
       <div class="cmd"><span><span class="prompt">$ </span><code>claude plugin install 50-dark-themes@notgabriels-themes</code></span><button class="copy" type="button" data-copy="claude plugin install 50-dark-themes@notgabriels-themes" aria-label="Copy: 50 Dark Themes install command">Copy</button></div>
-      <div class="cmd"><span><span class="prompt">$ </span><code>/theme dubplate</code></span><button class="copy" type="button" data-copy="/theme dubplate" aria-label="Copy: select Dubplate in Claude Code">Copy</button></div>
+      <p class="note">If Claude Code was open while you installed, restart it: plugin themes load when it starts.</p>
+      <div class="cmd"><span><span class="prompt">&gt; </span><code>/theme</code></span><button class="copy" type="button" data-copy="/theme" aria-label="Copy: the /theme command, then choose Dubplate in Claude Code">Copy</button></div>
       <p class="note">Plugin themes are read-only. Press <code>Ctrl+E</code> on one in <code>/theme</code> for an editable copy in <code>~/.claude/themes/</code>.</p>
     </section>
 
     <section aria-labelledby="manual-title">
       <h2 id="manual-title">Or copy just this file.</h2>
       <p>One theme, no plugin: fetch <a href="https://github.com/notgabriels-sys/claude-code-50-dark-themes/blob/main/dubplate.json"><code>dubplate.json</code></a> from the repository into your themes folder. If that folder did not exist when Claude Code started, restart it once.</p>
-      <div class="cmd"><span><span class="prompt">$ </span><code>mkdir -p ~/.claude/themes &amp;&amp; curl -fsSL https://raw.githubusercontent.com/notgabriels-sys/claude-code-50-dark-themes/main/dubplate.json -o ~/.claude/themes/dubplate.json</code></span><button class="copy" type="button" data-copy="mkdir -p ~/.claude/themes &amp;&amp; curl -fsSL https://raw.githubusercontent.com/notgabriels-sys/claude-code-50-dark-themes/main/dubplate.json -o ~/.claude/themes/dubplate.json" aria-label="Copy: copy Dubplate manually">Copy</button></div>
+      <div class="cmd"><span><span class="prompt">$ </span><code>mkdir -p ~/.claude/themes &amp;&amp; curl -fsSL https://raw.githubusercontent.com/notgabriels-sys/claude-code-50-dark-themes/main/dubplate.json -o ~/.claude/themes/dubplate.json</code></span><button class="copy" type="button" data-copy="mkdir -p ~/.claude/themes &amp;&amp; curl -fsSL https://raw.githubusercontent.com/notgabriels-sys/claude-code-50-dark-themes/main/dubplate.json -o ~/.claude/themes/dubplate.json" aria-label="Copy: single-file install command for Dubplate">Copy</button></div>
     </section>
 
     <section aria-labelledby="terminal-title">
       <h2 id="terminal-title">Terminal background: <code>#1B1A18</code>.</h2>
-      <p>Claude Code colours its own interface; the terminal application owns the canvas behind it. Every figure below is measured against <code>#1B1A18</code>, so set that as the terminal background for the result the numbers describe. On a different background the ratios move.</p>
+      <p>Claude Code colours its own interface; the terminal application owns the canvas behind it. The terminal rows below are measured against <code>#1B1A18</code>, so set that as the terminal background for the result the numbers describe; on a different background they move. The rest compare text with the surface behind your messages, and that surface with its hovered state.</p>
     </section>
 
     <section aria-labelledby="palette-title">
@@ -212,11 +214,11 @@
           <tr><td><span class="sw" style="background:#F1E592"></span><code>#F1E592</code></td><td><code>claudeShimmer</code></td><td>Accent highlight while Claude works</td></tr>
           <tr><td><span class="sw" style="background:#ECEBE9"></span><code>#ECEBE9</code></td><td><code>text</code></td><td>Primary text</td></tr>
           <tr><td><span class="sw" style="background:#ABA8A0"></span><code>#ABA8A0</code></td><td><code>inactive</code></td><td>Secondary text</td></tr>
-          <tr><td><span class="sw" style="background:#2E2C29"></span><code>#2E2C29</code></td><td><code>subtle</code></td><td>Decorative hairlines (reserved, carries no meaning)</td></tr>
+          <tr><td><span class="sw" style="background:#2E2C29"></span><code>#2E2C29</code></td><td><code>subtle</code></td><td>Faint borders and de-emphasised secondary text (not contrast-checked)</td></tr>
           <tr><td><span class="sw" style="background:#E8D44A"></span><code>#E8D44A</code></td><td><code>suggestion</code></td><td>Autocomplete suggestions</td></tr>
-          <tr><td><span class="sw" style="background:#B0B4B8"></span><code>#B0B4B8</code></td><td><code>permission</code></td><td>Permission prompt border and indicator</td></tr>
+          <tr><td><span class="sw" style="background:#B0B4B8"></span><code>#B0B4B8</code></td><td><code>permission</code></td><td>Dialog borders and titles, permission prompts and pickers</td></tr>
           <tr><td><span class="sw" style="background:#E8D44A"></span><code>#E8D44A</code></td><td><code>promptBorder</code></td><td>Input prompt border</td></tr>
-          <tr><td><span class="sw" style="background:#F1E592"></span><code>#F1E592</code></td><td><code>promptBorderShimmer</code></td><td>Prompt border highlight</td></tr>
+          <tr><td><span class="sw" style="background:#F1E592"></span><code>#F1E592</code></td><td><code>promptBorderShimmer</code></td><td>Lighter partner of promptBorder in animated gradients</td></tr>
           <tr><td><span class="sw" style="background:#B0B4B8"></span><code>#B0B4B8</code></td><td><code>planMode</code></td><td>Plan mode indicator</td></tr>
           <tr><td><span class="sw" style="background:#262422"></span><code>#262422</code></td><td><code>userMessageBackground</code></td><td>Surface behind your messages</td></tr>
           <tr><td><span class="sw" style="background:#312E2C"></span><code>#312E2C</code></td><td><code>userMessageBackgroundHover</code></td><td>That surface, hovered</td></tr>
@@ -228,7 +230,7 @@
 
     <section aria-labelledby="contrast-title">
       <h2 id="contrast-title">Measured contrast.</h2>
-      <p>Computed from the hex values above with the WCAG 2 relative-luminance formula, by the same script that gates every change to this repository. Figures are truncated, never rounded up. Each row meets its floor.</p>
+      <p>Computed from the hex values above with the WCAG 2 relative-luminance formula, against the same floors <code>scripts/verify-contrast.mjs</code> checks on every pull request. Figures are truncated, never rounded up. Each row meets its floor.</p>
       <div class="table-wrap">
         <table>
           <thead><tr><th scope="col">Pair</th><th scope="col">Colours</th><th scope="col">Ratio</th><th scope="col">Floor</th><th scope="col">Standard</th></tr></thead>
@@ -240,8 +242,8 @@
           <tr><td>claude on terminal background</td><td class="num"><code>#E8D44A</code> on <code>#1B1A18</code></td><td class="num">11.55:1</td><td class="num">4.5:1</td><td class="ok">WCAG AA, normal text</td></tr>
           <tr><td>claudeShimmer on terminal background</td><td class="num"><code>#F1E592</code> on <code>#1B1A18</code></td><td class="num">13.55:1</td><td class="num">4.5:1</td><td class="ok">WCAG AA, normal text</td></tr>
           <tr><td>suggestion on terminal background</td><td class="num"><code>#E8D44A</code> on <code>#1B1A18</code></td><td class="num">11.55:1</td><td class="num">4.5:1</td><td class="ok">WCAG AA, normal text</td></tr>
-          <tr><td>permission on terminal background</td><td class="num"><code>#B0B4B8</code> on <code>#1B1A18</code></td><td class="num">8.33:1</td><td class="num">3:1</td><td class="ok">WCAG AA, non-text</td></tr>
-          <tr><td>planMode on terminal background</td><td class="num"><code>#B0B4B8</code> on <code>#1B1A18</code></td><td class="num">8.33:1</td><td class="num">3:1</td><td class="ok">WCAG AA, non-text</td></tr>
+          <tr><td>permission on terminal background</td><td class="num"><code>#B0B4B8</code> on <code>#1B1A18</code></td><td class="num">8.33:1</td><td class="num">3:1</td><td class="ok">WCAG AA non-text floor; also colours text</td></tr>
+          <tr><td>planMode on terminal background</td><td class="num"><code>#B0B4B8</code> on <code>#1B1A18</code></td><td class="num">8.33:1</td><td class="num">3:1</td><td class="ok">WCAG AA non-text floor; also colours text</td></tr>
           <tr><td>promptBorder on terminal background</td><td class="num"><code>#E8D44A</code> on <code>#1B1A18</code></td><td class="num">11.55:1</td><td class="num">3:1</td><td class="ok">WCAG AA, non-text</td></tr>
           <tr><td>promptBorderShimmer on terminal background</td><td class="num"><code>#F1E592</code> on <code>#1B1A18</code></td><td class="num">13.55:1</td><td class="num">3:1</td><td class="ok">WCAG AA, non-text</td></tr>
           <tr><td>rate_limit_fill on terminal background</td><td class="num"><code>#E8D44A</code> on <code>#1B1A18</code></td><td class="num">11.55:1</td><td class="num">3:1</td><td class="ok">WCAG AA, non-text</td></tr>
@@ -257,6 +259,7 @@
       <a href="/theme/">All themes</a>
       <a href="/theme/ember/" rel="next">Ember &rarr;</a>
     </nav>
+    <p class="sr-only" id="copyStatus" aria-live="polite"></p>
   </main>
   <footer>
     <span>50 dark themes for Claude Code · Gabs Utilities</span>
@@ -266,6 +269,7 @@
   </footer>
 </div>
 <script>
+const copyStatus = document.getElementById("copyStatus");
 document.querySelectorAll("[data-copy]").forEach((button) => {
   button.addEventListener("click", async () => {
     const text = button.getAttribute("data-copy");
@@ -273,8 +277,10 @@ document.querySelectorAll("[data-copy]").forEach((button) => {
     try {
       await navigator.clipboard.writeText(text);
       button.textContent = "Copied";
+      copyStatus.textContent = "Copied to clipboard: " + text;
     } catch {
       button.textContent = "Select and copy";
+      copyStatus.textContent = "Could not copy. Select the command and copy it: " + text;
     }
     setTimeout(() => { button.textContent = original; }, 1400);
   });
