@@ -1,0 +1,27 @@
+{
+    "schemes": [
+        {
+            "name": "Gabs Amber Room",
+            "background": "#201D18",
+            "foreground": "#EDEBE8",
+            "cursorColor": "#E0A83C",
+            "selectionBackground": "#5C4929",
+            "black": "#2C2821",
+            "red": "#D66862",
+            "green": "#72C676",
+            "yellow": "#F8BF53",
+            "blue": "#548DE0",
+            "purple": "#C57ED0",
+            "cyan": "#00AFB6",
+            "white": "#D1CCC3",
+            "brightBlack": "#8E887D",
+            "brightRed": "#F4847C",
+            "brightGreen": "#8CE18F",
+            "brightYellow": "#FFD998",
+            "brightBlue": "#6FA9FE",
+            "brightPurple": "#E39BEE",
+            "brightCyan": "#00D0D8",
+            "brightWhite": "#F7F6F5"
+        }
+    ]
+}

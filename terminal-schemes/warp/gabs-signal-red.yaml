@@ -1,0 +1,26 @@
+# Gabs Signal Red: terminal colors matched to its Claude Code theme
+name: 'Gabs Signal Red'
+accent: '#E64F54'
+cursor: '#E64F54'
+background: '#1A1B1E'
+foreground: '#E9EAEC'
+details: darker
+terminal_colors:
+  normal:
+    black: '#232529'
+    red: '#EA5357'
+    green: '#5FC666'
+    yellow: '#F3BF19'
+    blue: '#458AED'
+    magenta: '#CB75D8'
+    cyan: '#00ADB4'
+    white: '#C8CACF'
+  bright:
+    black: '#84878D'
+    red: '#FF7978'
+    green: '#7AE280'
+    yellow: '#FFD875'
+    blue: '#6BA7FF'
+    magenta: '#E992F6'
+    cyan: '#00CDD5'
+    white: '#F5F6F6'

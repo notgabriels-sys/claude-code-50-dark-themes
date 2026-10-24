@@ -1,0 +1,23 @@
+# Gabs Crossfade: terminal colors matched to its Claude Code theme
+palette = 0=#232329
+palette = 1=#DF5D58
+palette = 2=#5EC665
+palette = 3=#F2BE16
+palette = 4=#4589ED
+palette = 5=#CA75D7
+palette = 6=#00ACB3
+palette = 7=#C8C9D0
+palette = 8=#85868E
+palette = 9=#FF7971
+palette = 10=#79E17F
+palette = 11=#FFD770
+palette = 12=#69A6FF
+palette = 13=#E892F6
+palette = 14=#00CCD4
+palette = 15=#F5F5F6
+background = #1A1A1E
+foreground = #E9E9EC
+cursor-color = #3EC8E8
+cursor-text = #1A1A1E
+selection-background = #2E4F5B
+selection-foreground = #E9E9EC

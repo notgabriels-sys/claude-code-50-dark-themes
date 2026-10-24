@@ -1,0 +1,26 @@
+# Gabs Terminal: terminal colors matched to its Claude Code theme
+name: 'Gabs Terminal'
+accent: '#33D17A'
+cursor: '#33D17A'
+background: '#171C17'
+foreground: '#E9EDE9'
+details: darker
+terminal_colors:
+  normal:
+    black: '#202720'
+    red: '#DF5D58'
+    green: '#26CA73'
+    yellow: '#F2BE16'
+    blue: '#458AED'
+    magenta: '#CA75D8'
+    cyan: '#00ACB7'
+    white: '#C4CCC3'
+  bright:
+    black: '#7F897E'
+    red: '#FF7971'
+    green: '#4EE58C'
+    yellow: '#FFD770'
+    blue: '#6BA7FF'
+    magenta: '#E892F6'
+    cyan: '#00CCD9'
+    white: '#F5F7F5'

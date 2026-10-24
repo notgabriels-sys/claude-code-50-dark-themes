@@ -1,0 +1,27 @@
+{
+    "schemes": [
+        {
+            "name": "Gabs Cobalt Hour",
+            "background": "#181F2F",
+            "foreground": "#E8E9ED",
+            "cursorColor": "#5280FE",
+            "selectionBackground": "#2E447B",
+            "black": "#1F283D",
+            "red": "#E4615B",
+            "green": "#63CB6A",
+            "yellow": "#F7C322",
+            "blue": "#5A88FF",
+            "purple": "#CF79DC",
+            "cyan": "#00B1B8",
+            "white": "#C7CFDF",
+            "brightBlack": "#828A9D",
+            "brightRed": "#FF8179",
+            "brightGreen": "#7EE684",
+            "brightYellow": "#FFDD88",
+            "brightBlue": "#83A8FF",
+            "brightPurple": "#EE96FB",
+            "brightCyan": "#00D2DA",
+            "brightWhite": "#F5F5F7"
+        }
+    ]
+}

@@ -1,0 +1,27 @@
+{
+    "schemes": [
+        {
+            "name": "Gabs Dubplate",
+            "background": "#1B1A18",
+            "foreground": "#ECEBE9",
+            "cursorColor": "#E8D44A",
+            "selectionBackground": "#534D2C",
+            "black": "#262422",
+            "red": "#D8625C",
+            "green": "#68C46D",
+            "yellow": "#DAC637",
+            "blue": "#4C8AE4",
+            "purple": "#C579D1",
+            "cyan": "#00ACB3",
+            "white": "#CBC9C4",
+            "brightBlack": "#888680",
+            "brightRed": "#F77E76",
+            "brightGreen": "#82DF86",
+            "brightYellow": "#F0DD54",
+            "brightBlue": "#69A6FF",
+            "brightPurple": "#E495F0",
+            "brightCyan": "#00CCD4",
+            "brightWhite": "#F6F6F5"
+        }
+    ]
+}

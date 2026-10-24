@@ -1,0 +1,23 @@
+# Gabs Moss: terminal colors matched to its Claude Code theme
+palette = 0=#272F29
+palette = 1=#D5706E
+palette = 2=#97C66F
+palette = 3=#FDC469
+palette = 4=#5E92DE
+palette = 5=#C686D0
+palette = 6=#00B4BB
+palette = 7=#CAD5CC
+palette = 8=#849085
+palette = 9=#F38C89
+palette = 10=#B1E289
+palette = 11=#FFE1B4
+palette = 12=#7AAFFC
+palette = 13=#E5A3EF
+palette = 14=#2FD4DB
+palette = 15=#F5F7F5
+background = #1E241F
+foreground = #E9EDE9
+cursor-color = #93BF6F
+cursor-text = #1E241F
+selection-background = #405138
+selection-foreground = #E9EDE9

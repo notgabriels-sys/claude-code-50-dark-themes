@@ -1,0 +1,33 @@
+# Gabs Iris: terminal colors matched to its Claude Code theme
+
+[colors.primary]
+background = "#181825"
+foreground = "#E8E8ED"
+
+[colors.cursor]
+text = "#181825"
+cursor = "#8C8CE8"
+
+[colors.selection]
+text = "#E8E8ED"
+background = "#43436C"
+
+[colors.normal]
+black = "#202031"
+red = "#D1665F"
+green = "#6FC273"
+yellow = "#E9BF4E"
+blue = "#528ADB"
+magenta = "#C17BCB"
+cyan = "#00ABB2"
+white = "#C6C7D8"
+
+[colors.bright]
+black = "#838498"
+red = "#F08179"
+green = "#89DD8C"
+yellow = "#FFD568"
+blue = "#6DA6FA"
+magenta = "#DF97EA"
+cyan = "#00CBD3"
+white = "#F5F5F7"

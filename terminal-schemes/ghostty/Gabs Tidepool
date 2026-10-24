@@ -1,0 +1,23 @@
+# Gabs Tidepool: terminal colors matched to its Claude Code theme
+palette = 0=#1E2E2E
+palette = 1=#D36D72
+palette = 2=#9BC265
+palette = 3=#FFBF67
+palette = 4=#5B90DD
+palette = 5=#C483CE
+palette = 6=#00B49C
+palette = 7=#C0D4D3
+palette = 8=#778F8F
+palette = 9=#F2888D
+palette = 10=#B5DE80
+palette = 11=#FFDCAF
+palette = 12=#77ACFB
+palette = 13=#E3A0ED
+palette = 14=#3DD3B9
+palette = 15=#F5F7F7
+background = #162222
+foreground = #E8EDED
+cursor-color = #3FC8B0
+cursor-text = #162222
+selection-background = #27554E
+selection-foreground = #E8EDED

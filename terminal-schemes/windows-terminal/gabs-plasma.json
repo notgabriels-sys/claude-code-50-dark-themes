@@ -1,0 +1,27 @@
+{
+    "schemes": [
+        {
+            "name": "Gabs Plasma",
+            "background": "#221622",
+            "foreground": "#EDE8ED",
+            "cursorColor": "#E858C8",
+            "selectionBackground": "#6A315F",
+            "black": "#2E1E2E",
+            "red": "#DE5E46",
+            "green": "#5EC565",
+            "yellow": "#F2BD15",
+            "blue": "#4489EC",
+            "purple": "#E763C8",
+            "cyan": "#00ACB3",
+            "white": "#D3C5D2",
+            "brightBlack": "#918190",
+            "brightRed": "#FD7A60",
+            "brightGreen": "#79E17F",
+            "brightYellow": "#FFD66C",
+            "brightBlue": "#69A6FF",
+            "brightPurple": "#FF88E1",
+            "brightCyan": "#00CCD4",
+            "brightWhite": "#F7F5F7"
+        }
+    ]
+}

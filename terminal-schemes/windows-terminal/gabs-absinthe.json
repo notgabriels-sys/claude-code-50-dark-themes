@@ -1,0 +1,27 @@
+{
+    "schemes": [
+        {
+            "name": "Gabs Absinthe",
+            "background": "#1D1F19",
+            "foreground": "#EBEDE8",
+            "cursorColor": "#C0D648",
+            "selectionBackground": "#48502B",
+            "black": "#282A22",
+            "red": "#DF635D",
+            "green": "#67C96D",
+            "yellow": "#F4C334",
+            "blue": "#4C8DEB",
+            "purple": "#CB7BD8",
+            "cyan": "#00B0B7",
+            "white": "#CBCFC4",
+            "brightBlack": "#868B7E",
+            "brightRed": "#FE7F77",
+            "brightGreen": "#82E487",
+            "brightYellow": "#FFDC84",
+            "brightBlue": "#70AAFF",
+            "brightPurple": "#EA98F7",
+            "brightCyan": "#00D1D9",
+            "brightWhite": "#F6F7F5"
+        }
+    ]
+}

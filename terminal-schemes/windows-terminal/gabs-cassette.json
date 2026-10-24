@@ -1,0 +1,27 @@
+{
+    "schemes": [
+        {
+            "name": "Gabs Cassette",
+            "background": "#231F1A",
+            "foreground": "#EFE4D2",
+            "cursorColor": "#E8853C",
+            "selectionBackground": "#624129",
+            "black": "#2F2923",
+            "red": "#DC6766",
+            "green": "#8CC55E",
+            "yellow": "#FFBF52",
+            "blue": "#538FE7",
+            "purple": "#CA7ED5",
+            "cyan": "#00B3A8",
+            "white": "#D1CBC2",
+            "brightBlack": "#92897F",
+            "brightRed": "#FB8380",
+            "brightGreen": "#A7E179",
+            "brightYellow": "#FFDCA6",
+            "brightBlue": "#73ACFF",
+            "brightPurple": "#E89CF4",
+            "brightCyan": "#00D4C8",
+            "brightWhite": "#F8F3EB"
+        }
+    ]
+}

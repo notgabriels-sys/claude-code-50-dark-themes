@@ -1,0 +1,32 @@
+# Gabs Coral: terminal colors matched to its Claude Code theme
+[colors]
+foreground = "#EDE9E9"
+background = "#221D1C"
+cursor_bg = "#F08060"
+cursor_fg = "#221D1C"
+cursor_border = "#F08060"
+selection_bg = "#6A4136"
+selection_fg = "#EDE9E9"
+ansi = [
+    "#2D2725",
+    "#D76A4B",
+    "#6FC773",
+    "#EEC449",
+    "#538EE4",
+    "#C77ED3",
+    "#00AFB7",
+    "#D4CCCA"
+]
+brights = [
+    "#918784",
+    "#F68665",
+    "#8AE38E",
+    "#FFDC79",
+    "#71ABFF",
+    "#E69BF2",
+    "#00D0D8",
+    "#F7F5F5"
+]
+
+[metadata]
+name = "Gabs Coral"

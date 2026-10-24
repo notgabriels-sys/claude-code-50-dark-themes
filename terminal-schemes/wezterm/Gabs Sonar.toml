@@ -1,0 +1,32 @@
+# Gabs Sonar: terminal colors matched to its Claude Code theme
+[colors]
+foreground = "#E8EBED"
+background = "#121921"
+cursor_bg = "#40E0C0"
+cursor_fg = "#121921"
+cursor_border = "#40E0C0"
+selection_bg = "#265351"
+selection_fg = "#E8EBED"
+ansi = [
+    "#19232E",
+    "#D1636A",
+    "#91BC55",
+    "#FBB652",
+    "#5089DC",
+    "#C07ACB",
+    "#00AD91",
+    "#BCC9D7"
+]
+brights = [
+    "#788696",
+    "#EF7E84",
+    "#ABD66F",
+    "#FFD298",
+    "#6BA5FA",
+    "#DE96E9",
+    "#12CDAD",
+    "#F5F6F7"
+]
+
+[metadata]
+name = "Gabs Sonar"

@@ -1,0 +1,27 @@
+{
+    "schemes": [
+        {
+            "name": "Gabs Undergrowth",
+            "background": "#18201C",
+            "foreground": "#E8EDEB",
+            "cursorColor": "#4FA872",
+            "selectionBackground": "#2F523C",
+            "black": "#212C26",
+            "red": "#D06D66",
+            "green": "#66C78B",
+            "yellow": "#ECC460",
+            "blue": "#5B8ED9",
+            "purple": "#C282CC",
+            "cyan": "#00AFBA",
+            "white": "#C3D1C9",
+            "brightBlack": "#7C8D84",
+            "brightRed": "#EF8880",
+            "brightGreen": "#82E3A5",
+            "brightYellow": "#FFDC84",
+            "brightBlue": "#75AAF7",
+            "brightPurple": "#E19FEB",
+            "brightCyan": "#26CFDB",
+            "brightWhite": "#F5F7F6"
+        }
+    ]
+}

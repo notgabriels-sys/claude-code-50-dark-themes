@@ -1,0 +1,26 @@
+# Gabs Aurora Borealis: terminal colors matched to its Claude Code theme
+name: 'Gabs Aurora Borealis'
+accent: '#6FE8A5'
+cursor: '#6FE8A5'
+background: '#131A16'
+foreground: '#E8EDEA'
+details: darker
+terminal_colors:
+  normal:
+    black: '#202A24'
+    red: '#D4625C'
+    green: '#48C483'
+    yellow: '#EBBD42'
+    blue: '#4E89DF'
+    magenta: '#C279CE'
+    cyan: '#00AAB5'
+    white: '#BECBC3'
+  bright:
+    black: '#79887F'
+    red: '#F27E76'
+    green: '#65DF9C'
+    yellow: '#FFD464'
+    blue: '#68A5FD'
+    magenta: '#E195EC'
+    cyan: '#00CAD6'
+    white: '#F5F7F6'

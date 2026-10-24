@@ -1,0 +1,27 @@
+{
+    "schemes": [
+        {
+            "name": "Gabs Blackout",
+            "background": "#141415",
+            "foreground": "#EAEAEB",
+            "cursorColor": "#E0A83C",
+            "selectionBackground": "#5B492A",
+            "black": "#1E1E1F",
+            "red": "#CE615B",
+            "green": "#6ABE6E",
+            "yellow": "#EFB649",
+            "blue": "#4D86D8",
+            "purple": "#BD77C8",
+            "cyan": "#00A7AD",
+            "white": "#C3C4C8",
+            "brightBlack": "#818187",
+            "brightRed": "#EC7C75",
+            "brightGreen": "#83D887",
+            "brightYellow": "#FFCE77",
+            "brightBlue": "#67A1F6",
+            "brightPurple": "#DB93E6",
+            "brightCyan": "#00C7CF",
+            "brightWhite": "#F6F6F6"
+        }
+    ]
+}

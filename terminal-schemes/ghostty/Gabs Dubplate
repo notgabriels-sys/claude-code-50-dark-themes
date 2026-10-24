@@ -1,0 +1,23 @@
+# Gabs Dubplate: terminal colors matched to its Claude Code theme
+palette = 0=#262422
+palette = 1=#D8625C
+palette = 2=#68C46D
+palette = 3=#DAC637
+palette = 4=#4C8AE4
+palette = 5=#C579D1
+palette = 6=#00ACB3
+palette = 7=#CBC9C4
+palette = 8=#888680
+palette = 9=#F77E76
+palette = 10=#82DF86
+palette = 11=#F0DD54
+palette = 12=#69A6FF
+palette = 13=#E495F0
+palette = 14=#00CCD4
+palette = 15=#F6F6F5
+background = #1B1A18
+foreground = #ECEBE9
+cursor-color = #E8D44A
+cursor-text = #1B1A18
+selection-background = #534D2C
+selection-foreground = #ECEBE9

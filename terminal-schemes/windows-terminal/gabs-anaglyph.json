@@ -1,0 +1,27 @@
+{
+    "schemes": [
+        {
+            "name": "Gabs Anaglyph",
+            "background": "#18181B",
+            "foreground": "#E9E9EC",
+            "cursorColor": "#FF5548",
+            "selectionBackground": "#6D342F",
+            "black": "#222226",
+            "red": "#ED4C40",
+            "green": "#5CC464",
+            "yellow": "#F0BC10",
+            "blue": "#4388EB",
+            "purple": "#C873D6",
+            "cyan": "#00AAB0",
+            "white": "#C7C7CC",
+            "brightBlack": "#83848A",
+            "brightRed": "#FF7567",
+            "brightGreen": "#77DF7D",
+            "brightYellow": "#FFD464",
+            "brightBlue": "#67A5FF",
+            "brightPurple": "#E690F4",
+            "brightCyan": "#00CAD2",
+            "brightWhite": "#F5F5F6"
+        }
+    ]
+}

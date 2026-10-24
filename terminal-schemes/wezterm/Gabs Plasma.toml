@@ -1,0 +1,32 @@
+# Gabs Plasma: terminal colors matched to its Claude Code theme
+[colors]
+foreground = "#EDE8ED"
+background = "#221622"
+cursor_bg = "#E858C8"
+cursor_fg = "#221622"
+cursor_border = "#E858C8"
+selection_bg = "#6A315F"
+selection_fg = "#EDE8ED"
+ansi = [
+    "#2E1E2E",
+    "#DE5E46",
+    "#5EC565",
+    "#F2BD15",
+    "#4489EC",
+    "#E763C8",
+    "#00ACB3",
+    "#D3C5D2"
+]
+brights = [
+    "#918190",
+    "#FD7A60",
+    "#79E17F",
+    "#FFD66C",
+    "#69A6FF",
+    "#FF88E1",
+    "#00CCD4",
+    "#F7F5F7"
+]
+
+[metadata]
+name = "Gabs Plasma"

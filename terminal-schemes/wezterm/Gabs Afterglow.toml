@@ -1,0 +1,32 @@
+# Gabs Afterglow: terminal colors matched to its Claude Code theme
+[colors]
+foreground = "#EDEAE8"
+background = "#1F1A18"
+cursor_bg = "#F0956B"
+cursor_fg = "#1F1A18"
+cursor_border = "#F0956B"
+selection_bg = "#654435"
+selection_fg = "#EDEAE8"
+ansi = [
+    "#2A2422",
+    "#CF6963",
+    "#75C378",
+    "#E9C158",
+    "#578BD9",
+    "#C07ECA",
+    "#00ACB4",
+    "#D2C8C5"
+]
+brights = [
+    "#8F8580",
+    "#ED847D",
+    "#8FDE91",
+    "#FFD875",
+    "#70A7F6",
+    "#DE9BE9",
+    "#00CCD4",
+    "#F7F6F5"
+]
+
+[metadata]
+name = "Gabs Afterglow"

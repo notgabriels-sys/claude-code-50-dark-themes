@@ -1,0 +1,27 @@
+{
+    "schemes": [
+        {
+            "name": "Gabs Cryosleep",
+            "background": "#151B21",
+            "foreground": "#E8EBED",
+            "cursorColor": "#9CCBF0",
+            "selectionBackground": "#3C4D5C",
+            "black": "#232B33",
+            "red": "#C27069",
+            "green": "#94BC75",
+            "yellow": "#ECBE75",
+            "blue": "#4990C3",
+            "purple": "#B883C0",
+            "cyan": "#32ACA2",
+            "white": "#C0CBD5",
+            "brightBlack": "#7B8894",
+            "brightRed": "#DF8B84",
+            "brightGreen": "#AED78F",
+            "brightYellow": "#FFD594",
+            "brightBlue": "#65ACE0",
+            "brightPurple": "#D69FDE",
+            "brightCyan": "#56CAC0",
+            "brightWhite": "#F5F6F7"
+        }
+    ]
+}

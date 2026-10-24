@@ -1,0 +1,26 @@
+# Gabs Oxide: terminal colors matched to its Claude Code theme
+name: 'Gabs Oxide'
+accent: '#C76F55'
+cursor: '#C76F55'
+background: '#221D1C'
+foreground: '#EDE9E9'
+details: darker
+terminal_colors:
+  normal:
+    black: '#2D2725'
+    red: '#CE7053'
+    green: '#79C57C'
+    yellow: '#E9C55F'
+    blue: '#5A8ED9'
+    magenta: '#C282CC'
+    cyan: '#00AFB7'
+    white: '#D4CCCA'
+  bright:
+    black: '#918784'
+    red: '#ED8B6E'
+    green: '#94E096'
+    yellow: '#FFDC79'
+    blue: '#75AAF7'
+    magenta: '#E19FEB'
+    cyan: '#24CFD6'
+    white: '#F7F5F5'

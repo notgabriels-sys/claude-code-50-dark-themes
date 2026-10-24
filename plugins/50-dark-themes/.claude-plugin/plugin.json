@@ -11,6 +11,9 @@
   "repository": "https://github.com/notgabriels-sys/claude-code-50-dark-themes",
   "license": "MIT",
   "keywords": ["claude-code", "themes", "dark-theme", "terminal"],
+  "icon": "./logo.png",
+  "documentationUrl": "https://gabs-utilities.com/claude-code-theme-install-guide.html",
+  "supportUrl": "https://github.com/notgabriels-sys/claude-code-50-dark-themes/issues",
   "experimental": {
     "themes": "./themes/"
   }

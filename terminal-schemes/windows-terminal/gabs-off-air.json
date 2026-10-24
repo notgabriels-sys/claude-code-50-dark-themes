@@ -1,0 +1,27 @@
+{
+    "schemes": [
+        {
+            "name": "Gabs Off Air",
+            "background": "#201E1D",
+            "foreground": "#ECEAEA",
+            "cursorColor": "#D7635A",
+            "selectionBackground": "#643A35",
+            "black": "#2B2827",
+            "red": "#DB675D",
+            "green": "#6FC873",
+            "yellow": "#F1C448",
+            "blue": "#528EE5",
+            "purple": "#C87DD4",
+            "cyan": "#00B0B7",
+            "white": "#D1CDCA",
+            "brightBlack": "#8E8885",
+            "brightRed": "#FA8378",
+            "brightGreen": "#89E38D",
+            "brightYellow": "#FFDC84",
+            "brightBlue": "#71ABFF",
+            "brightPurple": "#E79AF2",
+            "brightCyan": "#00D1D9",
+            "brightWhite": "#F6F6F6"
+        }
+    ]
+}

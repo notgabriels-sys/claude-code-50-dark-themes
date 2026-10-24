@@ -1,0 +1,32 @@
+# Gabs Cryosleep: terminal colors matched to its Claude Code theme
+[colors]
+foreground = "#E8EBED"
+background = "#151B21"
+cursor_bg = "#9CCBF0"
+cursor_fg = "#151B21"
+cursor_border = "#9CCBF0"
+selection_bg = "#3C4D5C"
+selection_fg = "#E8EBED"
+ansi = [
+    "#232B33",
+    "#C27069",
+    "#94BC75",
+    "#ECBE75",
+    "#4990C3",
+    "#B883C0",
+    "#32ACA2",
+    "#C0CBD5"
+]
+brights = [
+    "#7B8894",
+    "#DF8B84",
+    "#AED78F",
+    "#FFD594",
+    "#65ACE0",
+    "#D69FDE",
+    "#56CAC0",
+    "#F5F6F7"
+]
+
+[metadata]
+name = "Gabs Cryosleep"

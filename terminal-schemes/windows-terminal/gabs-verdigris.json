@@ -1,0 +1,27 @@
+{
+    "schemes": [
+        {
+            "name": "Gabs Verdigris",
+            "background": "#1C2625",
+            "foreground": "#E8EDED",
+            "cursorColor": "#6FC4A8",
+            "selectionBackground": "#35524A",
+            "black": "#253230",
+            "red": "#CE7770",
+            "green": "#89CA8A",
+            "yellow": "#EECC77",
+            "blue": "#6794D6",
+            "purple": "#C38BCB",
+            "cyan": "#2DB5BB",
+            "white": "#C5D6D4",
+            "brightBlack": "#7F9390",
+            "brightRed": "#ED938B",
+            "brightGreen": "#A4E6A5",
+            "brightYellow": "#FFE5A5",
+            "brightBlue": "#82B1F5",
+            "brightPurple": "#E2A8EB",
+            "brightCyan": "#55D4DA",
+            "brightWhite": "#F5F7F7"
+        }
+    ]
+}

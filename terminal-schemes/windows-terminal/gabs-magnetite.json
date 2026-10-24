@@ -1,0 +1,27 @@
+{
+    "schemes": [
+        {
+            "name": "Gabs Magnetite",
+            "background": "#16181C",
+            "foreground": "#E8EAED",
+            "cursorColor": "#6FA8DC",
+            "selectionBackground": "#384D61",
+            "black": "#22262C",
+            "red": "#C46C65",
+            "green": "#88BC74",
+            "yellow": "#E8BC69",
+            "blue": "#498DC8",
+            "purple": "#B880C1",
+            "cyan": "#0EAAA7",
+            "white": "#C4C7CE",
+            "brightBlack": "#80858D",
+            "brightRed": "#E2877F",
+            "brightGreen": "#A2D68D",
+            "brightYellow": "#FFD27F",
+            "brightBlue": "#65A9E5",
+            "brightPurple": "#D69CDF",
+            "brightCyan": "#42C8C3",
+            "brightWhite": "#F5F6F7"
+        }
+    ]
+}

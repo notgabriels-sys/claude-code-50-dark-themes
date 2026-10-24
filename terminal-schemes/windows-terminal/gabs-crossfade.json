@@ -1,0 +1,27 @@
+{
+    "schemes": [
+        {
+            "name": "Gabs Crossfade",
+            "background": "#1A1A1E",
+            "foreground": "#E9E9EC",
+            "cursorColor": "#3EC8E8",
+            "selectionBackground": "#2E4F5B",
+            "black": "#232329",
+            "red": "#DF5D58",
+            "green": "#5EC665",
+            "yellow": "#F2BE16",
+            "blue": "#4589ED",
+            "purple": "#CA75D7",
+            "cyan": "#00ACB3",
+            "white": "#C8C9D0",
+            "brightBlack": "#85868E",
+            "brightRed": "#FF7971",
+            "brightGreen": "#79E17F",
+            "brightYellow": "#FFD770",
+            "brightBlue": "#69A6FF",
+            "brightPurple": "#E892F6",
+            "brightCyan": "#00CCD4",
+            "brightWhite": "#F5F5F6"
+        }
+    ]
+}

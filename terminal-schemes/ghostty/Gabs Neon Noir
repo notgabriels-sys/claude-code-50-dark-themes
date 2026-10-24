@@ -1,0 +1,23 @@
+# Gabs Neon Noir: terminal colors matched to its Claude Code theme
+palette = 0=#2A2227
+palette = 1=#DA5853
+palette = 2=#58C060
+palette = 3=#ECB800
+palette = 4=#4085E8
+palette = 5=#C570D2
+palette = 6=#00A7AD
+palette = 7=#C9C2C5
+palette = 8=#888084
+palette = 9=#F9746D
+palette = 10=#73DB79
+palette = 11=#FFCF4B
+palette = 12=#60A1FF
+palette = 13=#E38CF0
+palette = 14=#00C7CF
+palette = 15=#F6F5F6
+background = #171315
+foreground = #ECE8EA
+cursor-color = #F25CA2
+cursor-text = #171315
+selection-background = #673148
+selection-foreground = #ECE8EA

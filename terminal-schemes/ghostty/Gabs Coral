@@ -1,0 +1,23 @@
+# Gabs Coral: terminal colors matched to its Claude Code theme
+palette = 0=#2D2725
+palette = 1=#D76A4B
+palette = 2=#6FC773
+palette = 3=#EEC449
+palette = 4=#538EE4
+palette = 5=#C77ED3
+palette = 6=#00AFB7
+palette = 7=#D4CCCA
+palette = 8=#918784
+palette = 9=#F68665
+palette = 10=#8AE38E
+palette = 11=#FFDC79
+palette = 12=#71ABFF
+palette = 13=#E69BF2
+palette = 14=#00D0D8
+palette = 15=#F7F5F5
+background = #221D1C
+foreground = #EDE9E9
+cursor-color = #F08060
+cursor-text = #221D1C
+selection-background = #6A4136
+selection-foreground = #EDE9E9
