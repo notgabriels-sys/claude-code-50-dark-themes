@@ -7,7 +7,7 @@ Light / Dark / System, so these install into Claude Code, which does support cus
 
 Requires **Claude Code v2.1.118 or later**, the release that introduced named custom themes.
 
-**→ Visual gallery and storefront: [gabs-utilities.com](https://gabs-utilities.com/)** (all 50, plus the 12 Vol. 2 themes, previewed in their own colors).
+**→ Visual gallery and storefront: [gabs-utilities.com](https://gabs-utilities.com/)** (all 50 themes, plus the 12 Vol. 2 themes, previewed in their own colors).
 
 Every theme also has its own page, with its palette and roles, contrast measured against the
 recommended terminal background, and the install commands: **[gabs-utilities.com/theme/](https://gabs-utilities.com/theme/)**.
@@ -46,12 +46,25 @@ Magnetite, Monsoon, Neon Noir, Ozone), held to the same contrast standards:
 claude plugin install dark-themes-vol-2@notgabriels-themes
 ```
 
+### Also in this marketplace — Berlin Studio Skills
+
+```bash
+claude plugin install berlin-studio-skills@notgabriels-themes
+```
+
+Five skills for running a techno studio and a freelance audio practice in Berlin: building a
+specific sound, diagnosing a mix that will not translate, getting masters and metadata out the
+door, formal German correspondence, and German freelance invoicing and tax admin. The audio pair
+and the admin pair route to each other, so you rarely have to name one. See
+[the plugin README](plugins/berlin-studio-skills/README.md).
+
+
 ## Manual install
 
 ```bash
 git clone https://github.com/notgabriels-sys/claude-code-50-dark-themes
 mkdir -p ~/.claude/themes
-cp claude-code-50-dark-themes/*.json ~/.claude/themes/
+cp claude-code-50-dark-themes/plugins/50-dark-themes/themes/*.json ~/.claude/themes/
 ```
 
 Then run `/theme` in Claude Code and pick one.
@@ -174,6 +187,16 @@ or in the [gallery's expansion section](https://gabs-utilities.com/#vol2).
 claude plugin install dark-themes-vol-2@notgabriels-themes
 ```
 
+Building something on top of these? The id, display name and key palette roles
+of each of the original 50 themes are published as one generated JSON file
+(Vol. 2 is not in it yet):
+
+**[gabs-utilities.com/themes.json](https://gabs-utilities.com/themes.json)**
+
+It is generated from the theme files by `scripts/build-theme-index.mjs` and CI
+fails if it drifts, so it always matches what actually installs. Free themes
+only — no pricing in it.
+
 
 ## More dark tools
 
@@ -238,4 +261,4 @@ Themes in this repo are free and stay free — MIT. If they saved you some fiddl
 a ⭐ helps other people find them.
 
 Contributions are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) before adding or changing a theme;
-the repository verifies the theme schema, gallery parity, installation command and payment links on every push.
+the repository verifies the theme schema, gallery parity, installation command and payment links on every pull request and every push to main.
