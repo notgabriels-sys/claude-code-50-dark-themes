@@ -928,6 +928,59 @@ for (const [path, source] of themePages) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Familiars (familiars.html) is the catalogue page for the Claude skills,
+// plugins and themes this pack belongs to. It states how many familiars it
+// shows, so the number word in its catalogue heading must match the cards on
+// the page. Like every public page it carries the first-party favicon, an
+// og:image described the same way for X, and the Impressum link the law needs.
+// The storefront links it, and the sitemap lists it (rendered by the builder).
+// Names of projects that are not sold here never appear on it.
+// ---------------------------------------------------------------------------
+let familiarsHtml;
+try {
+  familiarsHtml = await readFile(new URL("familiars.html", root), "utf8");
+} catch {
+  fail("familiars.html is missing.");
+}
+const numberWords = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine",
+  "ten", "eleven", "twelve"];
+const familiarsCountClaim = familiarsHtml.match(/<h2>(\w+) familiars, each with its sigil\.<\/h2>/);
+if (!familiarsCountClaim) fail("Familiars: the catalogue heading that states the count is missing.");
+const familiarsCards = (familiarsHtml.match(/<article class="card"/g) ?? []).length;
+const familiarsStated = numberWords.indexOf(familiarsCountClaim[1].toLowerCase());
+if (familiarsStated !== familiarsCards) {
+  fail(`Familiars: the heading says ${familiarsCountClaim[1]} familiars but the page shows ${familiarsCards} cards.`);
+}
+const familiarsContracts = [
+  [/<html lang="en">/, "document language"],
+  [/<link rel="icon" type="image\/svg\+xml" href="favicon\.svg">/, "first-party favicon"],
+  [/<link rel="canonical" href="https:\/\/gabs-utilities\.com\/familiars\.html">/, "canonical address"],
+  [/<a href="impressum\.html">Impressum<\/a>/, "Impressum link"],
+  [/<main id="main">/, "main landmark"],
+  [/<meta property="og:image" content="https:\/\/gabs-utilities\.com\/assets\/familiars-share\.png">/, "share image"],
+];
+const missingFamiliarsContracts = familiarsContracts
+  .filter(([pattern]) => !pattern.test(familiarsHtml))
+  .map(([, label]) => label);
+if (missingFamiliarsContracts.length) {
+  fail(`Familiars page is missing: ${missingFamiliarsContracts.join(", ")}.`);
+}
+const familiarsOgAlt = familiarsHtml.match(/<meta property="og:image:alt" content="([^"]+)">/);
+const familiarsXAlt = familiarsHtml.match(/<meta name="twitter:image:alt" content="([^"]+)">/);
+if (!familiarsOgAlt || !familiarsXAlt || familiarsOgAlt[1] !== familiarsXAlt[1]) {
+  fail("Familiars: og:image:alt and twitter:image:alt must both exist and say the same thing.");
+}
+await verifyPng("assets/familiars-share.png", { label: "Familiars share image", width: 1280, height: 720 });
+for (const name of ["Lack of Fate", "Hologram People", "Fate Through", "Slow Foundry"]) {
+  if (familiarsHtml.toLowerCase().includes(name.toLowerCase())) {
+    fail(`Familiars: the page must not name ${name}.`);
+  }
+}
+if (!/<a href="familiars\.html">[^<]+<\/a>/.test(html)) {
+  fail("The storefront must link the Familiars page (familiars.html).");
+}
+
 console.log(
   `Verified ${files.length} themes, ${pluginFiles.length} plugin themes, ${vol2Files.length} Vol. 2 themes, ` +
     `${galleryThemes.length} gallery cards, ` +
