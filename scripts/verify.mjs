@@ -577,7 +577,8 @@ const siteFontFiles = Object.fromEntries(
     (await readdir(new URL("assets/fonts/", root))).map(async (name) => [name, name.endsWith(".txt") ? await readFile(new URL(`assets/fonts/${name}`, root), "utf8") : true]),
   ),
 );
-for (const problem of siteStyle.fontProblems(siteCss, siteFontFiles)) fail(problem);
+const pageFonts = (await Promise.all(htmlFiles.map(async (path) => siteStyle.pageFontFiles(await readFile(new URL(path, root), "utf8"), path)))).flat();
+for (const problem of siteStyle.fontProblems(siteCss, siteFontFiles, pageFonts)) fail(problem);
 const siteFonts = siteStyle.fontFaces(siteCss).flatMap(({ urls }) => urls);
 for (const path of siteStyle.SITE_PAGES) {
   for (const problem of siteStyle.pageProblems(await readFile(new URL(path, root), "utf8"), path, siteFonts)) fail(problem);

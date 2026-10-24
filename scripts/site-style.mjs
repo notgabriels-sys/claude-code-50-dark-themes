@@ -26,8 +26,10 @@
 //    builds on the shared tokens; carry the ambient lights and the theme switch, wired to the key
 //    the Familiars page keeps the choice under, so one choice holds across the site; preload no
 //    font the stylesheet does not use; and fetch no font from a third party.
-// 6. Fonts. Every @font-face points at a file in assets/fonts, every font file there is used by
-//    one, and every family ships with its SIL Open Font License, which both fonts are under.
+// 6. Fonts. Every @font-face in the stylesheet points at a file in assets/fonts, every font file
+//    there is loaded by an @font-face (the stylesheet's, or one in a page's own <style> that has
+//    not moved onto the base yet), and every family in the stylesheet ships with its SIL Open Font
+//    License, which both fonts are under.
 //
 // What cannot pass is a colour the design base does not name, a light theme that differs by
 // which way the visitor arrived at it, text below the floor in either theme, motion that runs
@@ -396,22 +398,29 @@ export function pageProblems(html, path, fontFiles = []) {
 // --- fonts --------------------------------------------------------------------------------------
 
 // The @font-face rules: family and the file each loads, as a path from the repository root.
-export function fontFaces(css) {
+// `base` is the file the CSS sits in, which its relative urls resolve against.
+export function fontFaces(css, base = STYLESHEET) {
   return parseCss(css)
     .filter((rule) => squash(rule.selector) === "@font-face")
     .map((rule) => {
       const get = (name) => rule.declarations.find(({ property }) => property === name)?.value ?? "";
       const family = get("font-family").replace(/^["']|["']$/g, "");
-      const urls = [...get("src").matchAll(/url\(\s*["']?([^"')]+)["']?\s*\)/gi)].map(([, url]) => new URL(url, `https://site/${STYLESHEET}`).pathname.slice(1));
+      const urls = [...get("src").matchAll(/url\(\s*["']?([^"')]+)["']?\s*\)/gi)].map(([, url]) => new URL(url, `https://site/${base}`).pathname.slice(1));
       return { family, urls };
     });
 }
 
-// `files` maps each file name in assets/fonts to its text (licences) or to true (fonts).
-export function fontProblems(css, files) {
+// The files a page's own <style> loads with @font-face, as paths from the repository root.
+export function pageFontFiles(html, path) {
+  return [...html.matchAll(STYLE_BLOCK)].flatMap((match) => fontFaces(match[1], path).flatMap(({ urls }) => urls));
+}
+
+// `files` maps each file name in assets/fonts to its text (licences) or to true (fonts);
+// `pageFonts` lists the files the pages' own @font-face rules load (pageFontFiles).
+export function fontProblems(css, files, pageFonts = []) {
   const problems = [];
   const faces = fontFaces(css);
-  const used = new Set(faces.flatMap(({ urls }) => urls));
+  const used = new Set([...faces.flatMap(({ urls }) => urls), ...pageFonts]);
   for (const { family, urls } of faces) {
     if (!urls.length) problems.push(`${STYLESHEET} @font-face for "${family}" loads no file.`);
     for (const url of urls) {
@@ -424,7 +433,7 @@ export function fontProblems(css, files) {
     }
   }
   for (const name of Object.keys(files)) {
-    if (/\.(ttf|otf|woff2?)$/i.test(name) && !used.has(`assets/fonts/${name}`)) problems.push(`assets/fonts/${name} is not loaded by any @font-face in ${STYLESHEET}; remove it or use it.`);
+    if (/\.(ttf|otf|woff2?)$/i.test(name) && !used.has(`assets/fonts/${name}`)) problems.push(`assets/fonts/${name} is not loaded by any @font-face in ${STYLESHEET} or in a page's own <style>; remove it or use it.`);
   }
   return problems;
 }

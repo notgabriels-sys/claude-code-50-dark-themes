@@ -6,7 +6,7 @@ import { join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 
-import { CONTRAST_PAIRS, PALETTE, SITE_PAGES, STYLESHEET, colourLiterals, contrast, fontFaces, fontProblems, pageProblems, parseCss, stylesheetProblems, themesOf } from "./site-style.mjs";
+import { CONTRAST_PAIRS, PALETTE, SITE_PAGES, STYLESHEET, colourLiterals, contrast, fontFaces, fontProblems, pageFontFiles, pageProblems, parseCss, stylesheetProblems, themesOf } from "./site-style.mjs";
 
 const root = new URL("../", import.meta.url);
 const projectRoot = fileURLToPath(root);
@@ -142,8 +142,8 @@ test("pages: the storefront on disk wears the base, and each part of it is requi
   bad(check(swap(page, 'id="themeSwitch" type="button" hidden>', 'id="themeSwitch" type="button">')), /does not carry the theme switch/, "a switch shown before its script can work it");
   bad(check(swap(page, 'const THEME_KEY = "familiars-theme";', 'const THEME_KEY = "storefront-theme";')), /does not work the theme switch under the key "familiars-theme"/, "a key of its own");
   bad(check(swap(page, '<link rel="stylesheet" href="assets/site.css">', '<link rel="stylesheet" href="assets/site.css">\n<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk">')), /fetches a font from Google/, "a third-party font");
-  bad(check(swap(page, 'href="assets/fonts/FamiljenGrotesk-VF.ttf"', 'href="assets/fonts/Other.ttf"')), /preloads the font assets\/fonts\/Other\.ttf, which no @font-face/, "a preload for nothing");
-  bad(check(swap(page, 'type="font/ttf" crossorigin>', 'type="font/ttf">')), /without crossorigin/, "a preload fetched twice");
+  bad(check(swap(page, 'href="assets/fonts/FamiljenGrotesk-VF.woff2"', 'href="assets/fonts/Other.woff2"')), /preloads the font assets\/fonts\/Other\.woff2, which no @font-face/, "a preload for nothing");
+  bad(check(swap(page, 'type="font/woff2" crossorigin>', 'type="font/woff2">')), /without crossorigin/, "a preload fetched twice");
   bad(check(swap(page, "  @media (prefers-reduced-motion:no-preference){\n    .theme-monolith{animation:monolith-float 5s ease-in-out infinite}", "  .theme-monolith{animation:monolith-float 5s ease-in-out infinite}\n  @media (prefers-reduced-motion:no-preference){")), /index\.html \.theme-monolith \{ animation: monolith-float 5s ease-in-out infinite \} runs whatever/, "the page's own animation outside the block");
   bad(check(swap(page, "  .syntax-version{color:var(--accent)}", "  .syntax-version{color:var(--ember)}")), /index\.html \.syntax-version \{ color: var\(--ember\) \}: ember is a point, never text/, "ember as the page's text");
   // A one-off pulse the reduce block turns off for the same selector, as a deep-linked card has.
@@ -154,13 +154,20 @@ test("pages: the storefront on disk wears the base, and each part of it is requi
 test("fonts: each face loads a file that is there, each file is used, and each family carries the OFL", async () => {
   const files = await fontDirectory();
   assert.deepEqual(fontProblems(css, files), []);
-  assert.deepEqual(fontFiles, ["assets/fonts/FamiljenGrotesk-VF.ttf", "assets/fonts/IBMPlexMono-Regular.ttf", "assets/fonts/IBMPlexMono-Medium.ttf"]);
+  const plex = ["Regular", "Medium"].flatMap((weight) => ["Latin1", "Latin2", "Latin3", "Pi"].map((script) => `assets/fonts/IBMPlexMono-${weight}-${script}.woff2`));
+  assert.deepEqual(fontFiles, ["assets/fonts/FamiljenGrotesk-VF.woff2", ...plex]);
   const without = (name) => Object.fromEntries(Object.entries(files).filter(([key]) => key !== name));
   bad(fontProblems(css, without("OFL-IBMPlexMono.txt")), /assets\/fonts\/OFL-IBMPlexMono\.txt is missing or is not the SIL Open Font License; "IBM Plex Mono"/, "a licence missing");
   bad(fontProblems(css, { ...files, "OFL-FamiljenGrotesk.txt": "All rights reserved." }), /OFL-FamiljenGrotesk\.txt is missing or is not the SIL Open Font License/, "a licence that is not the OFL");
-  bad(fontProblems(css, without("IBMPlexMono-Medium.ttf")), /loads assets\/fonts\/IBMPlexMono-Medium\.ttf, which is not a file in assets\/fonts/, "a face whose file is gone");
+  bad(fontProblems(css, without("IBMPlexMono-Medium-Latin1.woff2")), /loads assets\/fonts\/IBMPlexMono-Medium-Latin1\.woff2, which is not a file in assets\/fonts/, "a face whose file is gone");
   bad(fontProblems(css, { ...files, "Spare.woff2": true }), /assets\/fonts\/Spare\.woff2 is not loaded by any @font-face/, "a font file nothing uses");
-  bad(fontProblems(css.replace('url("fonts/IBMPlexMono-Medium.ttf")', 'url("https://example.com/IBMPlexMono-Medium.ttf")'), files), /loads example\.com\/IBMPlexMono-Medium\.ttf|loads IBMPlexMono-Medium\.ttf, which is not a file in assets\/fonts/, "a face served from elsewhere");
+  // A page not yet on the base may load its own font files; those count as used, and only those.
+  const ownFaces = '<style>@font-face{font-family:"Own";src:url(assets/fonts/Spare.woff2) format("woff2")}</style>';
+  assert.deepEqual(pageFontFiles(ownFaces, "familiars.html"), ["assets/fonts/Spare.woff2"]);
+  assert.deepEqual(pageFontFiles(ownFaces.replace("url(assets/", "url(../assets/"), "guide/index.html"), ["assets/fonts/Spare.woff2"], "a page's url resolves against the page");
+  assert.deepEqual(fontProblems(css, { ...files, "Spare.woff2": true }, pageFontFiles(ownFaces, "familiars.html")), []);
+  bad(fontProblems(css, { ...files, "Spare.woff2": true }, pageFontFiles(ownFaces, "guide/index.html")), /assets\/fonts\/Spare\.woff2 is not loaded by any @font-face/, "a page url that resolves somewhere else");
+  bad(fontProblems(css.replace('url("fonts/IBMPlexMono-Medium-Latin1.woff2")', 'url("https://example.com/IBMPlexMono-Medium-Latin1.woff2")'), files), /loads example\.com\/IBMPlexMono-Medium-Latin1\.woff2|loads IBMPlexMono-Medium-Latin1\.woff2, which is not a file in assets\/fonts/, "a face served from elsewhere");
 });
 
 // --- the verifier on the real files -----------------------------------------------------------
