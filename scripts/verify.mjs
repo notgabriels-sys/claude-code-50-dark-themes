@@ -943,12 +943,12 @@ try {
 } catch {
   fail("familiars.html is missing.");
 }
-const numberWords = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine",
+const familiarsNumberWords = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine",
   "ten", "eleven", "twelve"];
 const familiarsCountClaim = familiarsHtml.match(/<h2>(\w+) familiars, each with its sigil\.<\/h2>/);
 if (!familiarsCountClaim) fail("Familiars: the catalogue heading that states the count is missing.");
 const familiarsCards = (familiarsHtml.match(/<article class="card"/g) ?? []).length;
-const familiarsStated = numberWords.indexOf(familiarsCountClaim[1].toLowerCase());
+const familiarsStated = familiarsNumberWords.indexOf(familiarsCountClaim[1].toLowerCase());
 if (familiarsStated !== familiarsCards) {
   fail(`Familiars: the heading says ${familiarsCountClaim[1]} familiars but the page shows ${familiarsCards} cards.`);
 }
