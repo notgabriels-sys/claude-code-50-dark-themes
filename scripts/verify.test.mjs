@@ -82,6 +82,20 @@ async function runNodeScript(cwd, script) {
   });
 }
 
+// A test that changes a package's payload on purpose (the skills sync tests)
+// records the new digest under the same version, as releasedPackages lets an
+// unreleased version do, so the release check does not stand in for its own.
+async function recordPayloadDigest(fixtureRoot, name) {
+  const result = await runVerifier(fixtureRoot);
+  const digest = new RegExp(`changed since ${name} \\S+ \\(its digest is now ([0-9a-f]{64})\\)`).exec(result.stderr)?.[1];
+  assert.ok(digest, `expected only ${name}'s payload digest to stand in the way: ${result.stderr}`);
+  const verifyFile = join(fixtureRoot, "scripts/verify.mjs");
+  const source = await readFile(verifyFile, "utf8");
+  const row = new RegExp(`(name: "${name}", payload: "[a-z]+", version: "[^"]+",\\n {4}sha256: ")[0-9a-f]{64}"`, "g");
+  assert.equal(source.match(row)?.length, 1, `the releasedPackages row for ${name} must occur exactly once`);
+  await writeFile(verifyFile, source.replace(row, (_, head) => `${head}${digest}"`));
+}
+
 async function runContrastVerifier(cwd) {
   return new Promise((resolve, reject) => {
     const child = spawn(process.execPath, ["scripts/verify-contrast.mjs"], { cwd });
@@ -675,6 +689,7 @@ test("packages a skill's supporting files and detects tampering in them", { time
 
   const synced = await runNodeScript(fixtureRoot, "scripts/sync-plugin-skills.mjs");
   assert.equal(synced.code, 0, "the sync should succeed");
+  await recordPayloadDigest(fixtureRoot, "berlin-studio-skills");
 
   // Negative control first: once synced, the same state must be accepted.
   const afterSync = await runVerifier(fixtureRoot);
@@ -1425,6 +1440,119 @@ test("accepts a skill table GitHub renders as exactly the shipped skills, howeve
   assert.equal(result.code, 0, result.stderr);
 });
 
+// `claude plugin update` compares versions only, so a payload changed under an
+// unchanged version never reaches an installed copy (read back against Claude
+// Code 2.1.303). Each package's payload is held to the digest recorded beside
+// its version in releasedPackages.
+const editFixtureFile = async (fixtureRoot, path, from, to) => {
+  const file = join(fixtureRoot, path);
+  const text = await readFile(file, "utf8");
+  assert.equal(text.split(from).length, 2, `fixture anchor must occur exactly once in ${path}: ${from}`);
+  await writeFile(file, text.replace(from, () => to));
+};
+const skillEdit = "Check the master on headphones before sending it.";
+const editShippedSkill = async (fixtureRoot) => {
+  for (const path of [
+    ".claude/skills/mix-master-decisions/SKILL.md",
+    "plugins/berlin-studio-skills/skills/mix-master-decisions/SKILL.md",
+  ]) {
+    const file = join(fixtureRoot, path);
+    await writeFile(file, `${(await readFile(file, "utf8")).trimEnd()}\n\n${skillEdit}\n`);
+  }
+};
+
+test("rejects a changed skill shipped under an unchanged version", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  await editShippedSkill(fixtureRoot);
+  const result = await runVerifier(fixtureRoot);
+  assert.notEqual(result.code, 0, "a changed skill under an unchanged version passed");
+  assert.match(
+    result.stderr,
+    /plugins\/berlin-studio-skills\/skills\/ changed since berlin-studio-skills 1\.0\.0 \(its digest is now [0-9a-f]{64}\)\. .*Bump the version in plugins\/berlin-studio-skills\/\.claude-plugin\/plugin\.json/,
+  );
+});
+
+test("reaches green from a changed skill by following the release messages", { timeout: 180_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  await editShippedSkill(fixtureRoot);
+  const changed = await runVerifier(fixtureRoot);
+  const digest = /its digest is now ([0-9a-f]{64})/.exec(changed.stderr)?.[1];
+  assert.ok(digest, changed.stderr);
+  await editFixtureFile(fixtureRoot, "plugins/berlin-studio-skills/.claude-plugin/plugin.json",
+    '"version": "1.0.0"', '"version": "1.0.1"');
+  await editFixtureFile(fixtureRoot, ".claude-plugin/marketplace.json",
+    '"source": "./plugins/berlin-studio-skills",\n      "version": "1.0.0"',
+    '"source": "./plugins/berlin-studio-skills",\n      "version": "1.0.1"');
+  const bumped = await runVerifier(fixtureRoot);
+  assert.notEqual(bumped.code, 0, "a bumped version the table does not record passed");
+  assert.ok(
+    bumped.stderr.includes(
+      `berlin-studio-skills ships version 1.0.1, but releasedPackages in scripts/verify.mjs records 1.0.0. ` +
+        `If 1.0.1 is the release you mean, record { version: "1.0.1", sha256: "${digest}" }`,
+    ),
+    bumped.stderr,
+  );
+  const verifyFile = join(fixtureRoot, "scripts/verify.mjs");
+  const verifySource = await readFile(verifyFile, "utf8");
+  const row = /name: "berlin-studio-skills", payload: "skills", version: "1\.0\.0",\n {4}sha256: "[0-9a-f]{64}"/g;
+  assert.equal(verifySource.match(row)?.length, 1, "the releasedPackages row must occur exactly once");
+  await writeFile(verifyFile, verifySource.replace(row,
+    `name: "berlin-studio-skills", payload: "skills", version: "1.0.1",\n    sha256: "${digest}"`));
+  const recorded = await runVerifier(fixtureRoot);
+  assert.equal(recorded.code, 0, recorded.stderr);
+});
+
+test("rejects a changed theme pack shipped under an unchanged version, naming what moves with it", { timeout: 180_000 }, async (t) => {
+  for (const [paths, message] of [
+    [["absinthe.json", "plugins/50-dark-themes/themes/absinthe.json"],
+      /plugins\/50-dark-themes\/themes\/ changed since 50-dark-themes 1\.0\.1 .*; verify then holds the storefront's softwareVersion and every release link to the new version/],
+    [["plugins/dark-themes-vol-2/themes/afterglow.json"],
+      /plugins\/dark-themes-vol-2\/themes\/ changed since dark-themes-vol-2 1\.0\.0 .*; verify then holds every Vol\. 2 release link to the new version/],
+  ]) {
+    const fixtureRoot = await makeFixture(t);
+    for (const path of paths) {
+      const file = join(fixtureRoot, path);
+      await writeFile(file, `${await readFile(file, "utf8")}\n`);
+    }
+    const result = await runVerifier(fixtureRoot);
+    assert.notEqual(result.code, 0, `${paths.at(-1)} changed under an unchanged version and passed`);
+    assert.match(result.stderr, message);
+  }
+});
+
+test("accepts every payload saved with CRLF line endings under its recorded digest", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  for (const path of [
+    "absinthe.json",
+    "plugins/50-dark-themes/themes/absinthe.json",
+    "plugins/dark-themes-vol-2/themes/afterglow.json",
+  ]) {
+    const file = join(fixtureRoot, path);
+    await writeFile(file, (await readFile(file, "utf8")).replace(/\n/g, "\r\n"));
+  }
+  const result = await runVerifier(fixtureRoot);
+  assert.equal(result.code, 0, result.stderr);
+});
+
+test("accepts an edit outside a package's payload under the same version", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  await editFixtureFile(fixtureRoot, "plugins/50-dark-themes/README.md",
+    "Visual gallery: https://gabs-utilities.com/", "Browse them first in the visual gallery: https://gabs-utilities.com/");
+  await editFixtureFile(fixtureRoot, skillsReadmeFile,
+    "## What these skills will not do", "Each skill reads only what you give it.\n\n## What these skills will not do");
+  const result = await runVerifier(fixtureRoot);
+  assert.equal(result.code, 0, result.stderr);
+});
+
+test("rejects a releasedPackages table that does not name every plugin", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  await editFixtureFile(fixtureRoot, "scripts/verify.mjs",
+    '  {\n    name: "dark-themes-vol-2", payload: "themes", version: "1.0.0",\n', '  {\n    name: "retired-pack", payload: "themes", version: "1.0.0",\n');
+  const result = await runVerifier(fixtureRoot);
+  assert.notEqual(result.code, 0, "a table naming another plugin passed");
+  assert.match(result.stderr, /releasedPackages in scripts\/verify\.mjs must name exactly the plugins in expectedPlugins/);
+});
+
 test("lists every stale count in a file in one run", { timeout: 90_000 }, async (t) => {
   const fixtureRoot = await editPage(t, "DEV_COMMUNITY_ARTICLE_DRAFT.md", "## Contrast matters more than vibe",
     "Ghostty ships 300 themes and iTerm2 offers 250 palettes.\n\n## Contrast matters more than vibe");
@@ -2138,6 +2266,7 @@ test("packages a relative symlink in a source skill as a real file", { timeout: 
   assert.equal(synced.code, 0, "the sync should succeed");
   const packaged = await lstat(join(fixtureRoot, "plugins/berlin-studio-skills/skills/freelance-admin-de/shared.md"));
   assert.equal(packaged.isSymbolicLink(), false, "the sync packaged a symlink");
+  await recordPayloadDigest(fixtureRoot, "berlin-studio-skills");
 
   const result = await runVerifier(fixtureRoot);
 

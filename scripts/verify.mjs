@@ -861,8 +861,9 @@ for (const entry of await readdir(pluginsDir, { withFileTypes: true })) {
     fail(
       `${path} is not one of the registered plugins ` +
         `(${[...expectedPackageFiles.keys()].join(", ")}). Delete it, or register it in ` +
-        `.claude-plugin/marketplace.json and in expectedPlugins, shippedCounts and ` +
-        `expectedPackageFiles in scripts/verify.mjs (and themePluginNames if it ships themes).`,
+        `.claude-plugin/marketplace.json and in expectedPlugins, shippedCounts, ` +
+        `expectedPackageFiles and releasedPackages in scripts/verify.mjs (and themePluginNames ` +
+        `if it ships themes).`,
     );
   }
 }
@@ -3382,6 +3383,82 @@ for (const file of servedFiles) {
 
 await themePageFreshness("sitemap.xml", themePages.get("sitemap.xml"));
 
+// A changed package needs a new version. Claude Code keeps an installed plugin
+// in a cache directory named for its version, and `claude plugin update`
+// compares versions only. Read back 2026-10-19 against Claude Code 2.1.303,
+// installing from a git-hosted copy of this marketplace: a skill changed under
+// an unchanged version reached the marketplace clone and never the installed
+// copy ("already at the latest version (1.0.0)"), and the same change under a
+// bumped version installed at once. Nothing has slipped through yet: each theme
+// pack's payload last changed in the commit that set its version, and
+// berlin-studio-skills has never been on the default branch, so 1.0.0 is what
+// it first ships. Each package's payload, the directory Claude Code loads
+// themes or skills from, is held to the digest recorded beside the version
+// that ships it, so a changed payload fails until its version moves. READMEs
+// and previews are outside the payload; editing them needs no release. It runs
+// last, so a change meets every check of its content before it is asked for a
+// release.
+const releasedPackages = [
+  {
+    name: "50-dark-themes", payload: "themes", version: "1.0.1",
+    sha256: "c15494e9d30d86fd80ff19c3092140df312f32a81fae4bc8e7d1ecfcf2cad417",
+  },
+  {
+    name: "dark-themes-vol-2", payload: "themes", version: "1.0.0",
+    sha256: "2f38a03d9634f80174f62bfec9958dbbd5dadd7a08d75111bf33adb2c77216f2",
+  },
+  {
+    name: "berlin-studio-skills", payload: "skills", version: "1.0.0",
+    sha256: "5cec3aa5b65f2f6e6f93eb41216d548b5fbaa3a775e7dac920cd65d3c48af3bf",
+  },
+];
+// Sorted paths and line-ending-normalised bytes, so a checkout that writes
+// CRLF on another machine computes the same digest.
+const payloadDigest = async (name, payload) => {
+  const dir = `plugins/${name}/${payload}`;
+  const paths = (await walkPackage(fileUrl(`${dir}/`), dir)).sort();
+  const digest = createHash("sha256");
+  for (const path of paths) {
+    const bytes = (await readFile(fileUrl(path))).toString("latin1").replace(/\r\n?/g, "\n");
+    const fileDigest = createHash("sha256").update(bytes, "latin1").digest("hex");
+    digest.update(`${path.slice(dir.length + 1)}\u0000${fileDigest}\n`);
+  }
+  return digest.digest("hex");
+};
+const releaseFollowUp = {
+  "50-dark-themes":
+    "; verify then holds the storefront's softwareVersion and every release link to the new version, " +
+    "and the GitHub release those links name must exist",
+  "dark-themes-vol-2": "; verify then holds every Vol. 2 release link to the new version",
+  "berlin-studio-skills": "",
+};
+if (JSON.stringify(releasedPackages.map((entry) => entry.name).sort()) !==
+    JSON.stringify(expectedPlugins.map((plugin) => plugin.name).sort())) {
+  fail("releasedPackages in scripts/verify.mjs must name exactly the plugins in expectedPlugins.");
+}
+for (const { name, payload, version, sha256 } of releasedPackages) {
+  const shipping = marketplace.plugins.find((entry) => entry.name === name)?.version;
+  const actual = await payloadDigest(name, payload);
+  if (shipping !== version) {
+    fail(
+      `${name} ships version ${shipping}, but releasedPackages in scripts/verify.mjs records ${version}. ` +
+        `If ${shipping} is the release you mean, record { version: "${shipping}", sha256: "${actual}" } ` +
+        `for ${name} there.`,
+    );
+  }
+  if (actual !== sha256) {
+    fail(
+      `plugins/${name}/${payload}/ changed since ${name} ${version} (its digest is now ${actual}). ` +
+        `Claude Code updates an installed plugin only when its version changes, so this change ` +
+        `would never reach anyone who already has ${name} ${version}. Bump the version in ` +
+        `plugins/${name}/.claude-plugin/plugin.json and in its .claude-plugin/marketplace.json entry, ` +
+        `then record { version: "<the new version>", sha256: "${actual}" } for ${name} in ` +
+        `releasedPackages in scripts/verify.mjs${releaseFollowUp[name]}. Only if ${name} ${version} ` +
+        `has never been released (it is not in the marketplace on the default branch) record the new ` +
+        `digest under ${version} instead.`,
+    );
+  }
+}
 console.log(
   `Verified ${files.length} themes, ${pluginFiles.length} plugin themes, ${vol2Files.length} Vol. 2 themes, ` +
     `${galleryThemes.length} gallery cards, ` +

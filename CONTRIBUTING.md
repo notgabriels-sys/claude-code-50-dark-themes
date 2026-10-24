@@ -51,6 +51,12 @@ Rules:
 - Reserve `subtle` for non-essential decorative hairlines. Use `inactive` for readable secondary
   text; do not place meaningful text or required control boundaries in `subtle`.
 - Do not invent new override keys. Claude Code silently discards unknown keys.
+- A changed theme reaches people who already have the pack only under a new version: Claude Code
+  updates an installed plugin only when its version changes. `node scripts/verify.mjs` fails on a
+  changed theme until you bump the version in `plugins/50-dark-themes/.claude-plugin/plugin.json`
+  and its entry in `.claude-plugin/marketplace.json`, and record the digest it prints in
+  `releasedPackages` in `scripts/verify.mjs`. It then names the storefront's `softwareVersion` and
+  the release links that must move with it.
 
 ## Updating the gallery
 
@@ -94,7 +100,9 @@ is where the pieces live:
   the hash `verify` prints in `reviewedInlineScripts`, and paste the policy it prints into `index.html`
   (see "Updating the gallery" above).
 - Bump the version in `plugins/dark-themes-vol-2/.claude-plugin/plugin.json` and the matching entry
-  in `.claude-plugin/marketplace.json` together; the verifier requires them to match.
+  in `.claude-plugin/marketplace.json` together, and record the digest the verifier prints in
+  `releasedPackages` in `scripts/verify.mjs`. Claude Code updates an installed plugin only when its
+  version changes, so a theme added under the old version never reaches anyone who has the pack.
 - Update the numbers the public pages state, in the same change. A theme adds fourteen contrast
   comparisons, so the role-aware check count moves, and the share card names each pack's size. Both
   are CI-enforced — see "Numbers stated on public pages" below. Adding a theme and running

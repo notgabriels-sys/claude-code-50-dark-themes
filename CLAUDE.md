@@ -25,9 +25,11 @@ What that reaches, and how it is done here:
   (`.claude-plugin/marketplace.json`). Adding a plugin here makes it
   installable anywhere with `claude plugin install <name>`, which is the
   route around account-level settings. Register it in the marketplace and add
-  it to `expectedPlugins`, `shippedCounts` and `expectedPackageFiles` in
-  `scripts/verify.mjs` — and to `themePluginNames` if it ships themes. Never add
-  a git submodule anywhere in this repo (see the CI-tripwire section).
+  it to `expectedPlugins`, `shippedCounts`, `expectedPackageFiles` and
+  `releasedPackages` in `scripts/verify.mjs` — and to `themePluginNames` if it
+  ships themes. A changed theme or skill ships only with a new version (see
+  "A changed package needs a new version"). Never add a git submodule anywhere
+  in this repo (see the CI-tripwire section).
 - **Hooks, permissions, env** → `.claude/settings.json`.
 
 What it genuinely cannot reach, so do not promise it: claude.ai **account-level**
@@ -222,6 +224,9 @@ repo has. `verify` runs on every push and **fails the build** on:
   Content-Security-Policy is missing, misplaced, doubled or names anything but
   exactly those hashes, and a NUL or an attribute written twice on any served
   page — see "Every inline script is reviewed" below;
+- **(added 2026-10-20)** a plugin's themes or skills that differ from the
+  digest recorded for the version that ships them — see "A changed package
+  needs a new version" below;
 - the retired résumé checkout slug `notgabriel.gumroad.com/l/wmlrk`;
 - any of the three verified PayPal links going missing;
 - **(added 2026-08-24)** any of the three carrying a price other than its
@@ -760,6 +765,42 @@ a plain clone, and the installed plugin reported `Hooks (1) SessionStart`. So
 `verify` fails on a `.gitmodules` file and on any empty directory under
 `plugins/` — git checks out an empty directory only as a submodule placeholder.
 The skills sync dereferences symlinks for the same reason the walk rejects them.
+
+**(added 2026-10-20) A changed package needs a new version.** Claude Code
+installs a plugin into a cache directory named for its version, and `claude
+plugin update` compares versions only. Read back 2026-10-19 against Claude Code
+2.1.303, installing from a copy of this marketplace served locally by git's own
+HTTP backend: a skill changed under an unchanged version reached the
+marketplace clone and never the installed copy ("already at the latest version
+(1.0.0)"), and the same change under a bumped version installed at once. So
+`verify` holds each package's payload — `themes/` for the two theme packs,
+`skills/` for `berlin-studio-skills`, the directories Claude Code loads — to a
+SHA-256 over its sorted paths and line-ending-normalised bytes, recorded in
+`releasedPackages` beside the version that ships it, and fails a changed
+payload until the version moves. The message names the new digest and, for a
+theme pack, the release links that must follow; following its two messages
+reaches green, and a test does exactly that. Nothing had slipped through: each
+theme pack's payload last changed in the commit that set its version (`e4bebf2`
+for 50-dark-themes 1.0.1, `4365c25` for Vol. 2 1.0.0), and the skills plugin
+has never been on `main`, so 1.0.0 is what it first ships and its digest is
+recorded under 1.0.0 without a bump. (Corrected the same day: Claude had told
+Gabriel that people who installed the skills plugin had missed fixes since
+August. Nobody has installed it.) The three digests were computed twice, by
+`verify` and by a separate Python reading, and agree (rule 12). The message
+allows one exception it cannot check: a version that was never released may
+take a new digest unbumped, which is a fact about the default branch. READMEs
+and previews sit outside the payload and need no release; a whitespace-only
+change inside it does, which is the cost. Mutation-tested (rule 5), nine
+branches each gutted alone: the names check, the CRLF step and each theme
+pack's follow-up text turn exactly their own tests red, the version check only
+the test that follows the messages to green, and the digest check its three
+tests and the two skills-sync tests that expect its message; hashing without
+the paths, or reading the version by position, turns the real tree red; and
+sorting the paths fails nothing, because readdir returned names sorted on the
+file system it ran on, so that branch is shadowed, not pinned. Not covered:
+`plugin.json` metadata (a new description reaches no installed copy either, but
+loads nothing), and whether the GitHub release a bumped theme pack's links name
+exists.
 
 **Generated surfaces are checked against their sources, not their generator.**
 `themes.json` and the JSON-LD ItemList in `index.html` are both written by
