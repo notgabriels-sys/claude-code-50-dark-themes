@@ -3092,6 +3092,13 @@ for (const [defect, content, message] of [
   });
 }
 
+test("rejects a Terminal.app scheme holding a script element, read as a property list too", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await addFile(t, "terminal-schemes/terminal-app/Pay.terminal", PLIST_HEAD + "<plist><script>x</script></plist>\n");
+  const result = await runVerifier(fixtureRoot);
+  assert.notEqual(result.code, 0, "a .terminal file holding a script passed");
+  assert.match(result.stderr, /terminal-schemes\/terminal-app\/Pay\.terminal is read as an Apple property list and holds <script>\. /);
+});
+
 test("accepts a property list with base64 data and an attribute, as Terminal.app writes them", { timeout: 90_000 }, async (t) => {
   const fixtureRoot = await addFile(t, "terminal-schemes/terminal-app/Plain.terminal",
     PLIST_HEAD + '<plist version="1.0">\n<dict>\n<key>BackgroundColor</key>\n<data>\nYnBsaXN0MDDUAQIDBAUGBwpYJHZlcnNpb24=\n</data>\n</dict>\n</plist>\n');
@@ -3836,14 +3843,14 @@ for (const [defect, edit, message] of [
 // every filter PNG defines (a wrong predictor reads a wrong colour).
 const PETROL = { ground: "#152528", chevron: "#E8EDED", top: "#2FB8C6", middle: "#9BE59C", bottom: "#6491DD" };
 const ICON_PARTS = [["chevron", 334, 432], ["top", 640, 333], ["middle", 640, 512], ["bottom", 640, 691], ["corner", 1007, 1007]];
-const drawIcon = (colours) => {
+const drawIcon = (colours, channels = 3) => {
   const size = 1024;
-  const stride = size * 3;
+  const stride = size * channels;
   const pixels = Buffer.alloc(size * stride);
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
       const part = ICON_PARTS.find(([, px, py]) => Math.abs(x - px) <= 8 && Math.abs(y - py) <= 8);
-      pixels.write((colours[part ? part[0] : "ground"] ?? colours.ground).slice(1), y * stride + x * 3, "hex");
+      pixels.write(`${(colours[part ? part[0] : "ground"] ?? colours.ground).slice(1)}ff`.slice(0, channels * 2), y * stride + x * channels, "hex");
     }
   }
   const rows = Buffer.alloc(size * (stride + 1));
@@ -3851,9 +3858,9 @@ const drawIcon = (colours) => {
     const filter = y % 5;
     rows[y * (stride + 1)] = filter;
     for (let x = 0; x < stride; x++) {
-      const left = x >= 3 ? pixels[y * stride + x - 3] : 0;
+      const left = x >= channels ? pixels[y * stride + x - channels] : 0;
       const up = y > 0 ? pixels[(y - 1) * stride + x] : 0;
-      const upLeft = x >= 3 && y > 0 ? pixels[(y - 1) * stride + x - 3] : 0;
+      const upLeft = x >= channels && y > 0 ? pixels[(y - 1) * stride + x - channels] : 0;
       const guess = left + up - upLeft;
       const [a, b, c] = [left, up, upLeft].map((value) => Math.abs(guess - value));
       const paeth = a <= b && a <= c ? left : b <= c ? up : upLeft;
@@ -3864,7 +3871,7 @@ const drawIcon = (colours) => {
   header.writeUInt32BE(size, 0);
   header.writeUInt32BE(size, 4);
   header[8] = 8;
-  header[9] = 2;
+  header[9] = channels === 4 ? 6 : 2;
   return Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), pngChunk("IHDR", header),
     pngChunk("IDAT", deflateSync(rows)), pngChunk("IEND", Buffer.alloc(0))]);
 };
@@ -3901,6 +3908,34 @@ test("rejects a listing icon whose far corner leaves the theme's ground", { time
   const result = await runVerifier(fixtureRoot);
   assert.notEqual(result.code, 0, "an icon with a black far corner passed");
   assert.match(result.stderr, /plugins\/dark-themes-vol-2\/logo\.png follows Petrol .*its ground at 1007,1007 must be #152528, Petrol's recommended terminal background, its gallery row; it is #0A0A0B\./);
+});
+
+test("accepts an RGBA listing icon in Petrol's colours", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  await writeFile(join(fixtureRoot, "plugins/50-dark-themes/logo.png"), drawIcon(PETROL, 4));
+  const result = await runVerifier(fixtureRoot);
+  assert.equal(result.code, 0, result.stderr);
+});
+
+test("accepts a listing icon source written in lowercase hex", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const source = join(fixtureRoot, "assets/theme-packs-icon.svg");
+  const text = await readFile(source, "utf8");
+  assert.equal(text.split('fill="#2FB8C6"').length, 2, "fixture anchor must occur exactly once");
+  await writeFile(source, text.replace('fill="#2FB8C6"', 'fill="#2fb8c6"'));
+  const result = await runVerifier(fixtureRoot);
+  assert.equal(result.code, 0, result.stderr);
+});
+
+test("rejects a listing icon whose theme's scheme has no colour for a chip", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const scheme = join(fixtureRoot, "terminal-schemes/ghostty/Gabs Petrol");
+  const text = await readFile(scheme, "utf8");
+  assert.equal(text.split("palette = 10=#9BE59C\n").length, 2, "fixture anchor must occur exactly once");
+  await writeFile(scheme, text.replace("palette = 10=#9BE59C\n", ""));
+  const result = await runVerifier(fixtureRoot);
+  assert.notEqual(result.code, 0, "a scheme with no bright green passed");
+  assert.match(result.stderr, /Petrol has no terminal bright green, ANSI 10 for the listing icon's middle chip to follow\./);
 });
 
 test("rejects a listing icon source that leaves the theme it follows", { timeout: 90_000 }, async (t) => {
