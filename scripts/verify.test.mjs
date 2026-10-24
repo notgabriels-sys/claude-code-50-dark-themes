@@ -356,7 +356,8 @@ test("rejects a finder whose hidden cards are still painted", { timeout: 90_000 
 // until here. Each was proven to fire by hand at the time it was written, but a
 // proof in a transcript is not a proof that survives a refactor: the suite
 // stayed green at 16/16 while every one of them could have been gutted
-// silently. These re-run that proof on every push.
+// silently. These re-run that proof on every pull request
+// and every push to main.
 //
 // Each test injects the exact input that shipped green before the guard
 // existed, so a regression restores a known, reproduced failure rather than a
@@ -1095,12 +1096,12 @@ for (const [form, page, from, to, message] of [
     "> The flagship pack ships 51\n> hand-tuned dark themes.\n\nFive skills for running",
     /README\.md:\d+ says "51 hand-tuned dark themes"/],
   ["a reference-style link", "README.md",
-    "the repository verifies the theme schema, gallery parity, installation command and payment links on every push.",
-    "the repository verifies the theme schema, gallery parity, installation command and payment links on every push.\n\nBrowse all [51][gallery] themes in the gallery.\n\n[gallery]: https://gabs-utilities.com/\n",
+    "the repository verifies the theme schema, gallery parity, installation command and payment links on every pull request and every push to main.",
+    "the repository verifies the theme schema, gallery parity, installation command and payment links on every pull request and every push to main.\n\nBrowse all [51][gallery] themes in the gallery.\n\n[gallery]: https://gabs-utilities.com/\n",
     /README\.md:\d+ says "51 themes"/],
   ["a footnote mark", "README.md",
-    "the repository verifies the theme schema, gallery parity, installation command and payment links on every push.",
-    "the repository verifies the theme schema, gallery parity, installation command and payment links on every push.\n\nBrowse all 51[^1] themes in the gallery.\n",
+    "the repository verifies the theme schema, gallery parity, installation command and payment links on every pull request and every push to main.",
+    "the repository verifies the theme schema, gallery parity, installation command and payment links on every pull request and every push to main.\n\nBrowse all 51[^1] themes in the gallery.\n",
     /README\.md:\d+ says "51 themes"/],
   ["an ampersand between", "README.md",
     "(all 50 themes, plus the 12 Vol. 2 themes,",
@@ -1115,15 +1116,15 @@ for (const [form, page, from, to, message] of [
     "(two packs, 51 and 12 themes,",
     /README\.md:\d+ says "51 and 12 themes"/],
   ["a < in a Markdown code block", "README.md",
-    "the repository verifies the theme schema, gallery parity, installation command and payment links on every push.",
-    "the repository verifies the theme schema, gallery parity, installation command and payment links on every push.\n\n```js\nfor (let i = 0; i<themes.length; i++) install(themes[i]);\n```\n\nThat loop installs the flagship pack's 51 themes.\n\n```js\nthemes.forEach((t) => install(t));\n```\n",
+    "the repository verifies the theme schema, gallery parity, installation command and payment links on every pull request and every push to main.",
+    "the repository verifies the theme schema, gallery parity, installation command and payment links on every pull request and every push to main.\n\n```js\nfor (let i = 0; i<themes.length; i++) install(themes[i]);\n```\n\nThat loop installs the flagship pack's 51 themes.\n\n```js\nthemes.forEach((t) => install(t));\n```\n",
     /README\.md:\d+ says "51 themes"/],
   // The same with no quote in between, which the quote-aware reader would
   // otherwise stop at: only the rule that a tag's name ends at a space, "/"
   // or ">" keeps "<themes.length" from opening a tag.
   ["a < in a Markdown code block, no quote after it", "README.md",
-    "the repository verifies the theme schema, gallery parity, installation command and payment links on every push.",
-    "the repository verifies the theme schema, gallery parity, installation command and payment links on every push.\n\n```js\nfor (let i = 0; i<themes.length; i++) install(themes[i]);\n```\n\nThat loop installs all 51 themes.\n\n```js\nthemes.forEach((t) => install(t));\n```\n",
+    "the repository verifies the theme schema, gallery parity, installation command and payment links on every pull request and every push to main.",
+    "the repository verifies the theme schema, gallery parity, installation command and payment links on every pull request and every push to main.\n\n```js\nfor (let i = 0; i<themes.length; i++) install(themes[i]);\n```\n\nThat loop installs all 51 themes.\n\n```js\nthemes.forEach((t) => install(t));\n```\n",
     /README\.md:\d+ says "51 themes"/],
   ["a launch draft under assets/", "assets/product-hunt/SEMANTIC_NOCTURNE.md",
     "The palette is painstakingly tuned",
@@ -3546,4 +3547,15 @@ test("rejects a plugin listing icon of 2 MB or more", { timeout: 90_000 }, async
   const result = await runVerifier(fixtureRoot);
   assert.notEqual(result.code, 0, "a listing icon over the directory's size limit passed");
   assert.match(result.stderr, /plugins\/50-dark-themes\/\.claude-plugin\/icon\.png is \d+ bytes; the plugin directory takes a listing icon under 2 MB/);
+});
+
+test("rejects a Vol. 2 preview colour for a theme the pack does not ship", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const previews = join(fixtureRoot, "plugins/dark-themes-vol-2/previews.json");
+  const text = await readFile(previews, "utf8");
+  assert.equal(text.split('{\n  "Afterglow"').length, 2, "fixture anchor must occur exactly once");
+  await writeFile(previews, text.replace('{\n  "Afterglow"', '{\n  "Retired Theme": "#101010",\n  "Afterglow"'));
+  const result = await runVerifier(fixtureRoot);
+  assert.notEqual(result.code, 0, "a preview row for an unshipped theme passed");
+  assert.match(result.stderr, /previews\.json has a preview colour for Retired Theme, which the pack does not ship/);
 });

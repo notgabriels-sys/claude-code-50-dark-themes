@@ -203,7 +203,8 @@ file.**
 ## The CI tripwire — `scripts/verify.mjs`
 
 Undocumented here until 2026-08-24, and it is the strongest protection this
-repo has. `verify` runs on every push and **fails the build** on:
+repo has. `verify` runs on every pull request, on every push to `main` and on
+demand, and **fails the build** on:
 
 - any occurrence of `stripe` (case-insensitive) on any public page, in
   `README.md` or in `llms.txt` (until 2026-10-18 it read `index.html` alone);
@@ -834,6 +835,17 @@ too; the directory's own safety scan and policy review are not run by it.
 Mutation-tested (rule 5): the homepage rule, the icon's dimensions and its
 size limit, each gutted alone, turn exactly their own tests red. Not covered:
 whether the directory accepts these icons, which is read only on submission.
+
+**(added 2026-10-24) What CI runs, said as it runs.** README, CONTRIBUTING,
+this file and a test comment said `verify` runs "on every push"; the workflow
+runs on pull requests and on pushes to `main`, and now on demand
+(`workflow_dispatch`). CONTRIBUTING's "Test locally" block also lacked
+`build-theme-index` and main's `build-readme-theme-links`: followed after a
+colour change in a scratch copy (theme file and gallery row edited), the full
+block now ends at exactly one failure, the reviewed-hash message the change
+calls for. And `previews.json` was read only by theme name, so a row for a
+theme the pack no longer ships passed; `verify` now names it. Reproduced green
+first (rule 1), and gutting the check turns exactly its test red (rule 5).
 
 **Generated surfaces are checked against their sources, not their generator.**
 `themes.json` and the JSON-LD ItemList in `index.html` are both written by

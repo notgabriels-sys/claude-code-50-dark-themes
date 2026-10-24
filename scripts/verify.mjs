@@ -271,6 +271,15 @@ for (const file of vol2Files) {
   }
   vol2ThemesByName.set(theme.name, theme);
 }
+// A preview colour for a theme the pack no longer ships passed: previews.json
+// is read only by theme name, so a renamed or retired theme's row stayed.
+const orphanPreviews = Object.keys(vol2Previews).filter((name) => !vol2ThemesByName.has(name));
+if (orphanPreviews.length) {
+  fail(
+    `plugins/dark-themes-vol-2/previews.json has a preview colour for ${orphanPreviews.join(", ")}, ` +
+      `which the pack does not ship; remove the row, or rename it to the theme's current name.`,
+  );
+}
 
 const marketplace = JSON.parse(await readFile(new URL(".claude-plugin/marketplace.json", root), "utf8"));
 const pluginManifest = JSON.parse(await readFile(new URL(".claude-plugin/plugin.json", pluginRoot), "utf8"));

@@ -173,7 +173,9 @@ Every public page shipping an `og:image` must state `og:image:alt`, a `twitter:i
 
 ```bash
 node scripts/sync-plugin-themes.mjs
+node scripts/build-theme-index.mjs
 node scripts/build-theme-pages.mjs
+node scripts/build-readme-theme-links.mjs
 node scripts/verify.mjs
 node --test scripts/*.test.mjs
 claude plugin validate .
@@ -224,7 +226,8 @@ The command checks:
 - that share images carry alternative text, and that one image is described one way.
 - that every page under `theme/` is a fresh render of its theme file and `sitemap.xml` lists each one.
 
-GitHub Actions runs the regression tests and the same repository check on every push and pull request.
+GitHub Actions runs the regression tests and the same repository check on every pull request, on every
+push to `main`, and on demand from the repository's Actions tab.
 
 For a visual check, copy the changed theme into `~/.claude/themes/`, run `/theme`, and inspect normal
 text, user messages, tool calls, permission prompts and plan mode. If the themes directory did not
