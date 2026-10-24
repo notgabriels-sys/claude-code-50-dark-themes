@@ -197,8 +197,10 @@ export async function buildReadmeThemeLinks(root) {
 
 // Which lines of a Markdown document start in document flow, and which sit
 // inside something that swallows link syntax: a fenced code block (``` or ~~~,
-// closed by a fence of the same character at least as long) or one of the
-// seven kinds of HTML block CommonMark knows — <pre>, <script>, <style> and
+// closed by a fence of the same character at least as long), an indented code
+// block (a line indented four columns or more, a tab counting as four, where
+// no paragraph is open; it runs through blank lines to the first line indented
+// less) or one of the seven kinds of HTML block CommonMark knows — <pre>, <script>, <style> and
 // <textarea> to a closing tag of any of the four, a comment to -->, a
 // processing instruction to ?>, a declaration to >, CDATA to ]]>, a
 // block-level tag such as <div> or <p> to the next blank line, and any other
@@ -217,6 +219,21 @@ export async function buildReadmeThemeLinks(root) {
 // text after a block tag on its line (<div> [Name](...)), after <pre>, after
 // <!-- or in a fence's info string is not Markdown, and a <!-- x --> or
 // <pre>x</pre> that opens and closes on one line is a block of that line.
+// Indented code opens under the same loose reading: after any line that is
+// not paragraph text, a line indented four columns is code, where CommonMark
+// may read it as a list item's own content (a nested list, a continuation
+// paragraph) or as a lazy line of a paragraph the walk does not see (after a
+// block quote, a lone pipe line, "<span>text"). Nor does the walk see
+// indented code written after a block-quote or list marker (">     x",
+// "-     x"), or the table row a line without a pipe can be. Read alone, that
+// fails both ways: a line that is really the item's text can open a fence or
+// an HTML block that runs on, and a code span can run across a line the walk
+// calls code. So themeLinkProblems also fails every line indented four
+// columns outside a fence or a <pre>-style, comment or declaration block, on
+// its own or after its markers, and every code span that does not close on
+// its own line (rule 4); the READMEs write neither. The walk's reading of
+// indented code stands for what follows it (no fence or tag opens on such a
+// line), not for whether a link in it is one.
 //
 // Container prefixes (list markers, "> ") are not tracked. A fence or tag
 // opened inside a container closes with the container, before any column-0
@@ -244,7 +261,7 @@ const ANY_TAG_LINE = /^ {0,3}(?:<[A-Za-z][A-Za-z0-9-]*(?:\s+[A-Za-z_:][A-Za-z0-9
 const LIST_MARKER = String.raw`(?:[-+*]|\d{1,9}[.)])`;
 const FENCE_OPEN = new RegExp(String.raw`^( {0,3}(?:${LIST_MARKER} {1,4})?)(\x60{3,}|~{3,})(.*)$`);
 const FENCE_CLOSE = /^( {0,3})(`{3,}|~{3,})[ \t]*$/;
-const RAW_TAG = /^ {0,3}<(pre|script|style|textarea)(?=[\s>]|$)/i;
+const RAW_TAG = /^ {0,3}<(pre|script|style|textarea)(?=[ \t>]|$)/i;
 const RAW_TAG_CLOSE = /<\/(?:pre|script|style|textarea)>/i;
 const isBlank = (line) => /^[ \t]*$/.test(line);
 const indentOf = (line) => line.match(/^[ \t]*/)[0].replace(/\t/g, "    ").length;
@@ -260,15 +277,41 @@ const NOT_PARAGRAPH = [
   /^ {0,3}>/,
   new RegExp(String.raw`^ {0,3}${LIST_MARKER}(?:[ \t]|$)`),
 ];
+// How far a line's content sits past the block-quote and list markers it
+// starts with, or 0 when it starts with none (or with nothing after them): GFM
+// reads four columns there as indented code inside the quote or the item, and
+// a list marker followed by five columns opens an item that starts with
+// indented code. A tab counts as four columns, which can only over-count.
+// Only a space or a tab is indentation to GFM: a no-break space, a form feed
+// or any other character after the spaces is the first character of the
+// content, so the lookahead names the space and nothing else.
+const indentAfterMarkers = (line) => {
+  let rest = line.replace(/\t/g, "    ");
+  let marked = false;
+  for (;;) {
+    const quote = rest.match(/^ {0,3}> ?/);
+    if (quote) {
+      rest = rest.slice(quote[0].length);
+      marked = true;
+      continue;
+    }
+    const item = rest.match(new RegExp(String.raw`^ {0,3}${LIST_MARKER}( +)(?=[^ ])`));
+    if (!item) break;
+    if (item[1].length >= 5) return item[1].length - 1;
+    rest = rest.slice(item[0].length);
+    marked = true;
+  }
+  return marked && !isBlank(rest) ? indentOf(rest) : 0;
+};
 // Indented code is a matter of columns (a tab is four), not of characters.
-const paragraphText = (line) => !isBlank(line) && indentOf(line) < 4 && !NOT_PARAGRAPH.some((rule) => rule.test(line));
+const paragraphText =(line) => !isBlank(line) && indentOf(line) < 4 && !NOT_PARAGRAPH.some((rule) => rule.test(line));
 
 export function markdownFlow(markdown) {
   const lines = markdown.split("\n");
   // Whether each line begins in flow: nothing opened on an earlier line is still open.
   const flow = [];
-  // What each line belongs to: null in flow, else "fence", "html" or
-  // "html-to-blank". The line that opens a block belongs to it, as does the
+  // What each line belongs to: null in flow, else "fence", "indented", "html"
+  // or "html-to-blank". The line that opens a block belongs to it, as does the
   // whole of a block that opens and closes on one line (<!-- x -->, <pre>x</pre>).
   const inside = [];
   // The block each line belongs to (kind, token and opening line), or null.
@@ -295,6 +338,8 @@ export function markdownFlow(markdown) {
     if (declaration) return htmlTo("<!", />/, line.slice(declaration[0].length), index);
     if (BLOCK_TAG_LINE.test(line)) return toBlank(line, index);
     if (ANY_TAG_LINE.test(line) && !(index > 0 && previousInFlow && paragraphText(lines[index - 1]))) return toBlank(line, index);
+    // Indented code cannot interrupt a paragraph either.
+    if (!isBlank(line) && indentOf(line) >= 4 && !(index > 0 && previousInFlow && paragraphText(lines[index - 1]))) return { kind: "indented", token: "indented", line: index + 1 };
     return null;
   };
   for (let index = 0; index < lines.length; index++) {
@@ -302,6 +347,8 @@ export function markdownFlow(markdown) {
     if (state?.kind === "fence" && state.indent > 0 && !isBlank(line) && indentOf(line) < state.indent) {
       ambiguous.push({ line: index + 1, fence: state });
     }
+    // Indented code ends at the first line that is neither blank nor indented four columns; that line is read afresh.
+    if (state?.kind === "indented" && !isBlank(line) && indentOf(line) < 4) state = null;
     flow.push(state === null);
     if (state === null) {
       const opened = opens(line, index, index > 0 && flow[index - 1]);
@@ -317,19 +364,23 @@ export function markdownFlow(markdown) {
       else {
         // The block may be paragraph text to CommonMark (see the header), in
         // which case an opener on this line takes effect and hides what follows.
+        // (An indented line opens nothing: in a paragraph it is a lazy continuation.)
         const would = opens(line, index, false);
-        if (would && !would.closed && would.kind !== "html-to-blank") hidden.push({ line: index + 1, opens: would.token, inside: state });
+        if (would && !would.closed && would.kind !== "html-to-blank" && would.kind !== "indented") hidden.push({ line: index + 1, opens: would.token, inside: state });
       }
     } else if (state.kind === "fence") {
       const close = line.match(FENCE_CLOSE);
       if (close && close[1].length === state.indent && close[2][0] === state.token[0] && close[2].length >= state.token.length) state = null;
+    } else if (state.kind === "indented") {
+      // Runs on: this line is blank or indented four columns (anything else ended the block above).
     } else if (state.close.test(line)) {
       state = null;
     }
   }
-  // A block that ends at a blank line also ends at the end of the document, so
-  // only one that waits for a closing token counts as left open.
-  return { flow, inside, blocks, ambiguous, hidden, open: state && state.kind !== "html-to-blank" ? state : null };
+  // A block that ends at a blank line or at a line indented less also ends at
+  // the end of the document, so only one that waits for a closing token counts
+  // as left open.
+  return { flow, inside, blocks, ambiguous, hidden, open: state && state.kind !== "html-to-blank" && state.kind !== "indented" ? state : null };
 }
 
 const SITE = "https://gabs-utilities.com/";
@@ -393,12 +444,17 @@ const TAG_OR_AUTOLINK =
   /<(?:[A-Za-z][A-Za-z0-9-]*(?:\s+[A-Za-z_:][A-Za-z0-9_.:-]*(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'=<>`]+))?)*\s*\/?>|\/[A-Za-z][A-Za-z0-9-]*\s*>|!--[^\n]*?-->|[A-Za-z][A-Za-z0-9+.-]{1,31}:[^\s<>]*>)/g;
 // Code spans as CommonMark pairs them: a run of backticks closes at the next
 // run of exactly its length, or is text. A code span is inline content of
-// one block, so it never crosses a blank line, a fence line or a line of a
-// <pre>-style, comment or declaration block; `segments` are the stretches of
+// one block, so it never crosses a blank line, a fence line, a line of indented
+// code or a line of a <pre>-style, comment or declaration block; `segments` are the stretches of
 // text between those, and backticks pair within one stretch. (A tag line the
 // walk reads as an HTML block may be paragraph text to GFM, so it stays in
 // its stretch.) Escaped backticks and backticks inside tags are rejected
-// before this matters.
+// before this matters. Where a stretch really ends is a reading of block
+// structure the walk makes only loosely — a heading, a table row or a list
+// item ends a block it does not split at, and a line it calls indented code
+// can be a paragraph's — so rule 4 also holds every code span to one line:
+// when each line's backticks pair among themselves, where a stretch breaks
+// changes nothing.
 const codeSpans = (text, segments) => {
   const spans = [];
   for (const [start, end] of segments) {
@@ -432,7 +488,10 @@ const escapeRegExp = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 //    bare address is plain ASCII with no %XX escape. Each of those is a way to
 //    write the site's host, or a theme's name, so that the reader sees one
 //    thing and a text rule sees another. Addresses end at ASCII whitespace,
-//    as GitHub's autolinks do, not at a Unicode separator.
+//    as GitHub's autolinks do, not at a Unicode separator. No carriage return
+//    and no byte order mark: GFM reads CR LF as one line ending and skips a
+//    mark at the start of the file, where this walk would read a blank line
+//    as text and the first line's indentation or fence as text.
 // 1. The site's host appears only in the forms these READMEs use: a theme's own
 //    link, [Name](https://gabs-utilities.com/theme/<slug>/), written with the
 //    page's own name; the index, [gabs-utilities.com/theme/](https://gabs-utilities.com/theme/)
@@ -457,9 +516,20 @@ const escapeRegExp = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 //    to the end of the file; either hides whatever follows it. A fence or
 //    <pre>-style opener inside an HTML block the walk opened loosely fails,
 //    since CommonMark may honour it (see markdownFlow).
-// Inside a code span, a code block or an HTML block, Markdown is text: a theme
-// link or the site's address written there fails, since the reader sees the
-// raw syntax and no link.
+// 4. Nothing whose reading depends on block structure the walk does not
+//    follow (see markdownFlow). No line outside a code fence or a
+//    <pre>-style, comment or declaration block is indented four columns, on
+//    its own or after its block-quote and list markers: at the top level
+//    that is indented code, under a list item or a quote it is the item's
+//    text, which can open a fence or an HTML block that runs on. And a code
+//    span opens and closes on one line and holds no pipe: whether a backtick
+//    pairs with one on the next line depends on whether a heading, a table
+//    row or a list item ends the block between them, and a table row splits
+//    at its pipes before code spans are read.
+// Inside a code span, a code fence or an HTML block, Markdown is text: a
+// theme link or the site's address written there fails, since the reader
+// sees the raw syntax and no link. A line indented four columns fails by
+// itself (rule 4), whatever it holds.
 export function themeLinkProblems(markdown, themes) {
   const problems = [];
   const bySlug = new Map(themes.map((theme) => [theme.slug, theme]));
@@ -487,7 +557,7 @@ export function themeLinkProblems(markdown, themes) {
   };
   const { inside, blocks, ambiguous, hidden, open } = markdownFlow(markdown);
   // The stretches of lines that can carry inline text (see codeSpans).
-  const inlineLine = (index) => !isBlank(lines[index]) && inside[index] !== "fence" && inside[index] !== "html";
+  const inlineLine = (index) => !isBlank(lines[index]) && inside[index] !== "fence" && inside[index] !== "indented" && inside[index] !== "html";
   const segments = [];
   for (let index = 0; index < lines.length; index++) {
     if (!inlineLine(index)) continue;
@@ -498,12 +568,19 @@ export function themeLinkProblems(markdown, themes) {
   const spans = codeSpans(shown, segments);
   const inCode = (index) => spans.some(([start, end]) => index >= start && index < end);
   // Where Markdown is text: a line of a fence or an HTML block (its opening
-  // line included), or a code span.
-  const literal = (index) => inside[lineOf(index) - 1] !== null || inCode(index);
+  // line included), or a code span. A line the walk reads as indented code is
+  // not counted here: under a list item it can be the item's text, with its
+  // links links, so rule 4 fails the line itself instead of naming a link in it.
+  const literal = (index) => {
+    const kind = inside[lineOf(index) - 1];
+    return (kind !== null && kind !== "indented") || inCode(index);
+  };
   // Names the text region an index sits in, for a message.
   const where = (index) => {
     const block = blocks[lineOf(index) - 1];
-    return block ? `inside the ${block.token} ${block.kind === "fence" ? "code fence opened" : "HTML block begun"} on line ${block.line}` : "inside a code span";
+    if (!block) return "inside a code span";
+    const begun = block.kind === "fence" ? `${block.token} code fence opened` : `${block.token} HTML block begun`;
+    return `inside the ${begun} on line ${block.line}`;
   };
   const before = (index) => (index === 0 ? "" : shown[index - 1]);
   const covered = [];
@@ -521,6 +598,13 @@ export function themeLinkProblems(markdown, themes) {
   const bareForm = (pattern) => new RegExp(String.raw`(?<=^|\n|[ \t]|(?<!\])\()${pattern}(?=[.,;:)]{0,2}(?:[ \t]|\n|$))`, "g");
 
   // Rule 0: every character means what it shows.
+  if (markdown.startsWith("\uFEFF")) {
+    report(0, "starts with a byte order mark (U+FEFF). GitHub skips it, so the first line's indentation or fence reads there as it does not here; save the file without one.");
+  }
+  for (const [index, line] of lines.entries()) {
+    const at = line.indexOf("\r");
+    if (at !== -1) report(lineStarts[index] + at, "writes a carriage return. GFM reads CR LF as one line ending, so a line that is blank there is text here; save the file with LF line endings.");
+  }
   const rawReferences = rawLines.map((rawLine) => new Set([...rawLine.matchAll(ENTITY)].map((match) => match[0])));
   for (const match of shown.matchAll(ENTITY)) {
     const [reference] = match;
@@ -719,6 +803,43 @@ export function themeLinkProblems(markdown, themes) {
       lineStarts[line - 1],
       `is indented less than the code fence opened on line ${fence.line} (${fence.indent} spaces in); if that fence sits in a list item it ends here and the next fence line opens another, hiding what follows. Open fences at column 0, or indent every line of the fence as far as its opener.`,
     );
+  }
+
+  // Rule 4: nothing whose reading depends on structure the walk does not follow.
+  const indentRule =
+    `This check does not follow list items and quotes, so no line of these READMEs is indented four columns outside a code fence: indent a nested item or a continuation line to its item's content column (two spaces under "- ", three under "1. "), and put code in a fence.`;
+  for (const [index, rawLine] of rawLines.entries()) {
+    if (isBlank(rawLine) || inside[index] === "fence" || inside[index] === "html") continue;
+    const own = indentOf(rawLine);
+    const afterMarkers = own >= 4 ? 0 : indentAfterMarkers(rawLine);
+    if (own >= 4) {
+      report(lineStarts[index], `is indented ${own} columns outside a code fence. At the top level that is indented code, where Markdown shows as text; under a list item or a block quote it is the item's own text, which can open a fence or an HTML block that runs on past it. ${indentRule}`);
+    } else if (afterMarkers >= 4) {
+      report(lineStarts[index], `is indented ${afterMarkers} columns after its block-quote or list marker, where GFM opens indented code inside the quote or the item and shows its Markdown as text. ${indentRule}`);
+    }
+  }
+  for (const [index, line] of lines.entries()) {
+    if (!inlineLine(index)) continue;
+    const runs = [...line.matchAll(/`+/g)];
+    for (let at = 0; at < runs.length; at++) {
+      const [run] = runs[at];
+      const closer = runs.findIndex((other, later) => later > at && other[0].length === run.length);
+      if (closer === -1) {
+        report(
+          lineStarts[index] + runs[at].index,
+          `writes ${run} with nothing after it on that line to close it. Whether it pairs with a backtick on another line depends on whether a heading, a table row or a list item ends the block between them, which this check does not follow, so a code span in these READMEs opens and closes on one line. Close it on its line, or put a lone backtick in a fence.`,
+        );
+        continue;
+      }
+      const span = line.slice(runs[at].index, runs[closer].index + run.length);
+      if (span.includes("|")) {
+        report(
+          lineStarts[index] + runs[at].index,
+          `writes a pipe inside the code span ${span}. In a table row GFM splits the cells at every pipe before it reads code spans, so the span does not hold there, and this check does not tell table rows from text: no code span in these READMEs holds a pipe.`,
+        );
+      }
+      at = closer;
+    }
   }
 
   return problems.sort((a, b) => a.index - b.index).map((problem) => problem.message);
