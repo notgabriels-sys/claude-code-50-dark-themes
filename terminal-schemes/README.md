@@ -21,9 +21,9 @@ server.
 ## iTerm2 (macOS)
 
 - **File:** `iterm2/Gabs <Theme>.itermcolors`
-- **Install:** open the file (`open "iterm2/Gabs Deep Field.itermcolors"` or double-click it). iTerm2
-  imports it as a color preset; the file can be deleted afterwards. Or: Settings → Profiles → Colors →
-  **Color Presets…** → **Import…**
+- **Install:** double-click the file, or run `open "terminal-schemes/iterm2/Gabs Deep Field.itermcolors"`
+  from the repository folder. iTerm2 imports it as a color preset; the file can be deleted afterwards.
+  Or: Settings → Profiles → Colors → **Color Presets…** → **Import…**
 - **Activate:** Settings → Profiles → (your profile) → Colors → **Color Presets…** → `Gabs <Theme>`.
 - Importing the same name again adds `Gabs <Theme> (2)`: delete the old preset first.
 
@@ -43,6 +43,9 @@ server.
 - **Install:** copy it to `~/.config/kitty/themes/`.
 - **Activate:** add `include themes/gabs-<slug>.conf` near the end of `~/.config/kitty/kitty.conf`.
   Reload with `ctrl+shift+F5` (macOS also `ctrl+cmd+,`).
+- If your `kitty.conf` is somewhere else (`$KITTY_CONFIG_DIRECTORY`, or `~/Library/Preferences/kitty` on
+  macOS), use the `themes` folder next to it: the `include` path is relative to the folder that holds
+  `kitty.conf`.
 - Color lines after the `include` win over it.
 
 ## Alacritty (macOS, Linux, Windows)
@@ -57,9 +60,12 @@ server.
   import = ["~/.config/alacritty/themes/gabs-deep-field.toml"]
   ```
 
-  On 0.13, or if your file already has a top-level `import = [...]`, add the path to that list instead.
-  Don't add a second `[general]` header. On Windows, use the full path with forward slashes
-  (`C:/Users/<you>/AppData/Roaming/alacritty/themes/...`): Alacritty skips a missing import silently.
+  On 0.13, put `import = ["<path>"]` at the top level instead (no `[general]`). On any version, if the
+  file already has a top-level `import = [...]`, add the path to that list: while it exists, Alacritty
+  ignores `[general] import`. If the file already has a `[general]` table, put the `import` line under
+  that header; a second `[general]` header makes the whole file invalid. On Windows, use the full path
+  with forward slashes (`C:/Users/<you>/AppData/Roaming/alacritty/themes/...`): Alacritty skips a
+  missing import silently.
   It reloads by itself; a `[colors.*]` table in `alacritty.toml` wins over the import.
 
 ## WezTerm (macOS, Linux, Windows)
@@ -118,10 +124,11 @@ server.
 
 Claude Code themes need a terminal with 24-bit color. The scheme itself shows exactly in every terminal
 above, but Claude Code's own theme colors are exact only when it starts with 24-bit color; otherwise it
-rounds them to 256 colors or fewer, and the tinted panels turn gray. Terminal.app shows the exact colors
-only on macOS 26 or later, and Claude Code uses 24-bit there only when `COLORTERM=truecolor` is set.
-Claude Code also limits the VS Code and Cursor terminals to 256 colors, and starts at 256 inside tmux, in
-WSL under Windows Terminal and over SSH unless those are set up for 24-bit.
+rounds them to 256 colors or fewer, and the tinted panels turn gray. Terminal.app has 24-bit color only
+on macOS 26 or later, and Claude Code uses it there only when `COLORTERM=truecolor` is set. The scheme's
+own colors are exact on any macOS version. Claude Code also limits the VS Code and Cursor terminals to
+256 colors, and starts at 256 inside tmux, in WSL under Windows Terminal and over SSH unless those are
+set up for 24-bit.
 
 ## Licence
 
@@ -129,5 +136,5 @@ MIT, the same as the rest of this repository: see [LICENSE](../LICENSE). By
 [NotGabriels](https://github.com/notgabriels-sys/claude-code-50-dark-themes).
 
 The paid [Claude Code Theme Setup Assistant](https://agensi.io/skills/claude-code-theme-setup-assistant)
-(on Agensi) installs a theme and its scheme for you, fixes Claude Code's color depth where your terminal
-allows it, and adds 12 exclusive themes.
+(on Agensi) installs a theme for you, sets up its matching scheme in most of the terminals above, and
+adds 12 exclusive themes.
