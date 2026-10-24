@@ -94,7 +94,9 @@ for (const surfaceName of ["ground", "ground-2"]) {
 // The storefront's syntax sample is also the shared personal coding palette.
 // Every semantic foreground must remain readable as normal text across the
 // terminal canvas, page canvas, and raised install panel—not merely look
-// distinct in one screenshot.
+// distinct in one screenshot. The page canvas here is the dark theme's: the
+// palette is never text on the light page, because scripts/site-style.mjs
+// allows it only inside a specimen, which keeps the dark ground in both themes.
 const semanticTokens = [
   "syntax-purple",
   "syntax-light-purple",

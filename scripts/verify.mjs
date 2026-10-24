@@ -580,8 +580,9 @@ const siteFontFiles = Object.fromEntries(
 const pageFonts = (await Promise.all(htmlFiles.map(async (path) => siteStyle.pageFontFiles(await readFile(new URL(path, root), "utf8"), path)))).flat();
 for (const problem of siteStyle.fontProblems(siteCss, siteFontFiles, pageFonts)) fail(problem);
 const siteFonts = siteStyle.fontFaces(siteCss).flatMap(({ urls }) => urls);
+const siteTokens = siteStyle.sharedTokens(siteCss);
 for (const path of siteStyle.SITE_PAGES) {
-  for (const problem of siteStyle.pageProblems(await readFile(new URL(path, root), "utf8"), path, siteFonts)) fail(problem);
+  for (const problem of siteStyle.pageProblems(await readFile(new URL(path, root), "utf8"), path, siteFonts, siteTokens)) fail(problem);
 }
 
 if (!readme.includes("mkdir -p ~/.claude/themes")) {

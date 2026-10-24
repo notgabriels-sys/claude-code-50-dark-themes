@@ -138,23 +138,35 @@
 }
 
 /* A terminal shown on a page (.cmd, or anything marked .specimen) is a dark specimen in either
-   theme: inside one, the tokens keep their dark values, so its text stays light on its surface. */
+   theme: inside one, every colour token keeps its dark value, so its text stays light on its
+   surface. --accent-dim is re-declared too: a token built from others is resolved where it is
+   declared, so the :root one would keep the light mix. */
 .specimen,
 .cmd {
+  --ground: #0F0F13;
+  --ground-2: #16161C;
+  --raise: #1C1C24;
   --ink: #EDEBF3;
   --mute: #9C99AA;
   --faint: #9C99AA;
   --hair: #2A2933;
   --accent: #A898FF;
   --accent-soft: rgba(168, 152, 255, 0.16);
+  --accent-dim: color-mix(in srgb, var(--accent) 42%, var(--hair));
+  --ember: #FFB46B;
+  --ember-soft: rgba(255, 180, 107, 0.28);
   color-scheme: dark;
 }
 
 /* ---------- base ---------- */
+/* Keyboard focus scrolled into view stops above the floating switch, never under it. */
+html { scroll-padding-bottom: 96px; }
 body {
   background: var(--ground);
   color: var(--ink);
   font-family: var(--body);
+  /* A turning stage's square corners would otherwise widen the page while they turn. */
+  overflow-x: clip;
 }
 /* Colours cross-fade when the visitor flips the switch (the script sets data-theme-fade first),
    not when a remembered choice is applied as the page loads. */
@@ -169,63 +181,49 @@ body {
 .lights .l2 { width: 34vmax; height: 34vmax; right: -10vmax; top: 30vh; background: radial-gradient(circle, var(--ember-soft), transparent 70%); }
 .lights .l3 { width: 40vmax; height: 40vmax; left: 20vw; bottom: -22vmax; background: radial-gradient(circle, var(--accent-soft), transparent 70%); }
 
-/* ---------- the light/dark switch: a floating pill, bottom right ---------- */
+/* ---------- the light/dark switch: a floating pill, bottom right, drawn as on the Familiars
+   page; its knob holds the sun and moon as inline SVG (class sun and moon), and shows the sun
+   while the page is dark and the moon while it is light, each naming the theme it turns on ---------- */
 .theme-switch {
   position: fixed;
-  right: max(16px, env(safe-area-inset-right, 0px));
-  bottom: max(16px, env(safe-area-inset-bottom, 0px));
+  right: calc(20px + env(safe-area-inset-right, 0px));
+  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
   z-index: 50;
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  min-height: 48px;
-  padding: 5px 16px 5px 5px;
-  border: 1px solid var(--accent-dim);
+  height: 56px;
+  padding: 0 20px 0 8px;
+  border: 1.5px solid var(--accent);
   border-radius: 999px;
-  background: var(--raise);
+  background: var(--ground-2);
   color: var(--ink);
-  font: 600 14px var(--body);
+  font: 600 15px var(--body);
   cursor: pointer;
-  box-shadow: 0 0 0 4px var(--accent-soft), 0 18px 40px -24px rgba(15, 15, 19, 0.6);
-  transition: border-color 0.2s, background-color 0.5s, color 0.5s;
+  box-shadow: 0 8px 30px rgba(15, 15, 19, 0.25), 0 0 0 6px var(--accent-soft);
+  transition: background-color 0.5s, color 0.5s;
 }
 /* The page's script unhides the switch; without the script it stays hidden, since it would do nothing. */
 .theme-switch[hidden] { display: none; }
-.theme-switch:hover { border-color: var(--accent); }
 .theme-switch-knob {
-  position: relative;
-  width: 38px;
-  height: 38px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
+  display: grid;
+  place-items: center;
   background: var(--accent);
   color: var(--ground);
   flex: none;
 }
-/* Drawn without markup: a sun (a disc and eight rays) while the page is dark, a crescent while
-   it is light; each names the theme the switch turns on. */
-.theme-switch-knob::before {
-  content: "";
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 8px;
-  height: 8px;
-  margin: -4px 0 0 -4px;
-  border-radius: 50%;
-  background: currentColor;
-  box-shadow:
-    0 -9px 0 -2.5px currentColor, 0 9px 0 -2.5px currentColor,
-    9px 0 0 -2.5px currentColor, -9px 0 0 -2.5px currentColor,
-    6.4px 6.4px 0 -2.5px currentColor, -6.4px -6.4px 0 -2.5px currentColor,
-    6.4px -6.4px 0 -2.5px currentColor, -6.4px 6.4px 0 -2.5px currentColor;
-}
-:root[data-eff="light"] .theme-switch-knob::before {
-  width: 16px;
-  height: 16px;
-  margin: -8px 0 0 -8px;
-  background: transparent;
-  box-shadow: inset -5px -2px 0 0 currentColor;
-}
+.theme-switch svg { width: 20px; height: 20px; }
+.theme-switch .moon,
+:root[data-eff="light"] .theme-switch .sun { display: none; }
+:root[data-eff="light"] .theme-switch .moon { display: block; }
+
+/* Paused from the page (data-motion="paused" on the root): every animation holds its frame. */
+:root[data-motion="paused"] *,
+:root[data-motion="paused"] *::before,
+:root[data-motion="paused"] *::after { animation-play-state: paused !important; }
 
 /* ---------- surfaces with a pointer light: the page's script marks them .lit and sets --mx and
    --my as the pointer moves; the page gives them their own border and background. The light
@@ -253,6 +251,6 @@ body {
   .lit { transition: border-color 0.25s, transform 0.25s; }
   .lit:hover { transform: translateY(-2px); }
   .lit:hover::before { opacity: 1; }
-  .theme-switch { transition: border-color 0.2s, background-color 0.5s, color 0.5s, transform 0.2s; }
+  .theme-switch { transition: background-color 0.5s, color 0.5s, transform 0.2s; }
   .theme-switch:hover { transform: translateY(-2px); }
 }
