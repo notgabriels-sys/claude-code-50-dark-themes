@@ -25,6 +25,7 @@ const FIXED_SITEMAP_ENTRIES = [
   `  <url><loc>${SITE}/</loc><changefreq>monthly</changefreq><priority>1.0</priority></url>`,
   `  <url><loc>${SITE}/claude-code-theme-install-guide.html</loc><changefreq>monthly</changefreq><priority>0.82</priority></url>`,
   `  <url><loc>${SITE}/semantic-terminal-colors.html</loc><changefreq>monthly</changefreq><priority>0.78</priority></url>`,
+  `  <url><loc>${SITE}/familiars.html</loc><changefreq>monthly</changefreq><priority>0.76</priority></url>`,
   `  <url><loc>${SITE}/impressum.html</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>`,
 ];
 

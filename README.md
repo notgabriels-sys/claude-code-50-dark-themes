@@ -198,6 +198,16 @@ fails if it drifts, so it always matches what actually installs. Free themes
 only — no pricing in it.
 
 
+## Familiars: Claude skills for sound work
+
+**Familiars** is the catalogue these themes sit in, at https://gabs-utilities.com/familiars.html : Claude
+skills and plugins built in a Berlin studio for people who make and deliver sound. Each one has a
+form, a name and one narrow job, works inside your specs instead of inventing sample rates or
+loudness targets, and keeps what you said apart from what it inferred. Six are in early access by
+email (track finishing, release concepts, audio evaluation, mix and master reports, studio German,
+and a studio ops plugin that covers a techno studio from demo triage to the tech rider); the dark
+theme is public under MIT.
+
 ## More dark tools
 
 Same palettes and the same care, applied elsewhere. All one-time purchases, no
