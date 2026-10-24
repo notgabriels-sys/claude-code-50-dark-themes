@@ -293,6 +293,7 @@ test("markdownFlow reads indented code as a block of its own, where a link is te
   assert.deepEqual(markdownFlow("```\nx\n```\n    code").inside, ["fence", "fence", "fence", "indented"], "after a closed fence");
   assert.deepEqual(markdownFlow("    code\n\n\n    more\n\nafter").blocks.map((block) => block && block.line), [1, 1, 1, 1, 1, null], "blank lines inside do not end it; the first line indented less does");
   assert.deepEqual(markdownFlow("    code\n  \nx").inside, ["indented", "indented", null], "a line of spaces is blank");
+  assert.deepEqual(markdownFlow("    code\n   three").inside, ["indented", null], "a line indented three spaces ends it and is read afresh");
   assert.deepEqual(markdownFlow("```\n    x\n```").inside, ["fence", "fence", "fence"], "an indented line inside a fence is the fence's");
   assert.deepEqual(markdownFlow("<div>\n    x\n\ny").inside, ["html-to-blank", "html-to-blank", "html-to-blank", null], "an indented line inside an HTML block is the block's");
   assert.deepEqual(markdownFlow("a | b\n<span>\n    x\n").hidden, [], "an indented line inside a loosely opened block opens nothing: to CommonMark it would continue the paragraph");
@@ -481,6 +482,7 @@ test("themeLinkProblems holds every theme-page address and bracketed theme name 
   bad(`para\n\n    See ${THEME_PAGE_URL}`, /writes the site's address inside the indented code block begun on line 3, where it is text/, "the index in indented code");
   bad(`para\n\n    [Velvet](https://example.com)`, /writes Velvet's name in brackets inside the indented code block begun on line 3, where it is text/, "a theme name in brackets in indented code");
   ok(`para\n    ${velvet}`, "an indented line after paragraph text is the paragraph's, so the link is a link");
+  bad("## Start `\n    code\n[Velvet](https://example.com) `", /line 3 writes Velvet's name in brackets as \[Velvet\]\(https:\/\/example\.com\)/, "a code span does not pair backticks across indented code, so the link after it is read as a link");
   bad("```\n[Velvet](" + THEME_PAGE_URL + "velvet/)\n```", /writes the theme link \[Velvet\]\([^)]*\) inside the ``` code fence opened on line 1/, "a theme link inside a code fence; the fence's backticks are no code span");
   bad("`<https://gabs-utilities.com/x.html>`", /site's address inside a code span/, "a site autolink inside a code span");
   bad(`<div align="center">\n${velvet} · [Acid](${THEME_PAGE_URL}acid/)\n</div>`, /writes the theme link \[Velvet\]\(https:\/\/gabs-utilities\.com\/theme\/velvet\/\) inside the <div> HTML block begun on line 1/, "theme links inside an HTML block, which GitHub shows as text");
