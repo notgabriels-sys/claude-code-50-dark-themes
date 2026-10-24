@@ -182,7 +182,8 @@ skills and plugins built in a Berlin studio for people who make and deliver soun
 form, a name and one narrow job, works inside your specs instead of inventing sample rates or
 loudness targets, and keeps what you said apart from what it inferred. Six are in early access by
 email (track finishing, release concepts, audio evaluation, mix and master reports, studio German,
-and a nine-skill studio ops plugin); the dark theme is public under MIT.
+and a studio ops plugin that covers a techno studio from demo triage to the tech rider); the dark
+theme is public under MIT.
 
 ## More dark tools
 
