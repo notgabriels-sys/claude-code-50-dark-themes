@@ -1,0 +1,32 @@
+# Gabs Lagoon: terminal colors matched to its Claude Code theme
+[colors]
+foreground = "#E8ECED"
+background = "#152023"
+cursor_bg = "#4FD8E8"
+cursor_fg = "#152023"
+cursor_border = "#4FD8E8"
+selection_bg = "#295359"
+selection_fg = "#E8ECED"
+ansi = [
+    "#1D2C30",
+    "#D06D66",
+    "#7AC57C",
+    "#ECC460",
+    "#618DDA",
+    "#C282CC",
+    "#00AFBE",
+    "#BED1D6"
+]
+brights = [
+    "#778D93",
+    "#EF8880",
+    "#94E197",
+    "#FFDC84",
+    "#7BA9F8",
+    "#E19FEB",
+    "#2BCFE0",
+    "#F5F6F7"
+]
+
+[metadata]
+name = "Gabs Lagoon"

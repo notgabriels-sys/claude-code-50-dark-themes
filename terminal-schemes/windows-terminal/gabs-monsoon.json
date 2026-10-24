@@ -1,0 +1,27 @@
+{
+    "schemes": [
+        {
+            "name": "Gabs Monsoon",
+            "background": "#161C19",
+            "foreground": "#E8EDEA",
+            "cursorColor": "#8FBFA9",
+            "selectionBackground": "#3E5148",
+            "black": "#232B27",
+            "red": "#C3706A",
+            "green": "#82BF83",
+            "yellow": "#E2C272",
+            "blue": "#628CCA",
+            "purple": "#B883C0",
+            "cyan": "#2CABB1",
+            "white": "#C2CCC7",
+            "brightBlack": "#7D8982",
+            "brightRed": "#E08B84",
+            "brightGreen": "#9CDA9D",
+            "brightYellow": "#F9D888",
+            "brightBlue": "#7CA8E8",
+            "brightPurple": "#D69FDE",
+            "brightCyan": "#53C9CF",
+            "brightWhite": "#F5F7F6"
+        }
+    ]
+}

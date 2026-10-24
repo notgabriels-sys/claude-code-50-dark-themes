@@ -1,0 +1,33 @@
+# Gabs Darkroom: terminal colors matched to its Claude Code theme
+
+[colors.primary]
+background = "#1E1615"
+foreground = "#EDE8E8"
+
+[colors.cursor]
+text = "#1E1615"
+cursor = "#F26D5B"
+
+[colors.selection]
+text = "#EDE8E8"
+background = "#6B3830"
+
+[colors.normal]
+black = "#2B2322"
+red = "#DE5B4A"
+green = "#60C367"
+yellow = "#EEBC25"
+blue = "#4688E7"
+magenta = "#C675D3"
+cyan = "#00AAB0"
+white = "#D2C4C2"
+
+[colors.bright]
+black = "#92807E"
+red = "#FD7764"
+green = "#7BDE80"
+yellow = "#FFD464"
+blue = "#66A4FF"
+magenta = "#E591F2"
+cyan = "#00CAD2"
+white = "#F7F5F5"

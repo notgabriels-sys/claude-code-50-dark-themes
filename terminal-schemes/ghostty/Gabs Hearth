@@ -1,0 +1,23 @@
+# Gabs Hearth: terminal colors matched to its Claude Code theme
+palette = 0=#282625
+palette = 1=#D8655F
+palette = 2=#6DC571
+palette = 3=#EEC145
+palette = 4=#508CE3
+palette = 5=#C67BD2
+palette = 6=#00AEB5
+palette = 7=#CECBC7
+palette = 8=#8B8782
+palette = 9=#F68179
+palette = 10=#88E18B
+palette = 11=#FFD979
+palette = 12=#6CA8FF
+palette = 13=#E498EF
+palette = 14=#00CFD7
+palette = 15=#F6F6F6
+background = #1D1C1B
+foreground = #ECEBEA
+cursor-color = #E07840
+cursor-text = #1D1C1B
+selection-background = #65402D
+selection-foreground = #ECEBEA

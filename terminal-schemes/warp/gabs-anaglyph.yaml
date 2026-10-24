@@ -1,0 +1,26 @@
+# Gabs Anaglyph: terminal colors matched to its Claude Code theme
+name: 'Gabs Anaglyph'
+accent: '#FF5548'
+cursor: '#FF5548'
+background: '#18181B'
+foreground: '#E9E9EC'
+details: darker
+terminal_colors:
+  normal:
+    black: '#222226'
+    red: '#ED4C40'
+    green: '#5CC464'
+    yellow: '#F0BC10'
+    blue: '#4388EB'
+    magenta: '#C873D6'
+    cyan: '#00AAB0'
+    white: '#C7C7CC'
+  bright:
+    black: '#83848A'
+    red: '#FF7567'
+    green: '#77DF7D'
+    yellow: '#FFD464'
+    blue: '#67A5FF'
+    magenta: '#E690F4'
+    cyan: '#00CAD2'
+    white: '#F5F5F6'

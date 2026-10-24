@@ -1,0 +1,26 @@
+# Gabs Glacier: terminal colors matched to its Claude Code theme
+name: 'Gabs Glacier'
+accent: '#A8DCE8'
+cursor: '#A8DCE8'
+background: '#1F2529'
+foreground: '#E8ECED'
+details: darker
+terminal_colors:
+  normal:
+    black: '#282F35'
+    red: '#CB7972'
+    green: '#8CC98D'
+    yellow: '#EDCD7D'
+    blue: '#6994D3'
+    magenta: '#C18CC9'
+    cyan: '#39B4BA'
+    white: '#C8D3D9'
+  bright:
+    black: '#859098'
+    red: '#EA958D'
+    green: '#A6E5A7'
+    yellow: '#FFE5A5'
+    blue: '#85B1F1'
+    magenta: '#E0A9E8'
+    cyan: '#5ED3D9'
+    white: '#F5F6F7'

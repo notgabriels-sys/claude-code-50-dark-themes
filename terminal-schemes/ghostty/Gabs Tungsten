@@ -1,0 +1,23 @@
+# Gabs Tungsten: terminal colors matched to its Claude Code theme
+palette = 0=#272420
+palette = 1=#CD6A63
+palette = 2=#76C279
+palette = 3=#E8C05B
+palette = 4=#578BD6
+palette = 5=#BE7EC9
+palette = 6=#00ACB3
+palette = 7=#CCC9C3
+palette = 8=#8A867F
+palette = 9=#EB857D
+palette = 10=#90DC92
+palette = 11=#FFD772
+palette = 12=#72A7F4
+palette = 13=#DD9AE7
+palette = 14=#1ACCD4
+palette = 15=#F6F6F5
+background = #1C1A17
+foreground = #ECEBE9
+cursor-color = #FFB374
+cursor-text = #1C1A17
+selection-background = #5E4834
+selection-foreground = #ECEBE9

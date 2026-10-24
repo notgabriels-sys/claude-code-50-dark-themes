@@ -1,0 +1,27 @@
+{
+    "schemes": [
+        {
+            "name": "Gabs Lagoon",
+            "background": "#152023",
+            "foreground": "#E8ECED",
+            "cursorColor": "#4FD8E8",
+            "selectionBackground": "#295359",
+            "black": "#1D2C30",
+            "red": "#D06D66",
+            "green": "#7AC57C",
+            "yellow": "#ECC460",
+            "blue": "#618DDA",
+            "purple": "#C282CC",
+            "cyan": "#00AFBE",
+            "white": "#BED1D6",
+            "brightBlack": "#778D93",
+            "brightRed": "#EF8880",
+            "brightGreen": "#94E197",
+            "brightYellow": "#FFDC84",
+            "brightBlue": "#7BA9F8",
+            "brightPurple": "#E19FEB",
+            "brightCyan": "#2BCFE0",
+            "brightWhite": "#F5F6F7"
+        }
+    ]
+}

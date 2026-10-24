@@ -1,0 +1,26 @@
+# Gabs Moss: terminal colors matched to its Claude Code theme
+name: 'Gabs Moss'
+accent: '#93BF6F'
+cursor: '#93BF6F'
+background: '#1E241F'
+foreground: '#E9EDE9'
+details: darker
+terminal_colors:
+  normal:
+    black: '#272F29'
+    red: '#D5706E'
+    green: '#97C66F'
+    yellow: '#FDC469'
+    blue: '#5E92DE'
+    magenta: '#C686D0'
+    cyan: '#00B4BB'
+    white: '#CAD5CC'
+  bright:
+    black: '#849085'
+    red: '#F38C89'
+    green: '#B1E289'
+    yellow: '#FFE1B4'
+    blue: '#7AAFFC'
+    magenta: '#E5A3EF'
+    cyan: '#2FD4DB'
+    white: '#F5F7F5'

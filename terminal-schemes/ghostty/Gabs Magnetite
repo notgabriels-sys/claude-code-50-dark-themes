@@ -1,0 +1,23 @@
+# Gabs Magnetite: terminal colors matched to its Claude Code theme
+palette = 0=#22262C
+palette = 1=#C46C65
+palette = 2=#88BC74
+palette = 3=#E8BC69
+palette = 4=#498DC8
+palette = 5=#B880C1
+palette = 6=#0EAAA7
+palette = 7=#C4C7CE
+palette = 8=#80858D
+palette = 9=#E2877F
+palette = 10=#A2D68D
+palette = 11=#FFD27F
+palette = 12=#65A9E5
+palette = 13=#D69CDF
+palette = 14=#42C8C3
+palette = 15=#F5F6F7
+background = #16181C
+foreground = #E8EAED
+cursor-color = #6FA8DC
+cursor-text = #16181C
+selection-background = #384D61
+selection-foreground = #E8EAED

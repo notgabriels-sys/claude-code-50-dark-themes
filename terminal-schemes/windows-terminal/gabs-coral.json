@@ -1,0 +1,27 @@
+{
+    "schemes": [
+        {
+            "name": "Gabs Coral",
+            "background": "#221D1C",
+            "foreground": "#EDE9E9",
+            "cursorColor": "#F08060",
+            "selectionBackground": "#6A4136",
+            "black": "#2D2725",
+            "red": "#D76A4B",
+            "green": "#6FC773",
+            "yellow": "#EEC449",
+            "blue": "#538EE4",
+            "purple": "#C77ED3",
+            "cyan": "#00AFB7",
+            "white": "#D4CCCA",
+            "brightBlack": "#918784",
+            "brightRed": "#F68665",
+            "brightGreen": "#8AE38E",
+            "brightYellow": "#FFDC79",
+            "brightBlue": "#71ABFF",
+            "brightPurple": "#E69BF2",
+            "brightCyan": "#00D0D8",
+            "brightWhite": "#F7F5F5"
+        }
+    ]
+}

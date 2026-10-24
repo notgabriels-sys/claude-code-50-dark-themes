@@ -1,0 +1,33 @@
+# Gabs Off Air: terminal colors matched to its Claude Code theme
+
+[colors.primary]
+background = "#201E1D"
+foreground = "#ECEAEA"
+
+[colors.cursor]
+text = "#201E1D"
+cursor = "#D7635A"
+
+[colors.selection]
+text = "#ECEAEA"
+background = "#643A35"
+
+[colors.normal]
+black = "#2B2827"
+red = "#DB675D"
+green = "#6FC873"
+yellow = "#F1C448"
+blue = "#528EE5"
+magenta = "#C87DD4"
+cyan = "#00B0B7"
+white = "#D1CDCA"
+
+[colors.bright]
+black = "#8E8885"
+red = "#FA8378"
+green = "#89E38D"
+yellow = "#FFDC84"
+blue = "#71ABFF"
+magenta = "#E79AF2"
+cyan = "#00D1D9"
+white = "#F6F6F6"

@@ -1,0 +1,33 @@
+# Gabs Concrete: terminal colors matched to its Claude Code theme
+
+[colors.primary]
+background = "#222425"
+foreground = "#EAEBEB"
+
+[colors.cursor]
+text = "#222425"
+cursor = "#7FA6B8"
+
+[colors.selection]
+text = "#EAEBEB"
+background = "#414E54"
+
+[colors.normal]
+black = "#2C2E30"
+red = "#CB7872"
+green = "#8BC98D"
+yellow = "#ECCC7C"
+blue = "#6994D2"
+magenta = "#C18CC9"
+cyan = "#39B4BA"
+white = "#CDD2D4"
+
+[colors.bright]
+black = "#898F91"
+red = "#E9948C"
+green = "#A6E5A7"
+yellow = "#FFE4A1"
+blue = "#85B0F1"
+magenta = "#E0A9E8"
+cyan = "#5ED3D9"
+white = "#F6F6F6"

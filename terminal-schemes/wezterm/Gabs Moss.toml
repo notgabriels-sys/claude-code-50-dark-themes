@@ -1,0 +1,32 @@
+# Gabs Moss: terminal colors matched to its Claude Code theme
+[colors]
+foreground = "#E9EDE9"
+background = "#1E241F"
+cursor_bg = "#93BF6F"
+cursor_fg = "#1E241F"
+cursor_border = "#93BF6F"
+selection_bg = "#405138"
+selection_fg = "#E9EDE9"
+ansi = [
+    "#272F29",
+    "#D5706E",
+    "#97C66F",
+    "#FDC469",
+    "#5E92DE",
+    "#C686D0",
+    "#00B4BB",
+    "#CAD5CC"
+]
+brights = [
+    "#849085",
+    "#F38C89",
+    "#B1E289",
+    "#FFE1B4",
+    "#7AAFFC",
+    "#E5A3EF",
+    "#2FD4DB",
+    "#F5F7F5"
+]
+
+[metadata]
+name = "Gabs Moss"

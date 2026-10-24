@@ -1,0 +1,33 @@
+# Gabs Static: terminal colors matched to its Claude Code theme
+
+[colors.primary]
+background = "#212121"
+foreground = "#EBEBEB"
+
+[colors.cursor]
+text = "#212121"
+cursor = "#E4E6E8"
+
+[colors.selection]
+text = "#EBEBEB"
+background = "#4C4C4D"
+
+[colors.normal]
+black = "#2B2B2B"
+red = "#CE7270"
+green = "#99C473"
+yellow = "#F9C371"
+blue = "#6191D6"
+magenta = "#C286CB"
+cyan = "#1DB4A8"
+white = "#D2D1CC"
+
+[colors.bright]
+black = "#8D8C86"
+red = "#ED8D8B"
+green = "#B3DF8D"
+yellow = "#FFDEAE"
+blue = "#7CADF5"
+magenta = "#E0A3EA"
+cyan = "#4CD3C6"
+white = "#F6F6F6"

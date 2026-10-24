@@ -1,0 +1,33 @@
+# Gabs Velvet: terminal colors matched to its Claude Code theme
+
+[colors.primary]
+background = "#231C26"
+foreground = "#ECE8ED"
+
+[colors.cursor]
+text = "#231C26"
+cursor = "#C0A8E8"
+
+[colors.selection]
+text = "#ECE8ED"
+background = "#524660"
+
+[colors.normal]
+black = "#2E2532"
+red = "#C8726B"
+green = "#90C27A"
+yellow = "#E7C671"
+blue = "#4F93CC"
+magenta = "#A88CD6"
+cyan = "#26B0AB"
+white = "#D5CADA"
+
+[colors.bright]
+black = "#928597"
+red = "#E68D85"
+green = "#AADD94"
+yellow = "#FFDC88"
+blue = "#6BAFEA"
+magenta = "#C6A9F5"
+cyan = "#50CFC9"
+white = "#F6F5F7"

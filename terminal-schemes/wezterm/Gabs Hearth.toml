@@ -1,0 +1,32 @@
+# Gabs Hearth: terminal colors matched to its Claude Code theme
+[colors]
+foreground = "#ECEBEA"
+background = "#1D1C1B"
+cursor_bg = "#E07840"
+cursor_fg = "#1D1C1B"
+cursor_border = "#E07840"
+selection_bg = "#65402D"
+selection_fg = "#ECEBEA"
+ansi = [
+    "#282625",
+    "#D8655F",
+    "#6DC571",
+    "#EEC145",
+    "#508CE3",
+    "#C67BD2",
+    "#00AEB5",
+    "#CECBC7"
+]
+brights = [
+    "#8B8782",
+    "#F68179",
+    "#88E18B",
+    "#FFD979",
+    "#6CA8FF",
+    "#E498EF",
+    "#00CFD7",
+    "#F6F6F6"
+]
+
+[metadata]
+name = "Gabs Hearth"

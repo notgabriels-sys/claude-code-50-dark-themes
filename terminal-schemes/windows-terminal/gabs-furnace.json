@@ -1,0 +1,27 @@
+{
+    "schemes": [
+        {
+            "name": "Gabs Furnace",
+            "background": "#1E1516",
+            "foreground": "#EDE8E8",
+            "cursorColor": "#FF5A36",
+            "selectionBackground": "#703227",
+            "black": "#2A1D1F",
+            "red": "#EB4E2B",
+            "green": "#5BC363",
+            "yellow": "#FFB333",
+            "blue": "#4287EA",
+            "purple": "#C773D5",
+            "cyan": "#00A9AF",
+            "white": "#D3C3C4",
+            "brightBlack": "#937F81",
+            "brightRed": "#FF7556",
+            "brightGreen": "#76DE7C",
+            "brightYellow": "#FFD090",
+            "brightBlue": "#65A4FF",
+            "brightPurple": "#E68FF3",
+            "brightCyan": "#00C9D1",
+            "brightWhite": "#F7F5F5"
+        }
+    ]
+}

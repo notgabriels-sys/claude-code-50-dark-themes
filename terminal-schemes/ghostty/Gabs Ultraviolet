@@ -1,0 +1,23 @@
+# Gabs Ultraviolet: terminal colors matched to its Claude Code theme
+palette = 0=#251D30
+palette = 1=#DD5A55
+palette = 2=#5BC363
+palette = 3=#EFBB0C
+palette = 4=#4387EA
+palette = 5=#C773D5
+palette = 6=#00AAB0
+palette = 7=#CBC4D5
+palette = 8=#888194
+palette = 9=#FC766F
+palette = 10=#76DE7C
+palette = 11=#FFD35F
+palette = 12=#65A4FF
+palette = 13=#E68FF3
+palette = 14=#00CAD2
+palette = 15=#F6F5F7
+background = #1B1523
+foreground = #EAE8ED
+cursor-color = #9D6BFF
+cursor-text = #1B1523
+selection-background = #4A3673
+selection-foreground = #EAE8ED

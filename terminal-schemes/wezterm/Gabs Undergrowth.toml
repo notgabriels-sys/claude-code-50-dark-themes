@@ -1,0 +1,32 @@
+# Gabs Undergrowth: terminal colors matched to its Claude Code theme
+[colors]
+foreground = "#E8EDEB"
+background = "#18201C"
+cursor_bg = "#4FA872"
+cursor_fg = "#18201C"
+cursor_border = "#4FA872"
+selection_bg = "#2F523C"
+selection_fg = "#E8EDEB"
+ansi = [
+    "#212C26",
+    "#D06D66",
+    "#66C78B",
+    "#ECC460",
+    "#5B8ED9",
+    "#C282CC",
+    "#00AFBA",
+    "#C3D1C9"
+]
+brights = [
+    "#7C8D84",
+    "#EF8880",
+    "#82E3A5",
+    "#FFDC84",
+    "#75AAF7",
+    "#E19FEB",
+    "#26CFDB",
+    "#F5F7F6"
+]
+
+[metadata]
+name = "Gabs Undergrowth"

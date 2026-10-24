@@ -1,0 +1,23 @@
+# Gabs Cassette: terminal colors matched to its Claude Code theme
+palette = 0=#2F2923
+palette = 1=#DC6766
+palette = 2=#8CC55E
+palette = 3=#FFBF52
+palette = 4=#538FE7
+palette = 5=#CA7ED5
+palette = 6=#00B3A8
+palette = 7=#D1CBC2
+palette = 8=#92897F
+palette = 9=#FB8380
+palette = 10=#A7E179
+palette = 11=#FFDCA6
+palette = 12=#73ACFF
+palette = 13=#E89CF4
+palette = 14=#00D4C8
+palette = 15=#F8F3EB
+background = #231F1A
+foreground = #EFE4D2
+cursor-color = #E8853C
+cursor-text = #231F1A
+selection-background = #624129
+selection-foreground = #EFE4D2

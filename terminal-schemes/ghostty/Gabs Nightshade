@@ -1,0 +1,23 @@
+# Gabs Nightshade: terminal colors matched to its Claude Code theme
+palette = 0=#231F29
+palette = 1=#D3625C
+palette = 2=#7CBE60
+palette = 3=#EABC42
+palette = 4=#2B8DD9
+palette = 5=#A97FE1
+palette = 6=#00AAA6
+palette = 7=#CAC4D1
+palette = 8=#888190
+palette = 9=#F27D76
+palette = 10=#95D979
+palette = 11=#FFD35F
+palette = 12=#4CA9F7
+palette = 13=#C49CFF
+palette = 14=#00CAC5
+palette = 15=#F6F5F7
+background = #19161D
+foreground = #EBE8ED
+cursor-color = #976ECE
+cursor-text = #19161D
+selection-background = #47375E
+selection-foreground = #EBE8ED

@@ -1,0 +1,23 @@
+# Gabs Oxide: terminal colors matched to its Claude Code theme
+palette = 0=#2D2725
+palette = 1=#CE7053
+palette = 2=#79C57C
+palette = 3=#E9C55F
+palette = 4=#5A8ED9
+palette = 5=#C282CC
+palette = 6=#00AFB7
+palette = 7=#D4CCCA
+palette = 8=#918784
+palette = 9=#ED8B6E
+palette = 10=#94E096
+palette = 11=#FFDC79
+palette = 12=#75AAF7
+palette = 13=#E19FEB
+palette = 14=#24CFD6
+palette = 15=#F7F5F5
+background = #221D1C
+foreground = #EDE9E9
+cursor-color = #C76F55
+cursor-text = #221D1C
+selection-background = #5F3C33
+selection-foreground = #EDE9E9

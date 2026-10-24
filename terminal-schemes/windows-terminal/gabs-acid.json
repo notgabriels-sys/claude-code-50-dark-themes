@@ -1,0 +1,27 @@
+{
+    "schemes": [
+        {
+            "name": "Gabs Acid",
+            "background": "#191B13",
+            "foreground": "#EDEDE8",
+            "cursorColor": "#C8E62E",
+            "selectionBackground": "#475123",
+            "black": "#24271B",
+            "red": "#DF5C57",
+            "green": "#75C354",
+            "yellow": "#F2BE16",
+            "blue": "#0C8EE7",
+            "purple": "#B577FF",
+            "cyan": "#00ADA9",
+            "white": "#C7CBBC",
+            "brightBlack": "#838877",
+            "brightRed": "#FE7871",
+            "brightGreen": "#8EDE6F",
+            "brightYellow": "#FFD66E",
+            "brightBlue": "#46AAFF",
+            "brightPurple": "#C7A0FF",
+            "brightCyan": "#00CDC9",
+            "brightWhite": "#F7F7F5"
+        }
+    ]
+}

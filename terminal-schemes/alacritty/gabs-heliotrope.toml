@@ -1,0 +1,33 @@
+# Gabs Heliotrope: terminal colors matched to its Claude Code theme
+
+[colors.primary]
+background = "#1B161F"
+foreground = "#ECE8ED"
+
+[colors.cursor]
+text = "#1B161F"
+cursor = "#DA9BE8"
+
+[colors.selection]
+text = "#ECE8ED"
+background = "#5A4362"
+
+[colors.normal]
+black = "#292330"
+red = "#CE6660"
+green = "#71C074"
+yellow = "#E6BE53"
+blue = "#5389D7"
+magenta = "#BC7CCA"
+cyan = "#00AAB0"
+white = "#CCC4D4"
+
+[colors.bright]
+black = "#8B8193"
+red = "#EC817A"
+green = "#8BDB8E"
+yellow = "#FDD46A"
+blue = "#6EA5F5"
+magenta = "#DA98E8"
+cyan = "#00CAD2"
+white = "#F6F5F7"

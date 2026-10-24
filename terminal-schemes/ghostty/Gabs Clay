@@ -1,0 +1,23 @@
+# Gabs Clay: terminal colors matched to its Claude Code theme
+palette = 0=#2F2A27
+palette = 1=#D0716A
+palette = 2=#80C782
+palette = 3=#EDC86A
+palette = 4=#6091D8
+palette = 5=#C385CC
+palette = 6=#00B2B9
+palette = 7=#D6CFCC
+palette = 8=#928A85
+palette = 9=#EE8D85
+palette = 10=#9AE39C
+palette = 11=#FFE093
+palette = 12=#7BADF7
+palette = 13=#E1A2EB
+palette = 14=#3DD1D8
+palette = 15=#F7F6F5
+background = #24201E
+foreground = #EDEAE9
+cursor-color = #C97B5A
+cursor-text = #24201E
+selection-background = #614336
+selection-foreground = #EDEAE9

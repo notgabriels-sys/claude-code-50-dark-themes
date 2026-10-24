@@ -1,0 +1,32 @@
+# Gabs Signal Red: terminal colors matched to its Claude Code theme
+[colors]
+foreground = "#E9EAEC"
+background = "#1A1B1E"
+cursor_bg = "#E64F54"
+cursor_fg = "#1A1B1E"
+cursor_border = "#E64F54"
+selection_bg = "#663334"
+selection_fg = "#E9EAEC"
+ansi = [
+    "#232529",
+    "#EA5357",
+    "#5FC666",
+    "#F3BF19",
+    "#458AED",
+    "#CB75D8",
+    "#00ADB4",
+    "#C8CACF"
+]
+brights = [
+    "#84878D",
+    "#FF7978",
+    "#7AE280",
+    "#FFD875",
+    "#6BA7FF",
+    "#E992F6",
+    "#00CDD5",
+    "#F5F6F6"
+]
+
+[metadata]
+name = "Gabs Signal Red"

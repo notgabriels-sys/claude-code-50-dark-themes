@@ -1,0 +1,32 @@
+# Gabs Amber Room: terminal colors matched to its Claude Code theme
+[colors]
+foreground = "#EDEBE8"
+background = "#201D18"
+cursor_bg = "#E0A83C"
+cursor_fg = "#201D18"
+cursor_border = "#E0A83C"
+selection_bg = "#5C4929"
+selection_fg = "#EDEBE8"
+ansi = [
+    "#2C2821",
+    "#D66862",
+    "#72C676",
+    "#F8BF53",
+    "#548DE0",
+    "#C57ED0",
+    "#00AFB6",
+    "#D1CCC3"
+]
+brights = [
+    "#8E887D",
+    "#F4847C",
+    "#8CE18F",
+    "#FFD998",
+    "#6FA9FE",
+    "#E39BEE",
+    "#00D0D8",
+    "#F7F6F5"
+]
+
+[metadata]
+name = "Gabs Amber Room"

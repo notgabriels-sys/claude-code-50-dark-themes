@@ -1,0 +1,27 @@
+{
+    "schemes": [
+        {
+            "name": "Gabs Oxide",
+            "background": "#221D1C",
+            "foreground": "#EDE9E9",
+            "cursorColor": "#C76F55",
+            "selectionBackground": "#5F3C33",
+            "black": "#2D2725",
+            "red": "#CE7053",
+            "green": "#79C57C",
+            "yellow": "#E9C55F",
+            "blue": "#5A8ED9",
+            "purple": "#C282CC",
+            "cyan": "#00AFB7",
+            "white": "#D4CCCA",
+            "brightBlack": "#918784",
+            "brightRed": "#ED8B6E",
+            "brightGreen": "#94E096",
+            "brightYellow": "#FFDC79",
+            "brightBlue": "#75AAF7",
+            "brightPurple": "#E19FEB",
+            "brightCyan": "#24CFD6",
+            "brightWhite": "#F7F5F5"
+        }
+    ]
+}

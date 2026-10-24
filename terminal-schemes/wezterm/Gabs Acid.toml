@@ -1,0 +1,32 @@
+# Gabs Acid: terminal colors matched to its Claude Code theme
+[colors]
+foreground = "#EDEDE8"
+background = "#191B13"
+cursor_bg = "#C8E62E"
+cursor_fg = "#191B13"
+cursor_border = "#C8E62E"
+selection_bg = "#475123"
+selection_fg = "#EDEDE8"
+ansi = [
+    "#24271B",
+    "#DF5C57",
+    "#75C354",
+    "#F2BE16",
+    "#0C8EE7",
+    "#B577FF",
+    "#00ADA9",
+    "#C7CBBC"
+]
+brights = [
+    "#838877",
+    "#FE7871",
+    "#8EDE6F",
+    "#FFD66E",
+    "#46AAFF",
+    "#C7A0FF",
+    "#00CDC9",
+    "#F7F7F5"
+]
+
+[metadata]
+name = "Gabs Acid"

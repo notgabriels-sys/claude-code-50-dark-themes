@@ -1,0 +1,26 @@
+# Gabs Hearth: terminal colors matched to its Claude Code theme
+name: 'Gabs Hearth'
+accent: '#E07840'
+cursor: '#E07840'
+background: '#1D1C1B'
+foreground: '#ECEBEA'
+details: darker
+terminal_colors:
+  normal:
+    black: '#282625'
+    red: '#D8655F'
+    green: '#6DC571'
+    yellow: '#EEC145'
+    blue: '#508CE3'
+    magenta: '#C67BD2'
+    cyan: '#00AEB5'
+    white: '#CECBC7'
+  bright:
+    black: '#8B8782'
+    red: '#F68179'
+    green: '#88E18B'
+    yellow: '#FFD979'
+    blue: '#6CA8FF'
+    magenta: '#E498EF'
+    cyan: '#00CFD7'
+    white: '#F6F6F6'

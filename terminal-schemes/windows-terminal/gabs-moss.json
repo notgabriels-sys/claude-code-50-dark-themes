@@ -1,0 +1,27 @@
+{
+    "schemes": [
+        {
+            "name": "Gabs Moss",
+            "background": "#1E241F",
+            "foreground": "#E9EDE9",
+            "cursorColor": "#93BF6F",
+            "selectionBackground": "#405138",
+            "black": "#272F29",
+            "red": "#D5706E",
+            "green": "#97C66F",
+            "yellow": "#FDC469",
+            "blue": "#5E92DE",
+            "purple": "#C686D0",
+            "cyan": "#00B4BB",
+            "white": "#CAD5CC",
+            "brightBlack": "#849085",
+            "brightRed": "#F38C89",
+            "brightGreen": "#B1E289",
+            "brightYellow": "#FFE1B4",
+            "brightBlue": "#7AAFFC",
+            "brightPurple": "#E5A3EF",
+            "brightCyan": "#2FD4DB",
+            "brightWhite": "#F5F7F5"
+        }
+    ]
+}

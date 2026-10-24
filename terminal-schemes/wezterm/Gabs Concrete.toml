@@ -1,0 +1,32 @@
+# Gabs Concrete: terminal colors matched to its Claude Code theme
+[colors]
+foreground = "#EAEBEB"
+background = "#222425"
+cursor_bg = "#7FA6B8"
+cursor_fg = "#222425"
+cursor_border = "#7FA6B8"
+selection_bg = "#414E54"
+selection_fg = "#EAEBEB"
+ansi = [
+    "#2C2E30",
+    "#CB7872",
+    "#8BC98D",
+    "#ECCC7C",
+    "#6994D2",
+    "#C18CC9",
+    "#39B4BA",
+    "#CDD2D4"
+]
+brights = [
+    "#898F91",
+    "#E9948C",
+    "#A6E5A7",
+    "#FFE4A1",
+    "#85B0F1",
+    "#E0A9E8",
+    "#5ED3D9",
+    "#F6F6F6"
+]
+
+[metadata]
+name = "Gabs Concrete"

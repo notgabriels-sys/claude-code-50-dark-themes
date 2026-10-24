@@ -1,0 +1,27 @@
+{
+    "schemes": [
+        {
+            "name": "Gabs Biolume",
+            "background": "#141B1A",
+            "foreground": "#E8EDEC",
+            "cursorColor": "#35E0C0",
+            "selectionBackground": "#27554B",
+            "black": "#202A28",
+            "red": "#D4636A",
+            "green": "#92BD54",
+            "yellow": "#FEB651",
+            "blue": "#508ADE",
+            "purple": "#C27ACE",
+            "cyan": "#00AE93",
+            "white": "#BFCCCA",
+            "brightBlack": "#7A8986",
+            "brightRed": "#F27F84",
+            "brightGreen": "#ABD86F",
+            "brightYellow": "#FFD39A",
+            "brightBlue": "#6BA6FD",
+            "brightPurple": "#E196EC",
+            "brightCyan": "#01CFAF",
+            "brightWhite": "#F5F7F6"
+        }
+    ]
+}

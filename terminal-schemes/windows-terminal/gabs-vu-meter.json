@@ -1,0 +1,27 @@
+{
+    "schemes": [
+        {
+            "name": "Gabs VU Meter",
+            "background": "#161617",
+            "foreground": "#EAEAEB",
+            "cursorColor": "#46D160",
+            "selectionBackground": "#2D5433",
+            "black": "#202021",
+            "red": "#E94B50",
+            "green": "#37C655",
+            "yellow": "#EEBA07",
+            "blue": "#4186E9",
+            "purple": "#C672D4",
+            "cyan": "#00A8B1",
+            "white": "#C5C5C9",
+            "brightBlack": "#838388",
+            "brightRed": "#FF716F",
+            "brightGreen": "#58E16F",
+            "brightYellow": "#FFD159",
+            "brightBlue": "#63A2FF",
+            "brightPurple": "#E58EF2",
+            "brightCyan": "#00C8D2",
+            "brightWhite": "#F6F6F6"
+        }
+    ]
+}

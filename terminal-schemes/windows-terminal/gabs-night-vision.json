@@ -1,0 +1,27 @@
+{
+    "schemes": [
+        {
+            "name": "Gabs Night Vision",
+            "background": "#151916",
+            "foreground": "#E9ECEA",
+            "cursorColor": "#52E07A",
+            "selectionBackground": "#2D5536",
+            "black": "#1E2420",
+            "red": "#DD5B56",
+            "green": "#30C762",
+            "yellow": "#F0BC10",
+            "blue": "#4388EB",
+            "purple": "#C873D5",
+            "cyan": "#00A9B4",
+            "white": "#C2C9C3",
+            "brightBlack": "#7E8780",
+            "brightRed": "#FC7770",
+            "brightGreen": "#54E27B",
+            "brightYellow": "#FFD464",
+            "brightBlue": "#67A5FF",
+            "brightPurple": "#E690F4",
+            "brightCyan": "#00C9D5",
+            "brightWhite": "#F5F6F6"
+        }
+    ]
+}

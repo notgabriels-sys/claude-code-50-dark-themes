@@ -1,0 +1,27 @@
+{
+    "schemes": [
+        {
+            "name": "Gabs Blueprint",
+            "background": "#15202E",
+            "foreground": "#E8EAED",
+            "cursorColor": "#52C2F0",
+            "selectionBackground": "#2A5068",
+            "black": "#1B2A3C",
+            "red": "#D26E67",
+            "green": "#7AC77D",
+            "yellow": "#EDC660",
+            "blue": "#5B8FDB",
+            "purple": "#C482CE",
+            "cyan": "#00B1B8",
+            "white": "#C4D0DE",
+            "brightBlack": "#7E8C9D",
+            "brightRed": "#F18981",
+            "brightGreen": "#94E297",
+            "brightYellow": "#FFDE8C",
+            "brightBlue": "#76ABF9",
+            "brightPurple": "#E29FEC",
+            "brightCyan": "#24D1D9",
+            "brightWhite": "#F5F6F7"
+        }
+    ]
+}

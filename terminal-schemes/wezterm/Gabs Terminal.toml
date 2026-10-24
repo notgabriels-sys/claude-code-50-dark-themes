@@ -1,0 +1,32 @@
+# Gabs Terminal: terminal colors matched to its Claude Code theme
+[colors]
+foreground = "#E9EDE9"
+background = "#171C17"
+cursor_bg = "#33D17A"
+cursor_fg = "#171C17"
+cursor_border = "#33D17A"
+selection_bg = "#295537"
+selection_fg = "#E9EDE9"
+ansi = [
+    "#202720",
+    "#DF5D58",
+    "#26CA73",
+    "#F2BE16",
+    "#458AED",
+    "#CA75D8",
+    "#00ACB7",
+    "#C4CCC3"
+]
+brights = [
+    "#7F897E",
+    "#FF7971",
+    "#4EE58C",
+    "#FFD770",
+    "#6BA7FF",
+    "#E892F6",
+    "#00CCD9",
+    "#F5F7F5"
+]
+
+[metadata]
+name = "Gabs Terminal"

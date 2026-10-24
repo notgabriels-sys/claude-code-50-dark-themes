@@ -1,0 +1,23 @@
+# Gabs Mulberry: terminal colors matched to its Claude Code theme
+palette = 0=#302129
+palette = 1=#D9645E
+palette = 2=#6BC670
+palette = 3=#EFC141
+palette = 4=#4F8CE4
+palette = 5=#C67BD2
+palette = 6=#00AEB5
+palette = 7=#D9C7D0
+palette = 8=#96828D
+palette = 9=#F88078
+palette = 10=#86E189
+palette = 11=#FFD979
+palette = 12=#6DA8FF
+palette = 13=#E598F1
+palette = 14=#00CFD7
+palette = 15=#F7F5F6
+background = #24191F
+foreground = #EDE8EB
+cursor-color = #D25E85
+cursor-text = #24191F
+selection-background = #643445
+selection-foreground = #EDE8EB

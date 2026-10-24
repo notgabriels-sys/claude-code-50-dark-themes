@@ -1,0 +1,33 @@
+# Gabs Furnace: terminal colors matched to its Claude Code theme
+
+[colors.primary]
+background = "#1E1516"
+foreground = "#EDE8E8"
+
+[colors.cursor]
+text = "#1E1516"
+cursor = "#FF5A36"
+
+[colors.selection]
+text = "#EDE8E8"
+background = "#703227"
+
+[colors.normal]
+black = "#2A1D1F"
+red = "#EB4E2B"
+green = "#5BC363"
+yellow = "#FFB333"
+blue = "#4287EA"
+magenta = "#C773D5"
+cyan = "#00A9AF"
+white = "#D3C3C4"
+
+[colors.bright]
+black = "#937F81"
+red = "#FF7556"
+green = "#76DE7C"
+yellow = "#FFD090"
+blue = "#65A4FF"
+magenta = "#E68FF3"
+cyan = "#00C9D1"
+white = "#F7F5F5"

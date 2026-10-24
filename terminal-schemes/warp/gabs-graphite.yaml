@@ -1,0 +1,26 @@
+# Gabs Graphite: terminal colors matched to its Claude Code theme
+name: 'Gabs Graphite'
+accent: '#C9CFD6'
+cursor: '#C9CFD6'
+background: '#1D1E20'
+foreground: '#E9EAEC'
+details: darker
+terminal_colors:
+  normal:
+    black: '#27282B'
+    red: '#C5736C'
+    green: '#86C287'
+    yellow: '#E6C576'
+    blue: '#648FCD'
+    magenta: '#BB86C3'
+    cyan: '#31AEB4'
+    white: '#CBCED2'
+  bright:
+    black: '#86898E'
+    red: '#E38E87'
+    green: '#9FDEA1'
+    yellow: '#FCDC8C'
+    blue: '#7FABEB'
+    magenta: '#D9A3E1'
+    cyan: '#57CCD3'
+    white: '#F5F6F6'

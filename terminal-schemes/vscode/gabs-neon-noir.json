@@ -1,0 +1,26 @@
+{
+    "workbench.colorCustomizations": {
+        "terminal.background": "#171315",
+        "terminal.foreground": "#ECE8EA",
+        "terminalCursor.foreground": "#F25CA2",
+        "terminalCursor.background": "#171315",
+        "terminal.selectionBackground": "#673148",
+        "terminal.selectionForeground": "#ECE8EA",
+        "terminal.ansiBlack": "#2A2227",
+        "terminal.ansiRed": "#DA5853",
+        "terminal.ansiGreen": "#58C060",
+        "terminal.ansiYellow": "#ECB800",
+        "terminal.ansiBlue": "#4085E8",
+        "terminal.ansiMagenta": "#C570D2",
+        "terminal.ansiCyan": "#00A7AD",
+        "terminal.ansiWhite": "#C9C2C5",
+        "terminal.ansiBrightBlack": "#888084",
+        "terminal.ansiBrightRed": "#F9746D",
+        "terminal.ansiBrightGreen": "#73DB79",
+        "terminal.ansiBrightYellow": "#FFCF4B",
+        "terminal.ansiBrightBlue": "#60A1FF",
+        "terminal.ansiBrightMagenta": "#E38CF0",
+        "terminal.ansiBrightCyan": "#00C7CF",
+        "terminal.ansiBrightWhite": "#F6F5F6"
+    }
+}

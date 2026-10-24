@@ -1,0 +1,26 @@
+# Gabs Neon Noir: terminal colors matched to its Claude Code theme
+name: 'Gabs Neon Noir'
+accent: '#F25CA2'
+cursor: '#F25CA2'
+background: '#171315'
+foreground: '#ECE8EA'
+details: darker
+terminal_colors:
+  normal:
+    black: '#2A2227'
+    red: '#DA5853'
+    green: '#58C060'
+    yellow: '#ECB800'
+    blue: '#4085E8'
+    magenta: '#C570D2'
+    cyan: '#00A7AD'
+    white: '#C9C2C5'
+  bright:
+    black: '#888084'
+    red: '#F9746D'
+    green: '#73DB79'
+    yellow: '#FFCF4B'
+    blue: '#60A1FF'
+    magenta: '#E38CF0'
+    cyan: '#00C7CF'
+    white: '#F6F5F6'

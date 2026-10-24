@@ -1,0 +1,27 @@
+{
+    "schemes": [
+        {
+            "name": "Gabs Aurora Borealis",
+            "background": "#131A16",
+            "foreground": "#E8EDEA",
+            "cursorColor": "#6FE8A5",
+            "selectionBackground": "#30543F",
+            "black": "#202A24",
+            "red": "#D4625C",
+            "green": "#48C483",
+            "yellow": "#EBBD42",
+            "blue": "#4E89DF",
+            "purple": "#C279CE",
+            "cyan": "#00AAB5",
+            "white": "#BECBC3",
+            "brightBlack": "#79887F",
+            "brightRed": "#F27E76",
+            "brightGreen": "#65DF9C",
+            "brightYellow": "#FFD464",
+            "brightBlue": "#68A5FD",
+            "brightPurple": "#E195EC",
+            "brightCyan": "#00CAD6",
+            "brightWhite": "#F5F7F6"
+        }
+    ]
+}

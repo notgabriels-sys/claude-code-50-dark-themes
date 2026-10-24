@@ -1,0 +1,23 @@
+# Gabs Absinthe: terminal colors matched to its Claude Code theme
+palette = 0=#282A22
+palette = 1=#DF635D
+palette = 2=#67C96D
+palette = 3=#F4C334
+palette = 4=#4C8DEB
+palette = 5=#CB7BD8
+palette = 6=#00B0B7
+palette = 7=#CBCFC4
+palette = 8=#868B7E
+palette = 9=#FE7F77
+palette = 10=#82E487
+palette = 11=#FFDC84
+palette = 12=#70AAFF
+palette = 13=#EA98F7
+palette = 14=#00D1D9
+palette = 15=#F6F7F5
+background = #1D1F19
+foreground = #EBEDE8
+cursor-color = #C0D648
+cursor-text = #1D1F19
+selection-background = #48502B
+selection-foreground = #EBEDE8
