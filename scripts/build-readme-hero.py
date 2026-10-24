@@ -5,7 +5,8 @@
 
 writes two files from the theme JSON files, nothing typed by hand:
 
-    assets/hero.gif   one frame per theme in HERO_THEMES, FRAME_DELAY_CS each, looping
+    assets/hero.gif   one frame per theme in HERO_THEMES, FRAME_DELAY_CS each (the first
+                      FIRST_FRAME_DELAY_CS), looping
     assets/hero.png   the first frame on its own, the still fallback
 
 Every color in a frame's session panel is a theme override (claude, text,
@@ -43,7 +44,8 @@ from html import escape
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 WIDTH, HEIGHT = 1200, 600
-FRAME_DELAY_CS = 120  # GIF delays are in hundredths of a second: 1.2 s per theme.
+FRAME_DELAY_CS = 200  # GIF delays are in hundredths of a second: 2 s per theme,
+FIRST_FRAME_DELAY_CS = 300  # and 3 s on the first, which is also the still image.
 # Eight free themes, spread around the color wheel and alternating warm and
 # cool, with two from Vol. 2. The first is also the still image.
 HERO_THEMES = [
@@ -176,13 +178,13 @@ body{position:relative;font-family:"DejaVu Sans Mono",Menlo,Consolas,monospace;f
 .cursor{display:inline-block;width:11px;height:22px;background:var(--text);vertical-align:-5px;margin-left:1px}
 .sugg{color:var(--suggestion);padding:6px 0 0 18px}
 .foot{position:absolute;left:40px;right:40px;top:538px;height:40px;display:flex;align-items:center;justify-content:space-between;font-family:Inter,"DejaVu Sans",sans-serif;white-space:nowrap}
-.label{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:LABEL;width:330px}
+.label{font-size:17px;letter-spacing:.12em;text-transform:uppercase;color:LABEL;width:440px}
 .dots{display:flex;gap:9px}
 .dots i{width:8px;height:8px;border-radius:50%;background:DOT_OFF;display:block}
 .dots i.on{background:var(--claude)}
-.name{width:330px;text-align:right}
+.name{width:440px;text-align:right}
 .name b{font-size:24px;font-weight:700;color:var(--claude)}
-.name span{font-size:14px;color:LABEL;margin-left:12px}
+.name span{font-size:18px;color:LABEL;margin-left:14px}
 """.replace("BACKDROP", BACKDROP).replace("LABEL", LABEL).replace("DOT_OFF", DOT_OFF)
 
 
@@ -197,12 +199,12 @@ def frame_html(theme, index, count):
         '<div class="acc">✻ Welcome to Claude Code!</div>'
         '<div class="gap"></div>'
         '<div class="mut">  /help for help, /status for your current setup</div>'
-        '<div class="mut">  cwd: ~/projects/site</div>'
+        '<div class="mut">  cwd: ~/projects/app</div>'
         "</div>"
-        '<div class="user"><span class="mut">&gt;</span> make the README intro two lines and put install first</div>'
-        '<div class="reply">● I\'ll trim the intro to a two-line pitch and move the install commands up.</div>'
-        '<div class="tool">● <b>Update</b>(README.md)</div>'
-        '<div class="mut"><span class="elbow"></span>Updated <b>README.md</b> with 12 additions and 31 removals</div>'
+        '<div class="user"><span class="mut">&gt;</span> fix the flaky date test in utils</div>'
+        '<div class="reply">● The test assumes UTC; I\'ll pin the timezone.</div>'
+        '<div class="tool">● <b>Update</b>(src/utils/date.test.ts)</div>'
+        '<div class="mut"><span class="elbow"></span>Updated <b>src/utils/date.test.ts</b> with 2 additions and 1 removal</div>'
         '<div class="prompt">&gt; /theme<span class="cursor"></span></div>'
         '<div class="sugg">/theme                  Change the theme</div>'
     )
@@ -210,7 +212,7 @@ def frame_html(theme, index, count):
         "<!doctype html><html><head><meta charset=\"utf-8\">"
         f"<style>{FRAME_CSS}</style></head>"
         f'<body style="{variables}">'
-        '<div class="win"><div class="bar"><i></i><i></i><i></i><b>claude — ~/projects/site</b></div>'
+        '<div class="win"><div class="bar"><i></i><i></i><i></i><b>claude — ~/projects/app</b></div>'
         f'<div class="body">{session}</div></div>'
         '<div class="foot"><div class="label">Rendered preview</div>'
         f'<div class="dots">{dots}</div>'
@@ -416,12 +418,13 @@ def sub_blocks(data):
     return b"".join(bytes([len(data[i : i + 255])]) + data[i : i + 255] for i in range(0, len(data), 255)) + b"\x00"
 
 
-def write_gif(path, frames, width, height, delay_cs):
-    """frames: [(palette of 256 RGB tuples, index bytes)], each with its own color table."""
+def write_gif(path, frames, width, height, delays_cs):
+    """frames: [(palette of 256 RGB tuples, index bytes)], each with its own color table;
+    delays_cs: each frame's delay in hundredths of a second."""
     out = bytearray(b"GIF89a")
     out += struct.pack("<HHBBB", width, height, 0x00, 0, 0)  # no global color table
     out += b"\x21\xff\x0bNETSCAPE2.0\x03\x01\x00\x00\x00"  # loop forever
-    for palette, indices in frames:
+    for (palette, indices), delay_cs in zip(frames, delays_cs, strict=True):
         out += b"\x21\xf9\x04" + struct.pack("<BHBB", 0x04, delay_cs, 0, 0)  # do not dispose, no transparency
         out += b"\x2c" + struct.pack("<HHHHB", 0, 0, width, height, 0x87)  # local table of 2^(7+1) colors
         out += bytes(channel for color in palette for channel in color)
@@ -473,7 +476,8 @@ def main():
         os.makedirs(os.path.join(ROOT, "assets"), exist_ok=True)
         gif_path = os.path.join(ROOT, "assets/hero.gif")
         png_path = os.path.join(ROOT, "assets/hero.png")
-        write_gif(gif_path, frames, WIDTH, HEIGHT, FRAME_DELAY_CS)
+        delays = [FIRST_FRAME_DELAY_CS] + [FRAME_DELAY_CS] * (len(frames) - 1)
+        write_gif(gif_path, frames, WIDTH, HEIGHT, delays)
         shutil.copyfile(first_png, png_path)
     finally:
         shutil.rmtree(work, ignore_errors=True)

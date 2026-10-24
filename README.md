@@ -1,9 +1,9 @@
 # 50 dark themes for Claude Code
 
-[![Verify themes and shop](https://github.com/notgabriels-sys/claude-code-50-dark-themes/actions/workflows/verify.yml/badge.svg)](https://github.com/notgabriels-sys/claude-code-50-dark-themes/actions/workflows/verify.yml)
+[![verify](https://img.shields.io/github/actions/workflow/status/notgabriels-sys/claude-code-50-dark-themes/verify.yml?branch=main&label=verify)](https://github.com/notgabriels-sys/claude-code-50-dark-themes/actions/workflows/verify.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-**62 hand-tuned dark themes for Claude Code's `/theme` picker** (the 50 plus 12 in Vol. 2), free and MIT licensed.
+**Free dark themes for Claude Code's `/theme` picker: 50 in the main pack, 12 more in Vol. 2.**
 
 Every palette is contrast-checked against its terminal background and has a matched terminal color scheme.
 
@@ -12,77 +12,59 @@ Every palette is contrast-checked against its terminal background and has a matc
   <img src="assets/hero.gif" alt="Rendered preview of a Claude Code session in real theme colors: the welcome line in the theme's accent, a prompt, a reply, a tool result, the prompt box with /theme typed into it, and the theme's name, on its recommended terminal background. The animation cycles through eight of the free themes (Deep Field, Ember, Aurora Borealis, Neon Noir, Lagoon, Acid, Ultraviolet and Graphite); the still image shows Deep Field.">
 </picture>
 
-## Install
+## <span id="quick-install--claude-code-plugin"></span>Install
 
-Type these two commands inside Claude Code:
+Needs Claude Code v2.1.118 or later (`claude update`). Two commands, typed inside Claude Code,
+install the 50; one more adds Vol. 2.
 
-```text
-/plugin marketplace add notgabriels-sys/claude-code-50-dark-themes
-/plugin install 50-dark-themes@notgabriels-themes
-```
+1. Add the marketplace:
 
-For the 12 Vol. 2 themes as well:
+   ```text
+   /plugin marketplace add notgabriels-sys/claude-code-50-dark-themes
+   ```
 
-```text
-/plugin install dark-themes-vol-2@notgabriels-themes
-```
+2. Install the pack:
 
-Then run `/theme` and pick one. Needs Claude Code v2.1.118 or later.
+   ```text
+   /plugin install 50-dark-themes@notgabriels-themes
+   ```
 
-**→ Visual gallery: [gabs-utilities.com](https://gabs-utilities.com/)** (all 62 themes, previewed in their own colors).
+3. Optional, for the 12 Vol. 2 themes:
 
-## About the plugin
+   ```text
+   /plugin install dark-themes-vol-2@notgabriels-themes
+   ```
 
-Custom themes for the Claude Code CLI. The chat app (claude.ai / desktop) only supports
-Light / Dark / System, so these install into Claude Code, which does support custom themes.
+Restart Claude Code, then run `/theme` and pick one.
 
-Requires **Claude Code v2.1.118 or later**, the release that introduced named custom themes.
+**→ Every theme, previewed: [gabs-utilities.com/theme/](https://gabs-utilities.com/theme/)** (a page for each of the 62, with a specimen in its own colors).
 
-The plugin keeps the pack together and makes updates available through the marketplace. Press `Ctrl+E`
-on a plugin theme if you want an editable copy in `~/.claude/themes/`.
+## Other ways to install
 
-The same install from your terminal, outside Claude Code:
+These are themes for the Claude Code CLI. The chat app (claude.ai / desktop) only supports
+Light / Dark / System, so every route below puts them into Claude Code. Step-by-step install,
+terminal background and troubleshooting guide:
+<https://gabs-utilities.com/claude-code-theme-install-guide.html>
+
+### From your terminal
+
+The same plugin install, run outside Claude Code:
 
 ```bash
 claude plugin marketplace add notgabriels-sys/claude-code-50-dark-themes
 claude plugin install 50-dark-themes@notgabriels-themes
 ```
 
-Step-by-step install, terminal background and troubleshooting guide:
-<https://gabs-utilities.com/claude-code-theme-install-guide.html>
+The plugin keeps the pack together and makes updates available through the marketplace. Press `Ctrl+E`
+on a plugin theme if you want an editable copy in `~/.claude/themes/`.
 
-Every theme also has its own page, with its palette and roles, contrast measured against the
-recommended terminal background, and the install commands: **[gabs-utilities.com/theme/](https://gabs-utilities.com/theme/)**.
+### From the zip
 
 Prefer a zip to a `git clone`? The same 50 themes are a **free download** on the
 **[v1.0.1 GitHub release →](https://github.com/notgabriels-sys/claude-code-50-dark-themes/releases/tag/themes-plugin-v1.0.1)**
-(`claude-code-dark-themes-v1.0.1.zip`). The native-plugin route above is the recommended install.
+(`claude-code-dark-themes-v1.0.1.zip`). The plugin route above is the recommended install.
 
-Prefer to have your agent do it? The **[Claude Code Theme Setup Assistant](https://agensi.io/skills/claude-code-theme-setup-assistant)** (on Agensi)
-picks a theme with you, installs it, checks it shows in `/theme` and gives you the matching terminal
-background. The themes themselves stay free here.
-
-### Dark Themes Vol. 2 — 12 new themes
-
-The same marketplace now carries a free expansion pack with twelve all-new palettes
-(Afterglow, Aurora Borealis, Basalt, Biolume, Cryosleep, Darkroom, Gaslight, Heliotrope,
-Magnetite, Monsoon, Neon Noir, Ozone), held to the same contrast standards:
-
-```bash
-claude plugin install dark-themes-vol-2@notgabriels-themes
-```
-
-## Manual install
-
-```bash
-git clone https://github.com/notgabriels-sys/claude-code-50-dark-themes
-mkdir -p ~/.claude/themes
-cp claude-code-50-dark-themes/*.json ~/.claude/themes/
-```
-
-Then run `/theme` in Claude Code and pick one.
-
-## Install with one command
+### With `install.sh`
 
 ```bash
 git clone https://github.com/notgabriels-sys/claude-code-50-dark-themes
@@ -101,13 +83,23 @@ It copies into `~/.claude/themes/`, and if a file of the same name is already th
 different contents it is backed up once as `<name>.json.bak` before being replaced.
 `--uninstall` removes the themes and leaves the backups alone.
 
-## Install (step by step)
+### By copying the files
 
-1. Update Claude Code to v2.1.118 or later
-2. Create `~/.claude/themes/` if needed, then copy any (or all) of the `.json` files into it
-3. In Claude Code, run `/theme` — each file appears in the list by name
-4. Select one. Edits to the files hot-reload; no restart needed
-   (if `~/.claude/themes/` didn't exist before, restart Claude Code once)
+```bash
+git clone https://github.com/notgabriels-sys/claude-code-50-dark-themes
+mkdir -p ~/.claude/themes
+cp claude-code-50-dark-themes/*.json ~/.claude/themes/
+```
+
+Or copy only the `.json` files you want. In Claude Code, run `/theme`: each file appears in the
+list by name. Edits to the files hot-reload, no restart needed (if `~/.claude/themes/` didn't
+exist before, restart Claude Code once).
+
+### With an agent
+
+The **[Claude Code Theme Setup Assistant](https://agensi.io/skills/claude-code-theme-setup-assistant)** (on Agensi)
+picks a theme with you, installs it, checks it shows in `/theme` and gives you the matching terminal
+background. The themes themselves stay free here.
 
 ## Matching terminal colors
 
@@ -222,6 +214,7 @@ theme is public under MIT.
 
 Same palettes and the same care, applied elsewhere. All one-time purchases, no
 subscriptions, and none of it needed to use the themes above.
+The whole catalog, previewed: **[gabs-utilities.com](https://gabs-utilities.com/)**.
 
 <details>
 <summary>Twelve published packs plus one résumé demo — UI kit, HTML templates, app screens, email, business documents, social, cheatsheets, keycaps, wallpapers, palettes</summary>
