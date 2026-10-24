@@ -6,6 +6,8 @@ body:
     attributes:
       value: |
         Thanks for reporting. Each theme is checked against contrast floors measured on its own terminal background, so the background you use matters as much as the theme.
+
+        This repository is public, and so is every issue. A screenshot of a Claude Code session usually shows your code, file paths and commands: crop it to the hard-to-read part, or blur the rest, or give the colour's hex value instead.
   - type: input
     id: theme
     attributes:
@@ -41,6 +43,6 @@ body:
     id: problem
     attributes:
       label: What is hard to read?
-      description: Which text or element (a prompt, a diff, plan mode, a permission dialog, ...), and a screenshot if you can attach one.
+      description: Which text or element (a prompt, a diff, plan mode, a permission dialog, ...), and a cropped screenshot or the hex value of the hard-to-read colour if you can.
     validations:
       required: true

@@ -183,17 +183,9 @@ I’d especially like feedback on whether the install flow and theme gallery are
 
 ### Product Hunt maker comment
 
-```text
-Maker here.
-
-This started as a practical thing for myself: I wanted a set of dark Claude Code themes that stayed readable and did not destroy semantic colors like errors, warnings, success states, and diffs.
-
-I kept expanding it into a small catalog of dark developer/creator utilities: UI kits, HTML templates, email templates, cheat sheets, wallpapers, and palettes.
-
-The core Claude Code themes are free and MIT licensed. The paid packs are there for people who want the broader toolkit.
-
-I’d love feedback from developers, Claude Code users, and people who care about practical dark UI systems: what feels useful, what feels unclear, and what should be improved before I keep expanding it.
-```
+One copy only, so the two cannot drift: post the "Prepared first comment" in
+`DIRECTORY_SUBMISSION_PACK.md`, which names Vol. 2 and the readability issue
+form. (Until 2026-10-24 this file kept a second, older copy.)
 
 ### Short directory description
 

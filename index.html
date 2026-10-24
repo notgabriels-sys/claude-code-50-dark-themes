@@ -423,6 +423,7 @@
   footer a{color:var(--mute);text-decoration:none;border-bottom:1px solid var(--hair)}
   footer>span>a{min-height:28px;display:inline-flex;align-items:center}
   footer a:hover{color:var(--accent);border-color:var(--accent-dim)}
+footer>span>a.in-text{display:inline;min-height:0;border-bottom:0;text-decoration:underline;text-decoration-color:var(--hair);text-underline-offset:3px}
   footer .directory-badge{display:inline-flex;align-items:center;border:0;opacity:.72;transition:opacity .15s ease}
   footer .directory-badge:hover{opacity:1;border:0}
   footer .directory-badge img{display:block;width:160px;height:44px;filter:grayscale(1) invert(1);opacity:.58}
@@ -767,7 +768,7 @@
 
   <footer>
     <span>50 dark themes for Claude Code</span>
-    <span>Set your terminal background to the hex on each theme's card for the full effect; <a href="/theme/">every theme's page</a> lists it too.</span>
+    <span>Set your terminal background to the hex on each theme's card for the full effect; <a class="in-text" href="/theme/">every theme's page</a> lists it too.</span>
     <span><a href="claude-code-theme-install-guide.html">Install guide</a></span>
     <span><a href="https://audio.gabs-utilities.com/">Audio services</a></span>
     <span><a href="https://tools.gabs-utilities.com/">Tools + Code</a></span>

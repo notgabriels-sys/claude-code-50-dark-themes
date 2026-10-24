@@ -291,7 +291,12 @@ claude plugin validate --strict --profile directory plugins/dark-themes-vol-2
 All three passed on 2026-10-24 (Claude Code 2.1.310). The portal's own
 **Validate** runs more checks; fix anything it marks **Blocking** and validate
 again. After a listing goes live, each merge to `main` is scanned as a new
-version, and the listing keeps the last published one until a new one passes.
+version. Passing is not publishing: by default the owner asks to publish each
+passing version and an Anthropic reviewer publishes it, and an auto-publish
+setting can publish later passing versions by themselves. Until then the
+listing keeps the last published version (Anthropic's "Submit your plugin"
+page, as read for the 2026-10-24 review; search results the same day agreed
+that a passing version is not necessarily live).
 
 ## Next exposure queue
 

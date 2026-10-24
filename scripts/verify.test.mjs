@@ -5,6 +5,7 @@ import { chmod, cp, lstat, mkdir, mkdtemp, readdir, readFile, rm, symlink, write
 import { tmpdir } from "node:os";
 import { dirname, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+import { crc32, deflateSync, inflateSync } from "node:zlib";
 import test from "node:test";
 
 const projectRoot = fileURLToPath(new URL("../", import.meta.url));
@@ -1469,7 +1470,7 @@ test("rejects a changed skill shipped under an unchanged version", { timeout: 90
   assert.notEqual(result.code, 0, "a changed skill under an unchanged version passed");
   assert.match(
     result.stderr,
-    /plugins\/berlin-studio-skills\/skills\/ changed since berlin-studio-skills 1\.0\.0 \(its digest is now [0-9a-f]{64}\)\. .*Bump the version in plugins\/berlin-studio-skills\/\.claude-plugin\/plugin\.json/,
+    /plugins\/berlin-studio-skills\/skills\/ changed since berlin-studio-skills 1\.0\.0 \(its digest is now [0-9a-f]{64}\)\. .*If berlin-studio-skills 1\.0\.0 has never been released .*record this digest under 1\.0\.0\. Otherwise .*bump the version in plugins\/berlin-studio-skills\/\.claude-plugin\/plugin\.json/,
   );
 });
 
@@ -1552,6 +1553,53 @@ test("rejects a releasedPackages table that does not name every plugin", { timeo
   const result = await runVerifier(fixtureRoot);
   assert.notEqual(result.code, 0, "a table naming another plugin passed");
   assert.match(result.stderr, /releasedPackages in scripts\/verify\.mjs must name exactly the plugins in expectedPlugins/);
+});
+
+// A version only moves forward: moved back to one already shipped, Claude Code
+// reused that version's cached directory and the change never arrived.
+const setSkillsVersion = async (fixtureRoot, version) => {
+  await editFixtureFile(fixtureRoot, "plugins/berlin-studio-skills/.claude-plugin/plugin.json",
+    '"version": "1.0.0"', `"version": "${version}"`);
+  await editFixtureFile(fixtureRoot, ".claude-plugin/marketplace.json",
+    '"source": "./plugins/berlin-studio-skills",\n      "version": "1.0.0"',
+    `"source": "./plugins/berlin-studio-skills",\n      "version": "${version}"`);
+};
+
+test("names no follow-up for a plugin with no release links", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  await editFixtureFile(fixtureRoot, "scripts/verify.mjs", '  "berlin-studio-skills": "",\n', "");
+  await editShippedSkill(fixtureRoot);
+  const result = await runVerifier(fixtureRoot);
+  assert.notEqual(result.code, 0, "a changed skill under an unchanged version passed");
+  assert.match(result.stderr, /releasedPackages in scripts\/verify\.mjs\./);
+  assert.doesNotMatch(result.stderr, /undefined/);
+});
+
+test("rejects a plugin version moved back below the recorded one", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  await setSkillsVersion(fixtureRoot, "0.9.0");
+  const result = await runVerifier(fixtureRoot);
+  assert.notEqual(result.code, 0, "a version moved back passed");
+  assert.match(result.stderr, /berlin-studio-skills ships version 0\.9\.0, which is not newer than 1\.0\.0/);
+});
+
+test("rejects a plugin version not written MAJOR.MINOR.PATCH", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  await setSkillsVersion(fixtureRoot, "1.1");
+  const result = await runVerifier(fixtureRoot);
+  assert.notEqual(result.code, 0, "a two-part version passed");
+  assert.match(result.stderr, /berlin-studio-skills ships version 1\.1 and releasedPackages records 1\.0\.0; each must be written MAJOR\.MINOR\.PATCH/);
+});
+
+test("compares versions part by part as numbers, so 1.0.10 is newer than 1.0.9", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  await editFixtureFile(fixtureRoot, "scripts/verify.mjs",
+    'name: "berlin-studio-skills", payload: "skills", version: "1.0.0",',
+    'name: "berlin-studio-skills", payload: "skills", version: "1.0.9",');
+  await setSkillsVersion(fixtureRoot, "1.0.10");
+  const result = await runVerifier(fixtureRoot);
+  assert.notEqual(result.code, 0, "a version the table does not record passed");
+  assert.match(result.stderr, /berlin-studio-skills ships version 1\.0\.10, but releasedPackages in scripts\/verify\.mjs records 1\.0\.9\. If 1\.0\.10 is the release you mean/);
 });
 
 test("lists every stale count in a file in one run", { timeout: 90_000 }, async (t) => {
@@ -3572,28 +3620,70 @@ test("rejects a gallery card that does not print its terminal background", { tim
   assert.match(result.stderr, /Storefront contract is missing: gallery-card terminal background/);
 });
 
-// /plugin shows an installer each plugin's homepage. The theme packs pointed at
-// the github.io project address; a theme pack's homepage is now its gallery on
-// the domain CNAME serves, set on both sides so the agreement check passes.
-test("rejects a theme pack whose homepage is off the site's domain", { timeout: 90_000 }, async (t) => {
-  for (const homepage of [
-    "https://notgabriels-sys.github.io/claude-code-50-dark-themes/",
-    "https://gabs-utilities.com.example/",
-  ]) {
+// One declaration hid the hex on all 62 cards with the template untouched
+// (2026-10-24 review, checked in Chromium).
+for (const [defect, from, to, label] of [
+  ["paints the hex in the card's own colour", ".term .bghex{color:var(--fg)", ".term .bghex{color:var(--bg)", "terminal-background hex colour"],
+  ["hides the terminal-background row", ".term .bg-link{display:inline-flex;", ".term .bg-link{display:none;", "terminal-background row style"],
+]) {
+  test(`rejects a restyle that ${defect}`, { timeout: 90_000 }, async (t) => {
+    const fixtureRoot = await editPage(t, "index.html", from, to);
+    const result = await runVerifier(fixtureRoot);
+    assert.notEqual(result.code, 0, `a restyle that ${defect} passed`);
+    assert.match(result.stderr, new RegExp(`Storefront contract is missing: ${label}`));
+  });
+}
+
+// /plugin shows an installer each plugin's homepage and repository. Each is
+// pinned to one exact address, set here on both sides so the agreement check
+// passes. A homepage written as an array once passed a prefix check, and Claude
+// Code then refused to install the pack.
+for (const [plugin, field, value, pinned] of [
+  ["dark-themes-vol-2", "homepage", "https://notgabriels-sys.github.io/claude-code-50-dark-themes/", "https://gabs-utilities.com/#vol2"],
+  ["dark-themes-vol-2", "homepage", "https://gabs-utilities.com.example/", "https://gabs-utilities.com/#vol2"],
+  ["dark-themes-vol-2", "homepage", ["https://gabs-utilities.com/#vol2", "https://evil.example/"], "https://gabs-utilities.com/#vol2"],
+  ["dark-themes-vol-2", "homepage", "https://gabs-utilities.com/#vol2 https://evil.example/", "https://gabs-utilities.com/#vol2"],
+  ["dark-themes-vol-2", "homepage", "https://gabs-utilities.com/#vol2\nhttps://evil.example/", "https://gabs-utilities.com/#vol2"],
+  ["50-dark-themes", "homepage", "https://gabs-utilities.com/#vol2", "https://gabs-utilities.com/"],
+  ["berlin-studio-skills", "homepage", "https://pay.example/skills", "https://github.com/notgabriels-sys/claude-code-50-dark-themes/tree/main/plugins/berlin-studio-skills"],
+  ["berlin-studio-skills", "repository", "https://github.com/someone-else/claude-code-50-dark-themes", "https://github.com/notgabriels-sys/claude-code-50-dark-themes"],
+]) {
+  test(`rejects ${plugin}'s ${field} set to ${JSON.stringify(value)}`, { timeout: 90_000 }, async (t) => {
     const fixtureRoot = await makeFixture(t);
-    await editJson(join(fixtureRoot, "plugins/dark-themes-vol-2/.claude-plugin/plugin.json"), (manifest) => {
-      manifest.homepage = homepage;
+    await editJson(join(fixtureRoot, `plugins/${plugin}/.claude-plugin/plugin.json`), (manifest) => {
+      manifest[field] = value;
     });
     await editJson(join(fixtureRoot, ".claude-plugin/marketplace.json"), (marketplace) => {
-      marketplace.plugins.find((entry) => entry.name === "dark-themes-vol-2").homepage = homepage;
+      marketplace.plugins.find((entry) => entry.name === plugin)[field] = value;
     });
     const result = await runVerifier(fixtureRoot);
-    assert.notEqual(result.code, 0, `a theme pack with homepage ${homepage} passed`);
+    assert.notEqual(result.code, 0, `${plugin} with ${field} ${JSON.stringify(value)} passed`);
     assert.ok(
-      result.stderr.includes(`dark-themes-vol-2's homepage is ${homepage}; a theme pack's homepage is its gallery at https://gabs-utilities.com/ (CNAME)`),
+      result.stderr.includes(`${plugin}'s ${field} is ${JSON.stringify(value)}; it must be exactly ${pinned}, in plugin.json`),
       result.stderr,
     );
-  }
+  });
+}
+
+test("rejects an author or owner address that is not this repository's owner", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  await editJson(join(fixtureRoot, "plugins/50-dark-themes/.claude-plugin/plugin.json"), (manifest) => {
+    manifest.author.url = "https://pay.example/";
+  });
+  await editJson(join(fixtureRoot, ".claude-plugin/marketplace.json"), (marketplace) => {
+    marketplace.plugins.find((entry) => entry.name === "50-dark-themes").author.url = "https://pay.example/";
+  });
+  const author = await runVerifier(fixtureRoot);
+  assert.notEqual(author.code, 0, "an author url on another host passed");
+  assert.match(author.stderr, /50-dark-themes's author url is "https:\/\/pay\.example\/"; it must be exactly https:\/\/github\.com\/notgabriels-sys,/);
+
+  const ownerRoot = await makeFixture(t);
+  await editJson(join(ownerRoot, ".claude-plugin/marketplace.json"), (marketplace) => {
+    marketplace.owner.url = "https://pay.example/";
+  });
+  const owner = await runVerifier(ownerRoot);
+  assert.notEqual(owner.code, 0, "an owner url on another host passed");
+  assert.match(owner.stderr, /marketplace\.json's owner url must be exactly https:\/\/github\.com\/notgabriels-sys/);
 });
 
 // The plugin directory keeps the first listing icon it is given, so an icon of
@@ -3616,6 +3706,57 @@ test("rejects a plugin listing icon of 2 MB or more", { timeout: 90_000 }, async
   assert.match(result.stderr, /plugins\/50-dark-themes\/\.claude-plugin\/icon\.png is \d+ bytes; the plugin directory takes a listing icon under 2 MB/);
 });
 
+// The listing icon is read whole. Each of these passed the 24-byte header check
+// in the review of 2026-10-24.
+const pngChunk = (type, body) => {
+  const head = Buffer.alloc(8);
+  head.writeUInt32BE(body.length, 0);
+  head.write(type, 4, "latin1");
+  const crc = Buffer.alloc(4);
+  crc.writeUInt32BE(crc32(Buffer.concat([head.subarray(4), body])), 0);
+  return Buffer.concat([head, body, crc]);
+};
+const iendAt = (png) => png.length - 12;
+for (const [defect, edit, message] of [
+  ["cut off after its header", (png) => png.subarray(0, 33), /a IDAT chunk cut off|no IEND/],
+  ["carrying a tEXt chunk", (png) => Buffer.concat([png.subarray(0, iendAt(png)),
+    pngChunk("tEXt", Buffer.from("Author\u0000Someone", "latin1")), png.subarray(iendAt(png))]), /a tEXt chunk/],
+  ["with an impossible bit depth", (png) => {
+    const ihdr = Buffer.from(png.subarray(16, 29));
+    ihdr[8] = 0;
+    return Buffer.concat([png.subarray(0, 8), pngChunk("IHDR", ihdr), png.subarray(33)]);
+  }, /IHDR bit depth 0, colour type 2/],
+  ["with bytes after IEND", (png) => Buffer.concat([png, Buffer.from("trailing!!")]), /10 bytes after IEND/],
+  ["with a chunk whose CRC does not match", (png) => {
+    const copy = Buffer.from(png);
+    copy[copy.length - 1] ^= 0xff;
+    return copy;
+  }, /a IEND chunk whose CRC does not match/],
+  // The shipped icons are 8-bit RGB: 1024 rows of a filter byte and 3072 bytes.
+  ["whose image data is short of its rows", (png) => Buffer.concat([png.subarray(0, 33),
+    pngChunk("IDAT", deflateSync(Buffer.alloc(1023 * 3073))), png.subarray(iendAt(png))]),
+  /image data of 3143679 bytes where IHDR describes 3146752/],
+  ["with a row whose filter type PNG does not define", (png) => {
+    const idat = [];
+    for (let at = 8; at < png.length; at += 12 + png.readUInt32BE(at)) {
+      if (png.toString("latin1", at + 4, at + 8) === "IDAT") idat.push(png.subarray(at + 8, at + 8 + png.readUInt32BE(at)));
+    }
+    const rows = inflateSync(Buffer.concat(idat));
+    rows[0] = 5;
+    return Buffer.concat([png.subarray(0, 33), pngChunk("IDAT", deflateSync(rows)), png.subarray(iendAt(png))]);
+  }, /a row with a filter type PNG does not define/],
+]) {
+  test(`rejects a plugin listing icon ${defect}`, { timeout: 90_000 }, async (t) => {
+    const fixtureRoot = await makeFixture(t);
+    const icon = join(fixtureRoot, "plugins/50-dark-themes/.claude-plugin/icon.png");
+    await writeFile(icon, edit(await readFile(icon)));
+    const result = await runVerifier(fixtureRoot);
+    assert.notEqual(result.code, 0, `a listing icon ${defect} passed`);
+    assert.match(result.stderr, /plugins\/50-dark-themes\/\.claude-plugin\/icon\.png is not a clean 1024 px PNG: /);
+    assert.match(result.stderr, message);
+  });
+}
+
 test("rejects a Vol. 2 preview colour for a theme the pack does not ship", { timeout: 90_000 }, async (t) => {
   const fixtureRoot = await makeFixture(t);
   const previews = join(fixtureRoot, "plugins/dark-themes-vol-2/previews.json");
@@ -3625,4 +3766,16 @@ test("rejects a Vol. 2 preview colour for a theme the pack does not ship", { tim
   const result = await runVerifier(fixtureRoot);
   assert.notEqual(result.code, 0, "a preview row for an unshipped theme passed");
   assert.match(result.stderr, /previews\.json has a preview colour for Retired Theme, which the pack does not ship/);
+});
+
+test("rejects a Vol. 2 preview colour written twice for one theme", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const previews = join(fixtureRoot, "plugins/dark-themes-vol-2/previews.json");
+  const text = await readFile(previews, "utf8");
+  assert.equal(text.split('{\n  "Afterglow"').length, 2, "fixture anchor must occur exactly once");
+  // The earlier row is the one JSON drops, so the shipped colour still matches.
+  await writeFile(previews, text.replace('{\n  "Afterglow"', '{\n  "Afterglow": "#FF0000",\n  "Afterglow"'));
+  const result = await runVerifier(fixtureRoot);
+  assert.notEqual(result.code, 0, "a preview row written twice passed");
+  assert.match(result.stderr, /previews\.json writes a preview colour for Afterglow twice/);
 });

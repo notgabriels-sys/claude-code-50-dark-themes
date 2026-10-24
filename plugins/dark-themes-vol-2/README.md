@@ -1,9 +1,11 @@
 # Dark Themes Vol. 2 for Claude Code
 
 Twelve new hand-tuned dark themes that expand the original
-[50 Dark Themes](https://github.com/notgabriels-sys/claude-code-50-dark-themes) pack.
-Same semantic status colors, same contrast standards (AAA primary text, AA secondary),
-all-new palettes. Free and MIT licensed.
+[50 Dark Themes](https://github.com/notgabriels-sys/claude-code-50-dark-themes) pack, with
+all-new palettes. Each recolors the accent, the text and the surfaces around them, and leaves the
+success, error, warning and diff colors to Claude Code's own dark preset, as the first pack does.
+Every palette is checked in CI against role-aware contrast floors: WCAG AAA for primary text, AA
+for secondary text, and the non-text floor for borders and indicators. Free and MIT licensed.
 
 ![All twelve Dark Themes Vol. 2 palettes previewed as Claude Code terminal cards in their own colors](preview.png)
 

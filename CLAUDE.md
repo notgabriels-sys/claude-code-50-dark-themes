@@ -843,14 +843,20 @@ marketplace clone and never the installed copy ("already at the latest version
 SHA-256 over its sorted paths and line-ending-normalised bytes, recorded in
 `releasedPackages` beside the version that ships it, and fails a changed
 payload until the version moves. The message names the new digest and, for a
-theme pack, the release links that must follow; following its two messages
-reaches green, and a test does exactly that. Nothing had slipped through: each
+theme pack, the release links that must follow. For the skills plugin,
+following its messages reaches green, and a test does exactly that; a theme
+pack then meets the `softwareVersion` and release-link checks, which name each
+link to move (corrected 2026-10-24: this said following the two messages
+reaches green for any pack). Nothing had slipped through: each
 theme pack's payload last changed in the commit that set its version (`e4bebf2`
 for 50-dark-themes 1.0.1, `4365c25` for Vol. 2 1.0.0), and the skills plugin
 has never been on `main`, so 1.0.0 is what it first ships and its digest is
 recorded under 1.0.0 without a bump. (Corrected the same day: Claude had told
 Gabriel that people who installed the skills plugin had missed fixes since
-August. Nobody has installed it.) The three digests were computed twice, by
+August. It has never been on the default branch, so nobody could have
+installed it through the published install route; whether anyone installed it
+from the pushed branch is not something this repository can show. Corrected
+again 2026-10-24: this said "Nobody has installed it.") The three digests were computed twice, by
 `verify` and by a separate Python reading, and agree (rule 12). The message
 allows one exception it cannot check: a version that was never released may
 take a new digest unbumped, which is a fact about the default branch. READMEs
@@ -869,8 +875,10 @@ exists.
 
 **(added 2026-10-24) What `/plugin` shows an installer.** Each plugin's
 homepage read the `github.io` project address; the two theme packs now name
-their gallery on the domain `CNAME` serves (Vol. 2 at `#vol2`), and `verify`
-fails a theme pack whose homepage is anywhere else. The skills plugin has no
+their gallery on the domain `CNAME` serves (Vol. 2 at `#vol2`). (Corrected
+2026-10-24: this said `verify` failed a theme pack whose homepage was anywhere
+else; it checked only the domain prefix. Every address is now pinned; see the
+review below.) The skills plugin has no
 gallery and names its README on GitHub. The theme packs gained the factual
 keywords `color-theme`, `contrast`, `wcag` and `accessibility` (and the tags
 `contrast` and `wcag`); none of this is in a payload, so no version moves.
@@ -878,8 +886,11 @@ Claude Code 2.1.310's `claude plugin validate --profile directory` warned
 that no plugin had an icon, and that the official plugin directory keeps the
 first icon it is given: each plugin now ships `.claude-plugin/icon.png`, a
 1024 px square drawn from its own palettes (the 50 accents and the 12 as hue
-rings, a meter in VU Meter's colours for the skills), and `verify` holds each
-to a 1024 px PNG under 2 MB. All three plugins and the marketplace then pass
+rings, a meter in VU Meter's green, red and grey for the skills, with an amber
+band of its own), and `verify` holds each to a 1024 px PNG under 2 MB.
+(Corrected 2026-10-24: this and the commit said the meter was in VU Meter's
+colours, and that `verify` held each icon to a 1024 px PNG when it read only
+the first 24 bytes; the icon is now read whole, see the review below.) All three plugins and the marketplace then pass
 `claude plugin validate --strict`, the plugins with `--profile directory`
 too; the directory's own safety scan and policy review are not run by it.
 Mutation-tested (rule 5): the homepage rule, the icon's dimensions and its
@@ -891,9 +902,13 @@ this file and a test comment said `verify` runs "on every push"; the workflow
 runs on pull requests and on pushes to `main`, and now on demand
 (`workflow_dispatch`). CONTRIBUTING's "Test locally" block also lacked
 `build-theme-index` and main's `build-readme-theme-links`: followed after a
-colour change in a scratch copy (theme file and gallery row edited), the full
-block now ends at exactly one failure, the reviewed-hash message the change
-calls for. And `previews.json` was read only by theme name, so a row for a
+colour change in a scratch copy (theme file and gallery row edited), the four
+generators succeed, `verify` stops first on the reviewed-hash message and,
+once that hash is replaced, on the release-digest message the changed pack
+needs, and until `verify` is green the suite fails with it (107 of 523 tests,
+re-run 2026-10-24); CONTRIBUTING now says so. (Corrected 2026-10-24: this and
+the commit said the block ended at exactly one failure, which held only before
+the release guard.) And `previews.json` was read only by theme name, so a row for a
 theme the pack no longer ships passed; `verify` now names it. Reproduced green
 first (rule 1), and gutting the check turns exactly its test red (rule 5).
 
@@ -916,6 +931,57 @@ A "Theme readability report" issue form gives the posts' requests for
 feedback somewhere to land; `.github/` is not served. Nothing was posted,
 submitted or edited outside the repository; every external step is a row
 with Gabriel's name on its next action.
+
+**(reviewed 2026-10-24) The five work packages, re-attacked before push.** An
+independent review of the release guard, the gallery hex, the plugin
+listings, the CI wording and the marketing records (five lenses — release
+guard, plugin listings, storefront, records, payment safety — 117 experiments,
+every finding re-run from a fresh worktree by a second agent told to refute
+it) reported 26 findings; all 26 held, 7 of them in part. Fixed:
+
+- The release guard checked only that the shipped version equalled the
+  recorded one, and its own message told a contributor to record a lower
+  version. Moved back from 1.0.1 to 1.0.0 with a changed theme, Claude Code
+  2.1.310 "updated" an installed pack to its old cached 1.0.0 files, with
+  `verify` green. A version is now MAJOR.MINOR.PATCH and may differ from the
+  recorded one only by being newer, compared part by part as numbers; the
+  digest message says first what to do when the recorded version has never
+  shipped; and a plugin with no release links needs no `releaseFollowUp`
+  entry. Not covered: a table row lowered by hand together with the
+  manifests. The table is a deliberate edit, and no message asks for that.
+- A theme pack's homepage written as a JSON array whose first item was on the
+  site passed the prefix check, and Claude Code then refused to install the
+  pack; a second host after a space passed too. Every address `/plugin`
+  shows — each homepage, repository and author address, and the marketplace
+  owner — is now one exact string, pinned in or beside `expectedPlugins`.
+- `verifyPng` read 24 bytes, so an icon cut off after its header, an
+  impossible bit depth, or a `tEXt` chunk carrying a name, an email address
+  and a home-directory path all passed. The listing icons are now read whole:
+  every CRC, the IHDR fields, image data that inflates to exactly its rows,
+  IEND last, and no text, EXIF, time or colour-profile chunk. Other PNGs keep
+  the header check, since some product artwork carries EXIF.
+- A `previews.json` row written twice passed, since JSON keeps the last one
+  (pre-existing); a key written twice now fails.
+- The footer's in-sentence link inherited the 44 px box meant for standalone
+  footer links, so on a phone its rule sat over the next line; it is an
+  ordinary underlined link now. And one CSS declaration hid the terminal
+  background on all 62 cards with the template untouched; the two rules that
+  show and colour it are now storefront contracts. A later rule could still
+  override them.
+- Records: the three above are corrected in place; the awesome-claude-code
+  note named the wrong first commit (it is 38d4f82, 2026-08-14) and the wrong
+  day Vol. 2 reached `main` (2026-08-31, #46); the queue's second copy of the
+  maker comment is now a pointer to the one in the submission pack; the Vol. 2
+  README now says how it treats status colours and that CI checks it, as the
+  submission pack said both READMEs did; the pack no longer implies a passing
+  version goes live by itself; and the readability issue form now says issues
+  are public and asks for a cropped screenshot or a hex value.
+
+Three pushed commit messages say more than the evidence and are corrected
+here, not rewritten: 4e150d7 calls the skills icon VU Meter's colours and the
+icon check a check of a 1024 px PNG; 9c755ab says the "Test locally" block
+ends at one failure; and 7488719 says the Vol. 2 X thread was not posted,
+which a releases listing cannot show (it is not recorded as posted).
 
 **Generated surfaces are checked against their sources, not their generator.**
 `themes.json` and the JSON-LD ItemList in `index.html` are both written by

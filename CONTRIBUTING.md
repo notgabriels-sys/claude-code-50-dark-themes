@@ -52,8 +52,9 @@ Rules:
   text; do not place meaningful text or required control boundaries in `subtle`.
 - Do not invent new override keys. Claude Code silently discards unknown keys.
 - A changed theme reaches people who already have the pack only under a new version: Claude Code
-  updates an installed plugin only when its version changes. `node scripts/verify.mjs` fails on a
-  changed theme until you bump the version in `plugins/50-dark-themes/.claude-plugin/plugin.json`
+  updates an installed plugin only when its version moves forward. `node scripts/verify.mjs` fails on a
+  changed theme until you bump the version, written MAJOR.MINOR.PATCH and newer than the one
+  recorded, in `plugins/50-dark-themes/.claude-plugin/plugin.json`
   and its entry in `.claude-plugin/marketplace.json`, and record the digest it prints in
   `releasedPackages` in `scripts/verify.mjs`. It then names the storefront's `softwareVersion` and
   the release links that must move with it.
@@ -102,7 +103,7 @@ is where the pieces live:
 - Bump the version in `plugins/dark-themes-vol-2/.claude-plugin/plugin.json` and the matching entry
   in `.claude-plugin/marketplace.json` together, and record the digest the verifier prints in
   `releasedPackages` in `scripts/verify.mjs`. Claude Code updates an installed plugin only when its
-  version changes, so a theme added under the old version never reaches anyone who has the pack.
+  version moves forward, so a theme added under the old version never reaches anyone who has the pack.
 - Update the numbers the public pages state, in the same change. A theme adds fourteen contrast
   comparisons, so the role-aware check count moves, and the share card names each pack's size. Both
   are CI-enforced — see "Numbers stated on public pages" below. Adding a theme and running
@@ -181,6 +182,11 @@ node --test scripts/*.test.mjs
 claude plugin validate .
 ```
 
+The test suite copies your working tree into its fixtures, so until `verify` is green every test
+that expects a green tree fails with it (after a colour change, 107 of 523 on 2026-10-24); fix what
+`verify` names first. After a colour change it names the gallery script's new hash, and then the
+release the changed pack needs.
+
 The command checks:
 
 - exactly 50 root-level theme files, plus every packaged Vol. 2 theme;
@@ -194,6 +200,12 @@ The command checks:
   Claude Code would load it for every installer, and so does a missing file, a symlink, a
   `.gitmodules` file or an empty directory under `plugins/` (the shape a git submodule takes);
 - a fresh-machine-safe installation command;
+- that each plugin's homepage, repository and author address is exactly the one `verify` pins (a
+  theme pack's homepage is its gallery on the `CNAME` domain), that each plugin ships
+  `.claude-plugin/icon.png` as a clean 1024×1024 8-bit PNG under 2 MB with no text, EXIF, time or
+  colour-profile chunk (the plugin directory keeps the first icon it is given), that
+  `previews.json` holds one row per shipped Vol. 2 theme and no other, and that a plugin's version
+  only moves forward;
 - the shop's payment surfaces: each PayPal card against the price read back off PayPal, and each
   Gumroad card against the list of published products and the prices the page recorded — drift
   only, not a check against Gumroad;
@@ -204,7 +216,9 @@ The command checks:
   served `.html` page carries one Content-Security-Policy, right after `meta charset`, naming exactly those hashes
   and turning off workers, plugins, frames, `base` and form posts;
 - that every served page is one `verify` reads as a browser does: no NUL character, no attribute
-  written twice on one tag, no inline `svg` or `math`, no `noscript`, `template` or other inert
+  written twice on one tag, no inline `math`, an inline `svg` only of plain shapes (`svg`, `g`,
+  `path`, `rect`, `circle`, `ellipse`, `line`, `polyline`, `polygon`, with geometry and paint
+  attributes), no `noscript`, `template` or other inert
   container, and no comment opener inside a script. The inert-element and script-tag checks read the
   raw page, comments and attribute values included: to mention one of those elements, write its `<`
   as `&lt;`;

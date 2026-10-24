@@ -4,6 +4,7 @@ import { lstat, readdir, readFile, stat } from "node:fs/promises";
 
 import { sep } from "node:path";
 import { fileURLToPath } from "node:url";
+import { crc32, inflateSync } from "node:zlib";
 
 import {
   ITEMLIST_END,
@@ -192,6 +193,73 @@ async function verifyPng(imagePath, { label, width, height }) {
   }
 }
 
+// A plugin's listing icon is read whole, since the plugin directory keeps the
+// first icon it is given. verifyPng reads only the header, so a file cut off
+// after its first 24 bytes, an impossible bit depth, or a tEXt chunk carrying a
+// name, an address and a home-directory path all passed (2026-10-24 review).
+// Every chunk's CRC must hold; IHDR comes first, with 8-bit RGB or RGBA, no
+// interlace and the only compression and filter methods PNG has; the image
+// data must inflate to exactly the rows IHDR describes, each opening with a
+// filter type PNG defines; IEND comes last and nothing follows it; and no
+// chunk may carry text, EXIF, a time or a colour profile, which can name
+// whoever made the file. Other images keep the header check: some product
+// artwork carries EXIF, and it is not a listing icon.
+const ICON_CHUNKS = new Set(["IHDR", "IDAT", "IEND", "sRGB", "gAMA", "cHRM", "pHYs"]);
+const listingIconProblems = (bytes) => {
+  const problems = [];
+  let at = pngSignature.length;
+  let header;
+  const data = [];
+  let ended = false;
+  while (at < bytes.length && !ended) {
+    if (at + 12 > bytes.length) {
+      problems.push("a chunk cut off");
+      break;
+    }
+    const length = bytes.readUInt32BE(at);
+    const type = bytes.toString("latin1", at + 4, at + 8);
+    if (at + 12 + length > bytes.length) {
+      problems.push(`a ${type} chunk cut off`);
+      break;
+    }
+    const body = bytes.subarray(at + 8, at + 8 + length);
+    if (crc32(bytes.subarray(at + 4, at + 8 + length)) !== bytes.readUInt32BE(at + 8 + length)) {
+      problems.push(`a ${type} chunk whose CRC does not match`);
+    }
+    if (!ICON_CHUNKS.has(type)) problems.push(`a ${type} chunk`);
+    if (at === pngSignature.length) {
+      if (type === "IHDR" && length === 13) header = body;
+      else problems.push("no IHDR first");
+    }
+    if (type === "IDAT") data.push(body);
+    ended = type === "IEND";
+    at += 12 + length;
+  }
+  if (!ended) problems.push("no IEND");
+  else if (at !== bytes.length) problems.push(`${bytes.length - at} bytes after IEND`);
+  if (!header) return problems;
+  const [width, height] = [header.readUInt32BE(0), header.readUInt32BE(4)];
+  const [depth, colour, compression, filter, interlace] = header.subarray(8, 13);
+  if (depth !== 8 || ![2, 6].includes(colour) || compression !== 0 || filter !== 0 || interlace !== 0) {
+    problems.push(`IHDR bit depth ${depth}, colour type ${colour}, compression ${compression}, filter ${filter}, interlace ${interlace}`);
+    return problems;
+  }
+  let rows;
+  try {
+    rows = inflateSync(Buffer.concat(data));
+  } catch {
+    problems.push("image data that does not inflate");
+    return problems;
+  }
+  const stride = 1 + width * (colour === 6 ? 4 : 3);
+  if (rows.length !== height * stride) {
+    problems.push(`image data of ${rows.length} bytes where IHDR describes ${height * stride}`);
+  } else if (Array.from({ length: height }, (_, row) => rows[row * stride]).some((type) => type > 4)) {
+    problems.push("a row with a filter type PNG does not define");
+  }
+  return problems;
+};
+
 const files = (await readdir(root)).filter(isThemeFile).sort();
 
 if (files.length !== 50) {
@@ -261,7 +329,19 @@ const vol2Files = (await readdir(vol2ThemesRoot))
   .filter((file) => file.endsWith(".json"))
   .sort();
 if (vol2Files.length === 0) fail("Dark Themes Vol. 2 must package at least one theme.");
-const vol2Previews = JSON.parse(await readFile(new URL("previews.json", vol2Root), "utf8"));
+const vol2PreviewSource = await readFile(new URL("previews.json", vol2Root), "utf8");
+const vol2Previews = JSON.parse(vol2PreviewSource);
+// JSON.parse keeps the last of two equal keys, so a row written twice shipped
+// with the earlier colour unread (2026-10-24 review). previews.json is one flat
+// object, so every quoted string before a colon is one of its keys.
+const previewKeys = [...vol2PreviewSource.matchAll(/"((?:[^"\\]|\\.)*)"\s*:/g)].map(([, key]) => JSON.parse(`"${key}"`));
+const previewWrittenTwice = previewKeys.find((key, index) => previewKeys.indexOf(key) !== index);
+if (previewWrittenTwice !== undefined) {
+  fail(
+    `plugins/dark-themes-vol-2/previews.json writes a preview colour for ${previewWrittenTwice} twice. JSON keeps ` +
+      "only the last, so the other row ships unread; keep one.",
+  );
+}
 const vol2ThemesByName = new Map();
 for (const file of vol2Files) {
   const theme = await validateThemeFile(`dark-themes-vol-2/${file}`, fileUrl(file, vol2ThemesRoot));
@@ -285,11 +365,27 @@ const marketplace = JSON.parse(await readFile(new URL(".claude-plugin/marketplac
 const pluginManifest = JSON.parse(await readFile(new URL(".claude-plugin/plugin.json", pluginRoot), "utf8"));
 const vol2Manifest = JSON.parse(await readFile(new URL(".claude-plugin/plugin.json", vol2Root), "utf8"));
 if (marketplace.name !== "notgabriels-themes") fail("Unexpected marketplace name.");
+// The addresses /plugin shows an installer ("Open homepage", "View
+// repository") are pinned: a theme pack's homepage is its gallery on the
+// domain CNAME serves, the skills plugin's is its README on GitHub, and every
+// repository and author address is this repository and its owner. Each is
+// compared as the exact string, so an array, a second host after a space, or
+// any other page cannot pass (an array once did: Claude Code then refused to
+// install the pack, with CI green).
+const site = (await readFile(new URL("CNAME", root), "utf8")).trim();
+const REPOSITORY_URL = "https://github.com/notgabriels-sys/claude-code-50-dark-themes";
+const OWNER_URL = "https://github.com/notgabriels-sys";
 const expectedPlugins = [
-  { name: "50-dark-themes", source: "./plugins/50-dark-themes" },
-  { name: "dark-themes-vol-2", source: "./plugins/dark-themes-vol-2" },
-  { name: "berlin-studio-skills", source: "./plugins/berlin-studio-skills" },
+  { name: "50-dark-themes", source: "./plugins/50-dark-themes", homepage: `https://${site}/` },
+  { name: "dark-themes-vol-2", source: "./plugins/dark-themes-vol-2", homepage: `https://${site}/#vol2` },
+  {
+    name: "berlin-studio-skills", source: "./plugins/berlin-studio-skills",
+    homepage: `${REPOSITORY_URL}/tree/main/plugins/berlin-studio-skills`,
+  },
 ];
+if (marketplace.owner?.url !== OWNER_URL) {
+  fail(`.claude-plugin/marketplace.json's owner url must be exactly ${OWNER_URL}; found ${JSON.stringify(marketplace.owner?.url)}.`);
+}
 if (marketplace.plugins?.length !== expectedPlugins.length) {
   fail(`The marketplace must expose exactly ${expectedPlugins.length} plugins.`);
 }
@@ -602,15 +698,16 @@ for (const [index, expected] of expectedPlugins.entries()) {
       );
     }
   }
-  // A theme pack's homepage is its gallery on the domain CNAME serves, the
-  // address /plugin shows an installer; it read the github.io project address
-  // until 2026-10-24. The skills plugin has no gallery and links its README.
-  if (themePluginNames.has(expected.name)) {
-    const site = (await readFile(new URL("CNAME", root), "utf8")).trim();
-    if (!String(manifest.homepage).startsWith(`https://${site}/`)) {
+  // The homepages read the github.io project address until 2026-10-24.
+  for (const [field, value, pinned] of [
+    ["homepage", manifest.homepage, expected.homepage],
+    ["repository", manifest.repository, REPOSITORY_URL],
+    ["author url", manifest.author?.url, OWNER_URL],
+  ]) {
+    if (value !== pinned) {
       fail(
-        `${expected.name}'s homepage is ${manifest.homepage}; a theme pack's homepage is its gallery ` +
-          `at https://${site}/ (CNAME), in plugin.json and in its marketplace entry.`,
+        `${expected.name}'s ${field} is ${JSON.stringify(value)}; it must be exactly ${pinned}, in ` +
+          `plugin.json and in its marketplace entry. /plugin shows it to every installer.`,
       );
     }
   }
@@ -884,6 +981,13 @@ for (const plugin of expectedPlugins) {
   if (size >= 2 * 1024 * 1024) {
     fail(`${icon} is ${size} bytes; the plugin directory takes a listing icon under 2 MB.`);
   }
+  const problems = listingIconProblems(await readFile(fileUrl(icon)));
+  if (problems.length) {
+    fail(
+      `${icon} is not a clean 1024 px PNG: ${problems.join("; ")}. Export it again as an 8-bit RGB or ` +
+        `RGBA PNG, not interlaced, with no text, EXIF, time or colour-profile chunk.`,
+    );
+  }
 }
 for (const entry of await readdir(pluginsDir, { withFileTypes: true })) {
   const path = `plugins/${entry.name}`;
@@ -998,8 +1102,12 @@ const storefrontContracts = [
   [/<main id="main-content">/, "main landmark"],
   [/<h3 class="tname">\$\{esc\(name\)\}<\/h3>/, "gallery-card headings"],
   // The footer, the install guide and README tell readers to set the terminal
-  // background to the hex the gallery shows; the card must print it as text.
+  // background to the hex the gallery shows; the card's template must print it,
+  // and the two rules that colour and show it are held too, so a restyle that
+  // hides it is a deliberate edit. A later rule could still override them.
   [/<a class="bg-link" href="\/theme\/\$\{themeSlug\}\/">Terminal background <span class="bghex">\$\{bg\}<\/span>/, "gallery-card terminal background"],
+  [/\.term \.bg-link\{display:inline-flex;[^}]*color:var\(--mut\)/, "terminal-background row style"],
+  [/\.term \.bghex\{color:var\(--fg\)/, "terminal-background hex colour"],
   [/<span class="sr-only" id="copyStatus" aria-live="polite"><\/span>/, "copy-status live region"],
   [/<meta property="og:image:alt" content="[^"]+">/, "Open Graph image alternative"],
   [/<meta name="twitter:image:alt" content="[^"]+">/, "X image alternative"],
@@ -3714,6 +3822,8 @@ const payloadDigest = async (name, payload) => {
   }
   return digest.digest("hex");
 };
+// What else moves with a plugin's version, for the release message. A plugin
+// with no release links on the site needs no entry.
 const releaseFollowUp = {
   "50-dark-themes":
     "; verify then holds the storefront's softwareVersion and every release link to the new version, " +
@@ -3725,9 +3835,35 @@ if (JSON.stringify(releasedPackages.map((entry) => entry.name).sort()) !==
     JSON.stringify(expectedPlugins.map((plugin) => plugin.name).sort())) {
   fail("releasedPackages in scripts/verify.mjs must name exactly the plugins in expectedPlugins.");
 }
+// A version only moves forward. Claude Code keeps every version it installed in
+// a cache directory named for it, and moving back to one reuses that directory:
+// reproduced 2026-10-24 with Claude Code 2.1.310, a changed theme under a
+// version moved back from 1.0.1 to 1.0.0 "updated" an installed pack to its old
+// 1.0.0 files, with verify green. So a version is MAJOR.MINOR.PATCH, and the one
+// a plugin ships may differ from the recorded one only by being newer.
+const SEMVER = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
+const isNewerVersion = (candidate, recorded) => {
+  const [a, b] = [candidate, recorded].map((value) => SEMVER.exec(value).slice(1).map(Number));
+  const at = a.findIndex((part, index) => part !== b[index]);
+  return at !== -1 && a[at] > b[at];
+};
 for (const { name, payload, version, sha256 } of releasedPackages) {
   const shipping = marketplace.plugins.find((entry) => entry.name === name)?.version;
   const actual = await payloadDigest(name, payload);
+  if (!SEMVER.test(String(shipping)) || !SEMVER.test(version)) {
+    fail(
+      `${name} ships version ${shipping} and releasedPackages records ${version}; each must be written ` +
+        "MAJOR.MINOR.PATCH, such as 1.0.2, so verify can tell which is newer.",
+    );
+  }
+  if (shipping !== version && !isNewerVersion(shipping, version)) {
+    fail(
+      `${name} ships version ${shipping}, which is not newer than ${version}, the version releasedPackages ` +
+        `in scripts/verify.mjs records. A version only moves forward: Claude Code keeps every version it ` +
+        `installed in a directory named for it, so a payload shipped under an older or reused version ` +
+        `never reaches anyone who had it. Ship a version newer than ${version}.`,
+    );
+  }
   if (shipping !== version) {
     fail(
       `${name} ships version ${shipping}, but releasedPackages in scripts/verify.mjs records ${version}. ` +
@@ -3738,13 +3874,13 @@ for (const { name, payload, version, sha256 } of releasedPackages) {
   if (actual !== sha256) {
     fail(
       `plugins/${name}/${payload}/ changed since ${name} ${version} (its digest is now ${actual}). ` +
-        `Claude Code updates an installed plugin only when its version changes, so this change ` +
-        `would never reach anyone who already has ${name} ${version}. Bump the version in ` +
+        `Claude Code updates an installed plugin only when its version moves forward. If ${name} ` +
+        `${version} has never been released (it is not in the marketplace on the default branch; you may ` +
+        `have just moved to it), record this digest under ${version}. Otherwise this change would never ` +
+        `reach anyone who already has ${name} ${version}: bump the version in ` +
         `plugins/${name}/.claude-plugin/plugin.json and in its .claude-plugin/marketplace.json entry, ` +
         `then record { version: "<the new version>", sha256: "${actual}" } for ${name} in ` +
-        `releasedPackages in scripts/verify.mjs${releaseFollowUp[name]}. Only if ${name} ${version} ` +
-        `has never been released (it is not in the marketplace on the default branch) record the new ` +
-        `digest under ${version} instead.`,
+        `releasedPackages in scripts/verify.mjs${releaseFollowUp[name] ?? ""}.`,
     );
   }
 }
