@@ -3042,7 +3042,15 @@ const hostPath = { ...paymentPath, "github.com": ownerPath, "raw.githubuserconte
 const reviewedLinkHosts = new Set([
   cname, `audio.${cname}`, `tools.${cname}`, "github.com", "raw.githubusercontent.com",
   "notgabriels-sys.github.io", "opensource.org", "thedevtoolsdir.com", "www.producthunt.com",
-  "help.producthunt.com", ...Object.keys(paymentPath),
+  "help.producthunt.com",
+  // The README's two status badges (main's #70): images that state the verify
+  // run on main and the licence. Nothing on the host takes money; GitHub shows
+  // them through its own image proxy, while the rendered note on the site loads
+  // them from shields.io directly. A badge URL with a second query parameter
+  // needs an "&", which the note check refuses, so the verify badge carries
+  // only ?branch=main.
+  "img.shields.io",
+  ...Object.keys(paymentPath),
 ]);
 for (const host of reviewedLinkHosts) {
   if (PAYMENT_DOMAIN.test(host) && !paymentPath[host]) {
@@ -3604,6 +3612,11 @@ const SERVED_TYPES = new Map([
   ["zip", "inert"],
   ["sh", "inert"],
   ["swift", "inert"],
+  // Source a contributor runs, like .sh and .swift (main's #70 added
+  // scripts/build-readme-hero.py): text/x-python by mime-db, not read back
+  // live, shown as text or saved. Every page is in standards mode and loads no
+  // script by src, so none can use it as a stylesheet or a script.
+  ["py", "inert"],
   // No extension: LICENSE, served as application/octet-stream.
   ["", "inert"],
 ]);

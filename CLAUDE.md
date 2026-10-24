@@ -729,6 +729,26 @@ linked the Agensi listing, which the link guard allows only from the root
 pages and `README.md`; it now names Agensi and points at the repository
 README, which links it.
 
+**(merged 2026-10-24) Main's #70, the README's first screen.** #70 opened the
+README with a rendered hero (`assets/hero.gif`, a still `assets/hero.png`, both
+drawn by `scripts/build-readme-hero.py`) and the three `/plugin` commands, and
+folded the other install routes into one section. Merged here, it met three
+guards. Its status badges came from `img.shields.io`, a host no list had
+reviewed; it takes no money, so it is now reviewed for the two badges, and
+the verify badge drops its `&label=verify`, since the note check refuses any
+character reference or `&` in a note's link (the badge then shows the
+workflow's own name). `.py` is now an inert served type, as `.sh` and `.swift`
+are. And its "By copying the files" route copied the root's `*.json`, which
+installs `themes.json` as a fifty-first theme; it now copies
+`plugins/50-dark-themes/themes/*.json`, as this branch's other routes do. The
+README conflict was resolved by taking main's new README whole and putting back
+this branch's four changes: that copy route, the `themes.json` paragraph, the
+Berlin Studio Skills section (the README must state the skills count), and the
+last line's "every pull request and every push to main". The article's
+install-guide link stays on the site, as this branch had it, so its dates stay
+too: the page-dates guard refused main's new date for a page whose only change
+would have been the date.
+
 **(added 2026-10-20) The cards print the terminal background.** The footer, the
 install guide (its text and its HowTo structured data) and `README.md` told
 readers to set the terminal to the surface hex shown in the gallery, and no
