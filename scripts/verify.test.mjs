@@ -835,6 +835,15 @@ test("reads a skills count in a README image's alt text", { timeout: 90_000 }, a
   assert.match(result.stderr, /README\.md:\d+ says "Seven Berlin studio skills"/);
 });
 
+// Main's #70 rewrote the README without the Vol. 2 sentence the count tests
+// below edit ("twelve all-new palettes"), so each first writes one into its
+// fixture, at a line the new README keeps.
+const VOL2_LINE = "A separate free plugin in the same marketplace, held to the same contrast floors.";
+const withVol2Palettes = (readme) => {
+  assert.equal(readme.split(VOL2_LINE).length, 2, "fixture anchor must occur exactly once in README.md");
+  return readme.replace(VOL2_LINE, "A separate free plugin in the same marketplace: twelve all-new palettes, held to the same contrast floors.");
+};
+
 test("rejects a public page whose prose theme count drifts from what ships", { timeout: 90_000 }, async (t) => {
   const fixtureRoot = await makeFixture(t);
   // The Vol. 2 count is written as a word on the storefront, the install
@@ -842,7 +851,7 @@ test("rejects a public page whose prose theme count drifts from what ships", { t
   // plugin descriptions. When the pack grows, the description is forced to
   // move and the prose is not — the "Five skills" rot in another place.
   const readmePath = join(fixtureRoot, "README.md");
-  const readme = await readFile(readmePath, "utf8");
+  const readme = withVol2Palettes(await readFile(readmePath, "utf8"));
   assert.equal(readme.split("twelve all-new palettes").length, 2, "fixture anchor must be unique");
   await writeFile(readmePath, readme.replace("twelve all-new palettes", "eleven all-new palettes"));
 
@@ -860,7 +869,8 @@ test("accepts an edition number, a foreign product's count, a count bound to a l
   // shipped total, which a bare-word table once read as "two themes". None
   // may fire.
   const readmePath = join(fixtureRoot, "README.md");
-  const readme = await readFile(readmePath, "utf8");
+  const readme = withVol2Palettes(await readFile(readmePath, "utf8"));
+  assert.equal(readme.split("twelve all-new palettes").length, 2, "fixture anchor must be unique");
   await writeFile(
     readmePath,
     readme.replace(
@@ -881,7 +891,7 @@ test("rejects a hyphenated prose count as the whole word, not its last half", { 
   // a failure for the wrong reason, which also meant a correct "sixty-two"
   // failed and "Twenty-six skills" in the README passed unread.
   const readmePath = join(fixtureRoot, "README.md");
-  const readme = await readFile(readmePath, "utf8");
+  const readme = withVol2Palettes(await readFile(readmePath, "utf8"));
   assert.equal(readme.split("twelve all-new palettes").length, 2, "fixture anchor must be unique");
   await writeFile(readmePath, readme.replace("twelve all-new palettes", "sixty-three palettes"));
 
@@ -967,7 +977,7 @@ test("rejects a stale theme count however Markdown or HTML spells it", { timeout
   ]) {
     const fixtureRoot = await makeFixture(t);
     const readmePath = join(fixtureRoot, "README.md");
-    const readme = await readFile(readmePath, "utf8");
+    const readme = withVol2Palettes(await readFile(readmePath, "utf8"));
     assert.equal(readme.split("twelve all-new palettes").length, 2, "fixture anchor must be unique");
     await writeFile(readmePath, readme.replace("twelve all-new palettes", spelling));
 
@@ -983,7 +993,7 @@ test("names the line of a count after a tag that spans lines", { timeout: 90_000
   // A tag drops out of the text, but its line breaks stay, so the line named
   // is the line the count is on.
   const readmePath = join(fixtureRoot, "README.md");
-  const readme = await readFile(readmePath, "utf8");
+  const readme = withVol2Palettes(await readFile(readmePath, "utf8"));
   assert.equal(readme.split("twelve all-new palettes").length, 2, "fixture anchor must be unique");
   const edited = readme.replace(
     "twelve all-new palettes",
@@ -1004,7 +1014,7 @@ test("reads number words past sixty", { timeout: 200_000 }, async (t) => {
   for (const stated of ["seventy palettes", "seventy-four palettes", "ninety-nine palettes"]) {
     const fixtureRoot = await makeFixture(t);
     const readmePath = join(fixtureRoot, "README.md");
-    const readme = await readFile(readmePath, "utf8");
+    const readme = withVol2Palettes(await readFile(readmePath, "utf8"));
     assert.equal(readme.split("twelve all-new palettes").length, 2, "fixture anchor must be unique");
     await writeFile(readmePath, readme.replace("twelve all-new palettes", stated));
 
@@ -1105,16 +1115,16 @@ for (const [form, page, from, to, message] of [
     "the repository verifies the theme schema, gallery parity, installation command and payment links on every pull request and every push to main.\n\nBrowse all 51[^1] themes in the gallery.\n",
     /README\.md:\d+ says "51 themes"/],
   ["an ampersand between", "README.md",
-    "(all 50 themes, plus the 12 Vol. 2 themes,",
-    "(all 51 syntax & UI themes, plus the 12 Vol. 2 themes,",
+    "Restart Claude Code, then run `/theme` and pick one.",
+    "Restart Claude Code, then run `/theme` and pick one (all 51 syntax & UI themes, plus the 12 Vol. 2 themes, are listed).",
     /README\.md:\d+ says "51 syntax & UI themes"/],
   ["an accented word between", "README.md",
-    "(all 50 themes, plus the 12 Vol. 2 themes,",
-    "(all 51 caf\u00e9-noir themes, plus the 12 Vol. 2 themes,",
+    "Restart Claude Code, then run `/theme` and pick one.",
+    "Restart Claude Code, then run `/theme` and pick one (all 51 caf\u00e9-noir themes, plus the 12 Vol. 2 themes, are listed).",
     /README\.md:\d+ says "51 caf\u00e9-noir themes"/],
   ["a pair joined by and", "README.md",
-    "(all 50 themes, plus the 12 Vol. 2 themes,",
-    "(two packs, 51 and 12 themes,",
+    "Restart Claude Code, then run `/theme` and pick one.",
+    "Restart Claude Code, then run `/theme` and pick one (two packs, 51 and 12 themes, in one list).",
     /README\.md:\d+ says "51 and 12 themes"/],
   ["a < in a Markdown code block", "README.md",
     "the repository verifies the theme schema, gallery parity, installation command and payment links on every pull request and every push to main.",
@@ -1223,8 +1233,8 @@ for (const [prose, page, from, to] of [
     "Use <code>Ctrl+E</code> if you want an editable copy.</p></div></article>",
     "Use <code>Ctrl+E</code> if you want an editable copy.</p></div></article>\n            <article class=\"step\"><span class=\"num\">04</span><div><h3>Switch themes any time.</h3><p>Run <code>/theme</code> again; the change applies immediately.</p></div></article>"],
   ["a list bullet", "README.md",
-    "## Manual install\n",
-    "## At a glance\n\n- Plugins: 3\n- Themes: 62\n- License: MIT\n\n## Manual install\n"],
+    "### By copying the files\n",
+    "## At a glance\n\n- Plugins: 3\n- Themes: 62\n- License: MIT\n\n### By copying the files\n"],
   ["an ordinal split by markup", "semantic-terminal-colors.html",
     "<h2>The terminal owns the background.</h2>",
     "<h2>The terminal owns the background.</h2>\n          <p>Vol.&nbsp;2 is the 2<sup>nd</sup> theme pack in the same marketplace.</p>"],
@@ -1630,7 +1640,7 @@ test("accepts a correct count across a line break, in emphasis and in a note", {
   // what ships passes however it is spelled, and so does a sentence about two
   // things that are not the packs, written without a number before the noun.
   const readmePath = join(fixtureRoot, "README.md");
-  const readme = await readFile(readmePath, "utf8");
+  const readme = withVol2Palettes(await readFile(readmePath, "utf8"));
   assert.equal(readme.split("twelve all-new palettes").length, 2, "fixture anchor must be unique");
   await writeFile(readmePath, readme.replace("twelve all-new palettes", "**twelve**\nall-new palettes"));
   const notePath = join(fixtureRoot, "PROMOTION_QUEUE.md");
