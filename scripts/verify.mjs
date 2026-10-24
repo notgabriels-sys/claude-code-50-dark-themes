@@ -526,6 +526,43 @@ if (!installGuideZipLink.test(installGuide)) {
   );
 }
 
+// ---------------------------------------------------------------------------
+// Dated pages. The install guide and the semantic-colors article state when they were published
+// and last modified in schema.org JSON-LD, one of the signals a search engine weighs for the date
+// it may show beside the result, and in the byline a reader sees. The two must agree and be
+// possible: one dated JSON-LD entity per page, calendar dates, published on or before modified,
+// neither after the latest date in effect anywhere, the byline's dates as labelled <time>
+// elements showing the same dates in words, an "updated" date shown exactly when the two differ,
+// and no date anywhere else on the page. Where git history is in reach, dateModified is the day
+// the page last changed in anything but its date stamp, a day apart at most for time zones, so
+// the day a stamp was written never becomes the page's date. Every other HTML file carries no
+// date marker at all, so a new dated page is held to the same rule from its first commit, or is
+// added to the list on purpose. The rules and their messages live in scripts/page-dates.mjs.
+// ---------------------------------------------------------------------------
+const pageDates = await import("./page-dates.mjs");
+const repositoryPath = (await import("node:url")).fileURLToPath(root);
+for (const path of pageDates.DATED_PAGES) {
+  const text = await readFile(new URL(path, root), "utf8");
+  const [problem] = pageDates.pageDateProblems(text);
+  if (problem) fail(`${path} ${problem}`);
+  const { modified } = pageDates.statedDates(text);
+  const change = pageDates.lastContentChange(path, { cwd: repositoryPath });
+  if (change.date === null) {
+    console.log(`${path}: dateModified ${modified} not held to git history (${change.reason}).`);
+  } else if (Math.abs(Date.parse(modified) - Date.parse(change.date)) > 86400e3) {
+    fail(`${path} JSON-LD dateModified is ${modified}, but the page last changed in anything other than its date stamp on ${change.date} (${change.sha.slice(0, 7)}); dateModified and the byline's update name the day of that change, a day apart at most for time zones. An edit to the dates or the byline alone is not a modification.`);
+  }
+}
+const htmlFiles = (await readdir(root, { recursive: true }))
+  .map((path) => path.replaceAll("\\", "/"))
+  .filter((path) => path.endsWith(".html") && !path.split("/").some((segment) => [".git", ".worktrees", "node_modules"].includes(segment)))
+  .sort();
+for (const path of htmlFiles) {
+  if (pageDates.DATED_PAGES.includes(path)) continue;
+  const marker = pageDates.dateMarker(await readFile(new URL(path, root), "utf8"));
+  if (marker) fail(`${path} carries ${marker} but is not one of the dated pages in scripts/page-dates.mjs; add it to DATED_PAGES so its dates are held to the same rule, or take the date out.`);
+}
+
 if (!readme.includes("mkdir -p ~/.claude/themes")) {
   fail("The manual install command must create ~/.claude/themes before copying files.");
 }
