@@ -190,8 +190,9 @@ for (const file of themes) {
   }
 }
 
-// Dark Themes Vol. 2 has no storefront gallery yet; its preview terminal
-// colours live in the plugin's previews.json and are held to the same floors.
+// Dark Themes Vol. 2's preview terminal colours live in the plugin's
+// previews.json (verify.mjs holds the storefront's Vol. 2 cards to them) and
+// are held to the same floors.
 const vol2Root = new URL("../plugins/dark-themes-vol-2/", import.meta.url);
 const vol2Themes = (await readdir(new URL("themes/", vol2Root)))
   .filter((file) => file.endsWith(".json"))

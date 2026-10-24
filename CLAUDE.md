@@ -816,6 +816,25 @@ file system it ran on, so that branch is shadowed, not pinned. Not covered:
 loads nothing), and whether the GitHub release a bumped theme pack's links name
 exists.
 
+**(added 2026-10-24) What `/plugin` shows an installer.** Each plugin's
+homepage read the `github.io` project address; the two theme packs now name
+their gallery on the domain `CNAME` serves (Vol. 2 at `#vol2`), and `verify`
+fails a theme pack whose homepage is anywhere else. The skills plugin has no
+gallery and names its README on GitHub. The theme packs gained the factual
+keywords `color-theme`, `contrast`, `wcag` and `accessibility` (and the tags
+`contrast` and `wcag`); none of this is in a payload, so no version moves.
+Claude Code 2.1.310's `claude plugin validate --profile directory` warned
+that no plugin had an icon, and that the official plugin directory keeps the
+first icon it is given: each plugin now ships `.claude-plugin/icon.png`, a
+1024 px square drawn from its own palettes (the 50 accents and the 12 as hue
+rings, a meter in VU Meter's colours for the skills), and `verify` holds each
+to a 1024 px PNG under 2 MB. All three plugins and the marketplace then pass
+`claude plugin validate --strict`, the plugins with `--profile directory`
+too; the directory's own safety scan and policy review are not run by it.
+Mutation-tested (rule 5): the homepage rule, the icon's dimensions and its
+size limit, each gutted alone, turn exactly their own tests red. Not covered:
+whether the directory accepts these icons, which is read only on submission.
+
 **Generated surfaces are checked against their sources, not their generator.**
 `themes.json` and the JSON-LD ItemList in `index.html` are both written by
 `scripts/build-theme-index.mjs`. `verify` checks each twice: byte for byte

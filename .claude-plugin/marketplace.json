@@ -16,12 +16,12 @@
         "name": "NotGabriels",
         "url": "https://github.com/notgabriels-sys"
       },
-      "homepage": "https://notgabriels-sys.github.io/claude-code-50-dark-themes/",
+      "homepage": "https://gabs-utilities.com/",
       "repository": "https://github.com/notgabriels-sys/claude-code-50-dark-themes",
       "license": "MIT",
       "category": "themes",
-      "tags": ["themes", "dark-theme", "color-scheme", "terminal"],
-      "keywords": ["claude-code", "themes", "dark-theme", "terminal"]
+      "tags": ["themes", "dark-theme", "color-scheme", "terminal", "contrast", "wcag"],
+      "keywords": ["claude-code", "themes", "dark-theme", "terminal", "color-theme", "contrast", "wcag", "accessibility"]
     },
     {
       "name": "dark-themes-vol-2",
@@ -33,12 +33,12 @@
         "name": "NotGabriels",
         "url": "https://github.com/notgabriels-sys"
       },
-      "homepage": "https://notgabriels-sys.github.io/claude-code-50-dark-themes/",
+      "homepage": "https://gabs-utilities.com/#vol2",
       "repository": "https://github.com/notgabriels-sys/claude-code-50-dark-themes",
       "license": "MIT",
       "category": "themes",
-      "tags": ["themes", "dark-theme", "color-scheme", "terminal"],
-      "keywords": ["claude-code", "themes", "dark-theme", "terminal"]
+      "tags": ["themes", "dark-theme", "color-scheme", "terminal", "contrast", "wcag"],
+      "keywords": ["claude-code", "themes", "dark-theme", "terminal", "color-theme", "contrast", "wcag", "accessibility"]
     },
     {
       "name": "berlin-studio-skills",
@@ -50,7 +50,7 @@
         "name": "NotGabriels",
         "url": "https://github.com/notgabriels-sys"
       },
-      "homepage": "https://notgabriels-sys.github.io/claude-code-50-dark-themes/",
+      "homepage": "https://github.com/notgabriels-sys/claude-code-50-dark-themes/tree/main/plugins/berlin-studio-skills",
       "repository": "https://github.com/notgabriels-sys/claude-code-50-dark-themes",
       "license": "MIT",
       "category": "productivity",

@@ -593,6 +593,18 @@ for (const [index, expected] of expectedPlugins.entries()) {
       );
     }
   }
+  // A theme pack's homepage is its gallery on the domain CNAME serves, the
+  // address /plugin shows an installer; it read the github.io project address
+  // until 2026-10-24. The skills plugin has no gallery and links its README.
+  if (themePluginNames.has(expected.name)) {
+    const site = (await readFile(new URL("CNAME", root), "utf8")).trim();
+    if (!String(manifest.homepage).startsWith(`https://${site}/`)) {
+      fail(
+        `${expected.name}'s homepage is ${manifest.homepage}; a theme pack's homepage is its gallery ` +
+          `at https://${site}/ (CNAME), in plugin.json and in its marketplace entry.`,
+      );
+    }
+  }
   const stated = statedCount(manifest.description ?? "");
   if (stated === undefined) {
     fail(`${expected.name}'s description must open with the number of things it ships, as a word.`);
@@ -839,7 +851,7 @@ for (const name of sourceSkills) {
     skillPackageFiles.push(`skills/${name}/${file}`);
   }
 }
-const packageBasics = [".claude-plugin/plugin.json", "LICENSE", "README.md"];
+const packageBasics = [".claude-plugin/icon.png", ".claude-plugin/plugin.json", "LICENSE", "README.md"];
 const expectedPackageFiles = new Map([
   ["50-dark-themes", [...packageBasics, ...files.map((file) => `themes/${file}`)]],
   ["dark-themes-vol-2", [
@@ -850,6 +862,19 @@ const expectedPackageFiles = new Map([
 if (JSON.stringify([...expectedPackageFiles.keys()].sort()) !==
     JSON.stringify(expectedPlugins.map((plugin) => plugin.name).sort())) {
   fail("expectedPackageFiles in scripts/verify.mjs must name exactly the plugins in expectedPlugins.");
+}
+// Each plugin carries the square PNG the official plugin directory takes as its
+// listing icon. Read 2026-10-24 from Claude Code 2.1.310's `claude plugin
+// validate --profile directory`: 512 to 2048 px a side, under 2 MB, PNG or
+// JPEG, and the directory keeps the first icon it is given, so a wrong one
+// cannot be replaced later. Ours are 1024 px, drawn from the packs' palettes.
+for (const plugin of expectedPlugins) {
+  const icon = `plugins/${plugin.name}/.claude-plugin/icon.png`;
+  await verifyPng(icon, { label: `${plugin.name}'s listing icon`, width: 1024, height: 1024 });
+  const { size } = await stat(fileUrl(icon));
+  if (size >= 2 * 1024 * 1024) {
+    fail(`${icon} is ${size} bytes; the plugin directory takes a listing icon under 2 MB.`);
+  }
 }
 for (const entry of await readdir(pluginsDir, { withFileTypes: true })) {
   const path = `plugins/${entry.name}`;

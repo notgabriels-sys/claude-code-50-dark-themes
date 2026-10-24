@@ -3503,3 +3503,47 @@ test("rejects a gallery card that does not print its terminal background", { tim
   assert.notEqual(result.code, 0, "a card printing its accent as the terminal background passed");
   assert.match(result.stderr, /Storefront contract is missing: gallery-card terminal background/);
 });
+
+// /plugin shows an installer each plugin's homepage. The theme packs pointed at
+// the github.io project address; a theme pack's homepage is now its gallery on
+// the domain CNAME serves, set on both sides so the agreement check passes.
+test("rejects a theme pack whose homepage is off the site's domain", { timeout: 90_000 }, async (t) => {
+  for (const homepage of [
+    "https://notgabriels-sys.github.io/claude-code-50-dark-themes/",
+    "https://gabs-utilities.com.example/",
+  ]) {
+    const fixtureRoot = await makeFixture(t);
+    await editJson(join(fixtureRoot, "plugins/dark-themes-vol-2/.claude-plugin/plugin.json"), (manifest) => {
+      manifest.homepage = homepage;
+    });
+    await editJson(join(fixtureRoot, ".claude-plugin/marketplace.json"), (marketplace) => {
+      marketplace.plugins.find((entry) => entry.name === "dark-themes-vol-2").homepage = homepage;
+    });
+    const result = await runVerifier(fixtureRoot);
+    assert.notEqual(result.code, 0, `a theme pack with homepage ${homepage} passed`);
+    assert.ok(
+      result.stderr.includes(`dark-themes-vol-2's homepage is ${homepage}; a theme pack's homepage is its gallery at https://gabs-utilities.com/ (CNAME)`),
+      result.stderr,
+    );
+  }
+});
+
+// The plugin directory keeps the first listing icon it is given, so an icon of
+// the wrong shape could not be replaced once submitted.
+test("rejects a plugin listing icon that is not a 1024 px square PNG", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  await cp(join(fixtureRoot, "plugins/dark-themes-vol-2/preview.png"),
+    join(fixtureRoot, "plugins/berlin-studio-skills/.claude-plugin/icon.png"));
+  const result = await runVerifier(fixtureRoot);
+  assert.notEqual(result.code, 0, "a non-square listing icon passed");
+  assert.match(result.stderr, /berlin-studio-skills's listing icon must be 1024x1024: plugins\/berlin-studio-skills\/\.claude-plugin\/icon\.png/);
+});
+
+test("rejects a plugin listing icon of 2 MB or more", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const icon = join(fixtureRoot, "plugins/50-dark-themes/.claude-plugin/icon.png");
+  await writeFile(icon, Buffer.concat([await readFile(icon), Buffer.alloc(2 * 1024 * 1024)]));
+  const result = await runVerifier(fixtureRoot);
+  assert.notEqual(result.code, 0, "a listing icon over the directory's size limit passed");
+  assert.match(result.stderr, /plugins\/50-dark-themes\/\.claude-plugin\/icon\.png is \d+ bytes; the plugin directory takes a listing icon under 2 MB/);
+});
