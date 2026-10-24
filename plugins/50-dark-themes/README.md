@@ -13,4 +13,8 @@ won't list them. Run `/theme` and select any theme from the pack. Plugin themes 
 
 Visual gallery: https://gabs-utilities.com/
 
+One page per theme, with a specimen, the install commands, its palette and the measured contrast:
+
+https://gabs-utilities.com/theme/
+
 Source and manual installation: https://github.com/notgabriels-sys/claude-code-50-dark-themes
