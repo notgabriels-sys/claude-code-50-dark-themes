@@ -39,6 +39,9 @@ rules, and ask you to confirm the rules in force before relying on them.
 
 Nothing here is tax or legal advice.
 
+The skills are instructions Claude reads. The plugin runs no code, hooks, commands or servers, and
+sends nothing anywhere.
+
 ## Source
 
 These are mirrored from `.claude/skills/` in the repository root, which is the

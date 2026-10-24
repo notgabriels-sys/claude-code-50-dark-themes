@@ -73,10 +73,25 @@ https://gabs-utilities.com/semantic-terminal-colors.html
 
 Use Product Hunt only when signed in and the product page/dashboard is accessible.
 
-Current gate: the personal-account welcome email arrived on 2026-08-23.
-Product Hunt's current help center says new accounts must complete onboarding
-before posting. Use the signed-in dashboard as the source of truth; do not
-create a second account, pay a hunter, or ask people for upvotes.
+Current state: the storefront footer links a Product Hunt product page named
+"50 Dark Themes for Claude Code"; whether it exists and whether a launch ran are
+unread (see the 2026-10-24 row in `PROMOTION_QUEUE.md`'s status log). Use the
+signed-in dashboard as the source of truth; do not create a second account, pay
+a hunter, or ask people for upvotes.
+
+Product Hunt names the product the storefront links, not the catalog, so a post
+uses this identity rather than "Gabs Utilities" above (use it only after the
+live page is read):
+
+- Name: `50 Dark Themes for Claude Code`
+- Tagline (56 characters; launch guides put the cap at 60, so check on the form):
+
+```text
+Free dark themes for Claude Code that keep status colors
+```
+
+- Description: lead with the 50 + 12 free themes and how they are checked;
+  mention the paid packs only as "also from the maker".
 
 Official Product Hunt guidance says:
 
@@ -100,9 +115,9 @@ This started as a practical thing for myself: I wanted a set of dark Claude Code
 
 I kept expanding it into a small catalog of dark developer/creator utilities: UI kits, HTML templates, email templates, cheat sheets, wallpapers, and palettes.
 
-The core Claude Code themes are free and MIT licensed. The paid packs are there for people who want the broader toolkit.
+The core Claude Code themes are free and MIT licensed, and the same marketplace now carries Dark Themes Vol. 2, a free 12-theme expansion held to the same contrast floors. The paid packs are there for people who want the broader toolkit.
 
-I’d love feedback from developers, Claude Code users, and people who care about practical dark UI systems: what feels useful, what feels unclear, and what should be improved before I keep expanding it.
+I’d love feedback from developers, Claude Code users, and people who care about practical dark UI systems: what feels useful, what feels unclear, and what should be improved before I keep expanding it. If a theme is hard to read in your terminal, the repository's issue form "Theme readability report" asks for exactly what I need to fix it.
 ```
 
 ## DevHunt
@@ -218,6 +233,66 @@ Tags:
 Claude Code, themes, dark mode, developer tools, terminal, UI kit
 ```
 
+## Anthropic plugin directory
+
+Anthropic's directory lists plugins people add from claude.ai; a listed theme
+pack reaches Claude Code users who never find this marketplace. Read 2026-10-24
+from Anthropic's pages "Publish to the directory", "Submit your plugin" and
+"Plugin pre-submission checklist" on claude.com's docs. Nothing is submitted,
+and nothing is claimed until a listing appears.
+
+Route: the developer portal at `claude.ai/directory/manage`, then **Submit new**
+and **Plugin bundle**. It needs a paid plan (Pro or Max submit from their own
+account; on Team and Enterprise, an Owner), and the GitHub account connected on
+claude.ai must be able to push to this repository. The first organization to
+submit a folder holds its listing, so submit from the account that should own
+it. The data handling questions and the compliance step (a contact email and
+four acknowledgements) are the owner's to answer.
+
+Submit each plugin folder on its own: the portal refuses a repository root that
+holds several plugins ("Pick one plugin first"). On the **Source** step:
+
+- Repository: `notgabriels-sys/claude-code-50-dark-themes`
+- Plugin path: `plugins/50-dark-themes`, then, as a second submission,
+  `plugins/dark-themes-vol-2`
+- Branch or tag: empty, to follow `main`
+
+Submit the two theme packs. Hold `berlin-studio-skills` until its German tax
+skill has been read against the statutes (`freelance-admin-de` says it was
+written from memory); a directory listing would put it before every Claude user.
+
+What the portal reads, and where it stands here:
+
+- **Listing details** come from `plugin.json` and the README, and the README is
+  the listing's description: both theme READMEs say what the pack does, how it
+  treats status colors, how it is checked, and that it runs and sends nothing,
+  which is what the security scan looks for.
+- **README** of at least 40 words outside code blocks, and a **LICENSE** in the
+  plugin folder: both present in each plugin.
+- **Icon**: `.claude-plugin/icon.png`, a 1024 px square in each plugin.
+  Claude Code's own validator says an icon may become the listing icon only
+  once, the first time the plugin is saved or submitted in the portal.
+- **Files**: images, JSON and text only; none near the 256 KiB limit for
+  non-image files, and no `.DS_Store`, symlink or submodule (`verify` refuses
+  those under `plugins/`).
+- **Version**: the portal asks that `version` move with every release, which
+  `verify`'s release check already enforces for a changed payload.
+- **Possible holds, not blocks**: a name made only of generic words, and a
+  display name that names Claude Code, can be held for a reviewer.
+
+Before submitting, run from the repository root:
+
+```bash
+claude plugin validate --strict .
+claude plugin validate --strict --profile directory plugins/50-dark-themes
+claude plugin validate --strict --profile directory plugins/dark-themes-vol-2
+```
+
+All three passed on 2026-10-24 (Claude Code 2.1.310). The portal's own
+**Validate** runs more checks; fix anything it marks **Blocking** and validate
+again. After a listing goes live, each merge to `main` is scanned as a new
+version, and the listing keeps the last published one until a new one passes.
+
 ## Next exposure queue
 
 Use this order. It favors relevance and avoids low-quality spam-directory energy.
@@ -230,22 +305,28 @@ Use this order. It favors relevance and avoids low-quality spam-directory energy
    - Draft is saved in `DEV_COMMUNITY_ARTICLE_DRAFT.md`.
    - Support link: `https://gabs-utilities.com/claude-code-theme-install-guide.html`.
 
-2. Product Hunt
-   - Higher reach, but only after the personal account's onboarding gate is
-     complete and the product dashboard is accessible while signed in.
+2. Anthropic plugin directory
+   - Reaches Claude Code users inside Claude's own catalog; see the section
+     above. Submit the two theme packs, one folder at a time.
+
+3. Product Hunt
+   - Higher reach. The storefront already links a Product Hunt product page;
+     read its state on the signed-in dashboard first (see the 2026-10-24 row in
+     `PROMOTION_QUEUE.md`'s status log).
    - Use the prepared first comment above.
    - Do not ask for upvotes or mass-comment.
 
-3. DevHunt
+4. DevHunt
    - Good developer-tool fit for the free themes and catalog.
    - Requires an existing signed-in account; do not create one only to add a
      listing count.
 
-4. GitHub awesome lists
+5. GitHub awesome lists
    - Only submit to lists that explicitly accept Claude Code, terminal themes, CLI themes, or developer tooling.
-   - Open one careful PR per relevant list; no mass PRs.
+   - Make one careful submission per relevant list, by the route its CONTRIBUTING file names;
+     awesome-claude-code takes its web issue form only, never a PR (block in `PROMOTION_QUEUE.md`).
 
-5. Launch/startup directories
+6. Launch/startup directories
    - Use only if they have a clear developer-tools category and a free submission path.
    - Avoid paid placement unless the owner explicitly approves the exact price and benefit.
    - Avoid adding multiple directory badges to the storefront footer unless the directory is genuinely relevant.

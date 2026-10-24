@@ -39,4 +39,10 @@ to copy it into `~/.claude/themes/` for editing.
 Each name above opens the theme's own page: a specimen, the install commands, its palette and the
 measured contrast. Visual gallery, with the Vol. 2 section: https://gabs-utilities.com/#vol2
 
+Set your terminal's background to the theme's terminal background, the hex printed on its gallery
+card and its page, so the colors read as they were measured.
+
+The plugin adds theme files and nothing else: it runs no code, hooks, commands or servers, and
+sends nothing anywhere.
+
 Source and manual installation: https://github.com/notgabriels-sys/claude-code-50-dark-themes

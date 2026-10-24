@@ -847,6 +847,26 @@ calls for. And `previews.json` was read only by theme name, so a row for a
 theme the pack no longer ships passed; `verify` now names it. Reproduced green
 first (rule 1), and gutting the check turns exactly its test red (rule 5).
 
+**(added 2026-10-24) Marketing records, read before they were written.** The
+promotion queue's status log stopped on 2026-08-24. It now has dated rows for
+what was read on 2026-10-24 through GitHub's API: only the two
+`themes-plugin-v*` releases exist, so the prepared Vol. 2 release is not
+created; the live description and topics have drifted from
+`.github/REPO_METADATA.md`, which now quotes them with the `gh repo edit` line
+for Gabriel. Product Hunt is recorded as unread, not launched: the storefront
+links a product page this session cannot reach. A new section in the
+submission pack sets out Anthropic's plugin directory as read from its own
+documentation pages that day (portal, one submission per plugin folder, a
+paid plan, README as the listing's description); the two theme READMEs grew
+from the thin text the listing would have shown into one that says what each
+pack does, how it is checked and that it runs and sends nothing, and the
+skills README says the same of its skills. awesome-claude-code takes its web
+issue form only, never a PR, and the queue now says so with a prepared block.
+A "Theme readability report" issue form gives the posts' requests for
+feedback somewhere to land; `.github/` is not served. Nothing was posted,
+submitted or edited outside the repository; every external step is a row
+with Gabriel's name on its next action.
+
 **Generated surfaces are checked against their sources, not their generator.**
 `themes.json` and the JSON-LD ItemList in `index.html` are both written by
 `scripts/build-theme-index.mjs`. `verify` checks each twice: byte for byte
