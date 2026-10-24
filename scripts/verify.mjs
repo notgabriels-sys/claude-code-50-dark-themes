@@ -1094,6 +1094,96 @@ for (const [, slug] of expectedQuickPicks.matchAll(/href="\/theme\/([a-z0-9-]+)\
   if (!exists) fail(`A quick pick links /theme/${slug}/, but ${page} does not exist.`);
 }
 
+// ---------------------------------------------------------------------------
+// The READMEs on GitHub link every theme by name to its page on the site
+// (theme/<slug>/, rendered further down from the same theme files).
+// scripts/build-readme-theme-links.mjs renders the lists: the fifty and the
+// twelve in README.md, the Vol. 2 table in its plugin README. Each sits between
+// two HTML comments and must be exactly what the builder renders today, so a
+// README can never name a theme the pack no longer has, leave one out, or send
+// a name to another theme's page. A block only counts where it renders: a start
+// marker inside a code fence, a <pre>-style block or an open comment fails, as
+// does one without a blank line on each side (an HTML block before it could
+// run on into the list). Around the blocks the same rules hold for every
+// theme-page address in these three files: written as
+// [Name](https://gabs-utilities.com/theme/<slug>/) with the page's own name, or
+// as the index, and nothing else; a theme name in brackets is that link and
+// nothing else. The 50-theme plugin README has no list of its own and points
+// at the index instead.
+// ---------------------------------------------------------------------------
+const readmeLinks = await import("./build-readme-theme-links.mjs");
+const readmeTexts = new Map([["README.md", readme]]);
+for (const path of readmeLinks.README_PATHS) {
+  if (!readmeTexts.has(path)) readmeTexts.set(path, await readFile(new URL(path, root), "utf8"));
+}
+let readmeLinkBuild;
+try {
+  readmeLinkBuild = await readmeLinks.buildReadmeThemeLinks(root);
+} catch (error) {
+  fail(`The README theme lists cannot be rendered: ${error.message}`);
+}
+for (const [path, text] of readmeTexts) {
+  // The markers and the generated blocks are compared line by line, so a carriage return would
+  // read as text after each marker and the builder's LF lines would never match.
+  if (text.includes("\r")) fail(`${path} has carriage returns (CR LF line endings); the READMEs use LF line endings only. Convert the file to LF.`);
+  const [problem] = readmeLinks.themeLinkProblems(text, readmeLinkBuild.themes);
+  if (problem) fail(`${path} ${problem}`);
+  // A marker promises a generated list, so one that no block registers is a list nobody renders.
+  for (const [marker, key] of text.matchAll(/<!-- theme-links:([^\s]*):(?:start|end) -->/g)) {
+    if (!readmeLinkBuild.blocks.some((block) => block.path === path && block.key === key)) {
+      fail(`${path} carries ${marker}, but no theme-links block with that key belongs in this file (see THEME_LINK_BLOCKS in scripts/build-readme-theme-links.mjs); remove it or register it.`);
+    }
+  }
+}
+for (const block of readmeLinkBuild.blocks) {
+  const text = readmeTexts.get(block.path);
+  const lines = text.split("\n");
+  const { flow } = readmeLinks.markdownFlow(text);
+  const where = `${block.path}, ${block.key} theme-links block`;
+  for (const marker of [block.start, block.end]) {
+    const count = text.split(marker).length - 1;
+    if (count === 0) {
+      fail(`${where}: no ${marker}. Write it on a line of its own with a blank line on each side and run node scripts/build-readme-theme-links.mjs.`);
+    }
+    if (count > 1) fail(`${where}: ${marker} appears ${count} times; it appears once.`);
+    if (!lines.includes(marker)) fail(`${where}: ${marker} shares its line with other text; the marker is a line of its own.`);
+  }
+  const startLine = lines.indexOf(block.start);
+  const endLine = lines.indexOf(block.end);
+  if (endLine < startLine) fail(`${where}: ${block.end} comes before ${block.start}.`);
+  const blank = (line) => /^[ \t]*$/.test(line);
+  if ((startLine > 0 && !blank(lines[startLine - 1])) || (endLine < lines.length - 1 && !blank(lines[endLine + 1]))) {
+    fail(`${where}: the block needs a blank line before ${block.start} and after ${block.end}, so the markers are blocks of their own.`);
+  }
+  if (!flow[startLine]) {
+    fail(
+      `${where}: ${block.start} on line ${startLine + 1} sits inside a code fence, a <pre>-style block or an HTML comment opened earlier, ` +
+        "so the list would not render as links. Close it before the block.",
+    );
+  }
+  const written = text.slice(text.indexOf(block.start), text.indexOf(block.end) + block.end.length);
+  if (written !== block.rendered) {
+    fail(`${where}: stale. It is not what scripts/build-readme-theme-links.mjs renders from the theme files. Run it and commit the result.`);
+  }
+}
+{
+  const path = "plugins/50-dark-themes/README.md";
+  const text = readmeTexts.get(path);
+  const { flow } = readmeLinks.markdownFlow(text);
+  // A paragraph of its own: on a line of its own, in document flow, with a blank line (or the
+  // file's edge) on each side. Anything else can swallow it without a trace — a link reference
+  // definition whose label or title spans lines, a table, a lone tag the walk reads loosely.
+  const lines = text.split("\n");
+  const blank = (line) => /^[ \t]*$/.test(line);
+  const indexLine = lines.findIndex(
+    (line, index) =>
+      line === readmeLinks.THEME_PAGE_URL && flow[index] && (index === 0 || blank(lines[index - 1])) && (index === lines.length - 1 || blank(lines[index + 1])),
+  );
+  if (indexLine === -1) {
+    fail(`${path} must carry the theme page index ${readmeLinks.THEME_PAGE_URL} on a line of its own with a blank line before and after it, where it renders (the list of every page).`);
+  }
+}
+
 // Each pack's free zip is a release asset that scripts/build-release-zip.sh names after the
 // pack's manifest version, and release-zip.yml refuses any other tag. So the storefront and the
 // README may only link the zip of the version they ship; a version bump that forgets the links
@@ -1203,6 +1293,43 @@ if (!installGuideZipLink.test(installGuide)) {
   fail(
     `The install guide must link the ${fiftyThemePack.label} zip at ${fiftyThemeZipUrl} and say "from the v${fiftyThemePack.version} release" beside it, so the page shows what its FAQ schema promises.`,
   );
+}
+
+// ---------------------------------------------------------------------------
+// Dated pages. The install guide and the semantic-colors article state when they were published
+// and last modified in schema.org JSON-LD, one of the signals a search engine weighs for the date
+// it may show beside the result, and in the byline a reader sees. The two must agree and be
+// possible: one dated JSON-LD entity per page, calendar dates, published on or before modified,
+// neither after the latest date in effect anywhere, the byline's dates as labelled <time>
+// elements showing the same dates in words, an "updated" date shown exactly when the two differ,
+// and no date anywhere else on the page. Where git history is in reach, dateModified is the day
+// the page last changed in anything but its date stamp, a day apart at most for time zones, so
+// the day a stamp was written never becomes the page's date. Every other HTML file carries no
+// date marker at all, so a new dated page is held to the same rule from its first commit, or is
+// added to the list on purpose. The rules and their messages live in scripts/page-dates.mjs.
+// ---------------------------------------------------------------------------
+const pageDates = await import("./page-dates.mjs");
+const repositoryPath = (await import("node:url")).fileURLToPath(root);
+for (const path of pageDates.DATED_PAGES) {
+  const text = await readFile(new URL(path, root), "utf8");
+  const [problem] = pageDates.pageDateProblems(text);
+  if (problem) fail(`${path} ${problem}`);
+  const { modified } = pageDates.statedDates(text);
+  const change = pageDates.lastContentChange(path, { cwd: repositoryPath });
+  if (change.date === null) {
+    console.log(`${path}: dateModified ${modified} not held to git history (${change.reason}).`);
+  } else if (Math.abs(Date.parse(modified) - Date.parse(change.date)) > 86400e3) {
+    fail(`${path} JSON-LD dateModified is ${modified}, but the page last changed in anything other than its date stamp on ${change.date} (${change.sha.slice(0, 7)}); dateModified and the byline's update name the day of that change, a day apart at most for time zones. An edit to the dates or the byline alone is not a modification.`);
+  }
+}
+const htmlFiles = (await readdir(root, { recursive: true }))
+  .map((path) => path.replaceAll("\\", "/"))
+  .filter((path) => path.endsWith(".html") && !path.split("/").some((segment) => [".git", ".worktrees", "node_modules"].includes(segment)))
+  .sort();
+for (const path of htmlFiles) {
+  if (pageDates.DATED_PAGES.includes(path)) continue;
+  const marker = pageDates.dateMarker(await readFile(new URL(path, root), "utf8"));
+  if (marker) fail(`${path} carries ${marker} but is not one of the dated pages in scripts/page-dates.mjs; add it to DATED_PAGES so its dates are held to the same rule, or take the date out.`);
 }
 
 if (!readme.includes("mkdir -p ~/.claude/themes")) {
