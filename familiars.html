@@ -1,0 +1,484 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Familiars: Claude skills, plugins and themes for sound work</title>
+<meta name="description" content="Familiars by notgabriels: Claude skills, plugins and themes built in a Berlin studio for people who make and deliver sound. Each one has a form, a name and a narrow job.">
+<link rel="canonical" href="https://gabs-utilities.com/familiars.html">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<meta name="theme-color" content="#0F0F13">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Gabs Utilities">
+<meta property="og:title" content="Familiars: small minds that know one job">
+<meta property="og:description" content="Familiars by notgabriels: Claude skills, plugins and themes built in a Berlin studio for people who make and deliver sound. Each one has a form, a name and a narrow job.">
+<meta property="og:url" content="https://gabs-utilities.com/familiars.html">
+<meta property="og:image" content="https://gabs-utilities.com/assets/familiars-share.png">
+<meta property="og:image:width" content="1280">
+<meta property="og:image:height" content="720">
+<meta property="og:image:alt" content="Familiars by notgabriels: a line-drawn familiar with an ember eye on graphite, and the line Small minds that know one job.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image:alt" content="Familiars by notgabriels: a line-drawn familiar with an ember eye on graphite, and the line Small minds that know one job.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+[hidden]{display:none!important}
+body{margin:0}
+img{max-width:100%}
+/* Layout: one quiet column; a hero where the familiar itself is the thesis, then a catalogue of creatures, each with its sigil. Dark-first, graphite with a violet core and an ember eye. */
+:root {
+  --bg: #0F0F13;
+  --surface: #16161C;
+  --raise: #1C1C24;
+  --fg: #EDEBF3;
+  --muted: #9C99AA;
+  --line: #2A2933;
+  --accent: #A898FF;
+  --accent-soft: rgba(168,152,255,.16);
+  --ember: #FFB46B;
+  --ember-soft: rgba(255,180,107,.28);
+  --halo: .55;
+  --display: "Familjen Grotesk", "Helvetica Neue", Arial, sans-serif;
+  --body: "Familjen Grotesk", "Helvetica Neue", Arial, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #F2F1F6; --surface: #FFFFFF; --raise: #F8F7FB; --fg: #16151C; --muted: #5C5A6A; --line: #DAD8E2;
+    --accent: #5A45D6; --accent-soft: rgba(90,69,214,.12); --ember: #B8601A; --ember-soft: rgba(184,96,26,.22); --halo: .32;
+    color-scheme: light;
+  }
+}
+:root[data-theme="light"] {
+  --bg: #F2F1F6; --surface: #FFFFFF; --raise: #F8F7FB; --fg: #16151C; --muted: #5C5A6A; --line: #DAD8E2;
+  --accent: #5A45D6; --accent-soft: rgba(90,69,214,.12); --ember: #B8601A; --ember-soft: rgba(184,96,26,.22); --halo: .32;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 17px; line-height: 1.6;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0 120px;
+  overflow-x: hidden;
+  transition: background-color .5s ease, color .5s ease;
+}
+a { color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+
+/* ambient lights */
+.lights { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+.lights span { position: absolute; border-radius: 50%; filter: blur(70px); opacity: var(--halo); }
+.lights .l1 { width: 46vmax; height: 46vmax; left: -12vmax; top: -16vmax; background: radial-gradient(circle, var(--accent-soft), transparent 70%); }
+.lights .l2 { width: 34vmax; height: 34vmax; right: -10vmax; top: 30vh; background: radial-gradient(circle, var(--ember-soft), transparent 70%); }
+.lights .l3 { width: 40vmax; height: 40vmax; left: 20vw; bottom: -22vmax; background: radial-gradient(circle, var(--accent-soft), transparent 70%); }
+
+.wrap { position: relative; z-index: 1; max-width: 1080px; margin: 0 auto; display: grid; gap: 96px; }
+main { display: grid; gap: 96px; min-width: 0; }
+
+/* header */
+header.top { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-block: 24px 0; flex-wrap: wrap; }
+.brand { display: flex; align-items: center; gap: 12px; text-decoration: none; }
+.brand svg { width: 34px; height: 34px; color: var(--fg); }
+.brand b { font: 700 21px/1 var(--display); letter-spacing: -.02em; }
+.brand small { display: block; font: 400 11px/1.3 var(--mono); color: var(--muted); letter-spacing: .08em; text-transform: uppercase; margin-top: 4px; }
+nav.links { display: flex; gap: 22px; font: 500 13px var(--mono); letter-spacing: .06em; text-transform: uppercase; }
+nav.links a { color: var(--muted); text-decoration: none; }
+nav.links a:hover { color: var(--fg); }
+
+/* hero */
+.hero { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr); gap: 48px; align-items: center; }
+@media (max-width: 760px) { .hero { grid-template-columns: 1fr; gap: 24px; } .stage { order: -1; } }
+.eyebrow { font: 500 12px var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--accent); }
+h1 { font: 700 clamp(44px, 8vw, 86px)/.95 var(--display); letter-spacing: -.045em; margin: 14px 0 22px; text-wrap: balance; }
+h1 .soft { color: var(--muted); font-weight: 500; }
+.lede { max-width: 54ch; color: var(--muted); margin: 0; font-size: 18px; }
+.lede strong { color: var(--fg); font-weight: 500; }
+.cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 30px; }
+.btn { display: inline-flex; align-items: center; gap: 10px; font: 600 15px var(--body); text-decoration: none; padding: 13px 20px; border-radius: 999px; border: 1px solid var(--line); color: var(--fg); background: var(--surface); cursor: pointer; transition: border-color .2s, transform .2s; }
+.btn:hover { border-color: var(--accent); transform: translateY(-1px); }
+.btn.primary { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+
+.stage { position: relative; display: grid; place-items: center; aspect-ratio: 1 / 1; max-width: 100%; }
+.beam { position: absolute; inset: 6%; border-radius: 50%; background: conic-gradient(from 0deg, transparent 0 70%, var(--accent-soft) 82%, transparent 94%); filter: blur(6px); }
+.ring { position: absolute; width: 58%; aspect-ratio: 1; border-radius: 50%; border: 1px solid var(--line); }
+.ring.r2 { width: 82%; border-style: dashed; opacity: .6; }
+.familiar { position: relative; width: 62%; max-width: 100%; overflow: visible; }
+.familiar .body { fill: var(--surface); stroke: var(--fg); stroke-width: 2.2; transition: fill .5s; }
+.familiar .eye-slot { fill: var(--bg); }
+.familiar .eye { fill: var(--ember); filter: drop-shadow(0 0 6px var(--ember)) drop-shadow(0 0 16px var(--ember-soft)); transform-box: fill-box; transform-origin: center; }
+.familiar .core { fill: var(--accent); }
+.familiar .pulse { fill: none; stroke: var(--accent); stroke-width: 1.4; transform-box: fill-box; transform-origin: center; opacity: 0; }
+.familiar .shadow { fill: var(--fg); opacity: .08; }
+.namecard { position: absolute; bottom: 4%; right: 0; font: 400 11px/1.5 var(--mono); color: var(--muted); letter-spacing: .06em; text-align: right; }
+.namecard b { color: var(--fg); font-weight: 500; }
+
+/* sections */
+section { display: grid; gap: 28px; }
+.sec-head { display: grid; gap: 8px; max-width: 62ch; }
+h2 { font: 700 clamp(30px, 4.4vw, 44px)/1.05 var(--display); letter-spacing: -.03em; margin: 0; text-wrap: balance; }
+.sec-head p { color: var(--muted); margin: 0; }
+
+.traits { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; border-top: 1px solid var(--line); }
+@media (max-width: 760px) { .traits { grid-template-columns: 1fr; } }
+.trait { padding: 22px 22px 22px 0; display: grid; gap: 8px; min-width: 0; }
+.trait + .trait { padding-left: 22px; border-left: 1px solid var(--line); }
+@media (max-width: 760px) { .trait + .trait { padding-left: 0; border-left: 0; border-top: 1px solid var(--line); } }
+.trait h3 { font: 600 20px var(--display); margin: 0; letter-spacing: -.01em; }
+.trait p { margin: 0; color: var(--muted); font-size: 16px; }
+.k { font: 500 11px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }
+
+/* catalogue */
+.filters { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { font: 500 13px var(--mono); letter-spacing: .04em; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--line); background: transparent; color: var(--muted); cursor: pointer; }
+.chip[aria-pressed="true"] { color: var(--fg); border-color: var(--accent); background: var(--accent-soft); }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); gap: 16px; }
+.card {
+  --mx: 50%; --my: 50%;
+  position: relative; display: grid; grid-template-rows: auto auto 1fr auto; gap: 14px; padding: 24px; min-width: 0;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 14px; overflow: hidden;
+  transition: border-color .25s, transform .25s;
+}
+.card::before { content: ""; position: absolute; inset: 0; background: radial-gradient(260px circle at var(--mx) var(--my), var(--accent-soft), transparent 70%); opacity: 0; transition: opacity .3s; pointer-events: none; }
+.card:hover { border-color: var(--accent); transform: translateY(-2px); }
+.card:hover::before { opacity: 1; }
+.card > * { position: relative; }
+.card-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.sigil { width: 52px; height: 52px; color: var(--fg); }
+.sigil * { fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.sigil .dot { fill: var(--ember); stroke: none; }
+.card:hover .sigil .draw { animation: draw 1.1s ease forwards; }
+@keyframes draw { from { stroke-dashoffset: 120; } to { stroke-dashoffset: 0; } }
+.sigil .draw { stroke-dasharray: 120; stroke-dashoffset: 0; }
+.status { font: 500 11px var(--mono); letter-spacing: .08em; text-transform: uppercase; padding: 4px 9px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
+.status::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--muted); }
+.status.live { color: var(--fg); border-color: var(--accent); }
+.status.live::before { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+.names { display: grid; gap: 2px; }
+.names h3 { font: 700 28px/1.05 var(--display); letter-spacing: -.03em; margin: 0; }
+.names span { font: 400 13px var(--mono); color: var(--muted); }
+.card p { margin: 0; font-size: 16px; color: var(--muted); }
+.refuses { font-size: 14px; border-top: 1px dashed var(--line); padding-top: 12px; display: grid; gap: 4px; }
+.refuses .k { color: var(--ember); }
+.tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.tags span { font: 400 12px var(--mono); color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 2px 7px; }
+.card a.more { font: 500 13px var(--mono); color: var(--accent); text-decoration: none; }
+.card a.more:hover { text-decoration: underline; }
+.more-links { display: flex; flex-wrap: wrap; gap: 8px 18px; }
+
+/* contact */
+.contact { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 24px; align-items: end; padding: 36px; border: 1px solid var(--line); border-radius: 18px; background: var(--raise); }
+@media (max-width: 760px) { .contact { grid-template-columns: 1fr; padding: 24px; } }
+.mail { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.mail code { font: 500 16px var(--mono); user-select: all; padding: 11px 14px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); overflow-wrap: anywhere; }
+.copied { font: 400 12px var(--mono); color: var(--accent); min-height: 1em; }
+
+footer { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding-top: 28px; border-top: 1px solid var(--line); font: 400 13px var(--mono); color: var(--muted); }
+footer nav { display: flex; gap: 18px; flex-wrap: wrap; }
+footer a { color: var(--muted); }
+footer a[aria-current] { color: var(--fg); text-decoration: none; }
+
+/* theme switch */
+.theme-switch {
+  position: fixed; z-index: 20;
+  right: calc(20px + env(safe-area-inset-right, 0px)); bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  display: inline-flex; align-items: center; gap: 10px; height: 56px; padding: 0 20px 0 8px;
+  border-radius: 999px; border: 1.5px solid var(--accent); background: var(--surface); color: var(--fg);
+  font: 600 15px var(--body); cursor: pointer; box-shadow: 0 8px 30px rgba(0,0,0,.25), 0 0 0 6px var(--accent-soft);
+  transition: transform .2s, background-color .5s;
+}
+.theme-switch:hover { transform: translateY(-2px); }
+.theme-switch .knob { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: var(--bg); }
+.theme-switch svg { width: 20px; height: 20px; }
+.theme-switch .sun { display: none; }
+:root[data-eff="dark"] .theme-switch .sun { display: block; }
+:root[data-eff="dark"] .theme-switch .moon { display: none; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .lights .l1 { animation: driftA 26s ease-in-out infinite alternate; }
+  .lights .l2 { animation: driftB 32s ease-in-out infinite alternate; }
+  .lights .l3 { animation: driftA 38s ease-in-out infinite alternate-reverse; }
+  @keyframes driftA { to { transform: translate(8vw, 6vh) scale(1.1); } }
+  @keyframes driftB { to { transform: translate(-10vw, -8vh) scale(.92); } }
+  .beam { animation: sweep 9s linear infinite; }
+  @keyframes sweep { to { transform: rotate(360deg); } }
+  .ring.r2 { animation: sweep 60s linear infinite reverse; }
+  .familiar .float { animation: hover 5s ease-in-out infinite; }
+  @keyframes hover { 50% { transform: translateY(-6px); } }
+  .familiar .pulse { animation: pulse 3s ease-out infinite; }
+  .familiar .pulse.p2 { animation-delay: 1.5s; }
+  @keyframes pulse { 0% { opacity: .9; transform: scale(.4); } 100% { opacity: 0; transform: scale(2.6); } }
+  .familiar .eye.blink { animation: blink .22s ease; }
+  @keyframes blink { 50% { transform: scaleY(.08); } }
+  .rise { animation: rise .7s ease both; }
+  .rise.d1 { animation-delay: .08s; } .rise.d2 { animation-delay: .16s; } .rise.d3 { animation-delay: .24s; }
+  @keyframes rise { from { opacity: .3; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+}
+</style>
+</head>
+<body>
+<div class="lights" aria-hidden="true"><span class="l1"></span><span class="l2"></span><span class="l3"></span></div>
+
+<div class="wrap">
+  <header class="top">
+    <a class="brand" href="#top" aria-label="Familiars by notgabriels">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M6 29V17C6 11 8 8 10.5 6.5L12 2l3 4h2l3-4 1.5 4.5C24 8 26 11 26 17v12Z" fill="currentColor"/><rect x="11" y="15" width="10" height="2.6" rx="1.3" fill="var(--bg)"/></svg>
+      <span><b>familiars</b><small>by notgabriels</small></span>
+    </a>
+    <nav class="links" aria-label="Sections">
+      <a href="#what">What</a><a href="#catalogue">Catalogue</a><a href="#request">Request</a>
+    </nav>
+  </header>
+
+  <main id="main">
+  <section class="hero" id="top">
+    <div>
+      <div class="eyebrow rise">Skills · plugins · themes for Claude</div>
+      <h1 class="rise d1">Small minds that know one job.</h1>
+      <p class="lede rise d2">Familiars are Claude skills and plugins built in a Berlin studio for people who make and deliver sound. <strong>Each one has a form, a name and a narrow job.</strong> It works inside your rules, says what it does not know, and stops when the job is done.</p>
+      <div class="cta rise d3">
+        <a class="btn primary" href="#catalogue">Meet the familiars</a>
+        <a class="btn" href="#request">Request early access</a>
+      </div>
+    </div>
+    <div class="stage" aria-hidden="true">
+      <div class="beam"></div><div class="ring r2"></div><div class="ring"></div>
+      <svg class="familiar" id="familiar" viewBox="0 0 200 240">
+        <ellipse class="shadow" cx="100" cy="226" rx="56" ry="7"/>
+        <g class="float">
+          <path class="body" d="M42 208V132c0-38 10-62 28-78l8-36 20 26h4l20-26 8 36c18 16 28 40 28 78v76Z"/>
+          <rect class="eye-slot" x="70" y="104" width="60" height="16" rx="8"/>
+          <rect class="eye" id="eye" x="84" y="107" width="32" height="10" rx="5"/>
+          <circle class="pulse" cx="100" cy="164" r="7"/>
+          <circle class="pulse p2" cx="100" cy="164" r="7"/>
+          <circle class="core" cx="100" cy="164" r="5"/>
+        </g>
+      </svg>
+      <div class="namecard"><b>Wick</b>, the house familiar<br>watches the cursor, keeps the light on</div>
+    </div>
+  </section>
+
+  <section id="what">
+    <div class="sec-head">
+      <div class="k">What a familiar is</div>
+      <h2>A narrow helper with house rules built in.</h2>
+      <p>A familiar loads when your request matches its job, and only then. Three rules hold for every one of them.</p>
+    </div>
+    <div class="traits">
+      <div class="trait"><span class="k">Narrow</span><h3>One job, stated exclusions</h3><p>Each familiar names what it covers and which neighbour to call for the rest, so two of them never answer the same question twice.</p></div>
+      <div class="trait"><span class="k">Bound</span><h3>Your specs, never invented ones</h3><p>No sample rate, loudness target, true-peak ceiling or file format appears unless you supplied it. Missing values come back as a labelled default or a single question.</p></div>
+      <div class="trait"><span class="k">Honest</span><h3>Facts kept apart from guesses</h3><p>What you said, what was measured and what was inferred stay labelled. A familiar never claims it heard, sent or published something it did not.</p></div>
+    </div>
+  </section>
+
+  <section id="catalogue">
+    <div class="sec-head">
+      <div class="k">Catalogue</div>
+      <h2>Seven familiars, each with its sigil.</h2>
+      <p>The sigil is the familiar's mark at small size: one colour, readable at 16 pixels. Hover a card to see it drawn.</p>
+    </div>
+    <div class="filters" role="group" aria-label="Filter by kind">
+      <button class="chip" id="f-all" data-f="all" aria-pressed="true">All</button>
+      <button class="chip" id="f-skill" data-f="skill" aria-pressed="false">Skills</button>
+      <button class="chip" id="f-plugin" data-f="plugin" aria-pressed="false">Plugins</button>
+      <button class="chip" id="f-theme" data-f="theme" aria-pressed="false">Themes</button>
+    </div>
+
+    <div class="grid" id="grid">
+      <article class="card" data-kind="skill">
+        <div class="card-top">
+          <svg class="sigil" viewBox="0 0 48 48" aria-hidden="true"><circle class="draw" cx="24" cy="26" r="13"/><path class="draw" d="M24 6v32M17 38h14"/><circle class="dot" cx="24" cy="26" r="2.6"/></svg>
+          <span class="status">Early access</span>
+        </div>
+        <div class="names"><h3>Latch</h3><span>Track Finishing System · skill</span></div>
+        <p>Reads what stage a track is in, sets completion criteria and runs time-boxed sessions across a backlog of unfinished projects. One open decision per answer, one next action per session.</p>
+        <div class="refuses"><span class="k">Refuses</span>Opening a new idea before the current one is closed.</div>
+      </article>
+
+      <article class="card" data-kind="skill">
+        <div class="card-top">
+          <svg class="sigil" viewBox="0 0 48 48" aria-hidden="true"><path class="draw" d="M14 8v32M24 8v32M34 8v32"/><path class="draw" d="M8 24c5-7 10 7 16 0s11 7 16 0"/><circle class="dot" cx="24" cy="24" r="2.6"/></svg>
+          <span class="status">Early access</span>
+        </div>
+        <div class="names"><h3>Loom</h3><span>Release Concept Architecture · skill</span></div>
+        <p>Turns a folder of tracks into a body of work: the concept axis, the arc, the running order, a title system and the release texts.</p>
+        <div class="refuses"><span class="k">Refuses</span>Marketing register, and any phrase on the house banned list.</div>
+      </article>
+
+      <article class="card" data-kind="skill">
+        <div class="card-top">
+          <svg class="sigil" viewBox="0 0 48 48" aria-hidden="true"><circle class="draw" cx="24" cy="24" r="15"/><circle class="draw" cx="24" cy="24" r="7"/><path class="draw" d="M24 4v5M24 39v5M4 24h5M39 24h5"/><circle class="dot" cx="24" cy="24" r="2.6"/></svg>
+          <span class="status">Early access</span>
+        </div>
+        <div class="names"><h3>Witness</h3><span>Audio Evaluation &amp; Annotation · skill</span></div>
+        <p>Rubric-based rating and A/B comparison, evidence first. Every finding carries a timecode, the observed artifact, its audible character, the effect on usability and a confidence level.</p>
+        <div class="refuses"><span class="k">Refuses</span>Naming a cause when the audio only supports a symptom.</div>
+      </article>
+
+      <article class="card" data-kind="skill">
+        <div class="card-top">
+          <svg class="sigil" viewBox="0 0 48 48" aria-hidden="true"><rect class="draw" x="10" y="7" width="28" height="34" rx="3"/><path class="draw" d="M16 17h16M16 24h16M16 31h8"/><circle class="dot" cx="31" cy="31" r="2.6"/></svg>
+          <span class="status">Early access</span>
+        </div>
+        <div class="names"><h3>Ledger</h3><span>Mixing &amp; Mastering Reports · skill</span></div>
+        <p>Session and delivery notes a client can act on: what changed, what was measured, what stayed untouched, and versions compared level-matched.</p>
+        <div class="refuses"><span class="k">Refuses</span>A loudness number with no platform, client or artistic reason behind it.</div>
+      </article>
+
+      <article class="card" data-kind="skill">
+        <div class="card-top">
+          <svg class="sigil" viewBox="0 0 48 48" aria-hidden="true"><path class="draw" d="M18 10a16 16 0 0 1 0 28"/><path class="draw" d="M26 14a11 11 0 0 1 0 20"/><path class="draw" d="M33 19a6 6 0 0 1 0 10"/><circle class="dot" cx="12" cy="24" r="2.6"/></svg>
+          <span class="status">Early access</span>
+        </div>
+        <div class="names"><h3>Echo</h3><span>German Practice Drills · skill</span></div>
+        <p>Corrections, grammar and vocabulary for studio and office German in Berlin, pitched at beginner to intermediate. Spoken rehearsal for calls you would rather not improvise.</p>
+        <div class="refuses"><span class="k">Refuses</span>Overexplaining a correction.</div>
+      </article>
+
+      <article class="card" data-kind="plugin">
+        <div class="card-top">
+          <svg class="sigil" viewBox="0 0 48 48" aria-hidden="true"><path class="draw" d="M8 40V22L24 8l16 14v18Z"/><circle class="draw" cx="18" cy="30" r="2"/><circle class="draw" cx="30" cy="30" r="2"/><circle class="dot" cx="24" cy="22" r="2.6"/></svg>
+          <span class="status">Early access</span>
+        </div>
+        <div class="names"><h3>Den</h3><span>Studio Ops · plugin, nine skills</span></div>
+        <p>The working room of a techno studio in one install, from demo triage to the tech rider.</p>
+        <div class="tags"><span>demo triage</span><span>track review</span><span>mix and master decisions</span><span>sound design recipes</span><span>live set design</span><span>tech rider</span><span>release delivery</span><span>freelance admin DE</span><span>German correspondence</span></div>
+        <div class="refuses"><span class="k">Refuses</span>Blending the artist, the label and the freelancer into one voice.</div>
+      </article>
+
+      <article class="card" data-kind="theme">
+        <div class="card-top">
+          <svg class="sigil" viewBox="0 0 48 48" aria-hidden="true"><path class="draw" d="M24 8 38 34H10Z"/><path class="draw" d="M8 40h32"/><circle class="dot" cx="24" cy="26" r="2.6"/></svg>
+          <span class="status live">Public · MIT</span>
+        </div>
+        <div class="names"><h3>Ash</h3><span>Graphite · dark theme</span></div>
+        <p>A dark theme where every colour pair carries its computed contrast ratio, with a written restriction wherever a pair fails.</p>
+        <div class="refuses"><span class="k">Refuses</span>Eyeballing contrast.</div>
+        <div class="more-links"><a class="more" href="theme/graphite/">Graphite theme page</a><a class="more" href="https://github.com/notgabriels-sys/claude-code-50-dark-themes" target="_blank" rel="noopener">Source on GitHub ↗</a></div>
+      </article>
+    </div>
+  </section>
+
+  <section id="request">
+    <div class="contact">
+      <div class="sec-head">
+        <div class="k">Request a familiar</div>
+        <h2>Early access is by email.</h2>
+        <p>Say which familiar you want and what you would use it for. Each reply comes from a person, not an autoresponder.</p>
+      </div>
+      <div style="display:grid;gap:8px">
+        <div class="mail"><code id="addr">notgabriels@gmail.com</code><button class="btn" id="copy" type="button">Copy address</button><a class="btn primary" href="mailto:notgabriels@gmail.com?subject=Familiars%20early%20access">Write now</a></div>
+        <div class="copied" id="copied" aria-live="polite"></div>
+      </div>
+    </div>
+  </section>
+
+  </main>
+
+  <footer>
+    <span>familiars · gabs-utilities.com · Berlin</span>
+    <nav aria-label="Gabs Utilities">
+      <a href="./">themes</a>
+      <a href="https://audio.gabs-utilities.com/">audio</a>
+      <a href="https://tools.gabs-utilities.com/">tools</a>
+      <a aria-current="page">agents</a>
+      <a href="impressum.html">Impressum</a>
+    </nav>
+  </footer>
+</div>
+
+<button class="theme-switch" id="theme" type="button" aria-label="Switch colour theme">
+  <span class="knob">
+    <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+    <svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5Z"/></svg>
+  </span>
+  <span id="theme-label">Light mode</span>
+</button>
+
+<script>
+(function () {
+  var root = document.documentElement;
+  var mq = window.matchMedia ? window.matchMedia("(prefers-color-scheme: light)") : null;
+  function effective() {
+    var t = root.getAttribute("data-theme");
+    if (t) return t;
+    return mq && mq.matches ? "light" : "dark";
+  }
+  function paint() {
+    var e = effective();
+    root.setAttribute("data-eff", e);
+    document.getElementById("theme-label").textContent = e === "dark" ? "Light mode" : "Dark mode";
+  }
+  try { var saved = localStorage.getItem("familiars-theme"); if (saved === "light" || saved === "dark") root.setAttribute("data-theme", saved); } catch (e) {}
+  paint();
+  if (mq && mq.addEventListener) mq.addEventListener("change", paint);
+  new MutationObserver(paint).observe(root, { attributes: true, attributeFilter: ["data-theme"] });
+  document.getElementById("theme").addEventListener("click", function () {
+    var next = effective() === "dark" ? "light" : "dark";
+    root.setAttribute("data-theme", next);
+    try { localStorage.setItem("familiars-theme", next); } catch (e) {}
+  });
+
+  // filters
+  var chips = document.querySelectorAll(".chip");
+  chips.forEach(function (c) {
+    c.addEventListener("click", function () {
+      chips.forEach(function (x) { x.setAttribute("aria-pressed", x === c ? "true" : "false"); });
+      var f = c.dataset.f;
+      document.querySelectorAll(".card").forEach(function (card) { card.hidden = !(f === "all" || card.dataset.kind === f); });
+    });
+  });
+
+  // card light
+  document.querySelectorAll(".card").forEach(function (card) {
+    card.addEventListener("pointermove", function (ev) {
+      var r = card.getBoundingClientRect();
+      card.style.setProperty("--mx", (ev.clientX - r.left) + "px");
+      card.style.setProperty("--my", (ev.clientY - r.top) + "px");
+    });
+  });
+
+  // copy
+  document.getElementById("copy").addEventListener("click", function () {
+    var out = document.getElementById("copied"), addr = document.getElementById("addr");
+    function fallback() {
+      var range = document.createRange(); range.selectNodeContents(addr);
+      var s = window.getSelection(); s.removeAllRanges(); s.addRange(range);
+      out.textContent = "Selected. Press Ctrl+C or ⌘C to copy.";
+    }
+    try {
+      navigator.clipboard.writeText(addr.textContent).then(function () { out.textContent = "Copied."; }, fallback);
+    } catch (e) { fallback(); }
+  });
+
+  // the familiar's eye
+  var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var eye = document.getElementById("eye"), fam = document.getElementById("familiar");
+  if (!reduce && eye && fam) {
+    var tx = 0, ty = 0, cx = 0, cy = 0;
+    window.addEventListener("pointermove", function (ev) {
+      var r = fam.getBoundingClientRect();
+      var dx = ev.clientX - (r.left + r.width / 2), dy = ev.clientY - (r.top + r.height * .47);
+      var d = Math.max(1, Math.hypot(dx, dy));
+      tx = dx / d * Math.min(13, d / 18); ty = dy / d * Math.min(3, d / 60);
+    });
+    (function loop() {
+      cx += (tx - cx) * .12; cy += (ty - cy) * .12;
+      eye.setAttribute("x", (84 + cx).toFixed(2)); eye.setAttribute("y", (107 + cy).toFixed(2));
+      requestAnimationFrame(loop);
+    })();
+    (function blink() {
+      setTimeout(function () {
+        eye.classList.remove("blink"); void eye.getBBox(); eye.classList.add("blink");
+        blink();
+      }, 2600 + Math.random() * 3800);
+    })();
+  }
+})();
+</script>
+
+</body>
+</html>
