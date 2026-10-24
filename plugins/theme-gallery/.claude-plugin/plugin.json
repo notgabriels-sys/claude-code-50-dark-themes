@@ -1,0 +1,17 @@
+{
+  "name": "theme-gallery",
+  "version": "0.1.0",
+  "displayName": "Dark Themes Gallery",
+  "description": "A /themes pane listing the 62 free dark themes from 50 Dark Themes and Dark Themes Vol. 2 with color swatches, grouped by pack and filterable by accent family, marking the theme you have selected.",
+  "author": {
+    "name": "NotGabriels",
+    "url": "https://github.com/notgabriels-sys/claude-code-50-dark-themes"
+  },
+  "repository": "https://github.com/notgabriels-sys/claude-code-50-dark-themes",
+  "license": "MIT",
+  "keywords": ["claude-code", "themes", "dark-theme", "theme-gallery", "color-scheme", "mod"],
+  "icon": "./logo.png",
+  "documentationUrl": "https://github.com/notgabriels-sys/claude-code-50-dark-themes#readme",
+  "supportUrl": "https://github.com/notgabriels-sys/claude-code-50-dark-themes/issues",
+  "types": "./types/index.d.ts"
+}

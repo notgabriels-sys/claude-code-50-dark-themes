@@ -39,6 +39,23 @@
       "category": "themes",
       "tags": ["themes", "dark-theme", "color-scheme", "terminal"],
       "keywords": ["claude-code", "themes", "dark-theme", "terminal"]
+    },
+    {
+      "name": "theme-gallery",
+      "source": "./plugins/theme-gallery",
+      "version": "0.1.0",
+      "displayName": "Dark Themes Gallery",
+      "description": "A /themes pane showing the 62 free dark themes with color swatches and the theme you have selected.",
+      "author": {
+        "name": "NotGabriels",
+        "url": "https://github.com/notgabriels-sys/claude-code-50-dark-themes"
+      },
+      "homepage": "https://github.com/notgabriels-sys/claude-code-50-dark-themes/tree/main/plugins/theme-gallery",
+      "repository": "https://github.com/notgabriels-sys/claude-code-50-dark-themes",
+      "license": "MIT",
+      "category": "themes",
+      "tags": ["themes", "dark-theme", "theme-gallery", "mod"],
+      "keywords": ["claude-code", "themes", "dark-theme", "theme-gallery", "mod"]
     }
   ]
 }

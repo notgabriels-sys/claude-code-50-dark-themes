@@ -732,3 +732,41 @@ test("rejects an install guide whose FAQ answer names neither Gumroad nor the fr
   assert.notEqual(result.code, 0, "the verifier accepted a FAQ answer that never says where the free zip is");
   assert.match(result.stderr, /The install guide's FAQ answer must name the free zip at /);
 });
+
+test("rejects /themes gallery data that no longer matches a theme file", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const dataPath = join(fixtureRoot, "plugins", "theme-gallery", "hooks", "themes.ts");
+  const data = await readFile(dataPath, "utf8");
+  assert.match(data, /slug: 'absinthe'.*accent: '#C0D648'/, "the gallery data should hold Absinthe's accent");
+  await writeFile(dataPath, data.replace("accent: '#C0D648'", "accent: '#C0D649'"));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted gallery swatches that differ from the theme files");
+  assert.match(result.stderr, /plugins\/theme-gallery\/hooks\/themes\.ts is out of date with the theme files/);
+});
+
+test("rejects a marketplace that drops the theme gallery", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const marketplacePath = join(fixtureRoot, ".claude-plugin", "marketplace.json");
+  const marketplace = JSON.parse(await readFile(marketplacePath, "utf8"));
+  marketplace.plugins = marketplace.plugins.filter((plugin) => plugin.name !== "theme-gallery");
+  await writeFile(marketplacePath, `${JSON.stringify(marketplace, null, 2)}\n`);
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a marketplace without the gallery plugin");
+  assert.match(result.stderr, /exactly three plugins/);
+});
+
+test("rejects a theme gallery that ships a themes folder of its own", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  await cp(join(fixtureRoot, "plugins", "dark-themes-vol-2", "themes"), join(fixtureRoot, "plugins", "theme-gallery", "themes"), {
+    recursive: true,
+  });
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a gallery plugin that would pack as a theme pack");
+  assert.match(result.stderr, /must not have a themes\/ folder/);
+});
