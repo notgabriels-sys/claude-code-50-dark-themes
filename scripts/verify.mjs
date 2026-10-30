@@ -921,10 +921,11 @@ if (!/matches by filename, not contents/i.test(installerHeader)) {
 // covers every README GitHub renders outside products/, found by walking the
 // tree: terminal-schemes/README.md (#68) said its schemes were "MIT, the same
 // as the rest of this repository" while a fixed list of three READMEs was read.
-const repositoryReadmes = (await readdir(root, { recursive: true }))
+const repositoryFiles = (await readdir(root, { recursive: true }))
   .map((path) => path.replaceAll("\\", "/"))
-  .filter((path) => /(^|\/)README\.md$/.test(path) && !path.split("/").some((segment) => [".git", ".worktrees", "node_modules", "products"].includes(segment)))
+  .filter((path) => !path.split("/").some((segment) => [".git", ".worktrees", "node_modules", "products"].includes(segment)))
   .sort();
+const repositoryReadmes = repositoryFiles.filter((path) => /(^|\/)README\.md$/.test(path));
 const productLicences = [];
 for (const entry of await readdir(new URL("products/", root), { withFileTypes: true })) {
   if (!entry.isDirectory()) continue;
@@ -949,70 +950,142 @@ if (productLicences.length) {
 // Both plugin READMEs said "Step-by-step for each terminal:" and linked the
 // install guide, which names no terminal app at all. The per-terminal steps
 // are in terminal-schemes/README.md (#68), one section per scheme folder. So
-// wherever a public page, a README or llms.txt promises steps for each (or
-// every) terminal, what it links right after the promise (or the page itself,
-// if it links nothing there) must name every terminal with a folder in
-// terminal-schemes/. A name may be spelled with a space, dot or dash inside
-// it: "VS Code" for vscode/, "Terminal.app" for terminal-app/.
+// wherever a public page (the generated theme pages included), a README or
+// llms.txt promises steps for each, every or all terminals, for your terminal,
+// or per terminal, a page linked from the promise's own sentence or list item
+// (or the page itself, if that sentence links no page: an image, a scheme file
+// or a zip is not where steps are) must name every terminal with a folder in
+// terminal-schemes/. A name may be spelled with a space, dot or dash inside it:
+// "VS Code" for vscode/, "Terminal.app" for terminal-app/. A question, or a
+// promise just after "no", "not" or "the same", promises nothing.
 const schemeTerminals = (await readdir(new URL("terminal-schemes/", root), { withFileTypes: true }).catch(() => []))
   .filter((entry) => entry.isDirectory())
   .map((entry) => entry.name)
   .sort();
 const namesTerminal = (folder, text) =>
   new RegExp(`\\b${[...folder.replaceAll("-", "")].map(escapeRegExp).join("[\\s.-]?")}\\b`, "i").test(text);
-// Readable text with each link's address kept in ⟨…⟩ right after its label.
-const readableWithLinks = (file, source) =>
-  (file.endsWith(".html")
-    ? source
-        .replace(/<!--[\s\S]*?-->/g, "")
-        .replace(/<style\b[\s\S]*?<\/style\s*>/gi, "")
-        .replace(/<script\b(?![^>]*ld\+json)[^>]*>[\s\S]*?<\/script\s*>/gi, "")
-        .replace(/<a\b[^>]*?\shref\s*=\s*["']?([^"'\s>]+)["']?[^>]*>([\s\S]*?)<\/a\s*>/gi, " $2 ⟨$1⟩ ")
-        .replace(/<[^>]+>/g, " ")
-        .replace(/&nbsp;|&#160;/gi, " ")
-        .replace(/&amp;/gi, "&")
-    : source
-  ).replace(/\s+/g, " ");
+// A page as the sentences a reader gets, each link's address kept in ⟨…⟩ or
+// (…) right after its label. HTML keeps its JSON-LD and description meta tags
+// and breaks at block elements; Markdown resolves reference links, drops images
+// and emphasis, and breaks at blank lines, list items, headings and table rows.
+function readableSentences(file, source) {
+  let blocks;
+  if (file.endsWith(".html")) {
+    const descriptions = [...source.matchAll(/<meta\b[^>]*>/gi)]
+      .map(([tag]) => tag)
+      .filter((tag) => /\b(?:name|property)\s*=\s*["']?(?:og:|twitter:)?description["'\s/>]/i.test(tag))
+      .map((tag) => tag.match(/\bcontent\s*=\s*(?:"([^"]*)"|'([^']*)')/i))
+      .filter(Boolean)
+      .map((content) => content[1] ?? content[2]);
+    const body = source
+      .replace(/<!--[\s\S]*?-->/g, "")
+      .replace(/<style\b[\s\S]*?<\/style\s*>/gi, "")
+      .replace(/<script\b(?![^>]*ld\+json)[^>]*>[\s\S]*?<\/script\s*>/gi, "")
+      .replace(/<a\b[^>]*?\shref\s*=\s*["']?([^"'\s>]+)["']?[^>]*>([\s\S]*?)<\/a\s*>/gi, " $2 ⟨$1⟩ ")
+      .replace(
+        /<\/?(?:address|article|aside|blockquote|br|dd|details|div|dl|dt|figcaption|figure|footer|h[1-6]|header|hr|li|main|nav|ol|p|pre|section|summary|table|td|th|tr|ul)\b[^>]*>/gi,
+        "\n\n",
+      )
+      .replace(/<[^>]+>/g, " ")
+      .replace(/&nbsp;|&#160;/gi, " ")
+      .replace(/&amp;/gi, "&");
+    blocks = [...descriptions, ...body.split(/\n\s*\n/)];
+  } else {
+    const key = (label) => label.trim().replace(/\s+/g, " ").toLowerCase();
+    const references = new Map();
+    const text = source.replace(/^ {0,3}\[([^\]\n]+)\]:[ \t]*<?([^\s>]+)>?.*$/gm, (_, label, url) => {
+      references.set(key(label), url);
+      return "";
+    });
+    const resolve = (whole, label, reference) => {
+      const url = references.get(key(reference || label));
+      return url ? `[${label}](${url})` : whole;
+    };
+    blocks = text
+      .replace(/!\[[^\]]*\](?:\([^)]*\)|\[[^\]]*\])/g, " ")
+      .replace(/\[([^\]\n]+)\]\[([^\]\n]*)\]/g, resolve)
+      .replace(/\[([^\]\n]+)\](?![(\[:])/g, (whole, label) => resolve(whole, label))
+      .split(/\n[ \t]*\n|\n(?=[ \t]*(?:(?:[-*+]|\d+[.)])[ \t]|#{1,6}[ \t]|\|))/)
+      .map((block) => block.replace(/^[ \t]*(?:[-*+]|\d+[.)])[ \t]/, "").replace(/\*\*|__|[*`]/g, ""));
+  }
+  return blocks.flatMap((block) =>
+    block
+      .replace(/[‐‑]/g, "-")
+      .replace(/\s+/g, " ")
+      .trim()
+      .split(/(?<=[.!?])\s+(?=[^\s⟩])/)
+      .filter(Boolean),
+  );
+}
 // A link into this repository or onto the site, read from the local tree. A
-// folder serves its index.html on the site and renders its README.md on GitHub.
+// folder serves its index.html on the site and renders its README.md on GitHub;
+// a link that is only a #fragment stays on its own page.
+const readablePages = new Map();
 async function linkedPage(file, link) {
   const onSite = link.match(/^https?:\/\/(?:www\.)?(?:gabs-utilities\.com|notgabriels-sys\.github\.io\/claude-code-50-dark-themes)(\/[^?#]*)?(?:[?#].*)?$/i);
   const onGitHub = link.match(/^https:\/\/github\.com\/notgabriels-sys\/claude-code-50-dark-themes(?:\/(?:blob|tree)\/[^/?#]+(\/[^?#]*)?)?\/?(?:[?#].*)?$/i);
+  const bare = link.split(/[?#]/)[0];
   let path;
   if (onSite) path = onSite[1] ?? "";
   else if (onGitHub) path = onGitHub[1] ?? "";
   else if (/^[a-z][a-z\d+.-]*:|^\/\//i.test(link)) return null;
-  else if (link.startsWith("/")) path = link.split(/[?#]/)[0];
-  else path = new URL(link.split(/[?#]/)[0] || file, new URL(file, root)).href.slice(root.href.length);
-  path = decodeURIComponent(path).replace(/^\/+/, "");
+  else if (bare.startsWith("/")) path = bare;
+  else path = bare ? new URL(bare, new URL(file, root)).href.slice(root.href.length) : file;
+  try {
+    path = decodeURIComponent(path);
+  } catch {}
+  path = path.replace(/^\/+/, "");
   const folder = path && !path.endsWith("/") ? `${path}/` : path;
   const candidates = [...(path && !path.endsWith("/") ? [path] : []), ...(onGitHub ? ["README.md", "index.html"] : ["index.html", "README.md"]).map((name) => folder + name)];
   for (const candidate of candidates) {
-    try {
-      return { path: candidate, text: readableWithLinks(candidate, await readFile(new URL(candidate, root), "utf8")) };
-    } catch {}
+    if (!readablePages.has(candidate)) {
+      readablePages.set(candidate, await readFile(new URL(candidate, root), "utf8").then((source) => readableSentences(candidate, source).join(" "), () => null));
+    }
+    if (readablePages.get(candidate) !== null) return { path: candidate, text: readablePages.get(candidate) };
   }
   return null;
 }
-for (const file of [...publicHtmlFiles, ...repositoryReadmes, "llms.txt"]) {
-  const text = readableWithLinks(file, await readFile(new URL(file, root), "utf8"));
-  const promises = text.matchAll(
-    /\b(?:step-by-step|steps|instructions|how-tos?|walkthroughs?|guides?)\b[^.!?]{0,60}?\b(?:for|in|per) (?:each|every|any) terminal(?: apps?| applications?| emulators?)?\b|\bper-terminal (?:steps|instructions|guides?|set-?up)\b/gi,
-  );
-  for (const promise of promises) {
-    const end = promise.index + promise[0].length;
-    const link = text.slice(end, end + 200).match(/\]\(\s*<?([^)\s>]+)>?|⟨([^⟩]+)⟩|<(https?:\/\/[^>\s]+)>|(https?:\/\/[^\s<>()"'\]]+)/);
-    const href = link && (link[1] ?? link[2] ?? link[3] ?? link[4]).replace(/[.,;:!?]+$/, "");
-    const target = href ? await linkedPage(file, href) : { path: file, text };
-    if (!target) {
-      fail(`${file} promises "${promise[0]}" and links ${href}, which this check cannot read. Link a page in this repository or on gabs-utilities.com.`);
-    }
-    if (!schemeTerminals.length) fail(`${file} promises "${promise[0]}", but terminal-schemes/ holds no terminal folders to check it against.`);
-    const missing = schemeTerminals.filter((folder) => !namesTerminal(folder, target.text));
-    if (missing.length) {
+const promiseNoun = String.raw`(?:step[- ]by[- ]step|steps?|instructions?|how[- ]to|walk-?throughs?|guides?|set[- ]?up)`;
+const terminalWord = String.raw`terminals?(?:[- ](?:apps?|applications?|emulators?))?\b`;
+const perTerminalPromise = new RegExp(
+  [
+    String.raw`\b${promiseNoun}\b[^.!?]{0,60}?\b(?:for|in|per|across) (?:each|every|all)(?: (?:of the|[a-z]+)){0,2}? ${terminalWord}`,
+    String.raw`\b${promiseNoun}\b[^.!?]{0,30}?\bfor your ${terminalWord}`,
+    String.raw`\b${promiseNoun}\b[^.!?]{0,30}?\bper[- ]terminal\b`,
+    String.raw`\b(?:per|terminal)[- ](?:terminal|specific) ${promiseNoun}\b`,
+    String.raw`\bterminal[- ]by[- ]terminal\b`,
+  ].join("|"),
+  "gi",
+);
+const sentenceLinks = /\]\(\s*<?([^)\s>]+)>?|⟨([^⟩]+)⟩|<(https?:\/\/[^>\s]+)>|(https?:\/\/[^\s<>()"'`\]⟨⟩*]+)/g;
+for (const file of [...repositoryFiles.filter((path) => path.endsWith(".html")), ...repositoryReadmes, "llms.txt"]) {
+  const sentences = readableSentences(file, await readFile(new URL(file, root), "utf8"));
+  for (const sentence of sentences) {
+    for (const promise of sentence.matchAll(perTerminalPromise)) {
+      const lead = sentence.slice(Math.max(0, promise.index - 24), promise.index + promise[0].length);
+      if (/\?\s*$/.test(sentence) || /\b(?:no|not|never|without|same|identical|regardless)\b|n['’]t\b/i.test(lead)) continue;
+      if (!schemeTerminals.length) fail(`${file} promises "${promise[0]}", but terminal-schemes/ holds no terminal folders to check it against.`);
+      const hrefs = [...sentence.matchAll(sentenceLinks)]
+        .map((link) => (link[1] ?? link[2] ?? link[3] ?? link[4]).replace(/[?!.,:*_~;]+$/, ""))
+        .filter((href) => {
+          let path = href.split(/[?#]/)[0];
+          try {
+            if (/^[a-z][a-z\d+.-]*:/i.test(href)) path = new URL(href).pathname;
+          } catch {}
+          return !/\.(?!(?:html?|md|txt)$)[^./]+$/i.test(path);
+        });
+      const targets = hrefs.length
+        ? await Promise.all(hrefs.map(async (href) => ({ href, page: await linkedPage(file, href) })))
+        : [{ href: null, page: { path: file, text: sentences.join(" ") } }];
+      const checked = targets.map((target) => ({ ...target, missing: target.page && schemeTerminals.filter((folder) => !namesTerminal(folder, target.page.text)) }));
+      if (checked.some((target) => target.missing?.length === 0)) continue;
+      const readable = checked.find((target) => target.page);
+      if (!readable) {
+        fail(`${file} promises "${promise[0]}" and links ${hrefs[0]}, which this check cannot read. Link a page in this repository or on gabs-utilities.com.`);
+      }
       fail(
-        `${file} promises "${promise[0]}" but ${href ? `links ${target.path}` : "gives no link"}, which never names ` +
-          `${missing.length} of the ${schemeTerminals.length} terminals with a scheme in terminal-schemes/ (${missing.join(", ")}). ` +
+        `${file} promises "${promise[0]}" but ${readable.href ? `links ${readable.page.path}` : "gives no link"}, which never names ` +
+          `${readable.missing.length} of the ${schemeTerminals.length} terminals with a scheme in terminal-schemes/ (${readable.missing.join(", ")}). ` +
           "terminal-schemes/README.md has a section for each.",
       );
     }
