@@ -3984,3 +3984,44 @@ test("rejects a Vol. 2 preview colour written twice for one theme", { timeout: 9
   assert.notEqual(result.code, 0, "a preview row written twice passed");
   assert.match(result.stderr, /previews\.json writes a preview colour for Afterglow twice/);
 });
+
+// What llms.txt gives an agent: only this site's own served files, no payment host even as a
+// name, and a link to every root page a search engine may index. Each row edits llms.txt in a
+// fixture; a null message is a control that must stay green.
+const llmsFamiliarsLine = "- [Familiars: Claude skills, plugins and themes for sound work](https://gabs-utilities.com/familiars.html)";
+const llmsFamiliarsLink = "[Open the Familiars page.](https://gabs-utilities.com/familiars.html)";
+for (const [label, edits, message] of [
+  ["leaves out a root page a search engine may index", [[`${llmsFamiliarsLine}\n`, ""], [llmsFamiliarsLink, "Open the Familiars page from the gallery."]],
+    /familiars\.html is a page a search engine may index, and llms\.txt does not link it\. Add a line under "Primary pages"/],
+  ["names a page only as a bare address, not a link",
+    [[llmsFamiliarsLine, "- Familiars: https://gabs-utilities.com/familiars.html"], [llmsFamiliarsLink, "Open the Familiars page: https://gabs-utilities.com/familiars.html"]],
+    /familiars\.html is a page a search engine may index, and llms\.txt does not link it/],
+  ["leaves out a page that asks not to be indexed", [["- [Impressum](https://gabs-utilities.com/impressum.html)\n", ""]], null],
+  ["links a page with a fragment and ends an address with a full stop",
+    [[llmsFamiliarsLine, llmsFamiliarsLine.replace("familiars.html)", "familiars.html#cards)")],
+      [llmsFamiliarsLink, "Open the Familiars page at https://gabs-utilities.com/familiars.html."]], null],
+  ["links another site", [[llmsFamiliarsLine, `${llmsFamiliarsLine}\n- [Elsewhere](https://example.org/x)`]],
+    /llms\.txt:\d+ gives https:\/\/example\.org\/x, which is not on https:\/\/gabs-utilities\.com\/; llms\.txt links only to this site's own pages and files/],
+  ["links this site over plain http", [["[Shop and theme gallery](https://gabs-utilities.com/)", "[Shop and theme gallery](http://gabs-utilities.com/)"]],
+    /llms\.txt:\d+ gives http:\/\/gabs-utilities\.com\/, which is not on https:\/\/gabs-utilities\.com\//],
+  ["names a payment host without a link", [[llmsFamiliarsLine, `${llmsFamiliarsLine}\n- Tips: paypal.me/gabs`]],
+    /llms\.txt:\d+ names paypal\.me, a payment host; llms\.txt names no checkout/],
+  ["gives an address on this site that it does not serve", [[llmsFamiliarsLine, `${llmsFamiliarsLine}\n- [Old](https://gabs-utilities.com/old.html)`]],
+    /llms\.txt:\d+ gives https:\/\/gabs-utilities\.com\/old\.html, which is not a file this site serves/],
+  ["does not link the theme pages' index", [["- [Every theme, one page each](https://gabs-utilities.com/theme/)", "- Every theme, one page each"]],
+    /llms\.txt does not link the theme pages' index, https:\/\/gabs-utilities\.com\/theme\//],
+  ["does not give the theme pages' address pattern", [["own page at https://gabs-utilities.com/theme/<slug>/", "own page under the theme index"]],
+    /llms\.txt does not give the theme pages' address pattern, https:\/\/gabs-utilities\.com\/theme\/<slug>\//],
+]) {
+  test(`llms.txt ${message ? "fails when it" : "passes when it"} ${label}`, async (t) => {
+    const fixtureRoot = await makeFixture(t);
+    for (const [from, to] of edits) await editFixtureFile(fixtureRoot, "llms.txt", from, to);
+    const result = await runVerifier(fixtureRoot);
+    if (message === null) {
+      assert.equal(result.code, 0, `llms.txt that ${label} should pass: ${result.stderr}`);
+    } else {
+      assert.notEqual(result.code, 0, `llms.txt that ${label} passed`);
+      assert.match(result.stderr, message);
+    }
+  });
+}

@@ -56,7 +56,7 @@ produces for the paid products before anything ships.
 | `theme/` pages | one crawlable page per theme, and an index | written by `scripts/build-theme-pages.mjs` from the theme files; `verify` compares every page with a fresh build and reviews their one copy script by hash |
 | `sitemap.xml` | crawler discovery of the public pages and the theme pages | written by the same builder, with a `<lastmod>` only on the two dated pages, read from each page's JSON-LD `dateModified`; `verify` holds it to a sitemap element allowlist, with no stylesheet, every `<loc>` to the site, compares it with a fresh build, and then reads it against the pages: every `<loc>` a served page with no robots `noindex`, listed once, every such page listed, and each `<lastmod>` equal to its page's `dateModified` |
 | `robots.txt` | crawl permission; points at the sitemap | — |
-| `llms.txt` | agents and LLM crawlers reading the catalog | `verify` reads the counts it states and the install commands it gives |
+| `llms.txt` | agents and LLM crawlers reading the catalog | `verify` reads the counts it states and the install commands it gives, requires a link to every root page a search engine may index and to the theme pages' index and address pattern, and refuses any address not on the site or not served, and any payment host named in it, linked or not |
 | `themes.json` | tools, aggregators and agents consuming the original pack | `verify` rebuilds and byte-compares, and checks the content against the theme files |
 | `README.md` | GitHub arrivals, the install path | `verify` checks the install commands and Gumroad slugs |
 | `.claude-plugin/marketplace.json` | `claude plugin install` | `verify` checks every plugin: keys, manifests and the exact files each ships |
@@ -73,9 +73,9 @@ payment surface (see `CLAUDE.md`).
 Adding a public page means adding it to `llms.txt` by hand and to
 `FIXED_SITEMAP_PAGES` in `scripts/build-theme-pages.mjs`, then rebuilding.
 `verify` fails on a served page a search engine may index that the sitemap
-does not list, so a page that should stay out of search carries a robots
-meta naming `noindex` instead, as `impressum.html` and
-`assets/social-preview.html` do. Moving a dated page's `dateModified` moves its
+does not list, or, at the root, that `llms.txt` does not link, so a page that
+should stay out of search carries a robots meta naming `noindex` instead, as
+`impressum.html` and `assets/social-preview.html` do. Moving a dated page's `dateModified` moves its
 `<lastmod>` too, so rebuild after it.
 
 ## themes.json — the pattern worth copying

@@ -3967,31 +3967,34 @@ for (const file of servedFiles) {
 }
 
 await themePageFreshness("sitemap.xml", themePages.get("sitemap.xml"));
+// Which served pages a search engine may index: a page asks not to be with a robots or googlebot
+// meta naming noindex or none. The sitemap and llms.txt both read this one map.
+const robotsTokens = (page, markup) =>
+  htmlTags(markup)
+    .filter((tag) => !tag.closing && tag.name === "meta" && /^(robots|googlebot)$/i.test(tag.attributes.find((a) => a.name === "name")?.value ?? ""))
+    .flatMap((tag) => {
+      const content = tag.attributes.find((a) => a.name === "content")?.value ?? "";
+      if (content.includes("&")) {
+        fail(`${page} writes a robots meta with "&" in its content; write its directives plainly, as noindex, so every reader sees the same one.`);
+      }
+      return content.toLowerCase().split(",").map((token) => token.trim());
+    });
+const indexablePages = new Map();
+for (const page of servedFiles.filter((file) => file.endsWith(".html"))) {
+  const tokens = robotsTokens(page, await readFile(fileUrl(page), "utf8"));
+  indexablePages.set(page, !tokens.includes("noindex") && !tokens.includes("none"));
+}
+// The address a browser and a crawler use for each served page: a directory's index page is
+// written as its directory.
+const pageAddress = (page) => `${siteUrl}${urlPath(page).replace(/(^|\/)index\.html$/, "$1")}`;
+
 // What the sitemap lists, read against the pages themselves rather than the builder (rule 12):
-// every <loc> is a page this site serves that does not ask not to be indexed, listed once; every
-// served page a search engine may index is listed; and a dated page (scripts/page-dates.mjs)
-// carries one <lastmod>, its JSON-LD dateModified, which no other page carries. A page asks not
-// to be indexed with a robots or googlebot meta naming noindex or none.
+// every <loc> is a page this site serves that a search engine may index, listed once; every such
+// page is listed; and a dated page (scripts/page-dates.mjs) carries one <lastmod>, its JSON-LD
+// dateModified, which no other page carries.
 {
   const sitemap = themePages.get("sitemap.xml");
-  const robotsTokens = (page, markup) =>
-    htmlTags(markup)
-      .filter((tag) => !tag.closing && tag.name === "meta" && /^(robots|googlebot)$/i.test(tag.attributes.find((a) => a.name === "name")?.value ?? ""))
-      .flatMap((tag) => {
-        const content = tag.attributes.find((a) => a.name === "content")?.value ?? "";
-        if (content.includes("&")) {
-          fail(`${page} writes a robots meta with "&" in its content; write its directives plainly, as noindex, so every reader sees the same one.`);
-        }
-        return content.toLowerCase().split(",").map((token) => token.trim());
-      });
-  const indexable = new Map();
-  for (const page of servedFiles.filter((file) => file.endsWith(".html"))) {
-    const tokens = robotsTokens(page, await readFile(fileUrl(page), "utf8"));
-    indexable.set(page, !tokens.includes("noindex") && !tokens.includes("none"));
-  }
-  // The address a browser and a crawler use for each served page: a directory's index page is
-  // written as its directory.
-  const pageAt = new Map([...indexable.keys()].map((page) => [`${siteUrl}${urlPath(page).replace(/(^|\/)index\.html$/, "$1")}`, page]));
+  const pageAt = new Map([...indexablePages.keys()].map((page) => [pageAddress(page), page]));
   const entries = [...sitemap.matchAll(/<url>([\s\S]*?)<\/url>/g)].map(([, entry]) => entry);
   if (entries.length !== (sitemap.match(/<url\b/g) ?? []).length) fail("sitemap.xml has a <url> verify cannot read.");
   if ((sitemap.match(/<lastmod\b/g) ?? []).length !== (sitemap.match(/<lastmod>\d{4}-\d{2}-\d{2}<\/lastmod>/g) ?? []).length) {
@@ -4006,7 +4009,7 @@ await themePageFreshness("sitemap.xml", themePages.get("sitemap.xml"));
     if (!page) fail(`sitemap.xml lists ${location}, which is not the address of a page this site serves.`);
     if (listed.has(page)) fail(`sitemap.xml lists ${location} twice.`);
     listed.add(page);
-    if (!indexable.get(page)) {
+    if (!indexablePages.get(page)) {
       fail(`sitemap.xml lists ${location}, but ${page} carries a robots noindex; a sitemap lists only pages a search engine may index. Drop it from FIXED_SITEMAP_PAGES in scripts/build-theme-pages.mjs and rebuild, or drop the noindex.`);
     }
     const lastmods = [...entry.matchAll(/<lastmod>([^<]*)<\/lastmod>/g)].map(([, day]) => day);
@@ -4019,13 +4022,48 @@ await themePageFreshness("sitemap.xml", themePages.get("sitemap.xml"));
       fail(`sitemap.xml gives ${page} a <lastmod>, but only a dated page in scripts/page-dates.mjs states the day it last changed.`);
     }
   }
-  for (const [page, open] of indexable) {
+  for (const [page, open] of indexablePages) {
     if (!open || listed.has(page)) continue;
     fail(
       page.startsWith("theme/")
         ? `${page} is a page a search engine may index, and sitemap.xml does not list it; scripts/build-theme-pages.mjs lists every page it renders, so render this one there or remove it.`
         : `${page} is a page a search engine may index, and sitemap.xml does not list it. Add it to FIXED_SITEMAP_PAGES in scripts/build-theme-pages.mjs and rebuild, or give it <meta name="robots" content="noindex">.`,
     );
+  }
+}
+
+// What llms.txt gives an agent. It is read and followed by machines, so it links only to this
+// site, and only to files the site serves: a payment link there would pass every other check,
+// since it is not a page, and an off-site address is never one it needs. Every root page a search
+// engine may index is linked from it, and the theme pages by their index and their pattern line.
+{
+  const llms = await readFile(new URL("llms.txt", root), "utf8");
+  const lineOf = (index) => llms.slice(0, index).split("\n").length;
+  const themePattern = `${siteUrl}theme/<slug>/`;
+  const servedAddress = new Set(servedFiles.flatMap((file) => [`${siteUrl}${urlPath(file)}`, ...(/(^|\/)index\.html$/.test(file) ? [pageAddress(file)] : [])]));
+  for (const match of llms.matchAll(/[a-z][a-z0-9+.-]*:\/\/[^\s<>()\[\]"'`]*/gi)) {
+    const address = match[0].replace(/[.,;:!?]+$/, "");
+    if (!address.startsWith(siteUrl)) {
+      fail(`llms.txt:${lineOf(match.index)} gives ${address}, which is not on ${siteUrl}; llms.txt links only to this site's own pages and files.`);
+    }
+    if (llms.startsWith(themePattern, match.index)) continue;
+    if (!servedAddress.has(address.replace(/#.*$/, ""))) {
+      fail(`llms.txt:${lineOf(match.index)} gives ${address}, which is not a file this site serves.`);
+    }
+  }
+  for (const match of llms.matchAll(/[a-z0-9-]+(?:\.[a-z0-9-]+)+/gi)) {
+    if (PAYMENT_DOMAIN.test(match[0].toLowerCase())) {
+      fail(`llms.txt:${lineOf(match.index)} names ${match[0]}, a payment host; llms.txt names no checkout, linked or not.`);
+    }
+  }
+  const linked = new Set([...llms.matchAll(/\]\(([^()\s]+)\)/g)].map(([, address]) => address.replace(/#.*$/, "")));
+  for (const [page, open] of indexablePages) {
+    if (!open || page.includes("/") || linked.has(pageAddress(page))) continue;
+    fail(`${page} is a page a search engine may index, and llms.txt does not link it. Add a line under "Primary pages": - [<the page's title>](${pageAddress(page)})`);
+  }
+  if (servedFiles.some((file) => file.startsWith("theme/"))) {
+    if (!linked.has(`${siteUrl}theme/`)) fail(`llms.txt does not link the theme pages' index, ${siteUrl}theme/.`);
+    if (!llms.includes(themePattern)) fail(`llms.txt does not give the theme pages' address pattern, ${themePattern}.`);
   }
 }
 
