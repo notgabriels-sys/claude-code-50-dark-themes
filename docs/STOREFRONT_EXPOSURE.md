@@ -54,7 +54,7 @@ produces for the paid products before anything ships.
 | `index.html` JSON-LD | search engines; free plugin only | `verify` checks the plugin's version and download URL, allows one script-tag spelling and only the plain schema.org context, refuses microdata and RDFa, and requires exactly one ItemList on the site, checked against the theme files |
 | `index.html` "Start here" row | a few picks, each chosen by a measured contrast ratio | written by `scripts/build-quick-picks.mjs` from the theme files; `verify` compares the block with a fresh build and checks each pick's theme page exists |
 | `theme/` pages | one crawlable page per theme, and an index | written by `scripts/build-theme-pages.mjs` from the theme files; `verify` compares every page with a fresh build and reviews their one copy script by hash |
-| `sitemap.xml` | crawler discovery of the public pages and the theme pages | written by the same builder; `verify` holds it to a sitemap element allowlist, with no stylesheet, every `<loc>` to the site, and then compares it with a fresh build |
+| `sitemap.xml` | crawler discovery of the public pages and the theme pages | written by the same builder, with a `<lastmod>` only on the two dated pages, read from each page's JSON-LD `dateModified`; `verify` holds it to a sitemap element allowlist, with no stylesheet, every `<loc>` to the site, compares it with a fresh build, and then reads it against the pages: every `<loc>` a served page with no robots `noindex`, listed once, every such page listed, and each `<lastmod>` equal to its page's `dateModified` |
 | `robots.txt` | crawl permission; points at the sitemap | — |
 | `llms.txt` | agents and LLM crawlers reading the catalog | `verify` reads the counts it states and the install commands it gives |
 | `themes.json` | tools, aggregators and agents consuming the original pack | `verify` rebuilds and byte-compares, and checks the content against the theme files |
@@ -71,10 +71,12 @@ checkout or payment host never goes on that list from exposure work; it is a
 payment surface (see `CLAUDE.md`).
 
 Adding a public page means adding it to `llms.txt` by hand and to
-`FIXED_SITEMAP_ENTRIES` in `scripts/build-theme-pages.mjs`, then rebuilding.
-`llms.txt` is not generated, so it does not notice a page that was never
-listed; the sitemap is regenerated from that list, so a page missing from it
-is missing from the sitemap too.
+`FIXED_SITEMAP_PAGES` in `scripts/build-theme-pages.mjs`, then rebuilding.
+`verify` fails on a served page a search engine may index that the sitemap
+does not list, so a page that should stay out of search carries a robots
+meta naming `noindex` instead, as `impressum.html` and
+`assets/social-preview.html` do. Moving a dated page's `dateModified` moves its
+`<lastmod>` too, so rebuild after it.
 
 ## themes.json — the pattern worth copying
 

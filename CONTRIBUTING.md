@@ -132,8 +132,9 @@ Every theme has a page under `theme/<slug>/`, plus the index at `theme/index.htm
 `sitemap.xml`. They are generated, never edited by hand: `scripts/build-theme-pages.mjs` renders
 them from the theme files, the gallery's terminal backgrounds and `previews.json`, and the verifier
 fails if a page on disk differs from that render, if a theme has no page, or if a page has no theme.
-After changing a theme, a gallery terminal colour or a preview colour, run the builder and commit
-what it writes:
+The sitemap's `<lastmod>` for the install guide and the semantic-colors article is each page's JSON-LD
+`dateModified`. After changing a theme, a gallery terminal colour, a preview colour or a dated page's
+`dateModified`, run the builder and commit what it writes:
 
 ```bash
 node scripts/build-theme-pages.mjs
@@ -242,7 +243,8 @@ The command checks:
 - that stated check and theme counts on public pages, plugin descriptions and the READMEs match the
   computed values, in digits or in words;
 - that share images carry alternative text, and that one image is described one way.
-- that every page under `theme/` is a fresh render of its theme file and `sitemap.xml` lists each one.
+- that every page under `theme/` is a fresh render of its theme file, and that `sitemap.xml` lists every
+  served page without a robots `noindex`, nothing else, and a dated page with its `dateModified`.
 
 GitHub Actions runs the regression tests and the same repository check on every pull request, on every
 push to `main`, and on demand from the repository's Actions tab.

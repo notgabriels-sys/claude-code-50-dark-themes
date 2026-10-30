@@ -2678,7 +2678,7 @@ const themePageFreshness = async (path, expected) => {
   if (actual !== expected) {
     fail(
       `${path} is stale: it does not match what scripts/build-theme-pages.mjs renders from the ` +
-        "theme files. Run it and commit the result.",
+        `theme files${path === "sitemap.xml" ? " and the dated pages' dateModified" : ""}. Run it and commit the result.`,
     );
   }
 };
@@ -3967,6 +3967,67 @@ for (const file of servedFiles) {
 }
 
 await themePageFreshness("sitemap.xml", themePages.get("sitemap.xml"));
+// What the sitemap lists, read against the pages themselves rather than the builder (rule 12):
+// every <loc> is a page this site serves that does not ask not to be indexed, listed once; every
+// served page a search engine may index is listed; and a dated page (scripts/page-dates.mjs)
+// carries one <lastmod>, its JSON-LD dateModified, which no other page carries. A page asks not
+// to be indexed with a robots or googlebot meta naming noindex or none.
+{
+  const sitemap = themePages.get("sitemap.xml");
+  const robotsTokens = (page, markup) =>
+    htmlTags(markup)
+      .filter((tag) => !tag.closing && tag.name === "meta" && /^(robots|googlebot)$/i.test(tag.attributes.find((a) => a.name === "name")?.value ?? ""))
+      .flatMap((tag) => {
+        const content = tag.attributes.find((a) => a.name === "content")?.value ?? "";
+        if (content.includes("&")) {
+          fail(`${page} writes a robots meta with "&" in its content; write its directives plainly, as noindex, so every reader sees the same one.`);
+        }
+        return content.toLowerCase().split(",").map((token) => token.trim());
+      });
+  const indexable = new Map();
+  for (const page of servedFiles.filter((file) => file.endsWith(".html"))) {
+    const tokens = robotsTokens(page, await readFile(fileUrl(page), "utf8"));
+    indexable.set(page, !tokens.includes("noindex") && !tokens.includes("none"));
+  }
+  // The address a browser and a crawler use for each served page: a directory's index page is
+  // written as its directory.
+  const pageAt = new Map([...indexable.keys()].map((page) => [`${siteUrl}${urlPath(page).replace(/(^|\/)index\.html$/, "$1")}`, page]));
+  const entries = [...sitemap.matchAll(/<url>([\s\S]*?)<\/url>/g)].map(([, entry]) => entry);
+  if (entries.length !== (sitemap.match(/<url\b/g) ?? []).length) fail("sitemap.xml has a <url> verify cannot read.");
+  if ((sitemap.match(/<lastmod\b/g) ?? []).length !== (sitemap.match(/<lastmod>\d{4}-\d{2}-\d{2}<\/lastmod>/g) ?? []).length) {
+    fail("sitemap.xml has a <lastmod> verify cannot read; each is written <lastmod>YYYY-MM-DD</lastmod>.");
+  }
+  const listed = new Set();
+  for (const entry of entries) {
+    const locations = [...entry.matchAll(/<loc>([^<]*)<\/loc>/g)].map(([, location]) => location);
+    if (locations.length !== 1) fail(`sitemap.xml has a <url> with ${locations.length} <loc> elements; each lists one page.`);
+    const [location] = locations;
+    const page = pageAt.get(location);
+    if (!page) fail(`sitemap.xml lists ${location}, which is not the address of a page this site serves.`);
+    if (listed.has(page)) fail(`sitemap.xml lists ${location} twice.`);
+    listed.add(page);
+    if (!indexable.get(page)) {
+      fail(`sitemap.xml lists ${location}, but ${page} carries a robots noindex; a sitemap lists only pages a search engine may index. Drop it from FIXED_SITEMAP_PAGES in scripts/build-theme-pages.mjs and rebuild, or drop the noindex.`);
+    }
+    const lastmods = [...entry.matchAll(/<lastmod>([^<]*)<\/lastmod>/g)].map(([, day]) => day);
+    if (pageDates.DATED_PAGES.includes(page)) {
+      const { modified } = pageDates.statedDates(await readFile(fileUrl(page), "utf8"));
+      if (lastmods.length !== 1 || lastmods[0] !== modified) {
+        fail(`sitemap.xml gives ${page} ${lastmods.length ? `<lastmod>${lastmods.join(", ")}</lastmod>` : "no <lastmod>"}; a dated page's <lastmod> is its JSON-LD dateModified, ${modified}.`);
+      }
+    } else if (lastmods.length > 0) {
+      fail(`sitemap.xml gives ${page} a <lastmod>, but only a dated page in scripts/page-dates.mjs states the day it last changed.`);
+    }
+  }
+  for (const [page, open] of indexable) {
+    if (!open || listed.has(page)) continue;
+    fail(
+      page.startsWith("theme/")
+        ? `${page} is a page a search engine may index, and sitemap.xml does not list it; scripts/build-theme-pages.mjs lists every page it renders, so render this one there or remove it.`
+        : `${page} is a page a search engine may index, and sitemap.xml does not list it. Add it to FIXED_SITEMAP_PAGES in scripts/build-theme-pages.mjs and rebuild, or give it <meta name="robots" content="noindex">.`,
+    );
+  }
+}
 
 // A changed package needs a new version. Claude Code keeps an installed plugin
 // in a cache directory named for its version, and `claude plugin update`

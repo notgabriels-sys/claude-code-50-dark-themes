@@ -442,6 +442,8 @@ test("the verifier holds each page's dateModified to the day it last changed out
   // A change to the page's text on that day makes the same stamp true.
   await editOnce(fixtureRoot, path, "</footer>", "<p>One more sentence.</p></footer>");
   repo.run(["commit", "-q", "--no-verify", "-a", "-m", "content"], `${later}T13:00:00Z`);
+  // The sitemap's <lastmod> for the page is its dateModified, so a moved stamp rebuilds it.
+  execFileSync(process.execPath, ["scripts/build-theme-pages.mjs"], { cwd: fixtureRoot, stdio: "ignore" });
   await expectGreen(fixtureRoot);
   // And a stamp left behind by that change is red the other way.
   await editOnce(fixtureRoot, path, `"dateModified": "${later}"`, `"dateModified": "${published}"`);
