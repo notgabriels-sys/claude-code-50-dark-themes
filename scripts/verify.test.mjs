@@ -1027,7 +1027,7 @@ test("rejects a page that still offers the withdrawn free Gumroad download", { t
   const fixtureRoot = await makeFixture(t);
   const readmePath = join(fixtureRoot, "README.md");
   const text = await readFile(readmePath, "utf8");
-  const anchor = "The native-plugin route below is the recommended install.";
+  const anchor = "The plugin route above is the recommended install.";
   assert.ok(text.includes(anchor), "fixture anchor moved; update this test");
   await writeFile(
     readmePath,
