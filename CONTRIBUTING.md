@@ -51,6 +51,13 @@ Rules:
 - Reserve `subtle` for non-essential decorative hairlines. Use `inactive` for readable secondary
   text; do not place meaningful text or required control boundaries in `subtle`.
 - Do not invent new override keys. Claude Code silently discards unknown keys.
+- A changed theme reaches people who already have the pack only under a new version: Claude Code
+  updates an installed plugin only when its version moves forward. `node scripts/verify.mjs` fails on a
+  changed theme until you bump the version, written MAJOR.MINOR.PATCH and newer than the one
+  recorded, in `plugins/50-dark-themes/.claude-plugin/plugin.json`
+  and its entry in `.claude-plugin/marketplace.json`, and record the digest it prints in
+  `releasedPackages` in `scripts/verify.mjs`. It then names the storefront's `softwareVersion` and
+  the release links that must move with it.
 
 ## Updating the gallery
 
@@ -60,6 +67,17 @@ present in the gallery.
 
 The final value in each gallery row is the recommended terminal background. Claude Code controls
 its interface colours; the terminal application still owns the terminal background.
+
+The gallery rows live inside the page's one inline script, which is reviewed by hash. Changing a row,
+or the gallery code, changes that hash, and `node scripts/verify.mjs` fails with the new one. Read
+your change, then make the one edit its message names: replace the old hash with the new one in
+`reviewedInlineScripts` in `scripts/verify.mjs`, and paste the Content-Security-Policy meta it prints
+over the one at the top of `index.html`. The browser runs no script the policy does not name.
+
+The policy is compared byte for byte: one line, the directives in the printed order, the hashes in the
+order the scripts appear, and nothing but whitespace between it and `meta charset`. Anything else there,
+even a stray `>` or an invisible space, ends the page's head in a browser, and a policy outside the head
+is ignored.
 
 ## Adding a theme to Dark Themes Vol. 2
 
@@ -78,14 +96,28 @@ is where the pieces live:
   `[name, claude, claudeShimmer, text, inactive, terminal]` shape as the flagship gallery. The
   verifier requires the array, the packaged themes and `previews.json` to agree exactly.
 - Display names must be unique across **both** packs. The two plugins can be installed together, so
-  two themes named the same would be indistinguishable in `/theme`.
+  a name used twice would be indistinguishable in `/theme`.
+- The `VOL2_THEMES` row is part of the page's inline script, so it changes the script's hash: replace
+  the hash `verify` prints in `reviewedInlineScripts`, and paste the policy it prints into `index.html`
+  (see "Updating the gallery" above).
 - Bump the version in `plugins/dark-themes-vol-2/.claude-plugin/plugin.json` and the matching entry
-  in `.claude-plugin/marketplace.json` together; the verifier requires them to match.
+  in `.claude-plugin/marketplace.json` together, and record the digest the verifier prints in
+  `releasedPackages` in `scripts/verify.mjs`. Claude Code updates an installed plugin only when its
+  version moves forward, so a theme added under the old version never reaches anyone who has the pack.
 - Update the numbers the public pages state, in the same change. A theme adds fourteen contrast
   comparisons, so the role-aware check count moves, and the share card names each pack's size. Both
   are CI-enforced — see "Numbers stated on public pages" below. Adding a theme and running
-  `node scripts/verify.mjs` without this step fails with, for example,
-  `index.html claims 894 role-aware checks; the verifier runs 908.`
+  `node scripts/verify.mjs` without this step fails with a message naming the page, the count it
+  states and the count the verifier ran: `index.html claims <stated> role-aware checks; the verifier
+  runs <ran>.`
+- The pack's size is also stated in words, and those move too. The description in
+  `plugins/dark-themes-vol-2/.claude-plugin/plugin.json` opens with the count ("Twelve new …"), the
+  marketplace entry must repeat it exactly, and the pages say "twelve new atmospheres", "twelve
+  additional themes", "twelve all-new palettes" — on the pages (in their text and in meta
+  descriptions, titles and `alt` text), `llms.txt`, the READMEs, the promotion drafts and the skill
+  that describes the storefront. The verifier reads the number back from what ships and names each
+  stale sentence and its line, all of a file's at once, starting with
+  `dark-themes-vol-2 describes itself as shipping 12 but 13 ship.`
 
 `scripts/sync-plugin-themes.mjs` does not apply here — it mirrors the root fifty into their plugin,
 and a Vol. 2 theme is authored in its plugin directly.
@@ -112,8 +144,24 @@ node scripts/build-theme-pages.mjs
 The storefront, the share card and the meta descriptions state a role-aware check count and theme
 counts. These are claims to a reader, so the verifier ties them to the computed values: if a change
 moves the number of contrast comparisons or the size of either pack, the stated numbers must be
-updated in the same change or CI fails. Removing a claim fails too, so the guard cannot be silenced
-by deletion.
+updated in the same change or CI fails. Removing the role-aware claim from the storefront or the share
+card fails too, so that guard cannot be silenced by deletion.
+
+The files that state the packs' size to a reader are read for those counts: every page, and every
+note and text file Pages serves — `llms.txt`, every README, the promotion drafts, and every file of
+the skills that ship to installers — plus the plugin manifests' descriptions, which installers read.
+`CLAUDE.md`, `CONTRIBUTING.md`, `docs/` and `products/` are not: they record history, and the product
+notes describe audio packs. A page is read as a reader sees it, meta descriptions, titles, `alt` and
+`aria-` text included: a count wrapped across two lines or a blockquote, inside `**emphasis**`, a
+code span or a Markdown link, written with an entity, a hyphen ("12-theme"), a "+" or a pair ("50
+and 12 themes"), or spelled out as a word ("seventy-four") is still a count. A theme, palette or
+atmosphere count must be one pack's size or the two together. A sentence that counts something else
+must not put a number within five words before "themes", "palettes" or "atmospheres", unless an
+article, a quantifier, a demonstrative or possessive, a preposition or a month comes between ("one
+of the themes", "two commands install these themes", "3 colours for your themes" and "19 October,
+Vol. 2 themes" are fine); reword it rather than the check. A step badge ("04"), an ordinal ("2nd"),
+a hex colour and "one theme pack" are not counts. A role-aware count is the total unless "per theme"
+or "for each theme" follows it.
 
 The share card is rendered from `assets/social-preview.html`, not screenshotted from the site. Edit
 that source, then regenerate `preview.png` at 1280×720 — the declared `og:image:width` and
@@ -126,11 +174,18 @@ Every public page shipping an `og:image` must state `og:image:alt`, a `twitter:i
 
 ```bash
 node scripts/sync-plugin-themes.mjs
+node scripts/build-theme-index.mjs
 node scripts/build-theme-pages.mjs
-node --test scripts/*.test.mjs
+node scripts/build-readme-theme-links.mjs
 node scripts/verify.mjs
+node --test scripts/*.test.mjs
 claude plugin validate .
 ```
+
+The test suite copies your working tree into its fixtures, so until `verify` is green every test
+that expects a green tree fails with it (after a colour change, 107 of 523 on 2026-10-24); fix what
+`verify` names first. After a colour change it names the gallery script's new hash, and then the
+release the changed pack needs.
 
 The command checks:
 
@@ -140,15 +195,57 @@ The command checks:
 - role-aware contrast against each theme's recommended terminal background, for both packs;
 - palette parity between theme files and gallery cards, for both packs;
 - byte-for-byte parity between root themes and the installable plugin;
-- the marketplace and both plugin manifests used by Claude Code;
+- the marketplace and all three plugin manifests, key for key, and that each plugin directory holds
+  exactly the files it should ship — a stray hook, command, skill or MCP config fails, because
+  Claude Code would load it for every installer, and so does a missing file, a symlink, a
+  `.gitmodules` file or an empty directory under `plugins/` (the shape a git submodule takes);
 - a fresh-machine-safe installation command;
-- the verified shop payment surfaces;
+- that each plugin's homepage, repository and author address is exactly the one `verify` pins (a
+  theme pack's homepage is its gallery on the `CNAME` domain), as are a theme pack's documentation
+  and support addresses, that each plugin ships `logo.png`, named by plugin.json's `icon`, as a
+  clean 1024×1024 8-bit PNG under 2 MB with no text, EXIF, time or colour-profile chunk (the
+  plugin directory keeps the first icon it is given), that the theme packs' icon and its source,
+  `assets/theme-packs-icon.svg`, are drawn in Petrol's colours as Petrol's own files give them
+  (after changing the SVG, run `node scripts/render-listing-icons.mjs`, which needs Playwright),
+  that
+  `previews.json` holds one row per shipped Vol. 2 theme and no other, and that a plugin's version
+  only moves forward;
+- the shop's payment surfaces: each PayPal card against the price read back off PayPal, and each
+  Gumroad card against the list of published products and the prices the page recorded — drift
+  only, not a check against Gumroad;
+- that every link a browser can follow from a public page goes to a host in `reviewedLinkHosts`,
+  spelled out as `https://<host>/`, and reaches PayPal or Gumroad only at a verified id or slug —
+  a link to a new host is a deliberate edit to that list in `scripts/verify.mjs`;
+- that every inline script a page runs is reviewed by hash in `reviewedInlineScripts`, and every
+  served `.html` page carries one Content-Security-Policy, right after `meta charset`, naming exactly those hashes
+  and turning off workers, plugins, frames, `base` and form posts;
+- that every served page is one `verify` reads as a browser does: no NUL character, no attribute
+  written twice on one tag, no inline `math`, an inline `svg` only of plain shapes (`svg`, `g`,
+  `path`, `rect`, `circle`, `ellipse`, `line`, `polyline`, `polygon`, with geometry and paint
+  attributes), no `noscript`, `template` or other inert
+  container, and no comment opener inside a script. The inert-element and script-tag checks read the
+  raw page, comments and attribute values included: to mention one of those elements, write its `<`
+  as `&lt;`;
+- that every Markdown note GitHub Pages serves as a page (any `.md` outside a `.` or `_` directory) links
+  only to reviewed hosts and never to a payment host, sets no front matter beyond `name`,
+  `title` and `description`, and holds no Liquid — and that the root has no `_config.yml` or other `_` entry;
+- that every file GitHub Pages serves is a reviewed type: a page is `.html` and a note `.md`, SVG
+  artwork and the sitemap stay inside element and attribute allowlists (export SVG with presentation
+  attributes rather than CSS; `verify` lists every construct to change, with each tool's setting), every page opens with
+  `<!doctype html>`, no `.mjs` sits at or above a page (keep scripts in `scripts/`), no script
+  carries a `src`, no note holds a script, a handler or another active element (describe them in
+  words), and no served file opens with front matter (a note's `name`/`title`/`description` aside), is a
+  symlink or has a name starting `.htaccess` — a new type,
+  element or attribute is a deliberate edit to `SERVED_TYPES`, `SVG_DOCUMENT` or
+  `SITEMAP_DOCUMENT` in `scripts/verify.mjs`;
 - valid 1280×720 PNG assets for the curated developer picks;
-- that stated check and theme counts on public pages match the computed values;
+- that stated check and theme counts on public pages, plugin descriptions and the READMEs match the
+  computed values, in digits or in words;
 - that share images carry alternative text, and that one image is described one way.
 - that every page under `theme/` is a fresh render of its theme file and `sitemap.xml` lists each one.
 
-GitHub Actions runs the regression tests and the same repository check on every push and pull request.
+GitHub Actions runs the regression tests and the same repository check on every pull request, on every
+push to `main`, and on demand from the repository's Actions tab.
 
 For a visual check, copy the changed theme into `~/.claude/themes/`, run `/theme`, and inspect normal
 text, user messages, tool calls, permission prompts and plan mode. If the themes directory did not

@@ -28,8 +28,12 @@ async function makeFixture(t) {
 }
 
 async function runVerifier(cwd) {
+  return runScript(cwd, "scripts/verify.mjs");
+}
+
+async function runScript(cwd, script) {
   return new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, ["scripts/verify.mjs"], { cwd });
+    const child = spawn(process.execPath, [script], { cwd });
     let stdout = "";
     let stderr = "";
     child.stdout.setEncoding("utf8");
@@ -111,4 +115,24 @@ test("rejects a sitemap that drops a theme page", { timeout: 120_000 }, async (t
 
   assert.notEqual(result.code, 0, "the verifier accepted a sitemap missing a theme page");
   assert.match(result.stderr, /sitemap\.xml is stale/);
+});
+
+test("a changed copy script on the theme pages still needs a review", { timeout: 120_000 }, async (t) => {
+  // The builder writes each page's Content-Security-Policy from its own copy
+  // script, so a page and its policy always agree. What makes a changed script
+  // a deliberate edit is verify's reviewedThemePageScripts, which the builder
+  // does not write.
+  const fixtureRoot = await makeFixture(t);
+  const builder = join(fixtureRoot, "scripts/build-theme-pages.mjs");
+  const source = await readFile(builder, "utf8");
+  const anchor = '      button.textContent = "Copied";\n';
+  assert.equal(source.split(anchor).length, 2, "the copy script's anchor appears once");
+  await writeFile(builder, source.replace(anchor, `${anchor}      location.assign("https://pay.example.invalid/");\n`));
+  const rebuilt = await runScript(fixtureRoot, "scripts/build-theme-pages.mjs");
+  assert.equal(rebuilt.code, 0, rebuilt.stderr);
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "a changed copy script shipped on the theme pages unreviewed");
+  assert.match(result.stderr, /theme\/(?:[a-z0-9-]+\/)?index\.html runs an inline script nobody has reviewed/);
 });

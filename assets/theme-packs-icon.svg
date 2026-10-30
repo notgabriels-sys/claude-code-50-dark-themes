@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <title>Dark themes for Claude Code, in Petrol</title>
+  <!-- The theme packs' listing icon, both packs: the setup assistant's mark in the colours of Petrol, one of the 50. -->
+  <!-- Its accent and text on its terminal background, with green and blue from its matched terminal scheme. -->
+  <!-- verify checks this file and the rendered PNG against Petrol's files. -->
+  <!-- ground: Petrol's recommended terminal background, the gallery's sixth value -->
+  <rect width="512" height="512" fill="#152528"/>
+  <!-- prompt chevron: Petrol's text colour -->
+  <path d="M138 176 L196 256 L138 336" fill="none" stroke="#E8EDED" stroke-width="64" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- block cursor as a three-chip swatch, chips separated by 12-unit ground seams -->
+  <!-- top: Petrol's claude accent -->
+  <path d="M256 144 A16 16 0 0 1 272 128 H368 A16 16 0 0 1 384 144 V205.33 H256 Z" fill="#2FB8C6"/>
+  <!-- middle: Petrol's matched terminal bright green, ANSI 10 -->
+  <path d="M256 217.33 H384 V294.67 H256 Z" fill="#9BE59C"/>
+  <!-- bottom: Petrol's matched terminal blue, ANSI 4 -->
+  <path d="M256 306.67 H384 V368 A16 16 0 0 1 368 384 H272 A16 16 0 0 1 256 368 Z" fill="#6491DD"/>
+</svg>

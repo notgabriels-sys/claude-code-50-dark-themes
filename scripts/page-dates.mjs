@@ -130,7 +130,8 @@ const STAMP_LINE = /"date(?:Published|Modified)"\s*:|class\s*=\s*["'][^"']*\bbyl
 // which a commit on the first-parent line (the line the live site follows) wrote a change to the
 // page outside the stamp. A commit's day is its author date (the day the change was written,
 // which does not move while a pull request waits or is rebased); for a merge it is the latest
-// author date among the commits it brought in that changed content. { date, sha }, or
+// author date among the commits it brought in that changed content, and a merge that kept its own
+// page over a change its other side made reads that change's day as well. { date, sha }, or
 // { date: null, reason } when history is out of reach: not a git checkout, a shallow clone, a
 // repository with no commits yet, or no such commit.
 export function lastContentChange(path, { cwd = process.cwd() } = {}) {
@@ -143,12 +144,12 @@ export function lastContentChange(path, { cwd = process.cwd() } = {}) {
       return false;
     }
   };
-  // Whether a commit changes the page in anything but the stamp, against its first parent. A
-  // commit without a parent is the snapshot a repository starts from, not a change written that
-  // day, so it dates nothing.
-  const changesContent = (sha) =>
-    exists(`${sha}^`) &&
-    git("diff", `${sha}^`, sha, "--", path)
+  // Whether a commit changes the page in anything but the stamp, against its first parent or
+  // another commit. A commit without a parent is the snapshot a repository starts from, not a
+  // change written that day, so it dates nothing.
+  const changesContent = (sha, from = `${sha}^`) =>
+    exists(from) &&
+    git("diff", from, sha, "--", path)
       .split("\n")
       .some((row) => /^[+-]/.test(row) && !/^(\+\+\+|---)/.test(row) && !STAMP_LINE.test(row));
   // [sha, author date, committer date] for every commit in reach that changes the page.
@@ -166,15 +167,41 @@ export function lastContentChange(path, { cwd = process.cwd() } = {}) {
   }
   if (shallow === "true") return { date: null, reason: "a shallow clone, whose history stops short" };
   if (!exists("HEAD")) return { date: null, reason: "a repository with no commits yet" };
+  // A merge on the line that kept its own page over a change its second side made since the two
+  // parted still read that change. A branch does this when it merges its base and keeps its
+  // version; merged into the base, the base's change is on the live line after all, so the branch
+  // dates the page as its pull request's merge does. `--first-parent` lists only a merge whose page
+  // differs from its first parent, so these are found among every merge whose page differs from
+  // either.
+  const line = git("rev-list", "--first-parent", "HEAD").split("\n");
+  const position = new Map(line.map((sha, index) => [sha, index]));
+  const listed = commits("--first-parent");
+  const known = new Set(listed.map(([sha]) => sha));
+  const kept = commits("--merges", "--full-history").filter(([sha]) => position.has(sha) && !known.has(sha));
+  const onLine = [...listed, ...kept].sort(([a], [b]) => position.get(a) - position.get(b));
+  // Where a merge's two sides parted, or null for histories that never shared a commit.
+  const parted = (sha) => {
+    try {
+      return git("merge-base", `${sha}^1`, `${sha}^2`);
+    } catch {
+      return null;
+    }
+  };
   // A change lands no earlier than it was written, so once a landing is older than the best day
   // found, nothing older can beat it.
   let best = null;
-  for (const [sha, written, landed] of commits("--first-parent")) {
+  for (const [sha, written, landed] of onLine) {
     if (best && landed <= best.date) break;
-    if (!changesContent(sha)) continue;
-    let change = { date: written, sha };
+    let change = null;
+    if (known.has(sha)) {
+      if (!changesContent(sha)) continue;
+      change = { date: written, sha };
+    } else {
+      const base = parted(sha);
+      if (base && !changesContent(`${sha}^2`, base)) continue;
+    }
     if (exists(`${sha}^2`)) {
-      const inside = latest(commits("--no-merges", `${sha}^1..${sha}`).filter(([inner]) => changesContent(inner)).map(([inner, day]) => ({ date: day, sha: inner })));
+      const inside = latest(commits("--no-merges", `${sha}^1..${sha}^2`).filter(([inner]) => changesContent(inner)).map(([inner, day]) => ({ date: day, sha: inner })));
       if (inside) change = inside;
     }
     best = latest([best, change].filter(Boolean));

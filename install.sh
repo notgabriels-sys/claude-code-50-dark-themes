@@ -5,15 +5,19 @@
 #   ./install.sh acid deep-field install only those
 #   ./install.sh --list          show theme names
 #   ./install.sh --uninstall     remove every theme in the pack from the themes dir
-#   ./install.sh --dir PATH      install somewhere else (default ~/.claude/themes)
+#   ./install.sh --dir PATH      install somewhere else (default: the themes folder of
+#                                $CLAUDE_CONFIG_DIR if it is set, otherwise ~/.claude/themes)
 #
+# The themes come from plugins/50-dark-themes/themes/, the pack exactly as the
+# plugin ships it. The repository root also holds themes.json, an index of the
+# themes that is not one itself.
 # Existing files with the same name are backed up to <name>.json.bak once.
 # --uninstall matches by filename, not contents: a theme you edited yourself,
 # or wrote under a pack name, is removed too. Backups are never touched.
 set -euo pipefail
 
-SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-DEST="${HOME}/.claude/themes"
+SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/plugins/50-dark-themes/themes"
+DEST="${CLAUDE_CONFIG_DIR:-${HOME}/.claude}/themes"
 MODE=install
 WANTED=()
 
@@ -31,10 +35,10 @@ while [ $# -gt 0 ]; do
   esac
 done
 
-themes() { find "$SRC" -maxdepth 1 -name '*.json' -not -name 'package*.json' | sort; }
+[ -d "$SRC" ] || { echo "No theme pack at $SRC; run install.sh from a clone of the repository." >&2; exit 1; }
+themes() { find "$SRC" -maxdepth 1 -name '*.json' | sort; }
 
 if [ "$MODE" = list ]; then
-  themes() { find "$SRC" -maxdepth 1 -name '*.json' -not -name 'package*.json' | sort; }
   n=0
   while IFS= read -r f; do
     printf '  %s\n' "$(basename "${f%.json}")"; n=$((n+1))
