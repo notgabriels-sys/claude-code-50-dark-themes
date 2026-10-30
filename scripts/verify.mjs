@@ -975,6 +975,14 @@ if (!/<a href="familiars\.html">[^<]+<\/a>/.test(html)) {
   fail("The storefront must link the Familiars page (familiars.html).");
 }
 
+// Site base in the Familiars look (assets/site.css and assets/site.js). The rules and their
+// messages live in scripts/site-style.mjs; pages join STYLED_PAGES as they move onto it.
+const siteStyle = await import("./site-style.mjs");
+for (const problem of siteStyle.stylesheetProblems(await readFile(new URL(siteStyle.STYLESHEET, root), "utf8"))) fail(problem);
+for (const path of siteStyle.STYLED_PAGES) {
+  for (const problem of siteStyle.pageProblems(path, await readFile(new URL(path, root), "utf8"))) fail(problem);
+}
+
 console.log(
   `Verified ${files.length} themes, ${pluginFiles.length} plugin themes, ${vol2Files.length} Vol. 2 themes, ` +
     `${galleryThemes.length} gallery cards, ` +

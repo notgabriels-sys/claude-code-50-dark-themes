@@ -1,0 +1,83 @@
+/* Site base for gabs-utilities.com, in the Familiars look (see familiars.html).
+   Tokens, ambient lights, the light/dark switch and focus. Pages keep their own layout
+   and map their older variable names onto these tokens. Theme previews (cards, stages,
+   terminals) set their own colours and stay as each theme draws them, in both modes.
+   Every animation sits inside prefers-reduced-motion: no-preference; scripts/site-style.mjs
+   holds the pages and this file to that. */
+
+:root {
+  --bg: #0F0F13;
+  --surface: #16161C;
+  --raise: #1C1C24;
+  --fg: #EDEBF3;
+  --muted: #9C99AA;
+  --line: #2A2933;
+  --accent: #A898FF;
+  --accent-soft: rgba(168,152,255,.16);
+  --ember: #FFB46B;
+  --ember-soft: rgba(255,180,107,.28);
+  --halo: .55;
+  --display: "Familjen Grotesk", "Helvetica Neue", Arial, sans-serif;
+  --body: "Familjen Grotesk", "Helvetica Neue", Arial, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #F2F1F6; --surface: #FFFFFF; --raise: #F8F7FB; --fg: #16151C; --muted: #5C5A6A; --line: #DAD8E2;
+    --accent: #5A45D6; --accent-soft: rgba(90,69,214,.12); --ember: #B8601A; --ember-soft: rgba(184,96,26,.22); --halo: .32;
+    color-scheme: light;
+  }
+}
+:root[data-theme="light"] {
+  --bg: #F2F1F6; --surface: #FFFFFF; --raise: #F8F7FB; --fg: #16151C; --muted: #5C5A6A; --line: #DAD8E2;
+  --accent: #5A45D6; --accent-soft: rgba(90,69,214,.12); --ember: #B8601A; --ember-soft: rgba(184,96,26,.22); --halo: .32;
+  color-scheme: light;
+}
+
+body { background-color: var(--bg); color: var(--fg); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+/* Ambient lights: <div class="lights" aria-hidden="true"><span class="l1"></span><span class="l2"></span><span class="l3"></span></div>
+   first in body; the page's content wrapper sits above them (position: relative; z-index: 1). */
+.lights { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+.lights span { position: absolute; border-radius: 50%; filter: blur(70px); opacity: var(--halo); }
+.lights .l1 { width: 46vmax; height: 46vmax; left: -12vmax; top: -16vmax; background: radial-gradient(circle, var(--accent-soft), transparent 70%); }
+.lights .l2 { width: 34vmax; height: 34vmax; right: -10vmax; top: 30vh; background: radial-gradient(circle, var(--ember-soft), transparent 70%); }
+.lights .l3 { width: 40vmax; height: 40vmax; left: 20vw; bottom: -22vmax; background: radial-gradient(circle, var(--accent-soft), transparent 70%); }
+
+/* Light/dark switch: a floating pill, bottom right. assets/site.js remembers the choice. */
+.theme-switch {
+  position: fixed; z-index: 20;
+  right: calc(20px + env(safe-area-inset-right, 0px)); bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  display: inline-flex; align-items: center; gap: 10px; min-height: 48px; padding: 0 18px 0 6px;
+  border-radius: 999px; border: 1.5px solid var(--accent); background: var(--surface); color: var(--fg);
+  font: 500 12px var(--mono); letter-spacing: .08em; text-transform: uppercase; cursor: pointer;
+  box-shadow: 0 10px 30px -12px var(--accent-soft);
+}
+.theme-switch .knob { position: relative; width: 36px; height: 36px; border-radius: 50%; background: var(--accent); }
+/* The mark inside the knob: a full disc (sun) in dark mode, a crescent (moon) in light mode. */
+.theme-switch .knob::before {
+  content: ""; position: absolute; inset: 11px; border-radius: 50%; background: var(--bg);
+}
+.theme-switch .knob::after {
+  content: ""; position: absolute; width: 12px; height: 12px; top: 8px; left: 17px; border-radius: 50%;
+  background: var(--accent); opacity: 0;
+}
+:root[data-eff="light"] .theme-switch .knob::after { opacity: 1; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .lights .l1 { animation: site-drift-a 26s ease-in-out infinite alternate; }
+  .lights .l2 { animation: site-drift-b 32s ease-in-out infinite alternate; }
+  .lights .l3 { animation: site-drift-a 38s ease-in-out infinite alternate-reverse; }
+  @keyframes site-drift-a { to { transform: translate(8vw, 6vh) scale(1.1); } }
+  @keyframes site-drift-b { to { transform: translate(-10vw, -8vh) scale(.92); } }
+  body { transition: background-color .5s ease, color .5s ease; }
+  .theme-switch { transition: transform .2s ease, background-color .5s ease, color .5s ease; }
+  .theme-switch:hover { transform: translateY(-2px); }
+  .theme-switch .knob::after { transition: opacity .3s ease; }
+}
+
+@media print {
+  .lights, .theme-switch { display: none; }
+}

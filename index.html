@@ -6,8 +6,13 @@
 <title>50 Dark Themes for Claude Code</title>
 <meta name="description" content="Browse and install 50 hand-tuned dark themes for Claude Code as a native plugin, plus the free Vol. 2 expansion pack. Free, MIT licensed, and verified with 894 role-aware contrast comparisons.">
 <meta name="robots" content="index,follow,max-image-preview:large">
-<meta name="theme-color" content="#0f1011">
+<meta name="theme-color" content="#0F0F13">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="assets/site.css">
+<script src="assets/site.js"></script>
 <link rel="canonical" href="https://gabs-utilities.com/">
 <link rel="license" href="https://opensource.org/license/mit">
 <link rel="alternate" type="application/json" title="Claude Code marketplace manifest" href="https://raw.githubusercontent.com/notgabriels-sys/claude-code-50-dark-themes/main/.claude-plugin/marketplace.json">
@@ -67,14 +72,14 @@
 </script>
 <style>
   :root{
-    --ground:#0d0e0f;
-    --ground-2:#131416;
-    --hair:#292b2f;
-    --ink:#e9eaec;
-    --mute:#a0a3aa;
-    --faint:#858991;
-    --accent:#c9cfd6;
-    --accent-dim:#5f646c;
+    /* Page colours come from assets/site.css (the Familiars tokens, light and dark). */
+    --ground:var(--bg);
+    --ground-2:var(--surface);
+    --hair:var(--line);
+    --ink:var(--fg);
+    --mute:var(--muted);
+    --faint:var(--muted);
+    --accent-dim:color-mix(in srgb,var(--accent) 45%,var(--line));
     /* Graphite Semantic — quiet role colours with an unambiguous hierarchy. */
     --syntax-purple:#a98ce0;
     --syntax-light-purple:#c7b8ff;
@@ -85,8 +90,6 @@
     --syntax-dark-grey:#858a93;
     --terminal-surface:#0a0a0b;
     --radius:10px;
-    --mono:ui-monospace,"SF Mono",SFMono-Regular,"JetBrains Mono","Menlo",Consolas,monospace;
-    --display:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
   }
   *{box-sizing:border-box}
   /* The finder hides cards with the hidden property. An author-level display
@@ -97,14 +100,14 @@
   html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
   body{
     margin:0;
-    background:radial-gradient(900px 520px at 76% -10%,rgba(122,140,255,.075),transparent 62%),var(--ground);
+    background:var(--ground);
     color:var(--ink);
     font-family:var(--mono);
     line-height:1.5;
     -webkit-font-smoothing:antialiased;
     padding:0 clamp(18px,4vw,48px) 72px;
   }
-  .wrap{max-width:1180px;margin:0 auto}
+  .wrap{position:relative;z-index:1;max-width:1180px;margin:0 auto}
   .skip-link{
     position:fixed;left:12px;top:12px;z-index:100;
     color:var(--ground);background:var(--ink);border-radius:6px;
@@ -202,7 +205,9 @@
     color:var(--syntax-light-blue);background:#0c0c0d;border:1px solid var(--hair);
     border-radius:6px;padding:2px 6px;font-size:12.5px;
   }
-  .syntax-version{color:var(--syntax-dark-blue)}
+  .syntax-version{color:var(--accent)}
+  /* Terminal surfaces stay dark in both page modes, so they keep the dark page colours. */
+  .cmd,.step code,code.inline{--ink:#e9eaec;--mute:#9C99AA;--faint:#9C99AA;--hair:#2A2933;--accent:#A898FF}
   .cmd{
     display:flex;align-items:center;justify-content:space-between;gap:12px;
     padding:17px 14px;border-top:1px solid var(--hair);background:var(--terminal-surface);
@@ -279,7 +284,7 @@
   .theme-finder{margin:0 0 26px;padding:18px 0;border-top:1px solid var(--hair);border-bottom:1px solid var(--hair)}
   .finder-label{margin:0;color:var(--ink);font-family:var(--display);font-size:15px;font-weight:600;letter-spacing:-.01em}
   .finder-copy{margin:5px 0 0;color:var(--mute);font-size:11px;line-height:1.65}
-  .finder-copy kbd,.finder-search kbd{color:var(--syntax-light-purple);border:1px solid var(--hair);border-bottom-color:var(--accent-dim);border-radius:4px;padding:1px 5px;font-family:var(--mono);font-size:10px}
+  .finder-copy kbd,.finder-search kbd{color:var(--accent);border:1px solid var(--hair);border-bottom-color:var(--accent-dim);border-radius:4px;padding:1px 5px;font-family:var(--mono);font-size:10px}
   .finder-controls{display:flex;align-items:center;gap:24px;margin-top:15px}
   .finder-search{display:flex;align-items:center;gap:10px;flex:0 1 340px;min-height:44px;border-bottom:1px solid var(--hair);color:var(--faint);font-size:9px;letter-spacing:.1em;text-transform:uppercase}
   .finder-search:focus-within{border-color:var(--accent)}
@@ -352,7 +357,7 @@
   .prompt-box .gt{color:var(--a);font-weight:700}
   .prompt-box .txt{min-width:0;overflow:hidden;color:var(--fg);text-overflow:ellipsis;white-space:nowrap}
   .theme-command{width:100%;text-align:left;cursor:pointer;background:transparent;font:inherit;transition:background-color .15s,border-color .15s}
-  .theme-command:hover{border-color:var(--a);background:rgba(255,255,255,.03)}
+  .theme-command:hover{border-color:var(--a);background:color-mix(in srgb,var(--ink) 3.0%,transparent)}
   .theme-command:focus-visible{outline:2px solid var(--a);outline-offset:3px}
   .theme-command .copy-label{margin-left:auto;flex:none;color:var(--mut);font-size:9px;letter-spacing:.07em;text-transform:uppercase}
   .caret{
@@ -390,14 +395,14 @@
                               min-height:44px;padding:8px 11px;border:1px solid var(--accent-dim);
                               border-radius:8px;color:var(--ink);font-size:11.5px;font-weight:650;
                               text-decoration:none;transition:border-color .15s,background-color .15s}
-  .featured-product-actions a:first-child{flex:1;background:rgba(255,255,255,.035)}
-  .featured-product-actions a:hover{border-color:var(--accent);background:rgba(255,255,255,.06)}
+  .featured-product-actions a:first-child{flex:1;background:color-mix(in srgb,var(--ink) 3.5%,transparent)}
+  .featured-product-actions a:hover{border-color:var(--accent);background:color-mix(in srgb,var(--ink) 6.0%,transparent)}
   .featured-product-actions a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
   .featured-product-actions span{color:var(--accent)}
   .product-proof{scroll-margin-top:24px}
   .product-proof-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:12px}
   .product-proof figure{margin:0;overflow:hidden;border:1px solid var(--hair);border-radius:var(--radius);
-                        background:rgba(255,255,255,.015)}
+                        background:color-mix(in srgb,var(--ink) 1.5%,transparent)}
   .product-proof img{display:block;width:100%;height:auto;border-bottom:1px solid var(--hair)}
   .product-proof figcaption{padding:10px 12px;color:var(--mute);font-size:11px;line-height:1.45}
   .product-proof-foot{display:flex;align-items:center;justify-content:space-between;gap:16px;
@@ -406,7 +411,7 @@
   .proof-buy{display:inline-flex;align-items:center;justify-content:space-between;gap:14px;flex:none;
              min-height:44px;padding:8px 12px;border:1px solid var(--accent-dim);border-radius:8px;
              color:var(--ink);font-size:11.5px;font-weight:650;text-decoration:none}
-  .proof-buy:hover{border-color:var(--accent);background:rgba(255,255,255,.05)}
+  .proof-buy:hover{border-color:var(--accent);background:color-mix(in srgb,var(--ink) 5.0%,transparent)}
   .proof-buy:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
   .proof-buy span{color:var(--accent)}
 
@@ -476,6 +481,7 @@
 </style>
 </head>
 <body>
+<div class="lights" aria-hidden="true"><span class="l1"></span><span class="l2"></span><span class="l3"></span></div>
 <a class="skip-link" href="#main-content">Skip to main content</a>
 <div class="wrap">
   <main id="main-content">
@@ -1005,5 +1011,6 @@ vol2Btn.addEventListener("click", async () => {
   setTimeout(()=>vol2Btn.textContent="Copy",1400);
 });
 </script>
+<button class="theme-switch" id="theme-switch" type="button" aria-label="Switch to light mode"><span class="knob" aria-hidden="true"></span><span class="label">Light mode</span></button>
 </body>
 </html>

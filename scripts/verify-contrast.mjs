@@ -65,13 +65,33 @@ const checks = [
 const failures = [];
 let comparisons = 0;
 
-function cssColour(variable, source = html) {
+// The storefront takes its page colours from assets/site.css (the Familiars tokens): a page token
+// written as var(--name) resolves through the site palette, dark by default. Terminal surfaces
+// stay dark in both modes and set their own plain-text colour, which belongs to the shared sample.
+const siteCss = (await readFile(new URL("assets/site.css", root), "utf8")).replace(/\/\*[\s\S]*?\*\//g, "");
+function sitePalette(selector) {
+  const rule = siteCss.match(new RegExp(`(?:^|[}\\s])${selector}\\s*\\{([^{}]*)\\}`));
+  if (!rule) throw new Error(`Could not find ${selector} in assets/site.css.`);
+  return Object.fromEntries([...rule[1].matchAll(/--([a-z-]+)\s*:\s*(#[0-9a-f]{6})\s*;/gi)].map((m) => [m[1], m[2]]));
+}
+const palettes = { dark: sitePalette(":root"), light: sitePalette(':root\\[data-theme="light"\\]') };
+
+function cssColour(variable, source = html, palette = palettes.dark) {
   const variableMatch = source.match(
-    new RegExp(`--${variable}\\s*:\\s*(#[0-9a-f]{6})\\s*;`, "i"),
+    new RegExp(`--${variable}\\s*:\\s*(#[0-9a-f]{6}|var\\(--[a-z0-9-]+\\))\\s*;`, "i"),
   );
   if (!variableMatch) throw new Error(`Could not find --${variable} in index.html.`);
-  return variableMatch[1];
+  const reference = variableMatch[1].match(/^var\(--([a-z0-9-]+)\)$/i);
+  if (!reference) return variableMatch[1];
+  const resolved = palette[reference[1]];
+  if (!resolved) throw new Error(`--${variable} refers to --${reference[1]}, which assets/site.css does not define.`);
+  return resolved;
 }
+
+// The plain-text colour of the storefront's terminal sample, set on its terminal surfaces.
+const terminalRule = html.match(/\.cmd,\.step code,code\.inline\{([^{}]*)\}/);
+if (!terminalRule) throw new Error("Could not find the terminal surfaces' colour rule in index.html.");
+const sampleColour = (token) => (token === "ink" ? cssColour("ink", terminalRule[1]) : cssColour(token));
 
 const storefrontFaint = cssColour("faint");
 for (const surfaceName of ["ground", "ground-2"]) {
@@ -82,6 +102,16 @@ for (const surfaceName of ["ground", "ground-2"]) {
     failures.push(
       `Storefront: --faint on --${surfaceName} is ${ratio.toFixed(2)}:1; needs 4.5:1`,
     );
+  }
+}
+// The page's own text in both modes. Not counted in the stated check total, which counts the
+// shared dark palette; these hold the light mode the site switch adds to the same floor.
+for (const [mode, palette] of Object.entries(palettes)) {
+  for (const token of ["ink", "mute", "faint"]) {
+    for (const surfaceName of ["ground", "ground-2"]) {
+      const ratio = contrast(cssColour(token, html, palette), cssColour(surfaceName, html, palette));
+      if (ratio < 4.5) failures.push(`Storefront (${mode} mode): --${token} on --${surfaceName} is ${ratio.toFixed(2)}:1; needs 4.5:1`);
+    }
   }
 }
 
@@ -100,7 +130,7 @@ const semanticTokens = [
   "syntax-dark-grey",
 ];
 for (const token of semanticTokens) {
-  const foreground = cssColour(token);
+  const foreground = sampleColour(token);
   for (const surfaceName of ["terminal-surface", "ground", "ground-2"]) {
     comparisons += 1;
     const surface = cssColour(surfaceName);
@@ -121,7 +151,7 @@ for (const page of [
 ]) {
   const pageHtml = await readFile(new URL(page, root), "utf8");
   for (const token of sharedPaletteTokens) {
-    const expected = cssColour(token).toLowerCase();
+    const expected = sampleColour(token).toLowerCase();
     const actual = cssColour(token, pageHtml).toLowerCase();
     if (actual !== expected) {
       failures.push(`${page}: --${token} ${actual} does not match storefront ${expected}`);
