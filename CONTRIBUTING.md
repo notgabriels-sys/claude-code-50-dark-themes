@@ -230,6 +230,11 @@ The command checks:
 - that every Markdown note GitHub Pages serves as a page (any `.md` outside a `.` or `_` directory) links
   only to reviewed hosts and never to a payment host, sets no front matter beyond `name`,
   `title` and `description`, and holds no Liquid — and that the root has no `_config.yml` or other `_` entry;
+- that robots.txt keeps every such note out of search: a new note needs a `Disallow` line (a root
+  note as `/<NAME>.`, a directory as `/<directory>/`), or an entry in `crawlableNotes` in
+  `scripts/verify.mjs` if it is meant to be found; and that no rule blocks a path the public pages use;
+- that `sitemap.xml` and `llms.txt` list every page a search engine may index (`llms.txt` the root
+  ones), and that `llms.txt` links only to files this site serves and names no payment host;
 - that every file GitHub Pages serves is a reviewed type: a page is `.html` and a note `.md`, SVG
   artwork and the sitemap stay inside element and attribute allowlists (export SVG with presentation
   attributes rather than CSS; `verify` lists every construct to change, with each tool's setting), every page opens with
