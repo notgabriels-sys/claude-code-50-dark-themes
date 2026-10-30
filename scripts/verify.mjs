@@ -4067,6 +4067,87 @@ const pageAddress = (page) => `${siteUrl}${urlPath(page).replace(/(^|\/)index\.h
   }
 }
 
+// What robots.txt lets a crawler fetch. GitHub Pages renders every note into a page on this
+// domain, and a note cannot carry a robots meta, so robots.txt keeps the internal ones out of
+// search. It is written in the one shape every parser reads alike: one "User-agent: *" group of
+// plain-prefix Disallow lines, no Allow, no wildcard, then the sitemap. Under it a path is blocked
+// exactly when a rule is a prefix of it, whether a crawler takes the longest match (Google) or
+// the first (Python's robotparser). No rule may block a path the public pages use, read without
+// regard to case, since a rule in another case is a typo away from it; every served note is
+// blocked unless it is in crawlableNotes; and every rule blocks something.
+const crawlableNotes = ["terminal-schemes/README.md"];
+{
+  const robots = await readFile(new URL("robots.txt", root), "utf8");
+  const sitemapLine = `Sitemap: ${siteUrl}sitemap.xml`;
+  const lines = robots.split("\n");
+  if (!/^[\x20-\x7e\n]*$/.test(robots) || lines[0] !== "User-agent: *" || !robots.endsWith(`\n\n${sitemapLine}\n`)) {
+    fail(`robots.txt must read "User-agent: *", then its Disallow lines, then a blank line and "${sitemapLine}", in plain ASCII with LF line ends; crawlers read other shapes differently.`);
+  }
+  const rules = lines.slice(1, -3).map((line, index) => {
+    const rule = /^Disallow: (\/[A-Za-z0-9._\/-]+)$/.exec(line)?.[1];
+    if (!rule) {
+      fail(`robots.txt:${index + 2} reads ${JSON.stringify(line)}; each rule is "Disallow: " and a plain path prefix, with no Allow, wildcard, "$", comment or blank line between.`);
+    }
+    return rule;
+  });
+  const blocks = (path) => rules.some((rule) => path.startsWith(rule));
+  // The paths the public pages use: every root file that is not a note, every served page and
+  // its address, and every address on this site that a page or llms.txt gives.
+  const publicPaths = new Set();
+  const addPublic = (address, base) => {
+    let url;
+    try {
+      url = new URL(address, base);
+    } catch {
+      return;
+    }
+    if (url.host === cname) publicPaths.add(url.pathname);
+  };
+  const onSite = new RegExp(`https?://${escapeRegExp(cname)}/[^\\s"'<>()\\\\]*`, "g");
+  for (const file of servedFiles) if (!file.includes("/") && !servedNotes.includes(file)) publicPaths.add(`/${urlPath(file)}`);
+  for (const page of indexablePages.keys()) {
+    const base = pageAddress(page);
+    publicPaths.add(`/${urlPath(page)}`);
+    addPublic(base);
+    const markup = await readFile(fileUrl(page), "utf8");
+    for (const [address] of markup.matchAll(onSite)) addPublic(address);
+    for (const [, address] of markup.matchAll(/url\(\s*["']?([^"')\s]+)/g)) addPublic(address, base);
+    for (const tag of htmlTags(markup)) {
+      for (const { name, value } of tag.attributes ?? []) {
+        if (["href", "src", "poster"].includes(name)) addPublic(value, base);
+        if (name === "srcset") for (const candidate of value.split(",")) addPublic(candidate.trim().split(/\s+/)[0], base);
+      }
+    }
+  }
+  for (const [address] of (await readFile(new URL("llms.txt", root), "utf8")).matchAll(onSite)) addPublic(address);
+  for (const path of publicPaths) {
+    const rule = rules.find((candidate) => path.toLowerCase().startsWith(candidate.toLowerCase()));
+    if (rule) {
+      fail(`robots.txt's "Disallow: ${rule}" blocks ${path}, which the site's public pages use (read without regard to case, as some crawlers read it); narrow the rule.`);
+    }
+  }
+  for (const note of crawlableNotes) {
+    if (!servedNotes.includes(note)) fail(`crawlableNotes in scripts/verify.mjs names ${note}, which is not a note this site serves.`);
+  }
+  for (const note of servedNotes) {
+    const directory = note.slice(0, note.lastIndexOf("/") + 1);
+    const addresses = [`/${urlPath(note)}`, `/${urlPath(note.slice(0, -".md".length))}.html`];
+    if (/^readme\.md$/i.test(note.slice(directory.length)) && !servedFiles.includes(`${directory}index.html`)) addresses.push(`/${urlPath(directory)}`);
+    for (const address of addresses) {
+      if (crawlableNotes.includes(note) && blocks(address)) {
+        fail(`robots.txt blocks ${address}, but ${note} is in crawlableNotes in scripts/verify.mjs, kept open to search on purpose.`);
+      }
+      if (!crawlableNotes.includes(note) && !blocks(address)) {
+        fail(`${note} is a note GitHub Pages renders or serves at ${address}, and robots.txt lets crawlers fetch it. Add a Disallow line for it (a root note as "/<NAME>.", a directory as "/<directory>/"), or add it to crawlableNotes in scripts/verify.mjs if it is meant for search.`);
+      }
+    }
+  }
+  const servedPaths = [...servedFiles.map((file) => `/${urlPath(file)}`), ...servedNotes.map((note) => `/${urlPath(note.slice(0, -".md".length))}.html`)];
+  for (const rule of rules) {
+    if (!servedPaths.some((path) => path.startsWith(rule))) fail(`robots.txt's "Disallow: ${rule}" blocks nothing this site serves; drop it.`);
+  }
+}
+
 // A changed package needs a new version. Claude Code keeps an installed plugin
 // in a cache directory named for its version, and `claude plugin update`
 // compares versions only. Read back 2026-10-19 against Claude Code 2.1.303,

@@ -2982,7 +2982,7 @@ for (const [defect, path, content, message] of [
 
 for (const [control, path, content] of [
   // kramdown renders a bare URL as text, not a link.
-  ["a bare URL in a note's prose", "PAY_NOTE.md", "See https://pay.example.invalid/x for the details.\n"],
+  ["a bare URL in a note's prose", "docs/PAY_NOTE.md", "See https://pay.example.invalid/x for the details.\n"],
   // Pages does not serve files under a "." directory.
   ["a link in a note Pages does not serve", ".github/PAY_NOTE.md", "[Pay](https://pay.example.invalid/x)\n"],
 ]) {
@@ -3246,7 +3246,7 @@ for (const [control, path, content] of [
   ["a page of an unreviewed type under a nested underscore directory", "assets/_drafts/pay.htm",
     '<a href="https://pay.example.invalid/x">Pay</a>\n'],
   // A name HTML does not know is an inert element; notes write placeholders.
-  ["placeholders written as tags in a note", "PAY_NOTE.md",
+  ["placeholders written as tags in a note", "docs/PAY_NOTE.md",
     "Read the link at paypal.com/ncp/links/<ID> and put <name> on the invoice.\n"],
 ]) {
   test(`accepts ${control}`, { timeout: 90_000 }, async (t) => {
@@ -4023,5 +4023,52 @@ for (const [label, edits, message] of [
       assert.notEqual(result.code, 0, `llms.txt that ${label} passed`);
       assert.match(result.stderr, message);
     }
+  });
+}
+
+// What robots.txt lets a crawler fetch: one group of plain-prefix Disallow lines that every parser
+// reads alike, no rule over a path the public pages use, every served note blocked unless it is
+// kept open on purpose, and no rule that blocks nothing. Each row rewrites robots.txt (or a line of
+// it) in a fixture.
+const robotsBody = await readFile(join(projectRoot, "robots.txt"), "utf8");
+const robotsWith = (from, to) => [["robots.txt", from, to]];
+for (const [defect, edits, message] of [
+  ["an Allow line", robotsWith("User-agent: *\n", "User-agent: *\nAllow: /\n"),
+    /robots\.txt:2 reads "Allow: \/"; each rule is "Disallow: " and a plain path prefix/],
+  ["a blank line inside its group", robotsWith("Disallow: /CLAUDE.\n", "\nDisallow: /CLAUDE.\n"),
+    /robots\.txt:2 reads ""; each rule is "Disallow: " and a plain path prefix/],
+  ["a wildcard rule", robotsWith("Disallow: /CLAUDE.\n", "Disallow: /*.md$\nDisallow: /CLAUDE.\n"),
+    /robots\.txt:2 reads "Disallow: \/\*\.md\$"/],
+  ["no sitemap line", robotsWith("\nSitemap: https://gabs-utilities.com/sitemap.xml\n", ""),
+    /robots\.txt must read "User-agent: \*", then its Disallow lines, then a blank line and "Sitemap: https:\/\/gabs-utilities\.com\/sitemap\.xml"/],
+  ["Windows line ends", [["robots.txt", robotsBody, robotsBody.replaceAll("\n", "\r\n")]],
+    /robots\.txt must read "User-agent: \*".*in plain ASCII with LF line ends/],
+  ["a root note's rule without its dot", robotsWith("Disallow: /CLAUDE.\n", "Disallow: /CLAUDE\n"),
+    /robots\.txt's "Disallow: \/CLAUDE" blocks \/claude-code-theme-install-guide\.html, which the site's public pages use/],
+  ["a rule over the fonts a page loads", robotsWith("Disallow: /docs/\n", "Disallow: /assets/fonts/\nDisallow: /docs/\n"),
+    /robots\.txt's "Disallow: \/assets\/fonts\/" blocks \/assets\/fonts\/[^ ]+\.woff2, which the site's public pages use/],
+  ["a rule over the images a page shows", robotsWith("Disallow: /docs/\n", "Disallow: /assets/products/\nDisallow: /docs/\n"),
+    /robots\.txt's "Disallow: \/assets\/products\/" blocks \/assets\/products\/[^ ]+, which the site's public pages use/],
+  ["a rule over a page that asks not to be indexed", robotsWith("Disallow: /docs/\n", "Disallow: /docs/\nDisallow: /impressum.html\n"),
+    /robots\.txt's "Disallow: \/impressum\.html" blocks \/impressum\.html, which the site's public pages use/],
+  ["a root note left open", robotsWith("Disallow: /DOMAIN_SETUP.\n", ""),
+    /DOMAIN_SETUP\.md is a note GitHub Pages renders or serves at \/DOMAIN_SETUP\.md, and robots\.txt lets crawlers fetch it/],
+  ["a README left open at its directory",
+    robotsWith("Disallow: /plugins/\n", "Disallow: /plugins/50-dark-themes/README.\nDisallow: /plugins/berlin-studio-skills/README.\nDisallow: /plugins/berlin-studio-skills/skills/\nDisallow: /plugins/dark-themes-vol-2/README.\n"),
+    /plugins\/[a-z0-9-]+\/README\.md is a note GitHub Pages renders or serves at \/plugins\/[a-z0-9-]+\/, and robots\.txt lets crawlers fetch it/],
+  ["a rule over a note kept open for search", robotsWith("Disallow: /scripts/\n", "Disallow: /scripts/\nDisallow: /terminal-schemes/\n"),
+    /robots\.txt blocks \/terminal-schemes\/README\.md, but terminal-schemes\/README\.md is in crawlableNotes/],
+  ["a rule that blocks nothing", robotsWith("Disallow: /scripts/\n", "Disallow: /scripts/\nDisallow: /nothing-here/\n"),
+    /robots\.txt's "Disallow: \/nothing-here\/" blocks nothing this site serves; drop it/],
+  ["a kept-open note that is not served",
+    [["scripts/verify.mjs", 'const crawlableNotes = ["terminal-schemes/README.md"];', 'const crawlableNotes = ["terminal-schemes/README.md", "gone/README.md"];']],
+    /crawlableNotes in scripts\/verify\.mjs names gone\/README\.md, which is not a note this site serves/],
+]) {
+  test(`rejects a robots.txt with ${defect}`, async (t) => {
+    const fixtureRoot = await makeFixture(t);
+    for (const [path, from, to] of edits) await editFixtureFile(fixtureRoot, path, from, to);
+    const result = await runVerifier(fixtureRoot);
+    assert.notEqual(result.code, 0, `a robots.txt with ${defect} passed`);
+    assert.match(result.stderr, message);
   });
 }
