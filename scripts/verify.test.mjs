@@ -4051,6 +4051,8 @@ for (const [defect, edits, message] of [
     /robots\.txt's "Disallow: \/assets\/products\/" blocks \/assets\/products\/[^ ]+, which the site's public pages use/],
   ["a rule over a page that asks not to be indexed", robotsWith("Disallow: /docs/\n", "Disallow: /docs/\nDisallow: /impressum.html\n"),
     /robots\.txt's "Disallow: \/impressum\.html" blocks \/impressum\.html, which the site's public pages use/],
+  ["a rule over a page no other page links", robotsWith("Disallow: /assets/product-hunt/\n", "Disallow: /assets/product-hunt/\nDisallow: /assets/social-preview.html\n"),
+    /robots\.txt's "Disallow: \/assets\/social-preview\.html" blocks \/assets\/social-preview\.html, which the site's public pages use/],
   ["a root note left open", robotsWith("Disallow: /DOMAIN_SETUP.\n", ""),
     /DOMAIN_SETUP\.md is a note GitHub Pages renders or serves at \/DOMAIN_SETUP\.md, and robots\.txt lets crawlers fetch it/],
   ["a README left open at its directory",
