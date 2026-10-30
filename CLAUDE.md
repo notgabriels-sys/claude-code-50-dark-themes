@@ -729,6 +729,21 @@ linked the Agensi listing, which the link guard allows only from the root
 pages and `README.md`; it now names Agensi and points at the repository
 README, which links it.
 
+Mutation-tested (rule 5), 16 branches of the plist reader and the manifest
+rules each gutted alone. The first, the exact declaration, ran with the full
+suite and turned exactly its own test red; that run took half an hour a
+mutation beside the others, so the other fifteen ran against the real tree
+and the 43 tests of these guards and the icon's, not the whole suite. Each
+turned its own tests red: the `<!`/`<?` rule its two, `xmlns` and character
+references one each, the element names three, reading plists at all seven,
+`.itermcolors` as a plist six and `.terminal` one, the marketplace refusal
+one, the documentation pin two (one is the skills plugin's "absent"), the
+support and icon pins one each, and the word "absent" one. Unserving `.toml`
+and comparing the manifest-only keys turned the real tree red. Accepting any
+plist doctype turned nothing red, since the one doctype test also declares
+an entity; a test of another doctype with no subset pins it now, and with
+the branch gutted again it alone turns red.
+
 **(added 2026-10-24) The theme packs' icon follows Petrol.** Gabriel, on
 seeing the pack icon (the setup assistant's mark on near-black, in three
 accents from its own exclusive themes): "It needs to follow one of our themes
@@ -767,6 +782,20 @@ and the PNG's pixels at the centre of each part, and at two corners, to them.
 A retuned Petrol therefore turns the icon red until it is drawn again. Its
 tests draw icons pixel by pixel with every row filter in turn, so a wrong
 predictor reads a wrong colour.
+Mutation-tested (rule 5), 16 branches each gutted alone, run against the real
+tree and the 43 tests of these guards and the plist's, not the whole suite.
+Dropping the far corner turns its test red and dropping the ground both
+ground tests; not naming a missing colour, not comparing the SVG (its two
+tests), not comparing the PNG (its six) and reading RGBA as RGB each turn
+their own tests red; reading the chevron from the accent or the middle chip
+from ANSI 2, keeping the SVG's case or its "none", and each of PNG's four
+predictors gone wrong turn the real tree red. Reading an icon the whole-file
+check refused is shadowed: that check fails first. Breaking a Paeth tie
+toward the upper neighbour is an equivalent mutant, not a gap: the left and
+upper neighbours tie either when they are equal, so either pick decodes the
+same, or when the upper-left one lies halfway between them, and Paeth then
+picks that one; no pixel decodes differently (all 16,777,216 byte triples
+checked).
 
 **(merged 2026-10-24) Main's #70, the README's first screen.** #70 opened the
 README with a rendered hero (`assets/hero.gif`, a still `assets/hero.png`, both

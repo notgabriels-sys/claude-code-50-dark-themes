@@ -3080,6 +3080,8 @@ for (const [defect, content, message] of [
   ["an XHTML script", PLIST_HEAD + '<plist version="1.0"><html:script xmlns:html="http://www.w3.org/1999/xhtml">x</html:script></plist>\n',
     /holds xmlns, <html:script>\. /],
   ["a script element", PLIST_HEAD + "<plist><script>x</script></plist>\n", /holds <script>\. /],
+  ["another doctype", '<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE plist SYSTEM "https://pay.example/plist.dtd">\n' + PLIST_BODY,
+    /holds "<!" other than Apple's plist doctype/],
   ["a character reference", PLIST_HEAD + "<plist><string>&#60;</string></plist>\n", /holds a character reference/],
   ["no XML declaration", PLIST_BODY, /holds no <\?xml version="1\.0" encoding="UTF-8"\?> first/],
 ]) {
