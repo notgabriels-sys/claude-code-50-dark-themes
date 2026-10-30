@@ -3969,16 +3969,31 @@ for (const file of servedFiles) {
 await themePageFreshness("sitemap.xml", themePages.get("sitemap.xml"));
 // Which served pages a search engine may index: a page asks not to be with a robots or googlebot
 // meta naming noindex or none. The sitemap and llms.txt both read this one map.
-const robotsTokens = (page, markup) =>
-  htmlTags(markup)
+const robotsTokens = (page, markup) => {
+  const tags = htmlTags(markup);
+  return tags
     .filter((tag) => !tag.closing && tag.name === "meta" && /^(robots|googlebot)$/i.test(tag.attributes.find((a) => a.name === "name")?.value ?? ""))
     .flatMap((tag) => {
+      // A robots meta counts only in the head, and a browser ends the head at the first tag or
+      // text that cannot sit there: only head tags and whitespace (outside a title, style or
+      // script's text) may come before it.
+      const before = tags.filter((other) => other.start < tag.start);
+      const intruder = before.find((other) => other.closing
+        ? !["title", "style", "script"].includes(other.name)
+        : !["html", "head", "meta", "title", "link", "style", "script"].includes(other.name));
+      let gap = markup.slice(0, tag.start);
+      for (const other of [...before].reverse()) gap = gap.slice(0, other.start) + gap.slice(other.end + other.text.length);
+      const stray = gap.replace(/^\uFEFF?<!doctype html>/i, "").replace(/[\t\n\f\r ]+/g, "");
+      if (intruder || stray) {
+        fail(`${page}'s robots meta must sit in the head; ${intruder ? `<${intruder.closing ? "/" : ""}${intruder.name}>` : "text"} comes before it, which ends the head in a browser. Move it up beside the page's other <meta> tags.`);
+      }
       const content = tag.attributes.find((a) => a.name === "content")?.value ?? "";
       if (content.includes("&")) {
         fail(`${page} writes a robots meta with "&" in its content; write its directives plainly, as noindex, so every reader sees the same one.`);
       }
       return content.toLowerCase().split(",").map((token) => token.trim());
     });
+};
 const indexablePages = new Map();
 for (const page of servedFiles.filter((file) => file.endsWith(".html"))) {
   const tokens = robotsTokens(page, await readFile(fileUrl(page), "utf8"));
