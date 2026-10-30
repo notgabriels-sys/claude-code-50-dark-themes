@@ -1067,6 +1067,8 @@ test("rejects a promise of per-terminal steps that leads to a page naming no ter
   const variants = [
     ["the 50-theme README's old line", plugin, perTerminalSteps, oldPerTerminalSteps],
     ["the Vol. 2 README's old line", "plugins/dark-themes-vol-2/README.md", perTerminalSteps, oldPerTerminalSteps],
+    ["a storefront card", "index.html", '<a class="tool" href="semantic-terminal-colors.html">', '<a class="tool" href="claude-code-theme-install-guide.html#background"><b>Matching your terminal</b><span>Step-by-step for each terminal.</span><i>Open the guide</i></a><a class="tool" href="semantic-terminal-colors.html">'],
+    ["a heading", "familiars.html", "</main>", '<section><h2>Step-by-step for each terminal</h2><p>See <a href="claude-code-theme-install-guide.html">the install guide</a>.</p></section>\n</main>'],
     ["a storefront anchor", "index.html", "</main>", '<p><a class="text-link" href="/claude-code-theme-install-guide.html#background">Step-by-step\n for each terminal</a></p>\n</main>'],
     ["the guide's share description", "claude-code-theme-install-guide.html", /<meta property="og:description" content="[^"]*"/, '<meta property="og:description" content="Step-by-step setup for each terminal."'],
     ["unhyphenated", plugin, perTerminalSteps, `Step by step for each terminal:\n   ${guide}\n`],
@@ -1121,12 +1123,16 @@ test("rejects a promise of per-terminal steps that leads to a page naming no ter
 });
 
 test("accepts per-terminal promises that lead to per-terminal steps", { timeout: 90_000 }, async (t) => {
-  // The check reads what the promise's own sentence leads to, not one address or one
-  // spelling. All of these hold together: a relative link to the schemes README; the
-  // promise on that README, unlinked, with a same-page anchor, and next to an example file
-  // and an image; an llms.txt entry whose link comes first; reference links; bold and
-  // code-span URLs; sentences that promise nothing (a question, "the same", "no"); and the
-  // guide itself once it covers every terminal, with a plugin README pointing at it again.
+  // The check reads where the promise leads, not one address or one spelling. All of these
+  // hold together: a relative link to the schemes README; the promise on that README,
+  // unlinked, with a same-page anchor, next to an example file and an image, and saying the
+  // steps are "below" in a sentence that also links the guide; an llms.txt entry whose link
+  // comes first; reference links; bold and code-span URLs; "e.g." and "Vol. 2" inside the
+  // promise's sentence; a bold lead-in whose link is later in the item; a storefront card
+  // whose sentence ends before its call to action; a link label ending in a period; a
+  // heading, a table header, a line break and a nested list before the link; sentences
+  // that promise nothing (a question, "the same", "no"); and the guide itself once it covers
+  // every terminal, with a plugin README pointing at it again.
   const fixtureRoot = await makeFixture(t);
   const schemesUrl = "https://github.com/notgabriels-sys/claude-code-50-dark-themes/tree/main/terminal-schemes";
   const edit = async (file, from, to) => {
@@ -1143,7 +1149,9 @@ test("accepts per-terminal promises that lead to per-terminal steps", { timeout:
     "Steps for each terminal follow. Steps for each terminal start at [iTerm2](#iterm2-macos).\n\n" +
       "Steps for each terminal are below; quickest is iTerm2:\n[`Gabs Deep Field.itermcolors`](iterm2/Gabs%20Deep%20Field.itermcolors)\n" +
       "![Deep Field in iTerm2](https://example.com/shot.png).\n\n" +
-      "Want instructions for any terminal not listed here? Open an issue.\n\n## File names\n",
+      "Want instructions for any terminal not listed here? Open an issue.\n\n" +
+      "Install the theme with the [install guide](../claude-code-theme-install-guide.html), then follow the steps for each terminal below.\n\n" +
+      "## File names\n",
   );
   await edit("llms.txt", "\n- [", `\n- [Matching terminal color schemes](${schemesUrl}): install steps for each terminal app\n- [`);
   await edit(
@@ -1152,13 +1160,35 @@ test("accepts per-terminal promises that lead to per-terminal steps", { timeout:
     "[Step-by-step for each terminal][Schemes]. These steps are the same in every terminal.\n" +
       `   No per-terminal setup is needed for the themes themselves.\n\n[schemes]: ${schemesUrl}\n`,
   );
-  await edit("plugins/50-dark-themes/README.md", perTerminalSteps, `Step-by-step for each terminal: **${schemesUrl}**\n`);
+  await edit(
+    "plugins/50-dark-themes/README.md",
+    perTerminalSteps,
+    `Step-by-step for each terminal (e.g. Ghostty, iTerm2, Warp): **${schemesUrl}**\n`,
+  );
+  const fiftyReadme = join(fixtureRoot, "plugins", "50-dark-themes", "README.md");
+  await writeFile(fiftyReadme, `${await readFile(fiftyReadme, "utf8")}\n- Step-by-step for each terminal:\n  - [terminal-schemes](${schemesUrl})\n`);
+  await edit(
+    "plugins/50-dark-themes/README.md",
+    "4. **Remove it.**",
+    `4. **Per-terminal setup.** Each terminal app has its own section, with a matching color scheme for every Vol. 2 theme:\n   ${schemesUrl}\n5. **Remove it.**`,
+  );
+  const card = (href) =>
+    `<a class="tool" href="${href}"><b>Matching terminal color schemes</b><span>Step-by-step for each terminal, with a scheme for every theme.</span><i>Open on GitHub</i></a>`;
+  await edit("index.html", '<a class="tool" href="semantic-terminal-colors.html">', `${card(schemesUrl)}<a class="tool" href="semantic-terminal-colors.html">`);
+  await edit(
+    "semantic-terminal-colors.html",
+    "</main>",
+    `<section><h2>Step-by-step for each terminal</h2><p>Each has a section in <a href="${schemesUrl}">terminal-schemes</a>.</p></section>` +
+      `<p><a href="${schemesUrl}">Step-by-step for each terminal.</a></p>` +
+      `<p>Step-by-step for each terminal, with a matching color scheme:<br><a href="${schemesUrl}">terminal-schemes</a></p>` +
+      `<table><tr><th>Per-terminal setup</th><td><a href="${schemesUrl}">terminal-schemes</a></td></tr></table>\n</main>`,
+  );
   await edit("familiars.html", "</main>", "<p>Are there different install steps for each terminal? No.</p></main>");
 
   const firstPass = await runVerifier(fixtureRoot);
   assert.equal(firstPass.code, 0, `a per-terminal promise that leads to per-terminal steps failed:\n${firstPass.stderr}`);
 
-  await edit("plugins/50-dark-themes/README.md", `Step-by-step for each terminal: **${schemesUrl}**\n`, oldPerTerminalSteps);
+  await edit("plugins/50-dark-themes/README.md", `Step-by-step for each terminal (e.g. Ghostty, iTerm2, Warp): **${schemesUrl}**\n`, oldPerTerminalSteps);
   const terminals = ["iTerm2", "Ghostty", "kitty", "Alacritty", "WezTerm", "Windows Terminal", "VS Code", "Warp", "Konsole", "Terminal.app"];
   await edit(
     "claude-code-theme-install-guide.html",

@@ -952,10 +952,13 @@ if (productLicences.length) {
 // are in terminal-schemes/README.md (#68), one section per scheme folder. So
 // wherever a public page (the generated theme pages included), a README or
 // llms.txt promises steps for each, every or all terminals, for your terminal,
-// or per terminal, a page linked from the promise's own sentence or list item
-// (or the page itself, if that sentence links no page: an image, a scheme file
-// or a zip is not where steps are) must name every terminal with a folder in
-// terminal-schemes/. A name may be spelled with a space, dot or dash inside it:
+// or per terminal, the page it leads to must name every terminal with a folder
+// in terminal-schemes/. It leads to the pages its own sentence links, before
+// or after it; failing those, the next page its paragraph or list item links;
+// failing that, when it ends in a colon or reads as a heading, the next page
+// linked within 200 characters; and otherwise, or when it says the steps are
+// "below", "above" or "here", to the page itself. An image, a scheme file or a
+// zip is not a page. A name may be spelled with a space, dot or dash inside it:
 // "VS Code" for vscode/, "Terminal.app" for terminal-app/. A question, or a
 // promise just after "no", "not" or "the same", promises nothing.
 const schemeTerminals = (await readdir(new URL("terminal-schemes/", root), { withFileTypes: true }).catch(() => []))
@@ -964,11 +967,12 @@ const schemeTerminals = (await readdir(new URL("terminal-schemes/", root), { wit
   .sort();
 const namesTerminal = (folder, text) =>
   new RegExp(`\\b${[...folder.replaceAll("-", "")].map(escapeRegExp).join("[\\s.-]?")}\\b`, "i").test(text);
-// A page as the sentences a reader gets, each link's address kept in ⟨…⟩ or
-// (…) right after its label. HTML keeps its JSON-LD and description meta tags
+// A page as the blocks a reader gets, each link's address kept in (…) after
+// its label or, for HTML, in ⟨…⟩ on both sides of it (a storefront card's
+// label holds a whole sentence, and its link must stay inside it). HTML keeps its JSON-LD and description meta tags
 // and breaks at block elements; Markdown resolves reference links, drops images
 // and emphasis, and breaks at blank lines, list items, headings and table rows.
-function readableSentences(file, source) {
+function readableBlocks(file, source) {
   let blocks;
   if (file.endsWith(".html")) {
     const descriptions = [...source.matchAll(/<meta\b[^>]*>/gi)]
@@ -981,7 +985,7 @@ function readableSentences(file, source) {
       .replace(/<!--[\s\S]*?-->/g, "")
       .replace(/<style\b[\s\S]*?<\/style\s*>/gi, "")
       .replace(/<script\b(?![^>]*ld\+json)[^>]*>[\s\S]*?<\/script\s*>/gi, "")
-      .replace(/<a\b[^>]*?\shref\s*=\s*["']?([^"'\s>]+)["']?[^>]*>([\s\S]*?)<\/a\s*>/gi, " $2 ⟨$1⟩ ")
+      .replace(/<a\b[^>]*?\shref\s*=\s*["']?([^"'\s>]+)["']?[^>]*>([\s\S]*?)<\/a\s*>/gi, " ⟨$1⟩ $2 ⟨$1⟩ ")
       .replace(
         /<\/?(?:address|article|aside|blockquote|br|dd|details|div|dl|dt|figcaption|figure|footer|h[1-6]|header|hr|li|main|nav|ol|p|pre|section|summary|table|td|th|tr|ul)\b[^>]*>/gi,
         "\n\n",
@@ -1008,15 +1012,11 @@ function readableSentences(file, source) {
       .split(/\n[ \t]*\n|\n(?=[ \t]*(?:(?:[-*+]|\d+[.)])[ \t]|#{1,6}[ \t]|\|))/)
       .map((block) => block.replace(/^[ \t]*(?:[-*+]|\d+[.)])[ \t]/, "").replace(/\*\*|__|[*`]/g, ""));
   }
-  return blocks.flatMap((block) =>
-    block
-      .replace(/[‐‑]/g, "-")
-      .replace(/\s+/g, " ")
-      .trim()
-      .split(/(?<=[.!?])\s+(?=[^\s⟩])/)
-      .filter(Boolean),
-  );
+  return blocks.map((block) => block.replace(/[\u2010\u2011]/g, "-").replace(/\s+/g, " ").trim()).filter(Boolean);
 }
+// Sentences end at . ! or ? and a space, but not after "e.g.", "i.e.", "etc.",
+// "vs.", "cf." or "Vol.", and never between a label and its ⟨address⟩.
+const sentencesOf = (block) => block.split(/(?<=[.!?])(?<!\b(?:e\.g|i\.e|etc|vs|cf|vol)\.)\s+(?=[^\s⟨])/i);
 // A link into this repository or onto the site, read from the local tree. A
 // folder serves its index.html on the site and renders its README.md on GitHub;
 // a link that is only a #fragment stays on its own page.
@@ -1039,7 +1039,7 @@ async function linkedPage(file, link) {
   const candidates = [...(path && !path.endsWith("/") ? [path] : []), ...(onGitHub ? ["README.md", "index.html"] : ["index.html", "README.md"]).map((name) => folder + name)];
   for (const candidate of candidates) {
     if (!readablePages.has(candidate)) {
-      readablePages.set(candidate, await readFile(new URL(candidate, root), "utf8").then((source) => readableSentences(candidate, source).join(" "), () => null));
+      readablePages.set(candidate, await readFile(new URL(candidate, root), "utf8").then((source) => readableBlocks(candidate, source).join(" "), () => null));
     }
     if (readablePages.get(candidate) !== null) return { path: candidate, text: readablePages.get(candidate) };
   }
@@ -1058,37 +1058,57 @@ const perTerminalPromise = new RegExp(
   "gi",
 );
 const sentenceLinks = /\]\(\s*<?([^)\s>]+)>?|⟨([^⟩]+)⟩|<(https?:\/\/[^>\s]+)>|(https?:\/\/[^\s<>()"'`\]⟨⟩*]+)/g;
+const pageLinksIn = (text) =>
+  [...text.matchAll(sentenceLinks)]
+    .map((link) => (link[1] ?? link[2] ?? link[3] ?? link[4]).replace(/[?!.,:*_~;]+$/, ""))
+    .filter((href) => {
+      let path = href.split(/[?#]/)[0];
+      try {
+        if (/^[a-z][a-z\d+.-]*:/i.test(href)) path = new URL(href).pathname;
+      } catch {}
+      return !/\.(?!(?:html?|md|txt)$)[^./]+$/i.test(path);
+    });
 for (const file of [...repositoryFiles.filter((path) => path.endsWith(".html")), ...repositoryReadmes, "llms.txt"]) {
-  const sentences = readableSentences(file, await readFile(new URL(file, root), "utf8"));
-  for (const sentence of sentences) {
-    for (const promise of sentence.matchAll(perTerminalPromise)) {
-      const lead = sentence.slice(Math.max(0, promise.index - 24), promise.index + promise[0].length);
-      if (/\?\s*$/.test(sentence) || /\b(?:no|not|never|without|same|identical|regardless)\b|n['’]t\b/i.test(lead)) continue;
-      if (!schemeTerminals.length) fail(`${file} promises "${promise[0]}", but terminal-schemes/ holds no terminal folders to check it against.`);
-      const hrefs = [...sentence.matchAll(sentenceLinks)]
-        .map((link) => (link[1] ?? link[2] ?? link[3] ?? link[4]).replace(/[?!.,:*_~;]+$/, ""))
-        .filter((href) => {
-          let path = href.split(/[?#]/)[0];
-          try {
-            if (/^[a-z][a-z\d+.-]*:/i.test(href)) path = new URL(href).pathname;
-          } catch {}
-          return !/\.(?!(?:html?|md|txt)$)[^./]+$/i.test(path);
-        });
-      const targets = hrefs.length
-        ? await Promise.all(hrefs.map(async (href) => ({ href, page: await linkedPage(file, href) })))
-        : [{ href: null, page: { path: file, text: sentences.join(" ") } }];
-      const checked = targets.map((target) => ({ ...target, missing: target.page && schemeTerminals.filter((folder) => !namesTerminal(folder, target.page.text)) }));
-      if (checked.some((target) => target.missing?.length === 0)) continue;
-      const readable = checked.find((target) => target.page);
-      if (!readable) {
-        fail(`${file} promises "${promise[0]}" and links ${hrefs[0]}, which this check cannot read. Link a page in this repository or on gabs-utilities.com.`);
+  const blocks = readableBlocks(file, await readFile(new URL(file, root), "utf8"));
+  const pageText = blocks.join(" ");
+  let blockStart = 0;
+  for (const block of blocks) {
+    let sentenceStart = 0;
+    for (const sentence of sentencesOf(block)) {
+      sentenceStart = block.indexOf(sentence, sentenceStart);
+      const sentenceEnd = sentenceStart + sentence.length;
+      // Promises are read with every address blanked, so a URL can't start one.
+      const prose = sentence.replace(sentenceLinks, (link) => " ".repeat(link.length));
+      for (const promise of prose.matchAll(perTerminalPromise)) {
+        const promiseEnd = promise.index + promise[0].length;
+        const lead = prose.slice(Math.max(0, promise.index - 24), promiseEnd);
+        if (/\?\s*$/.test(sentence) || /\b(?:no|not|never|without|same|identical|regardless)\b|n['’]t\b/i.test(lead)) continue;
+        if (!schemeTerminals.length) fail(`${file} promises "${promise[0]}", but terminal-schemes/ holds no terminal folders to check it against.`);
+        const pointsHere =
+          /^[^.!?]{0,24}?\b(?:below|above|here|follows?|on this page)\b/i.test(prose.slice(promiseEnd)) ||
+          /\b(?:below|above|here)\b[^.!?]{0,24}$/i.test(prose.slice(0, promise.index));
+        let hrefs = pageLinksIn(sentence);
+        if (!hrefs.length) hrefs = pageLinksIn(block.slice(sentenceEnd)).slice(0, 1);
+        if (!hrefs.length && (/:\s*$/.test(sentence) || !/[.!?]\s*$/.test(sentence))) {
+          const from = blockStart + sentenceStart + promiseEnd;
+          hrefs = pageLinksIn(pageText.slice(from, from + 200)).slice(0, 1);
+        }
+        const targets = await Promise.all(hrefs.map(async (href) => ({ href, page: await linkedPage(file, href) })));
+        if (pointsHere || !hrefs.length) targets.push({ href: null, page: { path: file, text: pageText } });
+        const checked = targets.map((target) => ({ ...target, missing: target.page && schemeTerminals.filter((folder) => !namesTerminal(folder, target.page.text)) }));
+        if (checked.some((target) => target.missing?.length === 0)) continue;
+        const readable = checked.find((target) => target.page);
+        if (!readable) {
+          fail(`${file} promises "${promise[0]}" and links ${hrefs[0]}, which this check cannot read. Link a page in this repository or on gabs-utilities.com.`);
+        }
+        fail(
+          `${file} promises "${promise[0]}" but ${readable.href ? `links ${readable.page.path}` : "gives no link"}, which never names ` +
+            `${readable.missing.length} of the ${schemeTerminals.length} terminals with a scheme in terminal-schemes/ (${readable.missing.join(", ")}). ` +
+            "terminal-schemes/README.md has a section for each.",
+        );
       }
-      fail(
-        `${file} promises "${promise[0]}" but ${readable.href ? `links ${readable.page.path}` : "gives no link"}, which never names ` +
-          `${readable.missing.length} of the ${schemeTerminals.length} terminals with a scheme in terminal-schemes/ (${readable.missing.join(", ")}). ` +
-          "terminal-schemes/README.md has a section for each.",
-      );
     }
+    blockStart += block.length + 1;
   }
 }
 
