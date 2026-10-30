@@ -1051,6 +1051,90 @@ test("reads every README outside products/ for a repository-wide MIT claim", { t
   assert.equal(products.code, 0, `a product README naming its own terms tripped the guard:\n${products.stderr}`);
 });
 
+const perTerminalSteps =
+  "Step-by-step for each terminal, with a\n   matching color scheme:\n" +
+  "   https://github.com/notgabriels-sys/claude-code-50-dark-themes/tree/main/terminal-schemes\n";
+const oldPerTerminalSteps = "Step-by-step for each terminal:\n   https://gabs-utilities.com/claude-code-theme-install-guide.html\n";
+
+test("rejects a promise of per-terminal steps that leads to a page naming no terminal", { timeout: 120_000 }, async (t) => {
+  // Both plugin READMEs linked "Step-by-step for each terminal" to the install guide, which
+  // names no terminal app; the steps are in terminal-schemes/README.md. Put each old line
+  // back (one per fixture, so the second is reached), then the same promise as a storefront
+  // link and as a link the check cannot read.
+  for (const plugin of ["50-dark-themes", "dark-themes-vol-2"]) {
+    const fixtureRoot = await makeFixture(t);
+    const readmePath = join(fixtureRoot, "plugins", plugin, "README.md");
+    const text = await readFile(readmePath, "utf8");
+    assert.ok(text.includes(perTerminalSteps), "fixture anchor moved; update this test");
+    await writeFile(readmePath, text.replace(perTerminalSteps, oldPerTerminalSteps));
+
+    const result = await runVerifier(fixtureRoot);
+
+    assert.notEqual(result.code, 0, `the verifier accepted plugins/${plugin}/README.md's old per-terminal link`);
+    assert.match(
+      result.stderr,
+      new RegExp(
+        `plugins/${plugin}/README\\.md promises "Step-by-step for each terminal" but links ` +
+          "claude-code-theme-install-guide\\.html, which never names \\d+ of the \\d+ terminals",
+      ),
+    );
+  }
+
+  const pageRoot = await makeFixture(t);
+  const pagePath = join(pageRoot, "index.html");
+  const page = await readFile(pagePath, "utf8");
+  assert.ok(page.includes("</main>"), "fixture anchor moved; update this test");
+  await writeFile(
+    pagePath,
+    page.replace("</main>", '<p><a class="text-link" href="/claude-code-theme-install-guide.html#background">Step-by-step\n for each terminal</a></p>\n</main>'),
+  );
+  const onPage = await runVerifier(pageRoot);
+  assert.notEqual(onPage.code, 0, "the verifier accepted a storefront link promising per-terminal steps from the guide");
+  assert.match(onPage.stderr, /index\.html promises "Step-by-step for each terminal" but links claude-code-theme-install-guide\.html/);
+
+  const elsewhereRoot = await makeFixture(t);
+  const readmePath = join(elsewhereRoot, "README.md");
+  const readme = await readFile(readmePath, "utf8");
+  const anchor = "The plugin route above is the recommended install.";
+  assert.ok(readme.includes(anchor), "fixture anchor moved; update this test");
+  await writeFile(readmePath, readme.replace(anchor, `[Setup instructions for every terminal app](https://example.com/terminals). ${anchor}`));
+  const elsewhere = await runVerifier(elsewhereRoot);
+  assert.notEqual(elsewhere.code, 0, "the verifier accepted per-terminal steps it cannot read");
+  assert.match(elsewhere.stderr, /README\.md promises "instructions for every terminal app" and links https:\/\/example\.com\/terminals, which this check cannot read/);
+});
+
+test("accepts per-terminal promises that lead to per-terminal steps", { timeout: 90_000 }, async (t) => {
+  // The check reads what the promise leads to, not one address: a relative link to the
+  // schemes README, a promise on the page that holds the steps, and the guide itself once
+  // it covers every terminal (with the plugin READMEs pointing at it again) all pass.
+  const fixtureRoot = await makeFixture(t);
+  const readmePath = join(fixtureRoot, "README.md");
+  const readme = await readFile(readmePath, "utf8");
+  const anchor = "The plugin route above is the recommended install.";
+  assert.ok(readme.includes(anchor), "fixture anchor moved; update this test");
+  await writeFile(readmePath, readme.replace(anchor, `[Step-by-step for each terminal](terminal-schemes/README.md#file-names). ${anchor}`));
+
+  const schemesPath = join(fixtureRoot, "terminal-schemes", "README.md");
+  const schemes = await readFile(schemesPath, "utf8");
+  assert.ok(schemes.includes("## File names\n"), "fixture anchor moved; update this test");
+  await writeFile(schemesPath, schemes.replace("## File names\n", "Steps for each terminal follow.\n\n## File names\n"));
+
+  for (const plugin of ["50-dark-themes", "dark-themes-vol-2"]) {
+    const pluginReadme = join(fixtureRoot, "plugins", plugin, "README.md");
+    await writeFile(pluginReadme, (await readFile(pluginReadme, "utf8")).replace(perTerminalSteps, oldPerTerminalSteps));
+  }
+  const guidePath = join(fixtureRoot, "claude-code-theme-install-guide.html");
+  const guide = await readFile(guidePath, "utf8");
+  assert.ok(guide.includes("</main>"), "fixture anchor moved; update this test");
+  const terminals = ["iTerm2", "Ghostty", "kitty", "Alacritty", "WezTerm", "Windows Terminal", "VS Code", "Warp", "Konsole", "Terminal.app"];
+  const section = `<section><h2>Your terminal</h2><ul>${terminals.map((name) => `<li>${name}: import its scheme.</li>`).join("")}</ul></section>`;
+  await writeFile(guidePath, guide.replace("</main>", `${section}\n</main>`));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.equal(result.code, 0, `a per-terminal promise that leads to per-terminal steps failed:\n${result.stderr}`);
+});
+
 test("rejects a page that still offers the withdrawn free Gumroad download", { timeout: 90_000 }, async (t) => {
   // The install guide's FAQ has its own guard (from #61); this one covers every
   // other public page, so plant the offer where only it looks.

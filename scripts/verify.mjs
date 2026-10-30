@@ -921,6 +921,10 @@ if (!/matches by filename, not contents/i.test(installerHeader)) {
 // covers every README GitHub renders outside products/, found by walking the
 // tree: terminal-schemes/README.md (#68) said its schemes were "MIT, the same
 // as the rest of this repository" while a fixed list of three READMEs was read.
+const repositoryReadmes = (await readdir(root, { recursive: true }))
+  .map((path) => path.replaceAll("\\", "/"))
+  .filter((path) => /(^|\/)README\.md$/.test(path) && !path.split("/").some((segment) => [".git", ".worktrees", "node_modules", "products"].includes(segment)))
+  .sort();
 const productLicences = [];
 for (const entry of await readdir(new URL("products/", root), { withFileTypes: true })) {
   if (!entry.isDirectory()) continue;
@@ -930,17 +934,86 @@ for (const entry of await readdir(new URL("products/", root), { withFileTypes: t
   } catch {}
 }
 if (productLicences.length) {
-  const readmes = (await readdir(root, { recursive: true }))
-    .map((path) => path.replaceAll("\\", "/"))
-    .filter((path) => /(^|\/)README\.md$/.test(path) && !path.split("/").some((segment) => [".git", ".worktrees", "node_modules", "products"].includes(segment)))
-    .sort();
-  for (const file of [...publicHtmlFiles, ...readmes, "llms.txt"]) {
+  for (const file of [...publicHtmlFiles, ...repositoryReadmes, "llms.txt"]) {
     const text = (await readFile(new URL(file, root), "utf8")).replace(/<[^>]+>/g, "").replace(/\s+/g, " ");
     const claim = text.match(/repositor(?:y|ies)\b[^.]{0,40}\bMIT\b|\bMIT\b[^.]{0,40}\brepositor(?:y|ies)\b/i);
     if (claim) {
       fail(
         `${file} says the repository is MIT ("${claim[0]}"), but products/${productLicences[0]} and ` +
           `${productLicences.length - 1} other product folder(s) carry their own non-MIT licences. Name the MIT parts instead.`,
+      );
+    }
+  }
+}
+
+// Both plugin READMEs said "Step-by-step for each terminal:" and linked the
+// install guide, which names no terminal app at all. The per-terminal steps
+// are in terminal-schemes/README.md (#68), one section per scheme folder. So
+// wherever a public page, a README or llms.txt promises steps for each (or
+// every) terminal, what it links right after the promise (or the page itself,
+// if it links nothing there) must name every terminal with a folder in
+// terminal-schemes/. A name may be spelled with a space, dot or dash inside
+// it: "VS Code" for vscode/, "Terminal.app" for terminal-app/.
+const schemeTerminals = (await readdir(new URL("terminal-schemes/", root), { withFileTypes: true }).catch(() => []))
+  .filter((entry) => entry.isDirectory())
+  .map((entry) => entry.name)
+  .sort();
+const namesTerminal = (folder, text) =>
+  new RegExp(`\\b${[...folder.replaceAll("-", "")].map(escapeRegExp).join("[\\s.-]?")}\\b`, "i").test(text);
+// Readable text with each link's address kept in ⟨…⟩ right after its label.
+const readableWithLinks = (file, source) =>
+  (file.endsWith(".html")
+    ? source
+        .replace(/<!--[\s\S]*?-->/g, "")
+        .replace(/<style\b[\s\S]*?<\/style\s*>/gi, "")
+        .replace(/<script\b(?![^>]*ld\+json)[^>]*>[\s\S]*?<\/script\s*>/gi, "")
+        .replace(/<a\b[^>]*?\shref\s*=\s*["']?([^"'\s>]+)["']?[^>]*>([\s\S]*?)<\/a\s*>/gi, " $2 ⟨$1⟩ ")
+        .replace(/<[^>]+>/g, " ")
+        .replace(/&nbsp;|&#160;/gi, " ")
+        .replace(/&amp;/gi, "&")
+    : source
+  ).replace(/\s+/g, " ");
+// A link into this repository or onto the site, read from the local tree. A
+// folder serves its index.html on the site and renders its README.md on GitHub.
+async function linkedPage(file, link) {
+  const onSite = link.match(/^https?:\/\/(?:www\.)?(?:gabs-utilities\.com|notgabriels-sys\.github\.io\/claude-code-50-dark-themes)(\/[^?#]*)?(?:[?#].*)?$/i);
+  const onGitHub = link.match(/^https:\/\/github\.com\/notgabriels-sys\/claude-code-50-dark-themes(?:\/(?:blob|tree)\/[^/?#]+(\/[^?#]*)?)?\/?(?:[?#].*)?$/i);
+  let path;
+  if (onSite) path = onSite[1] ?? "";
+  else if (onGitHub) path = onGitHub[1] ?? "";
+  else if (/^[a-z][a-z\d+.-]*:|^\/\//i.test(link)) return null;
+  else if (link.startsWith("/")) path = link.split(/[?#]/)[0];
+  else path = new URL(link.split(/[?#]/)[0] || file, new URL(file, root)).href.slice(root.href.length);
+  path = decodeURIComponent(path).replace(/^\/+/, "");
+  const folder = path && !path.endsWith("/") ? `${path}/` : path;
+  const candidates = [...(path && !path.endsWith("/") ? [path] : []), ...(onGitHub ? ["README.md", "index.html"] : ["index.html", "README.md"]).map((name) => folder + name)];
+  for (const candidate of candidates) {
+    try {
+      return { path: candidate, text: readableWithLinks(candidate, await readFile(new URL(candidate, root), "utf8")) };
+    } catch {}
+  }
+  return null;
+}
+for (const file of [...publicHtmlFiles, ...repositoryReadmes, "llms.txt"]) {
+  const text = readableWithLinks(file, await readFile(new URL(file, root), "utf8"));
+  const promises = text.matchAll(
+    /\b(?:step-by-step|steps|instructions|how-tos?|walkthroughs?|guides?)\b[^.!?]{0,60}?\b(?:for|in|per) (?:each|every|any) terminal(?: apps?| applications?| emulators?)?\b|\bper-terminal (?:steps|instructions|guides?|set-?up)\b/gi,
+  );
+  for (const promise of promises) {
+    const end = promise.index + promise[0].length;
+    const link = text.slice(end, end + 200).match(/\]\(\s*<?([^)\s>]+)>?|⟨([^⟩]+)⟩|<(https?:\/\/[^>\s]+)>|(https?:\/\/[^\s<>()"'\]]+)/);
+    const href = link && (link[1] ?? link[2] ?? link[3] ?? link[4]).replace(/[.,;:!?]+$/, "");
+    const target = href ? await linkedPage(file, href) : { path: file, text };
+    if (!target) {
+      fail(`${file} promises "${promise[0]}" and links ${href}, which this check cannot read. Link a page in this repository or on gabs-utilities.com.`);
+    }
+    if (!schemeTerminals.length) fail(`${file} promises "${promise[0]}", but terminal-schemes/ holds no terminal folders to check it against.`);
+    const missing = schemeTerminals.filter((folder) => !namesTerminal(folder, target.text));
+    if (missing.length) {
+      fail(
+        `${file} promises "${promise[0]}" but ${href ? `links ${target.path}` : "gives no link"}, which never names ` +
+          `${missing.length} of the ${schemeTerminals.length} terminals with a scheme in terminal-schemes/ (${missing.join(", ")}). ` +
+          "terminal-schemes/README.md has a section for each.",
       );
     }
   }

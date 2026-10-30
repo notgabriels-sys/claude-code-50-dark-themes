@@ -26,8 +26,9 @@ Source and manual installation: https://github.com/notgabriels-sys/claude-code-5
 2. **Make it your own.** Plugin themes are read-only. Press `Ctrl+E` on one in `/theme` to copy it
    into `~/.claude/themes/`, then edit the copy's colors.
 3. **Match your terminal.** Set your terminal's background to the theme's background color, listed
-   on each theme's page, so panels and text look as designed. Step-by-step for each terminal:
-   https://gabs-utilities.com/claude-code-theme-install-guide.html
+   on each theme's page, so panels and text look as designed. Step-by-step for each terminal, with a
+   matching color scheme:
+   https://github.com/notgabriels-sys/claude-code-50-dark-themes/tree/main/terminal-schemes
 4. **Remove it.** Run `claude plugin uninstall 50-dark-themes@notgabriels-themes`, then pick another
    theme in `/theme`.
 
