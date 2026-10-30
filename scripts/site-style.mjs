@@ -13,36 +13,51 @@
 //    declare the same tokens with the same values, and between them every token of the dark
 //    :root that holds a colour, so no colour stays dark by omission. A specimen (.specimen,
 //    .cmd: a terminal shown on the page) re-declares tokens only to the dark theme's values.
-//    A page's own <style> re-declares none of the stylesheet's tokens, so what the page paints with
-//    is what these rules read; the one exception is the install command's plain text (--ink inside
-//    .cmd), which is the shared coding palette's and is held by scripts/verify-contrast.mjs.
+//    A theme token is declared nowhere else in the stylesheet, and a page's own <style> or style
+//    attributes re-declare none of them, so what the page paints with is what these rules read;
+//    the one exception is the install command's plain text (--ink inside .cmd), which is the
+//    shared coding palette's and is held by scripts/verify-contrast.mjs.
 // 3. Contrast, in each theme, with WCAG 2.x's formula: every text token on every surface at
 //    4.5:1, the floor for normal text, including over the violet wash of a selected chip; the
 //    page colour on an ink fill (the primary pill's label) at 4.5:1; and the two marks that are
 //    never text (the ember point, and the sun or moon on the switch's violet knob) at 3:1, the
 //    floor for graphical objects. Ember is held to the lower floor because it is never text:
 //    no color declaration in the stylesheet or a page's <style> uses it. Text in the stylesheet
-//    takes only the text tokens; text in a page's <style> takes no surface, line or wash token,
-//    and a literal colour or the coding palette only inside a specimen.
-// 4. Motion only when the visitor allows it. Every animation, every transition of a transform
-//    (or of all properties), smooth scrolling, view transitions and every transform on :hover, in
-//    the stylesheet and in a page's own <style>, sits inside
+//    takes only the text tokens, and so does text in a page's <style> outside a specimen or a
+//    theme preview (THEME_PREVIEWS: a theme shown in its own colours, whose contrast is the
+//    theme's, not this file's); inside one it takes no surface, line or wash token. A selector is
+//    inside a specimen when the specimen is the element it names or an ancestor of it.
+// 4. Motion only when the visitor allows it. Every animation, every transition of anything but
+//    colour, opacity, shadow or filter, smooth scrolling, view transitions and every transform on
+//    :hover, in the stylesheet and in a page's own <style>, sits inside
 //    @media (prefers-reduced-motion: no-preference), or, for an animation, a transition or smooth
 //    scrolling, a later rule for the same selector turns it off inside
 //    @media (prefers-reduced-motion: reduce). With reduced motion on, nothing moves; with it off,
-//    the page offers a control that pauses every animation (WCAG 2.2.2).
-// 5. The pages on the base link assets/site.css before their own <style>, so the page's layout
-//    builds on the shared tokens; carry the ambient lights, the theme switch, wired to the key
-//    the Familiars page keeps the choice under, so one choice holds across the site, and the
-//    motion switch; preload no font the stylesheet does not use; and fetch no font or stylesheet
-//    from another host.
+//    the page offers a control that pauses motion (WCAG 2.2.2). The pause holds every looping
+//    animation where it is; whatever else moves (a one-off animation, which would hold its first
+//    frame, a transition of movement, smooth scrolling, a hover transform) is written under
+//    :root:not([data-motion="paused"]), so the pause removes it. No motion is !important but
+//    the pause.
+// 5. The pages on the base link assets/site.css before their own <style>, and no other
+//    stylesheet, so the page's layout builds on the shared tokens; carry the ambient lights, the
+//    theme switch, wired to the key the Familiars page keeps the choice under, so one choice
+//    holds across the site, and the motion switch, shown whenever motion is allowed; preload no
+//    font the stylesheet does not use; fetch no font or stylesheet from another host, read as a
+//    browser reads the address; and use a style attribute only for a theme preview's own colours
+//    and a background or opacity.
 // 6. Fonts. Every @font-face in the stylesheet points at a file in assets/fonts, every font file
 //    there is loaded by an @font-face (the stylesheet's, or one in a page's own <style> that has
 //    not moved onto the base yet), and every family in the stylesheet ships with its SIL Open Font
 //    License, which both fonts are under.
+// 7. Requests. Those font files are the only requests the stylesheet makes: no @import, no url(),
+//    image-set() or src() outside an @font-face's src, and no backslash, which as a CSS escape
+//    could spell one. So scripts/verify.mjs, which refuses every other served stylesheet because
+//    it cannot read what CSS fetches, serves this one.
 //
 // The rules read CSS as written, flat: a style rule nested inside another is refused rather than
 // guessed at, and an !important on a token, which would outrank both light declarations, is too.
+// They read a page's markup and styles, and its script only for how it works the two switches:
+// a style the script sets at run time is not seen here.
 //
 // What cannot pass is a colour the design base does not name, a light theme that differs by
 // which way the visitor arrived at it, text below the floor in either theme, motion that runs
@@ -52,6 +67,9 @@ export const STYLESHEET = "assets/site.css";
 export const SITE_PAGES = ["index.html"];
 export const THEME_KEY = "familiars-theme";
 export const MOTION_KEY = "familiars-motion";
+// The page's theme previews: a theme shown in its own colours on its own ground (the hero's
+// specimen, a finder pick, a gallery card). Text inside one paints with the theme's colours.
+export const THEME_PREVIEWS = [".theme-monolith", ".pick", ".card"];
 
 // The design base's palette (/mnt/project-files/design/STYLE.md), by role.
 export const PALETTE = {
@@ -90,7 +108,8 @@ const NAMED_COLOURS = new Set(
 );
 // CSS Color 4 system colours, which the browser picks, not the palette.
 const SYSTEM_COLOURS = new Set("accentcolor accentcolortext activetext buttonborder buttonface buttontext canvas canvastext field fieldtext graytext highlight highlighttext linktext mark marktext selecteditem selecteditemtext visitedtext".split(" "));
-const COLOUR_PROPERTY = /^(--|color$|background|border|outline|box-shadow$|text-shadow$|text-decoration|caret-color$|accent-color$|fill$|stroke$|column-rule|filter$|-webkit-text-|scrollbar-color$|.*-color$)/;
+const COLOUR_PROPERTY = /^(--|color$|background|border|outline|box-shadow$|text-shadow$|text-decoration|caret-color$|accent-color$|fill$|stroke$|column-rule|(backdrop-)?filter$|-webkit-text-|scrollbar-color$|.*-color$)/;
+const unprefixed = (property) => property.replace(/^-(webkit|moz|ms|o)-/, "");
 
 // --- parsing ------------------------------------------------------------------------------------
 
@@ -245,7 +264,7 @@ const fromRgbFunction = (inside) => {
 // and [{ text, problem }] for anything else that names a colour.
 export function colourLiterals(value, property = "color") {
   const found = [];
-  if (/url\(\s*["']?\s*data:/i.test(value)) found.push({ text: "url(data:…)", problem: "is an inline data: image, whose colours cannot be read against the palette; serve the image as a file" });
+  if (/\bdata:/i.test(value)) found.push({ text: "url(data:…)", problem: "is an inline data: image, whose colours cannot be read against the palette; serve the image as a file" });
   const bare = value.replace(/"[^"]*"|'[^']*'/g, "").replace(/url\([^)]*\)/gi, "");
   for (const [text] of bare.matchAll(/#[0-9a-f]+\b/gi)) {
     if ([4, 5, 7, 9].includes(text.length)) found.push({ text, ...fromHex(text) });
@@ -271,7 +290,7 @@ export function colourLiterals(value, property = "color") {
       found.push({ text: "color-mix(…)", problem: "mixes a literal colour, which paints a colour the palette does not name; color-mix() takes tokens, so the mix follows the theme" });
     }
   }
-  if (COLOUR_PROPERTY.test(property)) {
+  if (COLOUR_PROPERTY.test(property) || COLOUR_PROPERTY.test(unprefixed(property))) {
     // A var() fallback still paints: only the var( --name part is set aside.
     const words = bare.replace(/var\(\s*--[\w-]+\s*,?/gi, "").replace(/#[0-9a-f]+\b/gi, "").match(/[a-z]+(?:-[a-z]+)*/gi) ?? [];
     for (const word of words) {
@@ -317,6 +336,15 @@ export function stylesheetProblems(css) {
   const rules = parseCss(css);
   problems.push(...syntaxProblems(rules, STYLESHEET));
   if (/@import\b/i.test(stripComments(css))) problems.push(`${STYLESHEET} uses @import; the stylesheet is one file and fetches no other, from this host or another.`);
+  // 7. Requests: the fonts' files alone.
+  if (stripComments(css).includes("\\")) problems.push(`${STYLESHEET} holds a backslash; as a CSS escape one can spell url( or @import where these rules do not see it, so the stylesheet uses none.`);
+  for (const rule of rules) {
+    for (const { property, value } of rule.declarations) {
+      if (squash(rule.selector) === "@font-face" && property === "src") continue;
+      const fetches = value.replace(/"[^"]*"|'[^']*'/g, '""').match(/\b(url|image-set|-webkit-image-set|src)\(/i);
+      if (fetches) problems.push(`${STYLESHEET} ${rule.selector} { ${property} } fetches with ${fetches[1]}(); the stylesheet's only requests are its @font-face files in assets/fonts, which these rules read.`);
+    }
+  }
 
   // 1. Palette.
   for (const rule of rules) {
@@ -359,6 +387,16 @@ export function stylesheetProblems(css) {
     }
   }
   const specimens = rules.filter((candidate) => selectorsOf(candidate).some((selector) => selector === ".specimen" || selector === ".cmd"));
+  // A theme token declared anywhere else paints what neither theme nor the contrast floors read.
+  const themeBlocks = new Set([...bySystem, ...byChoice, ...specimens.filter((rule) => !rule.context.length && selectorsOf(rule).every((selector) => selector === ".specimen" || selector === ".cmd"))]);
+  for (const rule of rules) {
+    if (themeBlocks.has(rule) || (!rule.context.length && squash(rule.selector) === ":root")) continue;
+    for (const { property } of rule.declarations) {
+      if (!property.startsWith("--") || !dark.has(property)) continue;
+      const where = rule.context.length ? ` (inside ${rule.context.join(" ")})` : "";
+      problems.push(`${STYLESHEET} ${rule.selector}${where} declares ${property}, a theme token, outside the dark :root, the two light declarations and the specimen rule; the themes and their contrast are read from those alone.`);
+    }
+  }
   if (!specimens.length) problems.push(`${STYLESHEET} declares no .specimen or .cmd rule, so a terminal shown on the page would turn light with the page.`);
   for (const rule of specimens) {
     const own = tokensOf(rule);
@@ -431,30 +469,32 @@ export function emberTextProblems(rules, label) {
   );
 }
 
-// 4. Every animation, every transition of a transform, smooth scrolling, view transitions and every
+// 4. Every animation, every transition of movement, smooth scrolling, view transitions and every
 // transform on :hover runs only when motion is allowed; an animation, a transition or smooth
 // scrolling may instead be turned off by a later rule for the same selector at the top of
 // @media (prefers-reduced-motion: reduce).
 const TIMING = /^(\d*\.?\d+m?s|ease|ease-in|ease-out|ease-in-out|linear|step-start|step-end|steps\(.*\)|cubic-bezier\(.*\)|linear\(.*\)|normal|allow-discrete)$/i;
-const MOVING = new Set(["all", "transform", "translate", "rotate", "scale"]);
-// The properties a transition list animates; a shorthand part that names none animates all.
+// What a transition may change without moving anything: colours, opacity, shadows and filters.
+// Everything else (a transform, an offset, a margin, a size, a background's position, all) moves.
+const STILL = /^(none|initial|color|.+-color|opacity|box-shadow|text-shadow|filter|backdrop-filter|fill|stroke|visibility)$/;
+// The properties a transition list animates, unprefixed; a shorthand part that names none animates all.
 const transitioned = (property, value) =>
   splitTop(value, ",").map((part) => {
     const words = part.trim().split(/\s+(?![^(]*\))/).filter(Boolean);
-    if (property === "transition-property") return words[0]?.toLowerCase() ?? "all";
-    return words.find((word) => !TIMING.test(word))?.toLowerCase() ?? "all";
+    const named = property === "transition-property" ? words[0] : words.find((word) => !TIMING.test(word));
+    return unprefixed(named?.toLowerCase() ?? "all");
   });
 const motionOf = (property, value, rule) => {
-  const name = property.replace(/^-(webkit|moz|ms|o)-/, "");
+  const name = unprefixed(property);
   if (["animation", "animation-name"].includes(name)) return splitTop(value, ",").every((part) => /^none(\s|$)/i.test(part.trim())) ? null : "animation";
-  if (["transition", "transition-property"].includes(name)) return transitioned(name, value).some((moved) => MOVING.has(moved)) ? "transition" : null;
+  if (["transition", "transition-property"].includes(name)) return transitioned(name, value).some((moved) => !STILL.test(moved)) ? "transition" : null;
   if (name === "scroll-behavior") return /^smooth$/i.test(value) ? "scroll-behavior" : null;
   if (squash(rule.selector) === "@view-transition") return name === "navigation" && !/^none$/i.test(value) ? "view-transition" : null;
   if (["transform", "translate", "rotate", "scale"].includes(name)) return !/^none$/i.test(value) && selectorsOf(rule).some((selector) => selector.includes(":hover")) ? "hover" : null;
   return null;
 };
 const stillOf = (property, value) => {
-  const name = property.replace(/^-(webkit|moz|ms|o)-/, "");
+  const name = unprefixed(property);
   if (["animation", "animation-name"].includes(name) && /^none$/i.test(value.trim())) return "animation";
   if (["transition", "transition-property"].includes(name) && /^none$/i.test(value.trim())) return "transition";
   if (name === "scroll-behavior" && /^auto$/i.test(value.trim())) return "scroll-behavior";
@@ -483,27 +523,122 @@ export function motionProblems(rules, label) {
       problems.push(`${label} ${rule.selector} { ${property}: ${value} } runs whatever the visitor's motion setting; put it inside @media (prefers-reduced-motion: no-preference)${escapes ? ", or turn it off for the same selector in a later rule inside @media (prefers-reduced-motion: reduce)" : ""}.`);
     }
   });
+  problems.push(...pauseProblems(rules, label));
+  return problems;
+}
+
+// The pause holds a looping animation where it is. Anything else that moves, wherever it runs
+// while motion is allowed, would hold a half-finished frame (a one-off animation, paused before it
+// starts, stays on its first) or still answer the pointer, so it is written under PAUSE_GATE and
+// the pause removes it. And nothing that moves is !important, which would outrank the pause and
+// the rules that turn motion off; only the pause itself is.
+const PAUSE_GATE = ':root:not([data-motion="paused"])';
+const MOTION_PROPERTY = /^(animation|transition)(-|$)|^(transform|translate|rotate|scale|scroll-behavior)$/;
+// Every animation the rule sets loops: each part of its animation list and of its iteration count says infinite.
+const loops = (rule) => {
+  const parts = (name) => rule.declarations.filter(({ property }) => unprefixed(property) === name).flatMap(({ value }) => splitTop(value, ","));
+  const [listed, counted] = [parts("animation"), parts("animation-iteration-count")];
+  return listed.length + counted.length > 0 && [...listed, ...counted].every((part) => /(^|\s)infinite(\s|$)/i.test(part.trim()));
+};
+function pauseProblems(rules, label) {
+  const problems = [];
+  for (const rule of rules) {
+    if (rule.context.some((at) => at.startsWith("@keyframes"))) continue;
+    for (const { property, value, important } of rule.declarations) {
+      const name = unprefixed(property);
+      if (important && MOTION_PROPERTY.test(name) && !(name === "animation-play-state" && selectorsOf(rule).every((selector) => selector.startsWith(squash(PAUSED))))) {
+        problems.push(`${label} ${rule.selector} { ${property} } is !important, which outranks the pause and the rules that turn motion off; only the pause itself is !important.`);
+      }
+      if (rule.context.some((at) => motionMedia(at, "reduce"))) continue;
+      const kind = motionOf(property, value, rule);
+      if (!kind || kind === "view-transition" || (kind === "animation" && loops(rule))) continue;
+      if (selectorsOf(rule).every((selector) => selector.startsWith(squash(PAUSE_GATE)))) continue;
+      problems.push(
+        kind === "animation"
+          ? `${label} ${rule.selector} { ${property}: ${value} } keeps its first frame while the visitor has paused motion: the pause holds every animation where it is, and this one-off has not started; write it under ${PAUSE_GATE} so the pause removes it.`
+          : `${label} ${rule.selector} { ${property}: ${value} } still moves while the visitor has paused motion; write it under ${PAUSE_GATE} so the pause removes it.`,
+      );
+    }
+  }
   return problems;
 }
 
 // --- the pages ----------------------------------------------------------------------------------
 
 const STYLE_BLOCK = /<style\b[^>]*>([\s\S]*?)<\/style\s*>/gi;
-const attributes = (tag) => new Map([...tag.matchAll(/([a-z-]+)(?:\s*=\s*("[^"]*"|'[^']*'|[^\s>]+))?/gi)].slice(1).map(([, name, value = ""]) => [name.toLowerCase(), value.replace(/^["']|["']$/g, "")]));
+// Character references in an attribute, decoded as a browser decodes them: numeric ones, and the
+// named ones that spell a URL's punctuation. Any other named one is left as written, and an
+// address that still holds one is not read as this site's (crossOrigin).
+const NAMED = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", sol: "/", bsol: "\\", colon: ":", period: ".", NewLine: "\n", Tab: "\t", num: "#", quest: "?", percnt: "%", commat: "@", equals: "=" };
+const decode = (text) =>
+  text
+    .replace(/&#x([0-9a-f]+);?/gi, (_, digits) => String.fromCodePoint(Number.parseInt(digits, 16)))
+    .replace(/&#(\d+);?/g, (_, digits) => String.fromCodePoint(Number(digits)))
+    .replace(/&([A-Za-z]+);/g, (whole, name) => NAMED[name] ?? whole);
+const attributes = (tag) => new Map([...tag.matchAll(/([a-z-]+)(?:\s*=\s*("[^"]*"|'[^']*'|[^\s>]+))?/gi)].slice(1).map(([, name, value = ""]) => [name.toLowerCase(), decode(value.replace(/^["']|["']$/g, ""))]));
 const tags = (html, name) => [...html.matchAll(new RegExp(`<${name}\\b[^>]*>`, "gi"))].map((match) => ({ index: match.index, attributes: attributes(match[0]) }));
 // A link on the page as a path from the repository root.
 const fromPage = (href, path) => new URL(href, `https://site/${path}`).pathname.slice(1);
 
-const SPECIMEN = /\.(cmd|specimen)(?![\w-])/;
-const inSpecimen = (rule) => selectorsOf(rule).every((selector) => SPECIMEN.test(selector));
+// Inside a specimen: the element a selector names is the specimen or sits inside it. What a
+// :not(), :is(), :where() or :has() holds, an attribute value or a string names no element on
+// that path, and a sibling combinator (+ or ~) leaves it, so those are set aside first.
+const functional = (selector) => {
+  let out = "";
+  for (let index = 0; index < selector.length; ) {
+    const call = selector.slice(index).match(/^:[\w-]+\(/);
+    if (!call) {
+      out += selector[index++];
+      continue;
+    }
+    let depth = 0;
+    let end = index + call[0].length - 1;
+    for (; end < selector.length; end += 1) {
+      if (selector[end] === "(") depth += 1;
+      if (selector[end] === ")" && --depth === 0) break;
+    }
+    index = end + 1;
+  }
+  return out;
+};
+const specimenPath = (selector) => functional(selector.replace(/"[^"]*"|'[^']*'/g, "").replace(/\[[^\]]*\]/g, ""));
+const ROOTS = (classes) => new RegExp(`\\.(${classes.map((name) => name.slice(1)).join("|")})(?![\\w-])`);
+const SPECIMENS = ROOTS([".cmd", ".specimen"]);
+const SPECIMENS_OR_PREVIEWS = ROOTS([".cmd", ".specimen", ...THEME_PREVIEWS]);
+// Selectors with their whitespace kept, since a descendant combinator is a space.
+const pathsOf = (rule) => splitTop(rule.selector, ",").map((selector) => selector.trim().replace(/\s+/g, " ")).filter(Boolean);
+const inside = (rule, roots) => pathsOf(rule).every((selector) => {
+  const path = specimenPath(selector);
+  return !/[+~]/.test(path) && roots.test(path);
+});
 // Tokens a page may re-declare inside a specimen, and what holds them instead.
 const SPECIMEN_OWN = new Set(["--ink"]);
 const NOT_TEXT = ["ground-2", "raise", "hair", "accent-soft", "accent-dim", "ember-soft"];
-const crossOrigin = (url) => /^([a-z][a-z0-9+.-]*:)?\/\//i.test(url.trim());
+// An address that leaves this site, resolved as a browser resolves it against a page here.
+const crossOrigin = (url) => {
+  if (/&[A-Za-z]+;/.test(url)) return true;
+  try {
+    return new URL(url, "https://site/index.html").host !== "site";
+  } catch {
+    return true;
+  }
+};
+// The text colours whose contrast the stylesheet holds in both themes.
+const TEXT_VALUE = /^(var\(\s*--(ink|mute|faint|accent|ground)\s*\)|currentcolor|inherit|transparent)$/i;
 // Keys a script binds to the literal key: the literal itself, or a const/let/var holding it.
 const keyNames = (script, key) => [`"${key}"`, `'${key}'`, ...[...script.matchAll(new RegExp(`\\b(?:const|let|var)\\s+([A-Za-z_$][\\w$]*)\\s*=\\s*["']${key}["']`, "g"))].map(([, name]) => name)];
 const escape = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const stores = (script, key) => keyNames(script, key).some((name) => new RegExp(`getItem\\(\\s*${escape(name)}\\s*\\)`).test(script)) && keyNames(script, key).some((name) => new RegExp(`setItem\\(\\s*${escape(name)}\\s*,`).test(script));
+// The names a script binds to document.getElementById(id), or to matchMedia(query).
+const bound = (script, call) => [...script.matchAll(new RegExp(`\\b(?:const|let|var)\\s+([A-Za-z_$][\\w$]*)\\s*=\\s*(?:window\\.|document\\.)?${call}`, "g"))].map(([, name]) => name);
+// The script shows the element bound to `id` (sets hidden to `shown`) and never hides it again.
+const shows = (script, id, shown) =>
+  bound(script, `getElementById\\(\\s*["']${id}["']\\s*\\)`).some(
+    (name) => new RegExp(`\\b${escape(name)}\\.hidden\\s*=\\s*(${shown})\\s*[;\\n]`).test(script) && !new RegExp(`\\b${escape(name)}\\.hidden\\s*=\\s*true\\b`).test(script),
+  );
+// Properties a style attribute may set: a theme preview's own colours (custom properties) and a
+// background or opacity. Text colour and motion stay in the <style> these rules read.
+const STYLE_ATTRIBUTE = /^(--[\w-]+|background|background-color|opacity)$/;
 
 // `fontFiles` is what the stylesheet's @font-face rules load, as paths from the repository root;
 // `tokens` is the stylesheet's own tokens (sharedTokens), which a page does not re-declare.
@@ -511,7 +646,13 @@ export function pageProblems(source, path, fontFiles = [], tokens = []) {
   const problems = [];
   // Markup in a comment is not on the page.
   const html = source.replace(/<!--[\s\S]*?-->/g, "");
-  const sheet = tags(html, "link").find((link) => (link.attributes.get("rel") ?? "").split(/\s+/).includes("stylesheet") && fromPage(link.attributes.get("href") ?? "", path) === STYLESHEET);
+  const relsOf = (link) => (link.attributes.get("rel") ?? "").toLowerCase().split(/\s+/);
+  const stylesheets = tags(html, "link").filter((link) => relsOf(link).includes("stylesheet"));
+  const sheet = stylesheets.find((link) => !relsOf(link).includes("alternate") && fromPage(link.attributes.get("href") ?? "", path) === STYLESHEET);
+  for (const link of stylesheets) {
+    const href = link.attributes.get("href") ?? "";
+    if (link !== sheet && !crossOrigin(href)) problems.push(`${path} links ${href} as a stylesheet; its rules are not read here, so the page's styles are its own <style> and ${STYLESHEET} alone.`);
+  }
   const firstStyle = html.search(/<style\b/i);
   if (!sheet) problems.push(`${path} does not link ${STYLESHEET} (<link rel="stylesheet" href="${STYLESHEET}">), so it does not wear the site's look.`);
   else {
@@ -536,11 +677,12 @@ export function pageProblems(source, path, fontFiles = [], tokens = []) {
   const scripts = [...html.matchAll(/<script\b(?![^>]*\bsrc=)(?![^>]*application\/ld\+json)[^>]*>([\s\S]*?)<\/script\s*>/gi)]
     .map((match) => match[1].replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "").replace(/;\s*\/\/[^\n]*/g, ";"))
     .join("\n");
-  if (!/getElementById\(\s*["']themeSwitch["']\s*\)/.test(scripts) || !stores(scripts, THEME_KEY) || !/\.hidden\s*=\s*false\b/.test(scripts)) {
+  if (!stores(scripts, THEME_KEY) || !shows(scripts, "themeSwitch", "false")) {
     problems.push(`${path}'s script does not work the theme switch under the key "${THEME_KEY}" (reading it with getItem, saving it with setItem, and unhiding the switch), the key the Familiars page keeps the choice under, so a choice made on one page would not hold on the other.`);
   }
-  if (!/getElementById\(\s*["']motionSwitch["']\s*\)/.test(scripts) || !stores(scripts, MOTION_KEY) || !/data-motion/.test(scripts)) {
-    problems.push(`${path}'s script does not work the motion switch under the key "${MOTION_KEY}" (reading it with getItem, saving it with setItem, and setting data-motion on the root).`);
+  const allowed = bound(scripts, `matchMedia\\(\\s*["']\\(\\s*prefers-reduced-motion\\s*:\\s*no-preference\\s*\\)["']\\s*\\)`).map((name) => `!\\s*${escape(name)}\\.matches`);
+  if (!stores(scripts, MOTION_KEY) || !/data-motion/.test(scripts) || !shows(scripts, "motionSwitch", ["false", ...allowed].join("|"))) {
+    problems.push(`${path}'s script does not work the motion switch under the key "${MOTION_KEY}" (reading it with getItem, saving it with setItem, setting data-motion on the root, and showing the switch, never hiding it again, whenever prefers-reduced-motion: no-preference matches).`);
   }
   if (/fonts\.(googleapis|gstatic)\.com/i.test(html)) problems.push(`${path} fetches a font from Google; the site serves its own fonts from assets/fonts, with no third-party request.`);
   for (const link of tags(html, "link")) {
@@ -562,18 +704,26 @@ export function pageProblems(source, path, fontFiles = [], tokens = []) {
       for (const url of raw) if (crossOrigin(url)) problems.push(`${path} @font-face for "${family}" loads ${url} from another host; the site serves its own fonts from assets/fonts.`);
     }
   }
+  for (const [, quoted] of html.matchAll(/\sstyle\s*=\s*("[^"]*"|'[^']*')/gi)) {
+    for (const part of splitTop(decode(quoted.slice(1, -1)), ";")) {
+      const property = part.slice(0, part.indexOf(":")).trim().toLowerCase();
+      if (!property) continue;
+      if (tokens.includes(property)) problems.push(`${path} has a style attribute that re-declares ${property}, a token of ${STYLESHEET}; the page paints with the stylesheet's tokens, whose themes and contrast are held there.`);
+      else if (!STYLE_ATTRIBUTE.test(property)) problems.push(`${path} has a style attribute that sets ${property}; a style attribute sets only a theme preview's own colours (custom properties) and a background or opacity, so text colour and motion stay in the <style> these rules read.`);
+    }
+  }
   const rules = styles.flatMap((css) => parseCss(css));
   problems.push(...syntaxProblems(rules, path));
   for (const rule of rules) {
     for (const { property, value } of rule.declarations) {
-      if (tokens.includes(property) && !(inSpecimen(rule) && SPECIMEN_OWN.has(property))) {
+      if (tokens.includes(property) && !(inside(rule, SPECIMENS) && SPECIMEN_OWN.has(property))) {
         problems.push(`${path} ${rule.selector} re-declares ${property}, a token of ${STYLESHEET}; the page paints with the stylesheet's tokens, whose themes and contrast are held there.`);
       }
       if (!["color", "-webkit-text-fill-color"].includes(property)) continue;
       const surface = NOT_TEXT.find((token) => new RegExp(`var\\(\\s*--${token}\\s*[,)]`, "i").test(value));
       if (surface) problems.push(`${path} ${rule.selector} { ${property}: ${value} }: --${surface} is a surface, line or wash, never text; its contrast is not held. Colour text with --ink, --mute, --faint or --accent.`);
-      else if (!inSpecimen(rule) && (colourLiterals(value, property).length || /var\(\s*--syntax-/i.test(value))) {
-        problems.push(`${path} ${rule.selector} { ${property}: ${value} }: a literal colour or the coding palette is text only inside a specimen (.cmd or .specimen), whose surface stays dark; on the page it would not follow the light theme.`);
+      else if (!TEXT_VALUE.test(value.trim()) && !/var\(\s*--ember\s*[,)]/i.test(value) && !inside(rule, SPECIMENS_OR_PREVIEWS)) {
+        problems.push(`${path} ${rule.selector} { ${property}: ${value} }: outside a specimen or a theme preview, text takes --ink, --mute, --faint or --accent (or --ground on an ink or violet fill), the tokens whose contrast ${STYLESHEET} holds in both themes; a literal colour, the coding palette or a token of the page's own would not follow the light theme. Inside a specimen (.cmd, .specimen) or a theme preview (${THEME_PREVIEWS.join(", ")}) it takes the specimen's colours.`);
       }
     }
   }

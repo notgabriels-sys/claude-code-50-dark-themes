@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="script-src 'sha256-IuzE/u5N1mik+4VQKPk4nMJAX0zoz6BmCVoo+rL7LMw='; worker-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="script-src 'sha256-NIZ5jxPqHe76C4AEHPJCjXNeTRDJC4LsWQG/g6melI4=' 'sha256-7ocUsB7hskZCEQWlNsScrlDqa8kle3nVWk1oiW/ZMTQ='; worker-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>50 Dark Themes for Claude Code</title>
 <meta name="description" content="Browse and install 50 hand-tuned dark themes for Claude Code as a native plugin, plus the free Vol. 2 expansion pack. Free, MIT licensed, and verified with 894 role-aware contrast comparisons.">
@@ -91,7 +91,7 @@
      so without this the search and family filters set the attribute, update the
      counter, and change nothing on screen. */
   [hidden]{display:none!important}
-  html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
+  html{-webkit-text-size-adjust:100%}
   body{
     margin:0;
     font-size:17px;
@@ -182,16 +182,16 @@
   }
   .theme-monolith figcaption b{color:var(--stage-fg);font-weight:600}
   .monolith-body{min-height:270px;padding:clamp(24px,4vw,42px);display:flex;flex-direction:column;justify-content:flex-end}
-  .monolith-mark{position:relative;width:max-content;margin:0 0 54px;color:var(--stage-a);font-size:32px;line-height:1}
-  .monolith-line{margin:0;color:var(--stage-mut);font-size:12px;line-height:1.9}
-  .monolith-line strong{color:var(--stage-sh);font-weight:600}
-  .monolith-line em{color:var(--stage-fg);font-style:normal}
-  .monolith-prompt{
+  .theme-monolith .monolith-mark{position:relative;width:max-content;margin:0 0 54px;color:var(--stage-a);font-size:32px;line-height:1}
+  .theme-monolith .monolith-line{margin:0;color:var(--stage-mut);font-size:12px;line-height:1.9}
+  .theme-monolith .monolith-line strong{color:var(--stage-sh);font-weight:600}
+  .theme-monolith .monolith-line em{color:var(--stage-fg);font-style:normal}
+  .theme-monolith .monolith-prompt{
     display:flex;align-items:center;gap:10px;margin-top:16px;padding:9px 11px;
     border:1px solid color-mix(in srgb,var(--stage-a) 38%,transparent);border-radius:7px;
     color:var(--stage-fg);font-size:11px;
   }
-  .monolith-prompt span:first-child{color:var(--stage-a);font-weight:700}
+  .theme-monolith .monolith-prompt span:first-child{color:var(--stage-a);font-weight:700}
 
   /* ---- install ---- */
   .install{
@@ -310,10 +310,10 @@
   }
   .pick:hover{border-color:color-mix(in srgb, var(--a) 55%, transparent)}
   .pick:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
-  .pick-kicker{color:var(--a);font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase}
+  .pick .pick-kicker{color:var(--a);font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase}
   .pick-name{display:flex;align-items:center;gap:8px;font-family:var(--display);font-size:15px;font-weight:600;letter-spacing:-.01em}
   .pick-dot{width:9px;height:9px;border-radius:50%;background:var(--a);flex:none}
-  .pick-fact{color:var(--mut);font-size:11px;line-height:1.55}
+  .pick .pick-fact{color:var(--mut);font-size:11px;line-height:1.55}
   .grid{
     display:grid;gap:14px;padding:6px 0 26px;
     grid-template-columns:repeat(auto-fill,minmax(268px,1fr));
@@ -348,30 +348,30 @@
   .card .hex{margin-left:auto;font-size:10.5px;color:var(--sh);letter-spacing:.04em}
   .term{padding:13px 14px 15px;font-size:12px;line-height:1.75;flex:1}
   .term .row{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .term .acc{color:var(--a)}
-  .term .sh{color:var(--sh)}
-  .term .fg{color:var(--fg)}
-  .term .mut{color:var(--mut)}
+  .card .term .acc{color:var(--a)}
+  .card .term .sh{color:var(--sh)}
+  .card .term .fg{color:var(--fg)}
+  .card .term .mut{color:var(--mut)}
   .prompt-box{
     margin-top:10px;display:flex;align-items:center;gap:8px;
     border:1px solid color-mix(in srgb, var(--a) 45%, transparent);
     border-radius:8px;padding:7px 10px;min-height:44px;
   }
-  .prompt-box .gt{color:var(--a);font-weight:700}
-  .prompt-box .txt{min-width:0;overflow:hidden;color:var(--fg);text-overflow:ellipsis;white-space:nowrap}
+  .card .prompt-box .gt{color:var(--a);font-weight:700}
+  .card .prompt-box .txt{min-width:0;overflow:hidden;color:var(--fg);text-overflow:ellipsis;white-space:nowrap}
   .theme-command{width:100%;text-align:left;cursor:pointer;background:transparent;font:inherit;transition:background-color .15s,border-color .15s}
   .theme-command:hover{border-color:var(--a);background:rgba(255,255,255,.03)}
   .theme-command:focus-visible{outline:2px solid var(--a);outline-offset:3px}
-  .theme-command .copy-label{margin-left:auto;flex:none;color:var(--mut);font-size:9px;letter-spacing:.07em;text-transform:uppercase}
+  .card .theme-command .copy-label{margin-left:auto;flex:none;color:var(--mut);font-size:9px;letter-spacing:.07em;text-transform:uppercase}
   .caret{
     width:7px;height:15px;background:var(--a);display:inline-block;
     margin-left:1px;vertical-align:-3px;opacity:.8;
   }
-  .term .hint{margin-top:8px;font-size:10.5px;color:var(--mut)}
-  .term .bg-link{display:inline-flex;align-items:center;gap:6px;margin-top:6px;min-height:24px;font-size:10.5px;color:var(--mut);text-decoration:none}
-  .term .bghex{color:var(--fg);letter-spacing:.04em}
-  .term .bg-link:hover .bghex{text-decoration:underline}
-  .term .bg-link:focus-visible{outline:2px solid var(--a);outline-offset:3px}
+  .card .term .hint{margin-top:8px;font-size:10.5px;color:var(--mut)}
+  .card .term .bg-link{display:inline-flex;align-items:center;gap:6px;margin-top:6px;min-height:24px;font-size:10.5px;color:var(--mut);text-decoration:none}
+  .card .term .bghex{color:var(--fg);letter-spacing:.04em}
+  .card .term .bg-link:hover .bghex{text-decoration:underline}
+  .card .term .bg-link:focus-visible{outline:2px solid var(--a);outline-offset:3px}
 
   .tools{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,320px),1fr));gap:16px}
   .tool{display:block;padding:24px;border:1px solid var(--hair);border-radius:var(--radius-card);
@@ -468,16 +468,20 @@ footer>span>a.in-text{display:inline;min-height:0;border-bottom:0;text-decoratio
   /* Motion: the specimen floats, the beam and ring turn, the mark pulses, the opening rises.
      Only when the visitor allows it. */
   @media (prefers-reduced-motion:no-preference){
-    .skip-link{transition:transform .15s ease}
+    :root:not([data-motion="paused"]){scroll-behavior:smooth}
+    :root:not([data-motion="paused"]) .skip-link{transition:transform .15s ease}
     .theme-monolith{animation:monolith-float 5s ease-in-out infinite}
     .hero-layout::after{animation:stage-turn 9s linear infinite}
     .hero-layout::before{animation:stage-turn 60s linear infinite reverse}
     .monolith-mark::after{animation:mark-pulse 3s ease-out infinite}
-    .hero-layout>div:first-child>*{animation:hero-rise .7s ease both}
-    .hero-layout>div:first-child>:nth-child(2){animation-delay:.08s}
-    .hero-layout>div:first-child>:nth-child(3){animation-delay:.16s}
-    .hero-layout>div:first-child>:nth-child(4){animation-delay:.24s}
-    .tool,.featured-product{transition:border-color .2s,transform .25s}
+    /* The opening lines rise in once; under the pause they would hold the first frame at 30%,
+       so the pause removes the rise (and its delays, which the gated shorthand would outrank). */
+    :root:not([data-motion="paused"]) .hero-layout>div:first-child>*{animation:hero-rise .7s ease both}
+    :root:not([data-motion="paused"]) .hero-layout>div:first-child>:nth-child(2){animation-delay:.08s}
+    :root:not([data-motion="paused"]) .hero-layout>div:first-child>:nth-child(3){animation-delay:.16s}
+    :root:not([data-motion="paused"]) .hero-layout>div:first-child>:nth-child(4){animation-delay:.24s}
+    :root:not([data-motion="paused"]) .tool,:root:not([data-motion="paused"]) .featured-product{transition:border-color .2s,transform .25s}
+    :root:not([data-motion="paused"]) .card.deep-linked{animation:deep-link-pulse 2.4s ease-out}
     @keyframes monolith-float{50%{transform:translateY(-6px)}}
     @keyframes stage-turn{to{transform:rotate(360deg)}}
     @keyframes mark-pulse{0%{opacity:.9;transform:scale(.4)}100%{opacity:0;transform:scale(2.6)}}
@@ -518,14 +522,16 @@ footer>span>a.in-text{display:inline;min-height:0;border-bottom:0;text-decoratio
     .finder-controls{display:block;margin-top:12px}
     .finder-search{width:100%;max-width:none}
     .finder-filters{justify-content:flex-start;gap:8px;margin:12px 0 0}
-    .theme-command .copy-label{font-size:8px}
+    .card .theme-command .copy-label{font-size:8px}
     .featured-product{display:flex}
     .featured-product img{height:auto;aspect-ratio:16/9;border-right:0;border-bottom:1px solid var(--hair)}
     .product-proof-foot{align-items:stretch;flex-direction:column}.proof-buy{width:100%}
     footer{grid-template-columns:1fr}
     footer>span>a{min-height:44px}
   }
-  .card.deep-linked{animation:deep-link-pulse 2.4s ease-out}
+  /* A card reached by its link pulses once while motion runs; while motion is paused or reduced
+     it keeps the accent border instead, the pulse's own first frame. */
+  :root[data-motion="paused"] .card.deep-linked{border-color:var(--a)}
   @keyframes deep-link-pulse{
     0%,55%{border-color:var(--a);box-shadow:0 0 0 3px color-mix(in srgb, var(--a) 45%, transparent)}
     100%{box-shadow:0 0 0 3px transparent}

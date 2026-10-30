@@ -1597,28 +1597,6 @@ for (const path of htmlFiles) {
   if (marker) fail(`${path} carries ${marker} but is not one of the dated pages in scripts/page-dates.mjs; add it to DATED_PAGES so its dates are held to the same rule, or take the date out.`);
 }
 
-// ---------------------------------------------------------------------------
-// The site's look: assets/site.css holds the Familiars page's palette, both themes, contrast
-// that holds in each, and motion that runs only when the visitor allows it; the pages on it link
-// it first, carry the lights and the theme switch, and serve their own fonts under the OFL. The
-// rules and their messages live in scripts/site-style.mjs.
-// ---------------------------------------------------------------------------
-const siteStyle = await import("./site-style.mjs");
-const siteCss = await readFile(new URL(siteStyle.STYLESHEET, root), "utf8");
-for (const problem of siteStyle.stylesheetProblems(siteCss)) fail(problem);
-const siteFontFiles = Object.fromEntries(
-  await Promise.all(
-    (await readdir(new URL("assets/fonts/", root))).map(async (name) => [name, name.endsWith(".txt") ? await readFile(new URL(`assets/fonts/${name}`, root), "utf8") : true]),
-  ),
-);
-const pageFonts = (await Promise.all(htmlFiles.map(async (path) => siteStyle.pageFontFiles(await readFile(new URL(path, root), "utf8"), path)))).flat();
-for (const problem of siteStyle.fontProblems(siteCss, siteFontFiles, pageFonts)) fail(problem);
-const siteFonts = siteStyle.fontFaces(siteCss).flatMap(({ urls }) => urls);
-const siteTokens = siteStyle.sharedTokens(siteCss);
-for (const path of siteStyle.SITE_PAGES) {
-  for (const problem of siteStyle.pageProblems(await readFile(new URL(path, root), "utf8"), path, siteFonts, siteTokens)) fail(problem);
-}
-
 if (!readme.includes("mkdir -p ~/.claude/themes")) {
   fail("The manual install command must create ~/.claude/themes before copying files.");
 }
@@ -3184,8 +3162,14 @@ for (const host of reviewedLinkHosts) {
 // off what the checks above refuse by reading: workers, plugins, frames, <base>
 // and form posts. This reviews; it does not read what a script does.
 const reviewedInlineScripts = new Map([
-  // The gallery: renders THEMES and VOL2_THEMES, filters and copies install commands.
-  ["index.html", ["sha256-IuzE/u5N1mik+4VQKPk4nMJAX0zoz6BmCVoo+rL7LMw="]],
+  // The storefront (read 2026-10-30 for #72). In <head>, before the first paint: applies the
+  // theme and the motion pause saved under familiars-theme and familiars-motion, as data-theme
+  // and data-motion on the root. Then the gallery: renders THEMES and VOL2_THEMES, filters and
+  // copies install commands; the light/dark switch and the motion switch, each saving its choice
+  // under those keys and writing only its own label's text; a scrollBy that moves focused
+  // controls clear of the floating switch; and the pointer light, which sets --mx and --my on
+  // the .lit surfaces. It loads, fetches and navigates nothing.
+  ["index.html", ["sha256-NIZ5jxPqHe76C4AEHPJCjXNeTRDJC4LsWQG/g6melI4=", "sha256-7ocUsB7hskZCEQWlNsScrlDqa8kle3nVWk1oiW/ZMTQ="]],
   // Familiars (main's #65, read 2026-10-24): the light/dark switch, kept in
   // localStorage; the kind filter; a pointer-following light on each card; the
   // copy button, which writes the request address to the clipboard; and the
@@ -3930,14 +3914,21 @@ const checkXmlDocument = (file, bytes, allowed) => {
   }
   return body;
 };
+// The site's look (scripts/site-style.mjs, run at the end) names the one stylesheet served here.
+const siteStyle = await import("./site-style.mjs");
 for (const file of servedFiles) {
   const name = file.slice(file.lastIndexOf("/") + 1);
   const type = name.includes(".") ? name.slice(name.lastIndexOf(".") + 1) : "";
   // An image's extension may be written in capitals (IMG_0001.JPG); a page's
   // or a note's may not, because .HTML and .MD are what this check refuses.
-  const reading = SERVED_TYPES.get(type) ??
+  // The one served stylesheet is the site's shared one (#72): scripts/site-style.mjs, run at the
+  // end, reads every request it makes, which is only its own @font-face files (no @import, no other
+  // url(), and no backslash to spell one), so a page that links it makes no request verify does
+  // not read. Opened directly, Pages serves it as text/css, which a browser shows as text.
+  const siteStylesheet = file === siteStyle.STYLESHEET;
+  const reading = siteStylesheet ? "site stylesheet" : SERVED_TYPES.get(type) ??
     (SERVED_TYPES.get(type.toLowerCase()) === "inert" ? "inert" : undefined);
-  if (type.toLowerCase() === "css") {
+  if (type.toLowerCase() === "css" && !siteStylesheet) {
     fail(
       `${file} is a stylesheet. A page here may load one, and CSS makes requests (@import, url()) verify does ` +
         `not read; keep styles in the page's own <style>.`,
@@ -4094,6 +4085,28 @@ for (const { name, payload, version, sha256 } of releasedPackages) {
     );
   }
 }
+// ---------------------------------------------------------------------------
+// The site's look: assets/site.css holds the Familiars page's palette, both themes, contrast
+// that holds in each, and motion that runs only when the visitor allows it; the pages on it link
+// it first, carry the lights and the theme switch, and serve their own fonts under the OFL. The
+// rules and their messages live in scripts/site-style.mjs. They run last: the guards above name
+// what they find more precisely, and the first failure is the one reported.
+// ---------------------------------------------------------------------------
+const siteCss = await readFile(new URL(siteStyle.STYLESHEET, root), "utf8");
+for (const problem of siteStyle.stylesheetProblems(siteCss)) fail(problem);
+const siteFontFiles = Object.fromEntries(
+  await Promise.all(
+    (await readdir(new URL("assets/fonts/", root))).map(async (name) => [name, name.endsWith(".txt") ? await readFile(new URL(`assets/fonts/${name}`, root), "utf8") : true]),
+  ),
+);
+const pageFonts = (await Promise.all(htmlFiles.map(async (path) => siteStyle.pageFontFiles(await readFile(new URL(path, root), "utf8"), path)))).flat();
+for (const problem of siteStyle.fontProblems(siteCss, siteFontFiles, pageFonts)) fail(problem);
+const siteFonts = siteStyle.fontFaces(siteCss).flatMap(({ urls }) => urls);
+const siteTokens = siteStyle.sharedTokens(siteCss);
+for (const path of siteStyle.SITE_PAGES) {
+  for (const problem of siteStyle.pageProblems(await readFile(new URL(path, root), "utf8"), path, siteFonts, siteTokens)) fail(problem);
+}
+
 console.log(
   `Verified ${files.length} themes, ${pluginFiles.length} plugin themes, ${vol2Files.length} Vol. 2 themes, ` +
     `${galleryThemes.length} gallery cards, ` +

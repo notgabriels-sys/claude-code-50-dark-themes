@@ -6,7 +6,7 @@ import { join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 
-import { CONTRAST_PAIRS, PALETTE, SITE_PAGES, STYLESHEET, colourLiterals, contrast, fontFaces, fontProblems, motionProblems, pageFontFiles, pageProblems, parseCss, sharedTokens, stylesheetProblems, themesOf } from "./site-style.mjs";
+import { CONTRAST_PAIRS, PALETTE, SITE_PAGES, STYLESHEET, THEME_PREVIEWS, colourLiterals, contrast, fontFaces, fontProblems, motionProblems, pageFontFiles, pageProblems, parseCss, sharedTokens, stylesheetProblems, themesOf } from "./site-style.mjs";
 
 const root = new URL("../", import.meta.url);
 const projectRoot = fileURLToPath(root);
@@ -24,6 +24,9 @@ const swap = (text, from, to) => {
   assert.equal(text.split(from).length, 2, `the text contains ${JSON.stringify(from)} exactly once`);
   return text.replace(from, to);
 };
+// The page with CSS added at the end of its <style>, where it outranks what comes before.
+const withStyle = (html, rules) => swap(html, "\n</style>\n", `\n${rules}\n</style>\n`);
+const PAUSE_GATE = ':root:not([data-motion="paused"])';
 const bad = (problems, pattern, label) => {
   assert.ok(problems.some((problem) => pattern.test(problem)), `${label}: expected a problem matching ${pattern}, got ${JSON.stringify(problems)}`);
 };
@@ -84,6 +87,9 @@ test("colourLiterals: hex and rgb() are read, every other way of naming a colour
   assert.deepEqual(read("CanvasText"), ["problem"], "a system colour");
   assert.deepEqual(read("color-mix(in srgb, #A898FF 50%, #FFB46B)").filter((entry) => entry === "problem").length, 1, "a mix of literals paints a colour of its own");
   assert.deepEqual(read(`url("data:image/svg+xml,<svg fill='red'/>")`, "background"), ["problem"], "an inline image");
+  assert.deepEqual(read(`image-set("data:image/svg+xml,%3Csvg fill='red'%3E" 1x)`, "background-image"), ["problem"], "an inline image in image-set()");
+  assert.deepEqual(read("0 0 6px gold", "-webkit-box-shadow"), ["problem"], "a named colour behind a vendor prefix");
+  assert.deepEqual(read("drop-shadow(0 0 4px red)", "backdrop-filter"), ["problem"], "a named colour in a backdrop filter");
 });
 
 test("contrast: WCAG 2.x's formula", () => {
@@ -112,6 +118,13 @@ test("palette: a colour the design base does not name fails, however it is writt
   bad(stylesheetProblems(swap(css, ".lit:hover { border-color: var(--accent); }", ".lit:hover { border-color: color-mix(in srgb, #A898FF 50%, #FFB46B); }")), /mixes a literal colour/, "a mix of two palette colours, which is neither");
   bad(stylesheetProblems(swap(css, ".lit:hover { border-color: var(--accent); }", ".lit:hover { border-color: var(--edge, gold); }")), /gold is a named colour/, "a named fallback");
   bad(stylesheetProblems(`@import url("https://fonts.googleapis.com/css2?family=Familjen+Grotesk");\n${css}`), /uses @import/, "a stylesheet that fetches another");
+  // Its fonts are the stylesheet's only requests, so the verifier can serve it.
+  bad(stylesheetProblems(`${css}\n.lights .l1 { background-image: url("https://example.com/glow.png"); }\n`), /\.lights \.l1 \{ background-image \} fetches with url\(\)/, "an image from anywhere");
+  bad(stylesheetProblems(`${css}\n.lights .l1 { background-image: image-set("glow.png" 1x); }\n`), /fetches with image-set\(\)/, "an image without url()");
+  bad(stylesheetProblems(`${css}\n.lights .l1 { cursor: url(pointer.png), auto; }\n`), /\{ cursor \} fetches with url\(\)/, "a cursor");
+  bad(stylesheetProblems(`${css}\n.lights .l1 { background: u\\72 l(glow.png); }\n`), /holds a backslash/, "url( spelled with an escape");
+  bad(stylesheetProblems(`${css}\n@font-face { font-family: "Extra"; font-display: url(swap.png); }\n`), /@font-face \{ font-display \} fetches with url\(\)/, "a url() in a face, outside its src");
+  assert.deepEqual(stylesheetProblems(`${css}\n.x::before { content: "url(not a request)"; }\n`), [], "url( inside a string is text");
 });
 
 test("two themes: both light declarations say the same, cover every colour, and add nothing the dark theme lacks", () => {
@@ -129,6 +142,12 @@ test("two themes: both light declarations say the same, cover every colour, and 
   bad(stylesheetProblems(swap(css, "  --accent-dim: color-mix(in srgb, var(--accent) 42%, var(--hair));\n  --ember: #FFB46B;\n  --ember-soft: rgba(255, 180, 107, 0.28);\n  color-scheme: dark;", "  --ember: #FFB46B;\n  --ember-soft: rgba(255, 180, 107, 0.28);\n  color-scheme: dark;")), /\.specimen, \.cmd does not re-declare --accent-dim \(color-mix\(in srgb, var\(--accent\) 42%, var\(--hair\)\)\)/, "a mix the specimen leaves to the light theme");
   bad(stylesheetProblems(swap(css, "--ink: #EDEBF3;         /* text */", "--ink: #EDEBF3 !important; /* text */")), /:root \{ --ink \} is !important, which outranks both light declarations/, "a dark token that beats the light theme");
   bad(stylesheetProblems(`${css}\n.x { color: var(--ink); &:focus { outline: 0; } }\n`), /\.x nests rules inside a style rule/, "nesting, which the rules do not read");
+  // A theme token set anywhere else paints what the themes and the contrast floors never read.
+  bad(stylesheetProblems(`${css}\nbody { --mute: #2A2933; }\n`), /assets\/site\.css body declares --mute, a theme token, outside the dark :root/, "a token repainted on the body");
+  bad(stylesheetProblems(`${css}\n@media (min-width: 900px) { :root { --mute: #2A2933; } }\n`), /:root \(inside @media\(min-width:900px\)\) declares --mute, a theme token, outside/, "a dark :root inside another query");
+  bad(stylesheetProblems(`${css}\n:root[data-theme=light] { --mute: #9C99AA; }\n`), /:root\[data-theme=light\] declares --mute, a theme token, outside/, "a third light block, spelled without quotes");
+  bad(stylesheetProblems(`${css}\n@media (min-width: 900px) { .cmd { --mute: #9C99AA; } }\n`), /\.cmd \(inside @media\(min-width:900px\)\) declares --mute, a theme token, outside/, "a second specimen rule inside a query");
+  assert.deepEqual(stylesheetProblems(`${css}\n.lit { --mx: 40%; }\n`), [], "a token of the rule's own, not the theme's");
   // A token that follows another is no light-theme omission, and its contrast is read through it.
   const following = css.replace("--faint: #9C99AA;       /* small print: as readable as secondary text */", "--faint: var(--mute);   /* small print */").replace("  --faint: #9C99AA;\n  --hair", "  --faint: var(--mute);\n  --hair").replaceAll("--faint: #5C5A6A;\n", "");
   assert.deepEqual(stylesheetProblems(following), []);
@@ -164,9 +183,13 @@ test("motion: every animation and hover transform waits for the visitor's permis
   bad(stylesheetProblems(`${css}\n.b { transition: .3s; }\n`), /\.b \{ transition: \.3s \} runs whatever/, "a transition of every property");
   assert.deepEqual(motionProblems(parseCss(".b { transition: color .3s ease, border-color .2s; }"), "x"), [], "colours fade, nothing moves");
   bad(stylesheetProblems(`${css}\nhtml { scroll-behavior: smooth; }\n`), /html \{ scroll-behavior: smooth \} runs whatever/, "smooth scrolling");
-  assert.deepEqual(stylesheetProblems(`${css}\nhtml { scroll-behavior: smooth; }\n@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }\n`), [], "smooth scrolling turned off when motion is reduced");
+  // Turned off for the same selector when motion is reduced, smooth scrolling meets the setting, and still glides under the pause.
+  const offWhenReduced = stylesheetProblems(`${css}\nhtml { scroll-behavior: smooth; }\n@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }\n`);
+  assert.ok(!offWhenReduced.some((problem) => /runs whatever/.test(problem)), "smooth scrolling turned off when motion is reduced");
+  bad(offWhenReduced, /html \{ scroll-behavior: smooth \} still moves while the visitor has paused motion/, "but not by the pause");
+  assert.deepEqual(stylesheetProblems(`${css}\n${PAUSE_GATE} { scroll-behavior: smooth; }\n@media (prefers-reduced-motion: reduce) { ${PAUSE_GATE} { scroll-behavior: auto; } }\n`), [], "smooth scrolling the pause removes, off when motion is reduced");
   bad(stylesheetProblems(`${css}\n@view-transition { navigation: auto; }\n`), /@view-transition \{ navigation: auto \} runs whatever/, "a view transition");
-  assert.deepEqual(stylesheetProblems(`${css}\n@media (prefers-reduced-motion: no-preference) and (min-width: 600px) { .x { animation: drift-a 2s; } }\n@media screen and (prefers-reduced-motion: no-preference) { .y { animation: drift-a 2s; } }\n`), [], "the permission joined to other conditions by and");
+  assert.deepEqual(stylesheetProblems(`${css}\n@media (prefers-reduced-motion: no-preference) and (min-width: 600px) { .x { animation: drift-a 2s infinite; } }\n@media screen and (prefers-reduced-motion: no-preference) { .y { animation: drift-a 2s infinite; } }\n`), [], "the permission joined to other conditions by and");
   bad(stylesheetProblems(`${css}\n@media (prefers-reduced-motion: no-preference), (min-width: 600px) { .x { animation: drift-a 2s; } }\n`), /\.x \{ animation: drift-a 2s \} runs whatever/, "the permission as one of a list");
   // Each of these holds the permission as one "and" term, yet the query matches without it.
   bad(stylesheetProblems(`${css}\n@media (min-width: 600px), (orientation: portrait) and (prefers-reduced-motion: no-preference) { .x { animation: drift-a 2s; } }\n`), /\.x \{ animation: drift-a 2s \} runs whatever/, "the permission in the second query of a list");
@@ -174,6 +197,38 @@ test("motion: every animation and hover transform waits for the visitor's permis
   bad(stylesheetProblems(`${css}\n@media not screen and (prefers-reduced-motion: no-preference) { .x { animation: drift-a 2s; } }\n`), /\.x \{ animation: drift-a 2s \} runs whatever/, "a query that not turns around");
   bad(stylesheetProblems(`${css}\n@media (prefers-reduced-motion: reduce) { .x { animation: drift-a 2s; } }\n`), /\.x \{ animation: drift-a 2s \} runs whatever/, "an animation for the visitors who asked for less motion");
   bad(stylesheetProblems(css.replace(':root[data-motion="paused"] *::after { animation-play-state: paused !important; }', "")), /must pause every animation while the page's motion switch is off/, "no pause");
+  // Movement is anything a transition can change but colour, opacity, shadow and filter.
+  bad(stylesheetProblems(`${css}\n.rise { transition: -webkit-transform .6s; }\n`), /\.rise \{ transition: -webkit-transform \.6s \} runs whatever/, "a transform behind a vendor prefix");
+  bad(stylesheetProblems(`${css}\n.drawer { transition: margin-left .3s ease; }\n`), /\.drawer \{ transition: margin-left \.3s ease \} runs whatever/, "a slide by margin");
+  bad(stylesheetProblems(`${css}\n.pop { transition: opacity .2s, top .3s; }\n`), /\.pop \{ transition: opacity \.2s, top \.3s \} runs whatever/, "a drop by offset, beside a fade");
+  bad(stylesheetProblems(`${css}\n.pop { transition-property: inset; }\n`), /\.pop \{ transition-property: inset \} runs whatever/, "a move by inset");
+  assert.deepEqual(motionProblems(parseCss(".b { transition: color .3s, opacity .2s, box-shadow .2s, filter .2s, outline-color .1s, -webkit-text-fill-color .2s, background-color .2s; }"), "x"), [], "colours, opacity, shadows and filters fade; nothing moves");
+  // !important on motion outranks the rules that turn it off, and the pause.
+  bad(stylesheetProblems(`${css}\n@media (prefers-reduced-motion: no-preference) { .lights .l1 { animation: drift-a 2s linear infinite !important; } }\n`), /\.lights \.l1 \{ animation \} is !important, which outranks the pause/, "a drift the pause cannot hold");
+  bad(stylesheetProblems(`${css}\n@media (prefers-reduced-motion: no-preference) { ${PAUSE_GATE} .x { transition: transform .2s !important; } }\n`), /\{ transition \} is !important/, "a transition marked important");
+  bad(stylesheetProblems(`${css}\n@media (prefers-reduced-motion: no-preference) { ${PAUSE_GATE} .x:hover { transform: translateY(-2px) !important; } }\n`), /\.x:hover \{ transform \} is !important/, "a hover lift marked important");
+  bad(stylesheetProblems(`${css}\n.lights .l1 { animation-play-state: running !important; }\n`), /\.lights \.l1 \{ animation-play-state \} is !important, which outranks the pause/, "a play state that overrides the pause");
+});
+
+test("pause: a loop holds its frame; what would hold a half-finished frame or still answer the pointer, the pause removes", () => {
+  const inBlock = (rules) => `${css}\n@media (prefers-reduced-motion: no-preference) { ${rules} }\n`;
+  // A one-off entrance, paused before it starts, holds its first frame: text at 30%.
+  bad(stylesheetProblems(inBlock(".rise { animation: drift-a .7s ease both; }")), /\.rise \{ animation: drift-a \.7s ease both \} keeps its first frame while the visitor has paused motion/, "an entrance under the pause");
+  assert.deepEqual(stylesheetProblems(inBlock(`${PAUSE_GATE} .rise { animation: drift-a .7s ease both; }`)), [], "the entrance removed by the pause");
+  assert.deepEqual(stylesheetProblems(inBlock(".spin { animation-name: drift-a; animation-duration: 2s; animation-iteration-count: infinite; }")), [], "a loop counted in its own declaration");
+  bad(stylesheetProblems(inBlock(".two { animation: drift-a 2s infinite, drift-b 1s; }")), /\.two \{ animation: drift-a 2s infinite, drift-b 1s \} keeps its first frame/, "a loop beside a one-off");
+  bad(stylesheetProblems(inBlock(".spin { animation: drift-a 2s infinite; animation-iteration-count: 1; }")), /\.spin \{ animation: drift-a 2s infinite \} keeps its first frame/, "a loop counted down to once");
+  // A hover lift and a transition of movement still run under a pause that only holds animations.
+  bad(stylesheetProblems(inBlock(".card:hover { transform: translateY(-2px); }")), /\.card:hover \{ transform: translateY\(-2px\) \} still moves while the visitor has paused motion/, "a hover lift under the pause");
+  bad(stylesheetProblems(inBlock(".card { transition: border-color .2s, transform .2s; }")), /\.card \{ transition: border-color \.2s, transform \.2s \} still moves while/, "a lift's transition under the pause");
+  bad(stylesheetProblems(inBlock("html { scroll-behavior: smooth; }")), /html \{ scroll-behavior: smooth \} still moves while/, "smooth scrolling under the pause");
+  bad(stylesheetProblems(inBlock(`${PAUSE_GATE} .a, .b { transition: transform .2s; }`)), /still moves while/, "the gate on one selector of a list only");
+  bad(stylesheetProblems(inBlock(':root:not([data-motion="still"]) .a { transition: transform .2s; }')), /still moves while/, "a gate that is not the pause");
+  assert.deepEqual(stylesheetProblems(inBlock(`${PAUSE_GATE} .card:hover { transform: translateY(-2px); } ${PAUSE_GATE} .card { transition: transform .2s; } .card { transition: border-color .2s; }`)), [], "movement removed by the pause, colour left to fade");
+  // The same holds on a page, and for motion the reduce block turns off: it runs, and pauses, when motion is allowed.
+  const check = (html) => pageProblems(html, "index.html", fontFiles, tokens);
+  bad(check(withStyle(page, "  .card.flash{animation:deep-link-pulse 2.4s ease-out}\n  @media (prefers-reduced-motion:reduce){.card.flash{animation:none}}")), /index\.html \.card\.flash \{ animation: deep-link-pulse 2\.4s ease-out \} keeps its first frame/, "a one-off pulse the reduce block turns off");
+  assert.deepEqual(check(withStyle(page, `  @media (prefers-reduced-motion:no-preference){${PAUSE_GATE} .card.flash{animation:deep-link-pulse 2.4s ease-out}}`)), [], "the pulse removed by the pause");
 });
 
 test("pages: the storefront on disk wears the base, and each part of it is required", () => {
@@ -200,25 +255,68 @@ test("pages: the storefront on disk wears the base, and each part of it is requi
   bad(check(swap(page, "  *{box-sizing:border-box}", '  @import url("theme.css");\n  *{box-sizing:border-box}')), /index\.html's <style> uses @import/, "an import in the page");
   bad(check(swap(page, "    --radius:10px;\n", "    --radius:10px;\n    --mute:#2A2933;\n")), /index\.html :root re-declares --mute, a token of assets\/site\.css/, "a page that repaints a token");
   bad(check(swap(page, "  .finder-empty{margin:0;padding:18px 0 26px;color:var(--mute);", "  .finder-empty{margin:0;padding:18px 0 26px;color:var(--hair);")), /\.finder-empty \{ color: var\(--hair\) \}: --hair is a surface, line or wash, never text/, "the page's text in the line colour");
-  bad(check(swap(page, "  .finder-empty{margin:0;padding:18px 0 26px;color:var(--mute);", "  .finder-empty{margin:0;padding:18px 0 26px;color:#c7b8ff;")), /\.finder-empty \{ color: #c7b8ff \}: a literal colour or the coding palette is text only inside a specimen/, "a literal on the page");
-  bad(check(swap(page, "  .finder-empty{margin:0;padding:18px 0 26px;color:var(--mute);", "  .finder-empty{margin:0;padding:18px 0 26px;color:var(--syntax-light-purple);")), /a literal colour or the coding palette is text only inside a specimen/, "the coding palette on the light page");
-  bad(check(swap(page, "    .skip-link{transition:transform .15s ease}\n", "") .replace("  .skip-link:focus{", "  .skip-link{transition:transform .15s ease}\n  .skip-link:focus{")), /\.skip-link \{ transition: transform \.15s ease \} runs whatever/, "a slide outside the block");
+  bad(check(swap(page, "  .finder-empty{margin:0;padding:18px 0 26px;color:var(--mute);", "  .finder-empty{margin:0;padding:18px 0 26px;color:#c7b8ff;")), /\.finder-empty \{ color: #c7b8ff \}: outside a specimen or a theme preview, text takes --ink, --mute, --faint or --accent/, "a literal on the page");
+  bad(check(swap(page, "  .finder-empty{margin:0;padding:18px 0 26px;color:var(--mute);", "  .finder-empty{margin:0;padding:18px 0 26px;color:var(--syntax-light-purple);")), /\{ color: var\(--syntax-light-purple\) \}: outside a specimen or a theme preview, text takes/, "the coding palette on the light page");
+  bad(check(swap(page, `    ${PAUSE_GATE} .skip-link{transition:transform .15s ease}\n`, "").replace("  .skip-link:focus{", "  .skip-link{transition:transform .15s ease}\n  .skip-link:focus{")), /\.skip-link \{ transition: transform \.15s ease \} runs whatever/, "a slide outside the block");
   bad(check(swap(page, '<link rel="stylesheet" href="assets/site.css">', '<link rel="stylesheet" href="assets/site.css">\n<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk">')), /fetches a font from Google/, "a third-party font");
   bad(check(swap(page, 'href="assets/fonts/FamiljenGrotesk-VF.woff2"', 'href="assets/fonts/Other.woff2"')), /preloads the font assets\/fonts\/Other\.woff2, which no @font-face/, "a preload for nothing");
   bad(check(swap(page, 'type="font/woff2" crossorigin>', 'type="font/woff2">')), /without crossorigin/, "a preload fetched twice");
-  bad(check(swap(page, "    .theme-monolith{animation:monolith-float 5s ease-in-out infinite}\n", "").replace("  @media (prefers-reduced-motion:no-preference){\n    .skip-link", "  .theme-monolith{animation:monolith-float 5s ease-in-out infinite}\n  @media (prefers-reduced-motion:no-preference){\n    .skip-link")), /index\.html \.theme-monolith \{ animation: monolith-float 5s ease-in-out infinite \} runs whatever/, "the page's own animation outside the block");
+  bad(check(swap(page, "    .theme-monolith{animation:monolith-float 5s ease-in-out infinite}\n", "").replace("  @media (prefers-reduced-motion:no-preference){\n", "  .theme-monolith{animation:monolith-float 5s ease-in-out infinite}\n  @media (prefers-reduced-motion:no-preference){\n")), /index\.html \.theme-monolith \{ animation: monolith-float 5s ease-in-out infinite \} runs whatever/, "the page's own animation outside the block");
   bad(check(swap(page, "  .syntax-version{color:var(--accent)}", "  .syntax-version{color:var(--ember)}")), /index\.html \.syntax-version \{ color: var\(--ember\) \}: ember is a point, never text/, "ember as the page's text");
-  // A one-off pulse the reduce block turns off for the same selector, as a deep-linked card has.
-  const pulse = swap(page, "  @media (prefers-reduced-motion:reduce){\n", "  .card.deep-linked{animation:deep-link-pulse 2.4s ease-out}\n  @media (prefers-reduced-motion:reduce){\n    .card.deep-linked{animation:none}\n");
-  assert.deepEqual(check(pulse), []);
-  // The same pulse written after the reduce block outranks it, and runs.
-  const late = swap(page, "  @media (prefers-reduced-motion:reduce){\n", "  @media (prefers-reduced-motion:reduce){\n    .card.deep-linked{animation:none}\n").replace("\n</style>\n</head>", "\n  .card.deep-linked{animation:deep-link-pulse 2.4s ease-out infinite}\n</style>\n</head>");
-  bad(check(late), /\.card\.deep-linked \{ animation: deep-link-pulse 2\.4s ease-out infinite \} runs whatever/, "a pulse after the rule that turns it off");
+  // A loop the reduce block turns off for the same selector runs only when motion is allowed, and the pause holds it.
+  assert.deepEqual(check(withStyle(page, "  .card.flash{animation:deep-link-pulse 2.4s ease-out infinite}\n  @media (prefers-reduced-motion:reduce){.card.flash{animation:none}}")), []);
+  // The same loop written after the reduce block outranks it, and runs.
+  bad(check(withStyle(page, "  @media (prefers-reduced-motion:reduce){.card.flash{animation:none}}\n  .card.flash{animation:deep-link-pulse 2.4s ease-out infinite}")), /\.card\.flash \{ animation: deep-link-pulse 2\.4s ease-out infinite \} runs whatever/, "a pulse after the rule that turns it off");
+  // The page's own one-off entrance, under the pause, held the hero's opening lines at 30%.
+  bad(check(swap(page, `    ${PAUSE_GATE} .hero-layout>div:first-child>*{animation:hero-rise .7s ease both}`, "    .hero-layout>div:first-child>*{animation:hero-rise .7s ease both}")), /index\.html \.hero-layout>div:first-child>\* \{ animation: hero-rise \.7s ease both \} keeps its first frame while the visitor has paused motion/, "the hero's entrance under the pause");
+  bad(check(withStyle(page, "  @media (prefers-reduced-motion:no-preference){.tool:hover{transform:translateY(-2px)}}")), /index\.html \.tool:hover \{ transform: translateY\(-2px\) \} still moves while the visitor has paused motion/, "a card lift under the pause");
+  bad(check(withStyle(page, "  @media (prefers-reduced-motion:no-preference){.monolith-mark{animation:mark-spin 4s linear infinite!important}}\n  @keyframes mark-spin{to{transform:rotate(360deg)}}")), /index\.html \.monolith-mark \{ animation \} is !important, which outranks the pause/, "a page loop the pause cannot hold");
+  bad(check(withStyle(page, "  .monolith-mark{animation:mark-spin 4s linear infinite!important}\n  @keyframes mark-spin{to{transform:rotate(360deg)}}\n  @media (prefers-reduced-motion:reduce){.monolith-mark{animation:none}}")), /\.monolith-mark \{ animation \} is !important/, "an animation that outranks the rule turning it off");
+
+  // Switches the script must show: the motion switch whenever motion is allowed, the theme switch always.
+  bad(check(swap(page, "    motionSwitch.hidden = !allowsMotion.matches;\n", "    motionSwitch.hidden = true;\n")), /does not work the motion switch/, "a motion switch that never shows");
+  bad(check(swap(page, "    motionSwitch.hidden = !allowsMotion.matches;\n", "    motionSwitch.hidden = !allowsMotion.matches;\n    motionSwitch.hidden = true;\n")), /does not work the motion switch/, "a motion switch shown, then hidden again");
+  bad(check(swap(page, 'const allowsMotion = window.matchMedia("(prefers-reduced-motion: no-preference)");', 'const allowsMotion = window.matchMedia("(prefers-reduced-motion: reduce)");')), /does not work the motion switch/, "a motion switch for the visitors who asked for less motion");
+  bad(check(swap(page, "  themeSwitch.hidden = false;\n", "  themeSwitch.hidden = true;\n  copyStatus.hidden = false;\n")), /does not work the theme switch/, "another element shown in the theme switch's place");
+
+  // A specimen is the element the selector names, or one inside it: not its opposite, a neighbour or a parent.
+  bad(check(withStyle(page, "  body:not(.cmd){--ink:#e9eaec}")), /index\.html body:not\(\.cmd\) re-declares --ink, a token of assets\/site\.css/, "a page token on everything but a specimen");
+  bad(check(withStyle(page, "  .lede:has(.specimen){color:#c7b8ff}")), /\.lede:has\(\.specimen\) \{ color: #c7b8ff \}: outside a specimen/, "a parent of a specimen");
+  bad(check(withStyle(page, "  .cmd+p{color:var(--syntax-blue)}")), /\.cmd\+p \{ color: var\(--syntax-blue\) \}: outside a specimen/, "a neighbour of a specimen");
+  bad(check(withStyle(page, '  [data-note=".cmd"] p{color:#c7b8ff}')), /\{ color: #c7b8ff \}: outside a specimen/, "a specimen's name in an attribute value");
+  assert.deepEqual(check(withStyle(page, "  .install .cmd:not(.wide) .syntax-type{color:var(--syntax-light-blue)}")), [], "a specimen narrowed by :not()");
+  bad(check(withStyle(page, "  .cmd .syntax-type,.lede{color:#c7b8ff}")), /\.cmd \.syntax-type,\.lede \{ color: #c7b8ff \}: outside a specimen/, "a specimen beside a selector outside it");
+  bad(check(withStyle(page, "  .cmdline p{color:#c7b8ff}")), /\.cmdline p \{ color: #c7b8ff \}: outside a specimen/, "a class that only begins with a specimen's name");
+  bad(check(withStyle(page, "  .lede[data-x=a\\.cmd]{color:#c7b8ff}")), /\{ color: #c7b8ff \}: outside a specimen/, "a specimen's name escaped into an attribute value");
+  bad(check(withStyle(page, '  .lede[data-x="] .cmd ["]{color:#c7b8ff}')), /\{ color: #c7b8ff \}: outside a specimen/, "a bracket inside an attribute's string");
+  bad(check(withStyle(page, "  .card{--ink:#e9eaec}")), /index\.html \.card re-declares --ink, a token of assets\/site\.css/, "a theme preview keeps the page's ink; only a specimen has its own");
+  // Text takes the shared text tokens outside a specimen or a theme preview, so a colour cannot hide in a token of the page's own.
+  bad(check(swap(swap(page, "    --radius:10px;\n", "    --radius:10px;\n    --note:#c7b8ff;\n"), "  .finder-empty{margin:0;padding:18px 0 26px;color:var(--mute);", "  .finder-empty{margin:0;padding:18px 0 26px;color:var(--note);")), /\.finder-empty \{ color: var\(--note\) \}: outside a specimen or a theme preview/, "a literal in a token of the page's own");
+  bad(check(swap(page, "  .finder-empty{margin:0;padding:18px 0 26px;color:var(--mute);", "  .finder-empty{margin:0;padding:18px 0 26px;color:var(--fg);")), /\.finder-empty \{ color: var\(--fg\) \}: outside a specimen or a theme preview/, "a theme preview's colour outside it");
+  assert.deepEqual(THEME_PREVIEWS, [".theme-monolith", ".pick", ".card"]);
+
+  // Links and styles as a browser reads them.
+  const afterSheet = (markup) => swap(page, '<link rel="stylesheet" href="assets/site.css">', `<link rel="stylesheet" href="assets/site.css">\n${markup}`);
+  bad(check(afterSheet('<link rel="stylesheet" href="\\\\fonts.bunny.net/css?family=x">')), /links \\\\fonts\.bunny\.net\/css\?family=x \(stylesheet\) from another host/, "a host behind backslashes");
+  bad(check(afterSheet('<link rel="stylesheet" href="&#47;&#47;fonts.bunny.net/css">')), /from another host/, "a host behind character references");
+  bad(check(afterSheet('<link rel="preconnect" href="/&NewLine;/fonts.bunny.net">')), /from another host/, "a host behind a named newline");
+  bad(check(afterSheet('<link rel="preconnect" href="&#x2F;&#x2F;fonts.bunny.net">')), /from another host/, "a host behind hexadecimal references");
+  bad(check(afterSheet('<link rel="dns-prefetch" href="&lowbar;fonts.bunny.net">')), /from another host/, "an address holding a reference these rules do not decode");
+  assert.deepEqual(check(swap(page, '<link rel="stylesheet" href="assets/site.css">', '<link rel="stylesheet" href="assets&sol;site.css">')), [], "the stylesheet's address spelled with a named reference is the stylesheet");
+  bad(check(swap(page, '<link rel="stylesheet" href="assets/site.css">', '<link rel="alternate stylesheet" title="Look" href="assets/site.css">')), /index\.html does not link assets\/site\.css/, "the stylesheet as an alternate the visitor never sees");
+  bad(check(afterSheet('<link rel="stylesheet" href="assets/extra.css">')), /index\.html links assets\/extra\.css as a stylesheet; its rules are not read here/, "a second stylesheet of the site's own");
+  bad(check(swap(page, '<p class="lede">', '<p class="lede" style="color:#c7b8ff">')), /index\.html has a style attribute that sets color/, "text coloured in a style attribute");
+  bad(check(swap(page, '<p class="monolith-mark" aria-hidden="true">', '<p class="monolith-mark" aria-hidden="true" style="animation:mark-spin 4s linear infinite">')), /index\.html has a style attribute that sets animation/, "motion in a style attribute");
+  bad(check(swap(page, '<p class="lede">', '<p class="lede" style="--mute:#2A2933">')), /index\.html has a style attribute that re-declares --mute/, "a shared token in a style attribute");
+  bad(check(swap(page, '<p class="lede">', '<p class="lede" style="--x:1&#59 color:#c7b8ff">')), /index\.html has a style attribute that sets color/, "a declaration split by a reference without its semicolon");
 });
 
 test("fonts: each face loads a file that is there, each file is used, and each family carries the OFL", async () => {
   const files = await fontDirectory();
-  assert.deepEqual(fontProblems(css, files), []);
+  // The Familiars page still loads its own faces (main's #65 and its follow-ups); those files count as used.
+  const familiarsFonts = pageFontFiles(await readFile(new URL("familiars.html", root), "utf8"), "familiars.html");
+  assert.ok(familiarsFonts.length > 0);
+  assert.deepEqual(fontProblems(css, files, familiarsFonts), []);
   const plex = ["Regular", "Medium"].flatMap((weight) => ["Latin1", "Latin2", "Latin3", "Pi"].map((script) => `assets/fonts/IBMPlexMono-${weight}-${script}.woff2`));
   assert.deepEqual(fontFiles, ["assets/fonts/FamiljenGrotesk-VF.woff2", ...plex]);
   const without = (name) => Object.fromEntries(Object.entries(files).filter(([key]) => key !== name));
@@ -230,7 +328,7 @@ test("fonts: each face loads a file that is there, each file is used, and each f
   const ownFaces = '<style>@font-face{font-family:"Own";src:url(assets/fonts/Spare.woff2) format("woff2")}</style>';
   assert.deepEqual(pageFontFiles(ownFaces, "familiars.html"), ["assets/fonts/Spare.woff2"]);
   assert.deepEqual(pageFontFiles(ownFaces.replace("url(assets/", "url(../assets/"), "guide/index.html"), ["assets/fonts/Spare.woff2"], "a page's url resolves against the page");
-  assert.deepEqual(fontProblems(css, { ...files, "Spare.woff2": true }, pageFontFiles(ownFaces, "familiars.html")), []);
+  assert.deepEqual(fontProblems(css, { ...files, "Spare.woff2": true }, [...familiarsFonts, ...pageFontFiles(ownFaces, "familiars.html")]), []);
   bad(fontProblems(css, { ...files, "Spare.woff2": true }, pageFontFiles(ownFaces, "guide/index.html")), /assets\/fonts\/Spare\.woff2 is not loaded by any @font-face/, "a page url that resolves somewhere else");
   bad(fontProblems(css.replace('url("fonts/IBMPlexMono-Medium-Latin1.woff2")', 'url("https://example.com/IBMPlexMono-Medium-Latin1.woff2")'), files), /loads https:\/\/example\.com\/IBMPlexMono-Medium-Latin1\.woff2 from another host/, "a face served from elsewhere");
   bad(fontProblems(css.replace('url("fonts/IBMPlexMono-Medium-Latin1.woff2")', 'url("https://cdn.example.net/assets/fonts/IBMPlexMono-Medium-Latin1.woff2")'), files), /loads https:\/\/cdn\.example\.net\/assets\/fonts\/IBMPlexMono-Medium-Latin1\.woff2 from another host/, "a face from another host under the same path");
@@ -278,7 +376,7 @@ async function expectGreen(fixtureRoot) {
   assert.equal(result.code, 0, `the verifier passes:\n${result.stderr}`);
 }
 
-test("the verifier fails a colour off the palette, a light theme that splits, a page off the base, motion against the setting and a font without its licence, and passes the site as it is", async (t) => {
+test("the verifier fails a colour off the palette, a light theme that splits, a page off the base, motion against the setting or the pause and a font without its licence, and passes the site as it is", async (t) => {
   const fixtureRoot = await makeFixture(t);
   await expectGreen(fixtureRoot);
   await editOnce(fixtureRoot, STYLESHEET, "--ember: #FFB46B;       /* the one", "--ember: #FFA500;       /* the one");
@@ -291,9 +389,12 @@ test("the verifier fails a colour off the palette, a light theme that splits, a 
   await expectRed(fixtureRoot, /index\.html does not link assets\/site\.css/);
   await editOnce(fixtureRoot, "index.html", '<link rel="preload"', '<link rel="stylesheet" href="assets/site.css">\n<link rel="preload"');
   await expectGreen(fixtureRoot);
-  await editOnce(fixtureRoot, "index.html", "  @media (prefers-reduced-motion:no-preference){\n    .skip-link", "  .theme-monolith{animation:monolith-float 5s ease-in-out infinite}\n  @media (prefers-reduced-motion:no-preference){\n    .skip-link");
+  await editOnce(fixtureRoot, "index.html", "  @media (prefers-reduced-motion:no-preference){\n", "  .theme-monolith{animation:monolith-float 5s ease-in-out infinite}\n  @media (prefers-reduced-motion:no-preference){\n");
   await expectRed(fixtureRoot, /index\.html \.theme-monolith \{ animation: monolith-float 5s ease-in-out infinite \} runs whatever the visitor's motion setting/);
-  await editOnce(fixtureRoot, "index.html", "  .theme-monolith{animation:monolith-float 5s ease-in-out infinite}\n  @media (prefers-reduced-motion:no-preference){\n    .skip-link", "  @media (prefers-reduced-motion:no-preference){\n    .skip-link");
+  await editOnce(fixtureRoot, "index.html", "  .theme-monolith{animation:monolith-float 5s ease-in-out infinite}\n  @media (prefers-reduced-motion:no-preference){\n", "  @media (prefers-reduced-motion:no-preference){\n");
+  await editOnce(fixtureRoot, "index.html", `    ${PAUSE_GATE} .hero-layout>div:first-child>*{animation:hero-rise .7s ease both}`, "    .hero-layout>div:first-child>*{animation:hero-rise .7s ease both}");
+  await expectRed(fixtureRoot, /index\.html \.hero-layout>div:first-child>\* \{ animation: hero-rise \.7s ease both \} keeps its first frame while the visitor has paused motion/);
+  await editOnce(fixtureRoot, "index.html", "    .hero-layout>div:first-child>*{animation:hero-rise .7s ease both}", `    ${PAUSE_GATE} .hero-layout>div:first-child>*{animation:hero-rise .7s ease both}`);
   await editOnce(fixtureRoot, "index.html", "    --radius:10px;\n", "    --radius:10px;\n    --mute:#2A2933;\n");
   await expectRed(fixtureRoot, /index\.html :root re-declares --mute, a token of assets\/site\.css/);
   await editOnce(fixtureRoot, "index.html", "    --radius:10px;\n    --mute:#2A2933;\n", "    --radius:10px;\n");

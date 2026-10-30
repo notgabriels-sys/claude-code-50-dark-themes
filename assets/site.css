@@ -220,14 +220,17 @@ body {
 :root[data-eff="light"] .theme-switch .sun { display: none; }
 :root[data-eff="light"] .theme-switch .moon { display: block; }
 
-/* Paused from the page (data-motion="paused" on the root): every animation holds its frame. */
+/* Paused from the page (data-motion="paused" on the root): every looping animation holds its
+   frame. What would hold a half-finished frame or still answer the pointer (a one-off
+   animation, a lift on hover, the pointer light) is written under
+   :root:not([data-motion="paused"]) below and on the page, so the pause removes it. */
 :root[data-motion="paused"] *,
 :root[data-motion="paused"] *::before,
 :root[data-motion="paused"] *::after { animation-play-state: paused !important; }
 
 /* ---------- surfaces with a pointer light: the page's script marks them .lit and sets --mx and
    --my as the pointer moves; the page gives them their own border and background. The light
-   itself shows only when the visitor allows motion; the border answers the pointer either way. */
+   itself shows only while motion is allowed and not paused; the border answers the pointer either way. */
 .lit { --mx: 50%; --my: 50%; position: relative; overflow: hidden; }
 .lit::before {
   content: "";
@@ -248,9 +251,9 @@ body {
   .lights .l3 { animation: drift-a 38s ease-in-out infinite alternate-reverse; }
   @keyframes drift-a { to { transform: translate(8vw, 6vh) scale(1.1); } }
   @keyframes drift-b { to { transform: translate(-10vw, -8vh) scale(0.92); } }
-  .lit { transition: border-color 0.25s, transform 0.25s; }
-  .lit:hover { transform: translateY(-2px); }
-  .lit:hover::before { opacity: 1; }
-  .theme-switch { transition: background-color 0.5s, color 0.5s, transform 0.2s; }
-  .theme-switch:hover { transform: translateY(-2px); }
+  :root:not([data-motion="paused"]) .lit { transition: border-color 0.25s, transform 0.25s; }
+  :root:not([data-motion="paused"]) .lit:hover { transform: translateY(-2px); }
+  :root:not([data-motion="paused"]) .lit:hover::before { opacity: 1; }
+  :root:not([data-motion="paused"]) .theme-switch { transition: background-color 0.5s, color 0.5s, transform 0.2s; }
+  :root:not([data-motion="paused"]) .theme-switch:hover { transform: translateY(-2px); }
 }
