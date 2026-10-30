@@ -813,9 +813,37 @@ README conflict was resolved by taking main's new README whole and putting back
 this branch's four changes: that copy route, the `themes.json` paragraph, the
 Berlin Studio Skills section (the README must state the skills count), and the
 last line's "every pull request and every push to main". The article's
-install-guide link stays on the site, as this branch had it, so its dates stay
-too: the page-dates guard refused main's new date for a page whose only change
-would have been the date.
+install-guide link stays on the site, as this branch had it. Its dates stayed
+too at first, because the page-dates guard on this branch refused main's new
+date; CI, which reads the pull request merged into `main`, then refused the old
+one (corrected 2026-10-30; see below).
+
+**(fixed 2026-10-30) A branch dates a page as its merge into `main` does.** CI
+failed `verify` on 8db534c with all 554 tests green: on the pull request merged
+into `main`, the page-dates guard (main's #64) put the semantic-colors
+article's last change on 2026-10-24, main's #70 (909c0bc), while on this branch
+it put it on 2026-10-19 (17e1cb7), and the article said 2026-10-18. The guard
+walks the first-parent line, and this branch's merge of #70 kept its own article
+over main's. In the merged history main's change is on that line; on the branch
+it sits behind a merge the guard never looked into. The two runs asked for days
+five apart, so no date could pass both. Reproduced in a worktree that merges this
+branch into `main` with `main` first, as GitHub's merge ref does: the same
+failure, while the branch was green. Now a merge on the line whose page matches
+its first parent, while its second side changed the page since the two parted,
+reads that change's day too. A merge's own commits are read from its second
+side, where `git log` does not simplify them away behind a merge that matches
+its first parent. On this branch, on the simulated merge and on `main` after it,
+the article reads 2026-10-24 and the install guide 2026-10-19, and the article
+now says 24 October, as `main` does. That is the guard's day of the latest
+writing on the line; the page as merged changes again on the day #39 lands.
+Counting only changes made since the two sides parted keeps a change made and
+unmade on a branch from counting when `main` moved meanwhile. One test builds
+both cases. Mutation-tested (rule 5), four branches each gutted alone, against
+the page-dates tests and the real tree:
+- not reading such merges, reading a merge's commits from the merge itself, and
+  leaving the line unsorted each fail the new test at the branch's day and turn
+  the real tree red;
+- dropping the parting limit fails it at the made-and-unmade case alone.
 
 **(added 2026-10-20) The cards print the terminal background.** The footer, the
 install guide (its text and its HowTo structured data) and `README.md` told
