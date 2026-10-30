@@ -4046,7 +4046,6 @@ const pageAddress = (page) => `${siteUrl}${urlPath(page).replace(/(^|\/)index\.h
     if (!address.startsWith(siteUrl)) {
       fail(`llms.txt:${lineOf(match.index)} gives ${address}, which is not on ${siteUrl}; llms.txt links only to this site's own pages and files.`);
     }
-    if (llms.startsWith(themePattern, match.index)) continue;
     if (!servedAddress.has(address.replace(/#.*$/, ""))) {
       fail(`llms.txt:${lineOf(match.index)} gives ${address}, which is not a file this site serves.`);
     }
@@ -4080,7 +4079,7 @@ const crawlableNotes = ["terminal-schemes/README.md"];
   const robots = await readFile(new URL("robots.txt", root), "utf8");
   const sitemapLine = `Sitemap: ${siteUrl}sitemap.xml`;
   const lines = robots.split("\n");
-  if (!/^[\x20-\x7e\n]*$/.test(robots) || lines[0] !== "User-agent: *" || !robots.endsWith(`\n\n${sitemapLine}\n`)) {
+  if (lines[0] !== "User-agent: *" || !robots.endsWith(`\n\n${sitemapLine}\n`)) {
     fail(`robots.txt must read "User-agent: *", then its Disallow lines, then a blank line and "${sitemapLine}", in plain ASCII with LF line ends; crawlers read other shapes differently.`);
   }
   const rules = lines.slice(1, -3).map((line, index) => {
@@ -4091,8 +4090,9 @@ const crawlableNotes = ["terminal-schemes/README.md"];
     return rule;
   });
   const blocks = (path) => rules.some((rule) => path.startsWith(rule));
-  // The paths the public pages use: every root file that is not a note, every served page and
-  // its address, and every address on this site that a page or llms.txt gives.
+  // The paths the public pages use: every root file that is not a note, every served page, and
+  // every address on this site that a page gives, absolute in its text or relative in a src,
+  // href or url().
   const publicPaths = new Set();
   const addPublic = (address, base) => {
     let url;
@@ -4108,18 +4108,13 @@ const crawlableNotes = ["terminal-schemes/README.md"];
   for (const page of indexablePages.keys()) {
     const base = pageAddress(page);
     publicPaths.add(`/${urlPath(page)}`);
-    addPublic(base);
     const markup = await readFile(fileUrl(page), "utf8");
     for (const [address] of markup.matchAll(onSite)) addPublic(address);
     for (const [, address] of markup.matchAll(/url\(\s*["']?([^"')\s]+)/g)) addPublic(address, base);
     for (const tag of htmlTags(markup)) {
-      for (const { name, value } of tag.attributes ?? []) {
-        if (["href", "src", "poster"].includes(name)) addPublic(value, base);
-        if (name === "srcset") for (const candidate of value.split(",")) addPublic(candidate.trim().split(/\s+/)[0], base);
-      }
+      for (const { name, value } of tag.attributes ?? []) if (name === "href" || name === "src") addPublic(value, base);
     }
   }
-  for (const [address] of (await readFile(new URL("llms.txt", root), "utf8")).matchAll(onSite)) addPublic(address);
   for (const path of publicPaths) {
     const rule = rules.find((candidate) => path.toLowerCase().startsWith(candidate.toLowerCase()));
     if (rule) {

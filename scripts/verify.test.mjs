@@ -4060,15 +4060,28 @@ for (const [defect, edits, message] of [
     /robots\.txt blocks \/terminal-schemes\/README\.md, but terminal-schemes\/README\.md is in crawlableNotes/],
   ["a rule that blocks nothing", robotsWith("Disallow: /scripts/\n", "Disallow: /scripts/\nDisallow: /nothing-here/\n"),
     /robots\.txt's "Disallow: \/nothing-here\/" blocks nothing this site serves; drop it/],
+  ["a group for one crawler only", robotsWith("User-agent: *\n", "User-agent: Googlebot\n"),
+    /robots\.txt must read "User-agent: \*", then its Disallow lines/],
+  ["a rule over a root file", robotsWith("Disallow: /scripts/\n", "Disallow: /LICENSE\nDisallow: /scripts/\n"),
+    /robots\.txt's "Disallow: \/LICENSE" blocks \/LICENSE, which the site's public pages use/],
+  ["a rule over a share image a page names only in its meta", robotsWith("Disallow: /assets/product-hunt/\n", "Disallow: /assets/familiars-share.png\nDisallow: /assets/product-hunt/\n"),
+    /robots\.txt's "Disallow: \/assets\/familiars-share\.png" blocks \/assets\/familiars-share\.png, which the site's public pages use/],
+  ["a root note blocked only as raw Markdown", robotsWith("Disallow: /DOMAIN_SETUP.\n", "Disallow: /DOMAIN_SETUP.md\n"),
+    /DOMAIN_SETUP\.md is a note GitHub Pages renders or serves at \/DOMAIN_SETUP\.html, and robots\.txt lets crawlers fetch it/],
+  ["a root note blocked by its two exact addresses", robotsWith("Disallow: /DOMAIN_SETUP.\n", "Disallow: /DOMAIN_SETUP.html\nDisallow: /DOMAIN_SETUP.md\n"), null],
   ["a kept-open note that is not served",
     [["scripts/verify.mjs", 'const crawlableNotes = ["terminal-schemes/README.md"];', 'const crawlableNotes = ["terminal-schemes/README.md", "gone/README.md"];']],
     /crawlableNotes in scripts\/verify\.mjs names gone\/README\.md, which is not a note this site serves/],
 ]) {
-  test(`rejects a robots.txt with ${defect}`, async (t) => {
+  test(`${message ? "rejects" : "accepts"} a robots.txt with ${defect}`, async (t) => {
     const fixtureRoot = await makeFixture(t);
     for (const [path, from, to] of edits) await editFixtureFile(fixtureRoot, path, from, to);
     const result = await runVerifier(fixtureRoot);
-    assert.notEqual(result.code, 0, `a robots.txt with ${defect} passed`);
-    assert.match(result.stderr, message);
+    if (message === null) {
+      assert.equal(result.code, 0, `a robots.txt with ${defect} was refused: ${result.stderr}`);
+    } else {
+      assert.notEqual(result.code, 0, `a robots.txt with ${defect} passed`);
+      assert.match(result.stderr, message);
+    }
   });
 }
