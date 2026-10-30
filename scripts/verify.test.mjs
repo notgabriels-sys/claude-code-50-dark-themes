@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { chmod, cp, mkdtemp, readdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { chmod, cp, mkdir, mkdtemp, readdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -1019,6 +1019,36 @@ test("rejects a page that calls the repository MIT while products carry other li
 
   assert.notEqual(result.code, 0, "the verifier accepted an MIT claim for a repository holding restrictively licensed products");
   assert.match(result.stderr, /semantic-terminal-colors\.html says the repository is MIT/);
+});
+
+test("reads every README outside products/ for a repository-wide MIT claim", { timeout: 90_000 }, async (t) => {
+  // terminal-schemes/README.md (#68) said "MIT, the same as the rest of this repository"
+  // while the guard read a fixed list of three READMEs. Plant that sentence back, and the
+  // same one in a README folder that does not exist yet, which the walk must also find.
+  const fixtureRoot = await makeFixture(t);
+  const schemesReadme = join(fixtureRoot, "terminal-schemes", "README.md");
+  const text = await readFile(schemesReadme, "utf8");
+  assert.ok(text.includes("## Licence\n\n"), "fixture anchor moved; update this test");
+  await writeFile(schemesReadme, text.replace("## Licence\n\n", "## Licence\n\nMIT, the same as the rest of this repository.\n\n"));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a terminal-schemes README calling the whole repository MIT");
+  assert.match(result.stderr, /terminal-schemes\/README\.md says the repository is MIT/);
+
+  const newRoot = await makeFixture(t);
+  await mkdir(join(newRoot, "editor-themes"), { recursive: true });
+  await writeFile(join(newRoot, "editor-themes", "README.md"), "# Editor themes\n\nThis repository is MIT licensed.\n");
+  const fresh = await runVerifier(newRoot);
+  assert.notEqual(fresh.code, 0, "the verifier missed a README in a new folder calling the repository MIT");
+  assert.match(fresh.stderr, /editor-themes\/README\.md says the repository is MIT/);
+
+  const productRoot = await makeFixture(t);
+  const productReadme = join(productRoot, "products", "claude-code-workflow-kit", "README.md");
+  const product = await readFile(productReadme, "utf8");
+  await writeFile(productReadme, `${product}\nNot covered by the repository's MIT licence.\n`);
+  const products = await runVerifier(productRoot);
+  assert.equal(products.code, 0, `a product README naming its own terms tripped the guard:\n${products.stderr}`);
 });
 
 test("rejects a page that still offers the withdrawn free Gumroad download", { timeout: 90_000 }, async (t) => {

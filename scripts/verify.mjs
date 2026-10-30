@@ -917,7 +917,10 @@ if (!/matches by filename, not contents/i.test(installerHeader)) {
 // redistribution. The article's FAQ structured data said "The complete theme
 // set and source repository are free under the MIT license" while its visible
 // answer named only the MIT parts. Wherever a product licence is not MIT, no
-// public page (structured data included) may call the repository MIT.
+// public page (structured data included) may call the repository MIT. That
+// covers every README GitHub renders outside products/, found by walking the
+// tree: terminal-schemes/README.md (#68) said its schemes were "MIT, the same
+// as the rest of this repository" while a fixed list of three READMEs was read.
 const productLicences = [];
 for (const entry of await readdir(new URL("products/", root), { withFileTypes: true })) {
   if (!entry.isDirectory()) continue;
@@ -927,7 +930,11 @@ for (const entry of await readdir(new URL("products/", root), { withFileTypes: t
   } catch {}
 }
 if (productLicences.length) {
-  for (const file of [...publicHtmlFiles, "README.md", "llms.txt", "plugins/50-dark-themes/README.md", "plugins/dark-themes-vol-2/README.md"]) {
+  const readmes = (await readdir(root, { recursive: true }))
+    .map((path) => path.replaceAll("\\", "/"))
+    .filter((path) => /(^|\/)README\.md$/.test(path) && !path.split("/").some((segment) => [".git", ".worktrees", "node_modules", "products"].includes(segment)))
+    .sort();
+  for (const file of [...publicHtmlFiles, ...readmes, "llms.txt"]) {
     const text = (await readFile(new URL(file, root), "utf8")).replace(/<[^>]+>/g, "").replace(/\s+/g, " ");
     const claim = text.match(/repositor(?:y|ies)\b[^.]{0,40}\bMIT\b|\bMIT\b[^.]{0,40}\brepositor(?:y|ies)\b/i);
     if (claim) {

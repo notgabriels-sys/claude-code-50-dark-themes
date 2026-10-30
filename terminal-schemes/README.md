@@ -132,7 +132,8 @@ set up for 24-bit.
 
 ## Licence
 
-MIT, the same as the rest of this repository: see [LICENSE](../LICENSE). By
+MIT, like the themes, the plugins and the installer: see [LICENSE](../LICENSE). The product folders
+under `products/` carry their own licences. By
 [NotGabriels](https://github.com/notgabriels-sys/claude-code-50-dark-themes).
 
 The paid [Claude Code Theme Setup Assistant](https://agensi.io/skills/claude-code-theme-setup-assistant)
