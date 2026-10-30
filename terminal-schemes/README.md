@@ -135,6 +135,6 @@ set up for 24-bit.
 MIT, the same as the rest of this repository: see [LICENSE](../LICENSE). By
 [NotGabriels](https://github.com/notgabriels-sys/claude-code-50-dark-themes).
 
-The paid [Claude Code Theme Setup Assistant](https://agensi.io/skills/claude-code-theme-setup-assistant)
-(on Agensi) installs a theme for you, sets up its matching scheme in most of the terminals above, and
+The paid Claude Code Theme Setup Assistant (on Agensi; the [repository README](../README.md) links it)
+installs a theme for you, sets up its matching scheme in most of the terminals above, and
 adds 12 exclusive themes.

@@ -1,0 +1,46 @@
+import { cp, mkdir, readdir, rm } from "node:fs/promises";
+
+const source = new URL("../.claude/skills/", import.meta.url);
+const destination = new URL(
+  "../plugins/berlin-studio-skills/skills/",
+  import.meta.url,
+);
+
+await mkdir(destination, { recursive: true });
+// A name from disk as a URL, each segment encoded: passed raw, a "#" or "?"
+// cuts the name short and a "%2e%2e" segment reads as "..".
+const fileUrl = (path, base) => new URL(path.split("/").map(encodeURIComponent).join("/"), base);
+
+const sourceSkills = (await readdir(source, { withFileTypes: true }))
+  .filter((entry) => entry.isDirectory())
+  .map((entry) => entry.name)
+  .sort();
+const packagedSkills = (await readdir(destination, { withFileTypes: true }))
+  .filter((entry) => entry.isDirectory())
+  .map((entry) => entry.name);
+
+for (const name of packagedSkills) {
+  if (!sourceSkills.includes(name)) {
+    await rm(fileUrl(`${name}/`, destination), { recursive: true });
+  }
+}
+// Copy the whole skill directory, not just SKILL.md. A skill may carry
+// references, scripts or assets that its SKILL.md points at, and copying only
+// the entry file ships an installer a skill whose own instructions reference
+// files that are not there. Every skill happens to be SKILL.md-only today;
+// that is the reason to fix this now rather than after the first one is not.
+// The destination copy is removed first so a file deleted at source cannot
+// survive in the package. Symlinks are dereferenced: fs.cp otherwise rewrites
+// a relative source link into an absolute one pointing into this checkout,
+// which would ship installers a dangling link (and verify rejects any symlink
+// in a plugin).
+for (const name of sourceSkills) {
+  await rm(fileUrl(`${name}/`, destination), { recursive: true, force: true });
+  await mkdir(fileUrl(`${name}/`, destination), { recursive: true });
+  await cp(fileUrl(`${name}/`, source), fileUrl(`${name}/`, destination), {
+    recursive: true,
+    dereference: true,
+  });
+}
+
+console.log(`Synced ${sourceSkills.length} skills into the Claude Code plugin.`);

@@ -4,7 +4,7 @@
   <rect width="512" height="512" fill="#0a0a0b"/>
   <!-- prompt chevron: shop ink, 64-unit round stroke (12.5% of the canvas, the favicon's 8-on-64) -->
   <path d="M138 176 L196 256 L138 336" fill="none" stroke="#e9eaec" stroke-width="64" stroke-linecap="round" stroke-linejoin="round"/>
-  <!-- block cursor = paint-chip swatch, three Vol. 3 accents separated by 12-unit ground seams -->
+  <!-- block cursor drawn as a paint-chip swatch: three Vol. 3 accents separated by 12-unit ground seams -->
   <!-- top: Sidechain accent -->
   <path d="M256 144 A16 16 0 0 1 272 128 H368 A16 16 0 0 1 384 144 V205.33 H256 Z" fill="#52D2E0"/>
   <!-- middle: Strobe second (the shop favicon's violet) -->

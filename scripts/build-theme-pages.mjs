@@ -5,8 +5,10 @@
 // scripts/verify.mjs fails when a page on disk differs from this render.
 //
 //   node scripts/build-theme-pages.mjs
+import { createHash } from "node:crypto";
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
+import { isThemeFile } from "./build-theme-index.mjs";
 
 const SITE = "https://gabs-utilities.com";
 const REPO = "https://github.com/notgabriels-sys/claude-code-50-dark-themes";
@@ -152,7 +154,9 @@ export async function loadThemes(root) {
     const entry = marketplace.plugins.find((plugin) => plugin.name === pack.id);
     if (!entry) throw new Error(`Marketplace does not list ${pack.id}.`);
     const themesRoot = new URL(pack.themesDir || "./", root);
-    const files = (await readdir(themesRoot)).filter((file) => file.endsWith(".json")).sort();
+    // isThemeFile, not a bare .json glob: the root also holds themes.json,
+    // the published index, which is not a theme.
+    const files = (await readdir(themesRoot)).filter(isThemeFile).sort();
     const previews =
       pack.previewsFrom === "gallery"
         ? galleryTerminals
@@ -311,12 +315,23 @@ document.querySelectorAll("[data-copy]").forEach((button) => {
   });
 });
 `;
+// Every served page carries a Content-Security-Policy right after its charset
+// that names exactly the inline scripts it runs (scripts/verify.mjs, "Every
+// inline script is reviewed"), so the browser refuses any script nobody
+// reviewed. These pages run one: the copy button above. Its hash is reviewed
+// in verify's reviewedThemePageScripts; a change to it is a deliberate edit
+// there.
+const COPY_SCRIPT_HASH = `sha256-${createHash("sha256").update(COPY_SCRIPT, "utf8").digest("base64")}`;
+const CONTENT_SECURITY_POLICY =
+  `script-src '${COPY_SCRIPT_HASH}'; worker-src 'none'; object-src 'none'; frame-src 'none'; ` +
+  "base-uri 'none'; form-action 'none'";
 
 function head({ title, description, canonical, themeColor, jsonLd }) {
   return `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="${CONTENT_SECURITY_POLICY}">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${esc(title)}</title>
 <meta name="description" content="${esc(description)}">

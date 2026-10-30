@@ -258,6 +258,39 @@ test("lastContentChange: the day the page last changed outside its date stamp, w
   assert.deepEqual(lastContentChange("page.html", { cwd: shallow }), { date: null, reason: "a shallow clone, whose history stops short" });
 });
 
+test("lastContentChange: a branch that merged its base and kept its own page dates it as its merge into the base does", async (t) => {
+  const dir = await mkdtemp(join(tmpdir(), "gabs-page-kept-"));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const repo = repository(dir);
+  const body = (text) => page({ published: "2026-08-24", modified: "2026-08-24" }).replace("Install 62 themes; the August update ships 3 files and 1 guide.", text);
+  await repo.commit("publish", "2026-08-24T10:00:00Z", { "page.html": body("First body.") });
+  await repo.commit("second body", "2026-09-10T10:00:00Z", { "page.html": body("Second body.") });
+  repo.run(["checkout", "-q", "-b", "topic"]);
+  await repo.commit("branch body", "2026-10-02T10:00:00Z", { "page.html": body("Branch body.") });
+  repo.run(["checkout", "-q", "main"]);
+  const onMain = await repo.commit("main body", "2026-10-10T10:00:00Z", { "page.html": body("Main body.") });
+  // The branch pulls main in and keeps its own page: main's change is read through the merge.
+  repo.run(["checkout", "-q", "topic"]);
+  repo.run(["merge", "-q", "-s", "ours", "--no-edit", "main"], "2026-10-12T10:00:00Z");
+  assert.deepEqual(lastContentChange("page.html", { cwd: dir }), { date: "2026-10-10", sha: onMain }, "on the branch, the day of the base's change its merge kept its own page over");
+  // Landed, the base reads the same day: the branch's page replaces main's, whose change was on the line.
+  repo.run(["checkout", "-q", "main"]);
+  repo.run(["merge", "-q", "--no-ff", "--no-edit", "topic"], "2026-10-14T10:00:00Z");
+  assert.equal(await readFile(join(dir, "page.html"), "utf8"), body("Branch body."));
+  assert.deepEqual(lastContentChange("page.html", { cwd: dir }), { date: "2026-10-10", sha: onMain }, "on the base after landing, the same day as on the branch");
+  // A change made and unmade on a branch is still no change, though main's page moved meanwhile.
+  repo.run(["checkout", "-q", "-b", "twice"]);
+  repo.run(["checkout", "-q", "main"]);
+  const moved = await repo.commit("main moves", "2026-10-15T10:00:00Z", { "page.html": body("Moved body.") });
+  repo.run(["checkout", "-q", "twice"]);
+  await repo.commit("made", "2026-10-16T10:00:00Z", { "page.html": body("Passing body.") });
+  await repo.commit("unmade", "2026-10-17T10:00:00Z", { "page.html": body("Branch body.") });
+  repo.run(["checkout", "-q", "main"]);
+  repo.run(["merge", "-q", "--no-ff", "--no-edit", "twice"], "2026-10-19T10:00:00Z");
+  assert.equal(await readFile(join(dir, "page.html"), "utf8"), body("Moved body."));
+  assert.deepEqual(lastContentChange("page.html", { cwd: dir }), { date: "2026-10-15", sha: moved }, "a merge that kept its page over a side that changed nothing in sum reads nothing from it");
+});
+
 test("the dated pages on disk agree with themselves, and each is one of the two the verifier reads", async () => {
   assert.deepEqual(DATED_PAGES, ["claude-code-theme-install-guide.html", "semantic-terminal-colors.html"]);
   for (const path of DATED_PAGES) {
