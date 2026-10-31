@@ -47,7 +47,9 @@ Source and manual installation: https://github.com/notgabriels-sys/claude-code-5
 - **The themes aren't in `/theme`.** Custom themes need Claude Code v2.1.118 or later
   (`claude --version`, then `claude update`). Restart Claude Code after installing the plugin.
 - **Colors look washed out or gray.** Your terminal background doesn't match the theme, or the
-  terminal isn't showing 24-bit color (Terminal.app before macOS 26, and some tmux or SSH setups).
+  terminal isn't showing 24-bit color (Terminal.app before macOS 26, and some SSH setups). Inside tmux,
+  Claude Code draws in 256 colors at most, even with `COLORTERM=truecolor`, until
+  `CLAUDE_CODE_TMUX_TRUECOLOR=1` is set too (after `set -ga terminal-overrides ',*:Tc'` in `~/.tmux.conf`).
 - **"Auto (match terminal)" doesn't pick these themes.** Expected: Auto only switches between
   Claude Code's built-in light and dark themes. Pick a custom theme in `/theme` and it stays selected.
 

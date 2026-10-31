@@ -128,8 +128,10 @@ above, but Claude Code's own theme colors are exact only when it starts with 24-
 rounds them to 256 colors or fewer, and the tinted panels turn gray. Terminal.app has 24-bit color only
 on macOS 26 or later, and Claude Code uses it there only when `COLORTERM=truecolor` is set. The scheme's
 own colors are exact on any macOS version. Claude Code also limits the VS Code and Cursor terminals to
-256 colors, and starts at 256 inside tmux, in WSL under Windows Terminal and over SSH unless those are
-set up for 24-bit.
+256 colors, and starts at 256 in WSL under Windows Terminal and over SSH unless those are set up for
+24-bit. Inside tmux it stays at 256 even when tmux is set up for 24-bit and `COLORTERM=truecolor` is
+set, until `CLAUDE_CODE_TMUX_TRUECOLOR=1` is set as well (after `set -ga terminal-overrides ',*:Tc'` in
+`~/.tmux.conf`).
 
 ## Status lines
 

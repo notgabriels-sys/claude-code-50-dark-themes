@@ -2844,6 +2844,57 @@ test("accepts scheme colours stated as the files set them", { timeout: 120_000 }
   assert.equal(filesSetThem.code, 0, `the old sentence failed although every file now sets both colours:\n${filesSetThem.stderr}`);
 });
 
+test("rejects a sentence tying tmux to a color depth without CLAUDE_CODE_TMUX_TRUECOLOR", { timeout: 120_000 }, async (t) => {
+  // Claude Code draws in 256 colors inside tmux, however tmux is set up, until
+  // CLAUDE_CODE_TMUX_TRUECOLOR is set. Each variant puts a sentence back that says
+  // otherwise or leaves the variable out, runs the verifier, and restores the file.
+  const fixtureRoot = await makeFixture(t);
+  const variants = [
+    ["the schemes README's old sentence", "terminal-schemes/README.md",
+      "256 colors, and starts at 256 in WSL under Windows Terminal and over SSH unless those are set up for\n" +
+        "24-bit. Inside tmux it stays at 256 even when tmux is set up for 24-bit and `COLORTERM=truecolor` is\n" +
+        "set, until `CLAUDE_CODE_TMUX_TRUECOLOR=1` is set as well (after `set -ga terminal-overrides ',*:Tc'` in\n" +
+        "`~/.tmux.conf`).",
+      "256 colors, and starts at 256 inside tmux, in WSL under Windows Terminal and over SSH unless those are\n" +
+        "set up for 24-bit.",
+      /terminal-schemes\/README\.md ties tmux to a color depth \(.*starts at 256 inside tmux.*\) without naming CLAUDE_CODE_TMUX_TRUECOLOR/],
+    ["a plugin README's old troubleshooting line", "plugins/50-dark-themes/README.md",
+      "(Terminal.app before macOS 26, and some SSH setups). Inside tmux,\n" +
+        "  Claude Code draws in 256 colors at most, even with `COLORTERM=truecolor`, until\n" +
+        "  `CLAUDE_CODE_TMUX_TRUECOLOR=1` is set too (after `set -ga terminal-overrides ',*:Tc'` in `~/.tmux.conf`).",
+      "(Terminal.app before macOS 26, and some tmux or SSH setups).",
+      /plugins\/50-dark-themes\/README\.md ties tmux to a color depth .* without naming CLAUDE_CODE_TMUX_TRUECOLOR/],
+    ["a page promising true color in tmux", "claude-code-theme-install-guide.html", "  </main>",
+      "  <p>Inside tmux, turn on true color with <code>set -ga terminal-overrides ',*:Tc'</code> and the panels match.</p>\n  </main>",
+      /claude-code-theme-install-guide\.html ties tmux to a color depth .* without naming CLAUDE_CODE_TMUX_TRUECOLOR/],
+  ];
+  for (const [label, file, from, to, message] of variants) {
+    const path = join(fixtureRoot, file);
+    const original = await readFile(path, "utf8");
+    assert.equal(original.split(from).length, 2, `fixture anchor for ${label} must occur once; update this test`);
+    await writeFile(path, original.replace(from, to));
+    const result = await runVerifier(fixtureRoot);
+    await writeFile(path, original);
+
+    assert.notEqual(result.code, 0, `the verifier accepted ${label}`);
+    assert.match(result.stderr, message, label);
+  }
+});
+
+test("accepts tmux color-depth passages that name the variable, and tmux beside an unrelated number", { timeout: 120_000 }, async (t) => {
+  // The variable may sit in the next sentence of the same passage; a sentence naming tmux
+  // with no color depth passes even when another sentence in its passage has one.
+  const fixtureRoot = await makeFixture(t);
+  const llmsPath = join(fixtureRoot, "llms.txt");
+  await writeFile(
+    llmsPath,
+    `${await readFile(llmsPath, "utf8")}\nInside tmux, Claude Code draws in 256 colors. Set CLAUDE_CODE_TMUX_TRUECOLOR=1 to lift that.\n` +
+      "\nThe cheatsheets cover git, vim and tmux. Their palette has 256 entries.\n",
+  );
+  const result = await runVerifier(fixtureRoot);
+  assert.equal(result.code, 0, `a passage that names the variable, or a sentence with no color depth, was rejected:\n${result.stderr}`);
+});
+
 test("rejects a page that still offers the withdrawn free Gumroad download", { timeout: 90_000 }, async (t) => {
   // The install guide's FAQ has its own guard (from #61); this one covers every
   // other public page, so plant the offer where only it looks.

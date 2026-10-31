@@ -2553,6 +2553,31 @@ for (const file of [...repositoryFiles.filter((path) => path.endsWith(".html")),
   }
 }
 
+// Inside tmux, Claude Code draws in 256 colors however tmux is set up, until
+// CLAUDE_CODE_TMUX_TRUECOLOR is set. Read 2026-10-31 from Claude Code 2.1.314:
+// run in tmux 3.4 with RGB and Tc on and COLORTERM=truecolor in the pane, its
+// welcome screen used only 256-color escapes, and 24-bit ones once the variable
+// was set; its env-vars page says the same. The schemes README said it starts
+// at 256 inside tmux "unless those are set up for 24-bit", and the plugin
+// READMEs blamed "some tmux ... setups", so a reader who set tmux up for 24-bit
+// still got gray panels. A sentence that ties tmux to a color depth must have
+// the variable named in its passage. (The sentence, not the passage, carries
+// the trigger: the storefront's tools row reads as one passage of many cards.)
+const tmuxTruecolorVariable = "CLAUDE_CODE_TMUX_TRUECOLOR";
+const colorDepth = /\b(?:24-bit|256|true ?colou?rs?|colou?r depth)\b/i;
+for (const file of [...repositoryFiles.filter((path) => path.endsWith(".html")), ...repositoryReadmes, "llms.txt"]) {
+  for (const block of readableBlocks(file, await readFile(fileUrl(file), "utf8"))) {
+    if (block.includes(tmuxTruecolorVariable)) continue;
+    const sentence = sentencesOf(block).find((part) => /\btmux\b/i.test(part) && colorDepth.test(part));
+    if (!sentence) continue;
+    const at = sentence.search(/\btmux\b/i);
+    fail(
+      `${file} ties tmux to a color depth ("…${sentence.slice(Math.max(0, at - 70), at + 70).trim()}…") without naming ${tmuxTruecolorVariable}. ` +
+        `Claude Code draws in 256 colors at most inside tmux, however tmux is set up, until ${tmuxTruecolorVariable}=1 is set: say so in that passage.`,
+    );
+  }
+}
+
 // CI runs on pull requests and on pushes to main only (verify.yml's push
 // trigger is filtered to main). README and CONTRIBUTING said it ran "on every
 // push"; this branch had dozens of pushes and not one push-triggered run. When
