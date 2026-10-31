@@ -2943,6 +2943,58 @@ test("accepts a way out of safe mode that names settings.json in its passage, an
   assert.equal(result.code, 0, `a remedy naming settings.json, or a mention with no remedy, was rejected:\n${result.stderr}`);
 });
 
+const statuslineBullet =
+  "  own item colors, or chose a Quick setup scheme that adds a background gradient (Powerline Daily, Agent\n" +
+  "  Workbench, Quota Cost or Light Readable), also set `\"palette\": \"ansi\"`.\n";
+const powerlineSentence =
+  "Unless `CLAUDE_POWERLINE_CONFIG` or\n  `--config` names a file, a project's `.claude-powerline.json` replaces the home one completely, so it\n  needs the key too.";
+
+test("rejects status-line advice that leaves out a gradient or a named config file", { timeout: 120_000 }, async (t) => {
+  // claude-statusline's terminal theme leaves its Quick setup gradients 24-bit until "palette" is
+  // "ansi"; claude-powerline reads a file named by --config or CLAUDE_POWERLINE_CONFIG alone. Each
+  // variant puts back a passage that says otherwise, runs the verifier, and restores the file.
+  const fixtureRoot = await makeFixture(t);
+  const variants = [
+    ["the schemes README's old claude-statusline bullet", "terminal-schemes/README.md", statuslineBullet,
+      "  own item colors, also set `\"palette\": \"ansi\"`.\n",
+      /terminal-schemes\/README\.md gives claude-statusline's terminal theme .* without naming the background gradient/],
+    ["the JSON form alone, in llms.txt", "llms.txt", "## Primary pages", "For claude-statusline, set \"theme\": \"terminal\" in ~/.claude/claude-statusline.json.\n\n## Primary pages",
+      /llms\.txt gives claude-statusline's terminal theme .* without naming the background gradient/],
+    ["a page giving the command", "claude-code-theme-install-guide.html", "  </main>",
+      "  <p>For claude-statusline, run <code>claude-statusline config set theme terminal</code>.</p>\n  </main>",
+      /claude-code-theme-install-guide\.html gives claude-statusline's terminal theme/],
+    ["the schemes README's old claude-powerline sentence", "terminal-schemes/README.md", powerlineSentence,
+      "A project's `.claude-powerline.json`\n  replaces that file completely, so it needs the key too.",
+      /terminal-schemes\/README\.md says a project's \.claude-powerline\.json replaces another config file \(.*replaces that file completely.*\) without naming CLAUDE_POWERLINE_CONFIG/],
+  ];
+  for (const [label, file, from, to, message] of variants) {
+    const path = join(fixtureRoot, file);
+    const original = await readFile(path, "utf8");
+    assert.equal(original.split(from).length, 2, `fixture anchor for ${label} must occur once; update this test`);
+    await writeFile(path, original.replace(from, to));
+    const result = await runVerifier(fixtureRoot);
+    await writeFile(path, original);
+
+    assert.notEqual(result.code, 0, `the verifier accepted ${label}`);
+    assert.match(result.stderr, message, label);
+  }
+});
+
+test("accepts status-line advice that names the gradient in its passage and the named config file in its sentence", { timeout: 120_000 }, async (t) => {
+  // The gradient may sit in the next sentence of the passage; a project file that is read but
+  // replaces nothing needs no exception.
+  const fixtureRoot = await makeFixture(t);
+  const llmsPath = join(fixtureRoot, "llms.txt");
+  await writeFile(
+    llmsPath,
+    `${await readFile(llmsPath, "utf8")}\nFor claude-statusline, run claude-statusline config set theme terminal. A Quick setup gradient also needs "palette": "ansi".\n` +
+      "\nWhen --config names no file, a project's .claude-powerline.json replaces the home one.\n" +
+      "\nclaude-powerline also looks for a project's .claude-powerline.json in the workspace.\n",
+  );
+  const result = await runVerifier(fixtureRoot);
+  assert.equal(result.code, 0, `correct status-line advice was rejected:\n${result.stderr}`);
+});
+
 test("rejects a page that still offers the withdrawn free Gumroad download", { timeout: 90_000 }, async (t) => {
   // The install guide's FAQ has its own guard (from #61); this one covers every
   // other public page, so plant the offer where only it looks.

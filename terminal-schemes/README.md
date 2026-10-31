@@ -142,15 +142,17 @@ three other tools need one setting:
 - **ccstatusline:** set `"colorLevel": 1` in `~/.config/ccstatusline/settings.json` (or the file passed to
   its `--config` flag). Level 0 turns colors off, and colors written as `hex:` or `ansi256:`, and
   gradients, show plain at level 1.
-- **@fbincon/claude-code-statusline:** run `claude-statusline config set theme terminal`, or set the
-  top-level `"theme": "terminal"` in `~/.claude/claude-statusline.json` (under `$CLAUDE_CONFIG_DIR` if
-  set; the file is checked strictly, so change only that value). If you set your own item colors, also
-  set `"palette": "ansi"`.
+- **@fbincon/claude-code-statusline:** run `claude-statusline config set theme terminal`, or, once it has
+  written `~/.claude/claude-statusline.json` (under `$CLAUDE_CONFIG_DIR` if set), set the top-level
+  `"theme": "terminal"` there; the file is checked strictly, so change only that value. If you set your
+  own item colors, or chose a Quick setup scheme that adds a background gradient (Powerline Daily, Agent
+  Workbench, Quota Cost or Light Readable), also set `"palette": "ansi"`.
 - **@owloops/claude-powerline:** set `"colorCompatibility": "ansi"` under `display` in the config file it
   reads: `~/.claude/claude-powerline.json`, or `~/.config/claude-powerline/config.json` if you keep it
-  there, or the file named by `CLAUDE_POWERLINE_CONFIG` or `--config`. A project's `.claude-powerline.json`
-  replaces that file completely, so it needs the key too. Text then uses only the scheme's red, green,
-  blue, white and gray, and segment backgrounds are dropped.
+  there, or the file named by `CLAUDE_POWERLINE_CONFIG` or `--config`. Unless `CLAUDE_POWERLINE_CONFIG` or
+  `--config` names a file, a project's `.claude-powerline.json` replaces the home one completely, so it
+  needs the key too. Text then uses only the scheme's foreground, red, green, blue, white and gray, and
+  segment backgrounds are dropped.
 - **claude-hud:** its documented default colors are named terminal colors, except `colors.custom`
   (256-color 208), which only the optional custom line uses.
 

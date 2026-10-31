@@ -2598,6 +2598,35 @@ for (const file of [...repositoryFiles.filter((path) => path.endsWith(".html")),
   }
 }
 
+// Two status-line tools, as their published source reads (2026-10-31; read, not run,
+// because this session may not execute third-party packages).
+// @fbincon/claude-code-statusline 3.16.0: `config set theme terminal` changes only the
+// theme, and the background gradient that four of its Quick setup schemes write is drawn
+// in 24-bit colour unless "palette" is "ansi" (rendering/gradients.js paintGradient via
+// appearance.js outputColor). @owloops/claude-powerline 1.32.5: when --config or
+// CLAUDE_POWERLINE_CONFIG names a file, that file alone is read and no project file is
+// looked for (config/loader.ts findConfigFile). The schemes README said only "your own item
+// colors" need the palette, and that a project file replaces whichever file is read.
+// A passage that gives the terminal theme must name the gradient, and a sentence that has
+// a project file replace another must name the variable or the flag.
+for (const file of [...repositoryFiles.filter((path) => path.endsWith(".html")), ...repositoryReadmes, "llms.txt"]) {
+  for (const block of readableBlocks(file, await readFile(fileUrl(file), "utf8"))) {
+    if (/claude-statusline config set theme terminal|"theme": ?"terminal"/.test(block) && !/\bgradients?\b/i.test(block)) {
+      fail(
+        `${file} gives claude-statusline's terminal theme ("…${block.slice(0, 120)}…") without naming the background gradient its Quick setup schemes write. ` +
+          `That gradient stays 24-bit under the terminal theme until "palette" is "ansi": say so in that passage.`,
+      );
+    }
+    const replaces = sentencesOf(block).find((part) => /\.claude-powerline\.json/.test(part) && /\breplaces\b/i.test(part) && !/CLAUDE_POWERLINE_CONFIG|--config/.test(part));
+    if (replaces) {
+      fail(
+        `${file} says a project's .claude-powerline.json replaces another config file ("${replaces.trim().slice(0, 140)}") without naming CLAUDE_POWERLINE_CONFIG or --config. ` +
+          `When either names a file, claude-powerline reads that file alone and never looks for a project file: say so in that sentence.`,
+      );
+    }
+  }
+}
+
 // CI runs on pull requests and on pushes to main only (verify.yml's push
 // trigger is filtered to main). README and CONTRIBUTING said it ran "on every
 // push"; this branch had dozens of pushes and not one push-triggered run. When
