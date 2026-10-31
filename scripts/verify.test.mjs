@@ -4,7 +4,7 @@ import { createHash } from "node:crypto";
 import { chmod, cp, lstat, mkdir, mkdtemp, readdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, relative, sep } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { crc32, deflateSync, inflateSync } from "node:zlib";
 import test from "node:test";
 
@@ -2275,6 +2275,72 @@ test("rejects an install guide whose FAQ answer names neither Gumroad nor the fr
 
   assert.notEqual(result.code, 0, "the verifier accepted a FAQ answer that never says where the free zip is");
   assert.match(result.stderr, /The install guide's FAQ answer must name the free zip at /);
+});
+
+test("rejects /themes gallery data that no longer matches a theme file", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const dataPath = join(fixtureRoot, "plugins", "theme-gallery", "hooks", "themes.ts");
+  const data = await readFile(dataPath, "utf8");
+  assert.match(data, /slug: 'absinthe'.*accent: '#C0D648'/, "the gallery data should hold Absinthe's accent");
+  await writeFile(dataPath, data.replace("accent: '#C0D648'", "accent: '#C0D649'"));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted gallery swatches that differ from the theme files");
+  assert.match(result.stderr, /plugins\/theme-gallery\/hooks\/themes\.ts is out of date with the theme files/);
+});
+
+test("rejects a marketplace that drops the theme gallery", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const marketplacePath = join(fixtureRoot, ".claude-plugin", "marketplace.json");
+  const marketplace = JSON.parse(await readFile(marketplacePath, "utf8"));
+  marketplace.plugins = marketplace.plugins.filter((plugin) => plugin.name !== "theme-gallery");
+  await writeFile(marketplacePath, `${JSON.stringify(marketplace, null, 2)}\n`);
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a marketplace without the gallery plugin");
+  assert.match(result.stderr, /The marketplace must expose exactly 4 plugins\./);
+});
+
+test("rejects a theme gallery that ships a themes folder of its own", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  await cp(join(fixtureRoot, "plugins", "dark-themes-vol-2", "themes"), join(fixtureRoot, "plugins", "theme-gallery", "themes"), {
+    recursive: true,
+  });
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a gallery plugin that would pack as a theme pack");
+  assert.match(result.stderr, /must not have a themes\/ folder/);
+});
+
+test("rejects a gallery icon drawn in a colour no free theme uses", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const { ICON_SIZE, encodePng, renderGalleryIcon } = await import("./build-gallery-icon.mjs");
+  const pixels = await renderGalleryIcon(pathToFileURL(`${fixtureRoot}${sep}`));
+  for (let row = 400; row < 528; row += 1) {
+    for (let column = 400; column < 528; column += 1) pixels.set([0xff, 0x00, 0xff], (row * ICON_SIZE + column) * 3);
+  }
+  await writeFile(join(fixtureRoot, "plugins", "theme-gallery", "logo.png"), encodePng(pixels, ICON_SIZE, ICON_SIZE));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a gallery icon with a colour outside the free themes");
+  assert.match(result.stderr, /logo\.png may only use free theme colours: #FF00FF covers 16384 pixels/);
+});
+
+test("rejects a gallery documentation link that points at the storefront README", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const manifestPath = join(fixtureRoot, "plugins", "theme-gallery", ".claude-plugin", "plugin.json");
+  const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+  manifest.documentationUrl = "https://github.com/notgabriels-sys/claude-code-50-dark-themes#readme";
+  await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a gallery documentationUrl on the repository root");
+  assert.match(result.stderr, /documentationUrl must be its own README/);
 });
 
 test("rejects an empty directory in a plugin, the shape a git submodule takes in CI", { timeout: 90_000 }, async (t) => {
