@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="script-src 'sha256-IuzE/u5N1mik+4VQKPk4nMJAX0zoz6BmCVoo+rL7LMw='; worker-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="script-src 'sha256-8WXGr0aqpob1zWscGf7UlrYKXRPJm4cyUC4NfUve/ZY='; worker-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>50 Dark Themes for Claude Code</title>
 <meta name="description" content="Browse and install 50 hand-tuned dark themes for Claude Code as a native plugin, plus the free Vol. 2 expansion pack. Free, MIT licensed, and verified with 894 role-aware contrast comparisons.">
@@ -15,7 +15,7 @@
 <meta property="og:title" content="50 Dark Themes for Claude Code">
 <meta property="og:description" content="Install 50 hand-tuned dark themes as a native Claude Code plugin, plus the free Vol. 2 expansion pack. Free, MIT licensed, and verified with 894 role-aware contrast comparisons.">
 <meta property="og:image" content="https://gabs-utilities.com/preview.png">
-<meta property="og:image:alt" content="Title card: 50 dark themes for Claude Code, with the plugin install command and a strip of the pack&#39;s accent colors">
+<meta property="og:image:alt" content="Title card: 50 dark themes for Claude Code, with the plugin install command and a strip of the site&#39;s interface colors">
 <meta property="og:image:width" content="1280">
 <meta property="og:image:height" content="720">
 <meta property="og:url" content="https://gabs-utilities.com/">
@@ -25,7 +25,7 @@
 <meta name="twitter:title" content="50 Dark Themes for Claude Code">
 <meta name="twitter:description" content="Install 50 hand-tuned dark themes as a native Claude Code plugin, plus the free Vol. 2 expansion pack. Free, MIT licensed, and verified with 894 role-aware contrast comparisons.">
 <meta name="twitter:image" content="https://gabs-utilities.com/preview.png">
-<meta name="twitter:image:alt" content="Title card: 50 dark themes for Claude Code, with the plugin install command and a strip of the pack&#39;s accent colors">
+<meta name="twitter:image:alt" content="Title card: 50 dark themes for Claude Code, with the plugin install command and a strip of the site&#39;s interface colors">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -520,7 +520,7 @@ footer>span>a.in-text{display:inline;min-height:0;border-bottom:0;text-decoratio
           <p class="monolith-line"><strong>Claude Code</strong> · deep field</p>
           <p class="monolith-line"><em>Applied theme “Deep Field”</em></p>
           <p class="monolith-line">3 files changed · staged</p>
-          <div class="monolith-prompt"><span>&gt;</span><span>theme deep-field</span></div>
+          <div class="monolith-prompt"><span>&gt;</span><span>/theme</span></div>
         </div>
       </figure>
     </div>
@@ -536,7 +536,7 @@ footer>span>a.in-text{display:inline;min-height:0;border-bottom:0;text-decoratio
         <summary><span>Installation notes</span><span class="disclosure-mark" aria-hidden="true"><span class="is-closed">+</span><span class="is-open">−</span></span></summary>
         <div class="steps">
           <div class="step"><span class="i">01</span><p>Use Claude Code <span class="syntax-version">v2.1.118</span> or later.</p></div>
-          <div class="step"><span class="i">02</span><p>Run the command above to add the marketplace and install <code>50-dark-themes</code>.</p></div>
+          <div class="step"><span class="i">02</span><p>Run the command above to add the marketplace and install <code>50-dark-themes</code>. If Claude Code was open, restart it: plugin themes load when it starts.</p></div>
           <div class="step"><span class="i">03</span><p>Run <code>/theme</code> and choose one. Press <code>Ctrl+E</code> for an editable copy.</p></div>
         </div>
       </details>
@@ -595,7 +595,7 @@ footer>span>a.in-text{display:inline;min-height:0;border-bottom:0;text-decoratio
     <!-- quick-picks:end -->
     <div class="theme-finder" role="search" aria-labelledby="finder-title">
       <p class="finder-label" id="finder-title">Find a working atmosphere</p>
-      <p class="finder-copy">Search by name, <code>/theme</code> command or accent hex; refine by palette family. Press <kbd>/</kbd> to focus.</p>
+      <p class="finder-copy">Search by name, file name or accent hex; refine by palette family. Press <kbd>/</kbd> to focus.</p>
       <div class="finder-controls">
         <label class="finder-search">
           <span>Search</span>
@@ -611,14 +611,14 @@ footer>span>a.in-text{display:inline;min-height:0;border-bottom:0;text-decoratio
           <button class="filter" type="button" data-family="neutral" aria-pressed="false">Neutral</button>
         </div>
       </div>
-      <p class="sr-only" id="finder-help">Search by theme name, slash command, or accent hex. Press Escape to clear the search.</p>
+      <p class="sr-only" id="finder-help">Search by theme name, file name, or accent hex. Press Escape to clear the search.</p>
     </div>
     <details class="theme-archive">
       <summary><strong>Open the full collection</strong><span class="archive-meta"><span id="count" aria-live="polite">50 themes</span><span class="disclosure-mark" aria-hidden="true"><span class="is-closed">+</span><span class="is-open">−</span></span></span></summary>
-      <p class="finder-empty" id="finderEmpty" hidden>No themes match that search. <button type="button" id="clearFinder">Clear finder</button></p>
+      <p class="finder-empty" id="finderEmpty" hidden><span id="finderEmptyText">No themes match that search.</span> <button type="button" id="clearFinder">Clear finder</button></p>
       <div class="grid" id="grid"></div>
-      <p class="sr-only" id="themeCopyStatus" aria-live="polite"></p>
     </details>
+    <p class="sr-only" id="themeCopyStatus" aria-live="polite"></p>
 
     <div class="vol2" id="vol2" aria-labelledby="vol2-title">
       <div class="section-intro">
@@ -633,7 +633,7 @@ footer>span>a.in-text{display:inline;min-height:0;border-bottom:0;text-decoratio
         <span><span class="prompt">$ </span><span class="syntax-command">claude</span> <span class="syntax-keyword">plugin</span> <span class="syntax-subcommand">install</span> <span class="syntax-value">dark-themes-vol-2<span class="syntax-scope">@notgabriels-themes</span></span></span>
         <button class="copy" id="vol2CopyBtn" aria-label="Copy Vol. 2 install command">Copy</button>
       </div>
-      <p class="vol2-note">New here? Run the marketplace command at the top of the page first — both packs install from it.</p>
+      <p class="vol2-note">New here? Run the marketplace command at the top of the page first — both packs install from it. Restart Claude Code afterwards if it was open.</p>
       <div class="grid" id="vol2Grid"></div>
     </div>
   </section>
@@ -719,7 +719,7 @@ footer>span>a.in-text{display:inline;min-height:0;border-bottom:0;text-decoratio
     <p>Practical notes on the design decisions behind the free theme set.</p>
     <div class="tools">
       <a class="tool" href="claude-code-theme-install-guide.html"><b>Claude Code theme install guide</b><span>Native plugin install, manual JSON fallback, terminal background setup and common troubleshooting.</span><i>Read free guide</i></a>
-      <a class="tool" href="https://agensi.io/skills/claude-code-theme-setup-assistant"><b>Guided setup assistant</b><span>An agent skill that picks a theme with you, installs it, checks it in /theme and sets your terminal background. Paid, on Agensi.</span><i>View on Agensi</i></a>
+      <a class="tool" href="https://agensi.io/skills/claude-code-theme-setup-assistant"><b>Guided setup assistant</b><span>An agent skill that picks a theme with you, installs it, checks it in /theme and gives you the terminal background to set. Paid, on Agensi.</span><i>View on Agensi</i></a>
       <a class="tool" href="semantic-terminal-colors.html"><b>Semantic terminal colors</b><span>What building 50 Claude Code themes taught me about status meaning, contrast roles, surfaces and transparent terminals.</span><i>Read free article</i></a>
     </div>
   </section>
@@ -869,7 +869,7 @@ const familyOf = hex => {
 const renderTheme = ([name,accent,shimmer,text,mute,bg]) => {
   const themeSlug = slug(name);
   const family = familyOf(accent);
-  const searchable = `${name} ${themeSlug} /theme ${themeSlug} ${accent} ${family}`.toLowerCase();
+  const searchable = `${name} ${themeSlug}.json ${accent} ${family}`.toLowerCase();
   return `
   <article class="card" id="theme-${themeSlug}" data-family="${family}" data-search="${esc(searchable)}" style="--bg:${bg};--a:${accent};--sh:${shimmer};--fg:${text};--mut:${mute}">
     <div class="titlebar">
@@ -881,10 +881,10 @@ const renderTheme = ([name,accent,shimmer,text,mute,bg]) => {
       <div class="row"><span class="acc">✻</span> <span class="sh">Claude Code</span> <span class="mut">· ${esc(name.toLowerCase())}</span></div>
       <div class="row"><span class="acc">●</span> <span class="fg">Applied theme &ldquo;${esc(name)}&rdquo;</span></div>
       <div class="row"><span class="mut">&nbsp;&nbsp;3 files changed · staged</span></div>
-      <button class="prompt-box theme-command" type="button" data-copy-theme="${themeSlug}" aria-label="Copy /theme ${themeSlug} command">
-        <span class="gt">&gt;</span><span class="txt">theme ${themeSlug}</span><span class="caret" aria-hidden="true"></span><span class="copy-label">Copy command</span>
+      <button class="prompt-box theme-command" type="button" data-theme-name="${esc(name)}" aria-label="Copy /theme, then choose ${esc(name)} in Claude Code">
+        <span class="gt">&gt;</span><span class="txt">/theme</span><span class="caret" aria-hidden="true"></span><span class="copy-label">Copy command</span>
       </button>
-      <div class="hint">/theme &nbsp;·&nbsp; ⏎ send &nbsp;·&nbsp; esc to interrupt</div>
+      <div class="hint">then choose &ldquo;${esc(name)}&rdquo;</div>
       <a class="bg-link" href="/theme/${themeSlug}/">Terminal background <span class="bghex">${bg}</span><span class="sr-only">, ${esc(name)} theme page</span></a>
     </div>
   </article>`;
@@ -899,6 +899,7 @@ const count = document.getElementById("count");
 const themeArchive = document.querySelector(".theme-archive");
 const themeSearch = document.getElementById("themeSearch");
 const finderEmpty = document.getElementById("finderEmpty");
+const finderEmptyText = document.getElementById("finderEmptyText");
 const clearFinder = document.getElementById("clearFinder");
 const filters = [...document.querySelectorAll(".filter")];
 const themeCopyStatus = document.getElementById("themeCopyStatus");
@@ -914,10 +915,16 @@ const updateFinder = ({reveal = false} = {}) => {
   const query = themeSearch.value.trim().toLowerCase();
   let archiveVisible = 0;
   let totalVisible = 0;
+  let queryMatches = 0;
+  const matchFamilies = new Set();
   finderCards().forEach(card => {
     const matchesQuery = !query || card.dataset.search.includes(query);
     const matchesFamily = activeFamily === "all" || card.dataset.family === activeFamily;
     const show = matchesQuery && matchesFamily;
+    if (matchesQuery) {
+      queryMatches += 1;
+      matchFamilies.add(card.dataset.family);
+    }
     card.hidden = !show;
     if (!show) return;
     totalVisible += 1;
@@ -926,7 +933,17 @@ const updateFinder = ({reveal = false} = {}) => {
   // The count labels the archive disclosure, so it counts the archive.
   count.textContent = `${archiveVisible} ${archiveVisible === 1 ? "theme" : "themes"}`;
   // The empty note makes a claim about the whole page, so it waits for the whole page.
+  // With a family selected it must not blame the search: "acid" under Green
+  // matched Acid, which is warm, and the note said no theme matched at all.
+  // When every match sits in one other family, the note names it.
   finderEmpty.hidden = totalVisible !== 0;
+  const family = activeFamily === "all" ? "" : `${activeFamily} `;
+  const elsewhere = matchFamilies.size === 1 ? `the ${[...matchFamilies][0]} family` : "other families";
+  finderEmptyText.textContent = !query
+    ? `No ${family}themes.`
+    : family && queryMatches
+      ? `No ${family}themes match that search; ${queryMatches} in ${elsewhere} ${queryMatches === 1 ? "does" : "do"}.`
+      : "No themes match that search.";
   if (reveal && (query || activeFamily !== "all")) themeArchive.open = true;
 };
 
@@ -996,15 +1013,19 @@ document.addEventListener("keydown", event => {
 const copyThemeCommand = async event => {
   const button = event.target.closest(".theme-command");
   if (!button) return;
-  const command = `/theme ${button.dataset.copyTheme}`;
+  // Claude Code's /theme takes no argument: a theme name typed after it opens
+  // the same picker as the bare command and applies nothing (2.1.302, run live
+  // with the pack installed). So copy the command that works, name the theme.
+  const command = "/theme";
+  const name = button.dataset.themeName;
   const label = button.querySelector(".copy-label");
   try {
     await navigator.clipboard.writeText(command);
     label.textContent = "Copied";
-    themeCopyStatus.textContent = `${command} copied to clipboard.`;
+    themeCopyStatus.textContent = `${command} copied to clipboard. In Claude Code, run it and choose ${name}.`;
   } catch {
     label.textContent = "Copy failed";
-    themeCopyStatus.textContent = `Could not copy ${command}. Select it manually.`;
+    themeCopyStatus.textContent = `Could not copy ${command}. Type it in Claude Code and choose ${name}.`;
   }
   clearTimeout(button._copyReset);
   button._copyReset = setTimeout(() => label.textContent = "Copy command", 1400);

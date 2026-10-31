@@ -57,24 +57,48 @@ const checks = [
   { token: "claude", floor: 4.5, surfaces: ["terminal"] },
   { token: "claudeShimmer", floor: 4.5, surfaces: ["terminal"] },
   { token: "suggestion", floor: 4.5, surfaces: ["terminal"] },
-  // Claude Code documents these as borders, indicators, and a usage-meter fill.
+  // Claude Code's token reference lists `permission` as dialog borders and
+  // `planMode` as the plan-mode accent, messages and dialogs. They are held to
+  // the non-text floor here, but both colour text: `planMode` the "⏸ plan mode
+  // on" status and plan titles, `permission` dialog titles such as
+  // "Permissions" and notices such as "Retrying…". README states how many
+  // themes keep that text below 4.5:1; verify.mjs holds it to the list
+  // collected in noteIndicatorText.
   { token: "permission", floor: 3, surfaces: ["terminal"] },
   { token: "planMode", floor: 3, surfaces: ["terminal"] },
+  // The input-box border and its shimmer, and the filled part of the usage
+  // meter, are non-text.
   { token: "promptBorder", floor: 3, surfaces: ["terminal"] },
   { token: "promptBorderShimmer", floor: 3, surfaces: ["terminal"] },
   { token: "rate_limit_fill", floor: 3, surfaces: ["terminal"] },
-  // `subtle` is intentionally reserved by this pack for non-essential
-  // decorative hairlines. Readable secondary content uses `inactive`.
+  // `subtle` is deliberately unchecked, and every theme here keeps it far below
+  // the 3:1 non-text floor. Claude Code paints text in it much more than
+  // borders — rejection notices ("User rejected Claude's plan:"), sandbox and
+  // settings notices, usage statistics, key hints — so that text reads at low
+  // contrast. Raising it is a pack-wide design call, not a per-theme fix, so
+  // the cost is documented in README and CONTRIBUTING rather than hidden.
 ];
 
 const failures = [];
 let comparisons = 0;
 
-function cssColour(variable, source = html) {
+// Themes whose `permission` or `planMode` text reads below 4.5:1 on their own
+// terminal background. Not a failure: README states the count and the lowest
+// ratio, and verify.mjs holds that sentence to what is collected here.
+export const indicatorTextBelowAA = [];
+function noteIndicatorText(name, overrides, terminal) {
+  const ratio = Math.min(
+    contrast(overrides.permission, terminal),
+    contrast(overrides.planMode, terminal),
+  );
+  if (ratio < 4.5) indicatorTextBelowAA.push({ name, ratio });
+}
+
+function cssColour(variable, source = html, page = "index.html") {
   const variableMatch = source.match(
     new RegExp(`--${variable}\\s*:\\s*(#[0-9a-f]{6})\\s*;`, "i"),
   );
-  if (!variableMatch) throw new Error(`Could not find --${variable} in index.html.`);
+  if (!variableMatch) throw new Error(`Could not find --${variable} in ${page}.`);
   return variableMatch[1];
 }
 
@@ -92,8 +116,9 @@ for (const surfaceName of ["ground", "ground-2"]) {
 
 // The storefront's syntax sample is also the shared personal coding palette.
 // Every semantic foreground must remain readable as normal text across the
-// terminal canvas, page canvas, and raised install panel—not merely look
-// distinct in one screenshot.
+// terminal canvas, the page canvas, and --ground-2, the raised surface behind
+// the featured product cards and footer badge — not merely look distinct in
+// one screenshot.
 const semanticTokens = [
   "syntax-purple",
   "syntax-light-purple",
@@ -127,7 +152,7 @@ for (const page of [
   const pageHtml = await readFile(new URL(page, root), "utf8");
   for (const token of sharedPaletteTokens) {
     const expected = cssColour(token).toLowerCase();
-    const actual = cssColour(token, pageHtml).toLowerCase();
+    const actual = cssColour(token, pageHtml, page).toLowerCase();
     if (actual !== expected) {
       failures.push(`${page}: --${token} ${actual} does not match storefront ${expected}`);
     }
@@ -157,6 +182,7 @@ for (const file of themes) {
   }
 
   const surfaces = { terminal, userMessageBackground: theme.overrides.userMessageBackground };
+  noteIndicatorText(theme.name, theme.overrides, terminal);
   for (const check of checks) {
     const foreground = theme.overrides[check.token];
     for (const surfaceName of check.surfaces) {
@@ -208,6 +234,7 @@ for (const file of vol2Themes) {
   }
 
   const surfaces = { terminal, userMessageBackground: theme.overrides.userMessageBackground };
+  noteIndicatorText(theme.name, theme.overrides, terminal);
   for (const check of checks) {
     const foreground = theme.overrides[check.token];
     for (const surfaceName of check.surfaces) {
@@ -254,3 +281,11 @@ console.log(
 // Exported so verify.mjs can hold the public pages to the real number. Every
 // surface that prints a comparison count is making a claim to a reader.
 export const roleAwareComparisonCount = comparisons;
+// The floors themselves, so the theme pages can be held to stating them.
+export const contrastFloors = checks.map(({ token, floor, surfaces }) => ({ token, floor, surfaces }));
+indicatorTextBelowAA.sort((a, b) => a.ratio - b.ratio);
+// The floor `permission` and `planMode` are held to, so verify.mjs knows
+// whether README still has to say they sit below the text floor.
+export const indicatorTextFloor = Math.min(
+  ...checks.filter((check) => ["permission", "planMode"].includes(check.token)).map((check) => check.floor),
+);

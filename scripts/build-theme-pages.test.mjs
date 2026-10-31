@@ -117,6 +117,142 @@ test("rejects a sitemap that drops a theme page", { timeout: 120_000 }, async (t
   assert.match(result.stderr, /sitemap\.xml is stale/);
 });
 
+// Renders the fixture's pages with its own (edited) builder, as a contributor
+// would after changing the template.
+async function rebuildPages(fixtureRoot) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, ["scripts/build-theme-pages.mjs"], { cwd: fixtureRoot });
+    child.on("error", reject);
+    child.on("close", (code) => (code === 0 ? resolve() : reject(new Error(`builder exited ${code}`))));
+  });
+}
+
+async function editBuilder(fixtureRoot, from, to) {
+  const builder = join(fixtureRoot, "scripts/build-theme-pages.mjs");
+  const source = await readFile(builder, "utf8");
+  assert.ok(source.includes(from), "fixture anchor moved; update this test");
+  await writeFile(builder, source.replace(from, to));
+  await rebuildPages(fixtureRoot);
+}
+
+// Claude Code's /theme takes no argument: `/theme acid` opens the same picker
+// as `/theme` and applies nothing (2.1.302 and 2.1.303, run live).
+test("rejects theme pages that offer /theme with the theme as an argument", { timeout: 120_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  await editBuilder(fixtureRoot, 'commandPanel("/theme", ', "commandPanel(`/theme ${slug}`, ");
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted 62 pages handing out a command that does nothing");
+  assert.match(result.stderr, /theme\/absinthe\/index\.html shows "theme absinthe" as a command/);
+});
+
+test("rejects a theme page specimen that types the theme name after /theme", { timeout: 120_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  await editBuilder(fixtureRoot, '<span class="txt">/theme</span>', '<span class="txt">theme ${esc(slug)}</span>');
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a specimen acting out the dead command");
+  assert.match(result.stderr, /theme\/absinthe\/index\.html shows "theme absinthe" as a command/);
+});
+
+// Plugin themes load when Claude Code starts: a session open during the
+// install lists none of them until a restart (2.1.302 and 2.1.303, run live).
+const restartNote = "If Claude Code was open while you installed, restart it: plugin themes load when it starts.";
+
+test("rejects theme pages that give the plugin install with no restart note", { timeout: 120_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  await editBuilder(fixtureRoot, `      <p class="note">${restartNote}</p>\n`, "");
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted an install section with no restart note");
+  assert.match(result.stderr, /theme\/absinthe\/index\.html gives "plugin install 50-dark-themes@notgabriels-themes" without saying to restart/);
+});
+
+test("rejects a theme index that gives the plugin install with no restart note", { timeout: 120_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  await editBuilder(fixtureRoot, `</code>. ${restartNote} Previewed`, "</code>. Previewed");
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted an index with no restart note");
+  assert.match(result.stderr, /theme\/index\.html gives "plugin install [\w-]+@notgabriels-themes" without saying to restart/);
+});
+
+// Items 7 and 26: `subtle` is drawn as text far more than as hairlines, and
+// `permission` and `planMode` colour text although held to the 3:1 floor.
+test("rejects theme pages that call subtle decorative", { timeout: 120_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  await editBuilder(
+    fixtureRoot,
+    'subtle: "Faint borders and de-emphasised secondary text (not contrast-checked)",',
+    'subtle: "Decorative hairlines (reserved, carries no meaning)",',
+  );
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a role Claude Code contradicts");
+  assert.match(result.stderr, /theme\/absinthe\/index\.html describes subtle as "Decorative hairlines/);
+});
+
+test("rejects theme pages that label permission as non-text only", { timeout: 120_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  await editBuilder(
+    fixtureRoot,
+    '{ token: "permission", floor: 3, surfaces: ["terminal"], standard: "WCAG AA non-text floor; also colours text" },',
+    '{ token: "permission", floor: 3, surfaces: ["terminal"], standard: "WCAG AA, non-text" },',
+  );
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a label that hides the text Claude Code draws in it");
+  assert.match(result.stderr, /theme\/absinthe\/index\.html labels its permission row "WCAG AA, non-text"/);
+});
+
+// Each page prints its floors and says verify-contrast.mjs checks them.
+test("rejects theme pages whose floors drift from the ones verify-contrast.mjs checks", { timeout: 120_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const checker = join(fixtureRoot, "scripts/verify-contrast.mjs");
+  const source = await readFile(checker, "utf8");
+  const floor = '{ token: "rate_limit_fill", floor: 3, surfaces: ["terminal"] },';
+  assert.ok(source.includes(floor), "fixture anchor moved; update this test");
+  await writeFile(checker, source.replace(floor, floor.replace("floor: 3", "floor: 4.5")));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier let the pages print floors it no longer checks");
+  assert.match(result.stderr, /build-theme-pages\.mjs states contrast floors that scripts\/verify-contrast\.mjs does not check \(pages only: rate_limit_fill 3 terminal; checked only: rate_limit_fill 4\.5 terminal\)/);
+});
+
+// index.html's #plugin is the 50-theme plugin; Vol. 2 themes are not in it.
+test("rejects Vol. 2 theme pages that claim to be about the 50-theme plugin", { timeout: 120_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  await editBuilder(
+    fixtureRoot,
+    '...(pack.id === "50-dark-themes" ? { about: { "@id": `${SITE}/#plugin` } } : {}),',
+    'about: { "@id": `${SITE}/#plugin` },',
+  );
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a Vol. 2 page naming the wrong plugin");
+  assert.match(result.stderr, /theme\/afterglow\/index\.html says in its structured data that it is about #plugin/);
+});
+
+// The copy buttons' aria-label outlasts the visible "Copied"; the live region
+// is the only way a screen reader hears the outcome.
+test("rejects theme pages whose copy buttons have no live region", { timeout: 120_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  await editBuilder(fixtureRoot, '    <p class="sr-only" id="copyStatus" aria-live="polite"></p>\n', "");
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted copy buttons a screen reader never hears");
+  assert.match(result.stderr, /theme\/absinthe\/index\.html has copy buttons but no live region/);
+});
+
 test("a changed copy script on the theme pages still needs a review", { timeout: 120_000 }, async (t) => {
   // The builder writes each page's Content-Security-Policy from its own copy
   // script, so a page and its policy always agree. What makes a changed script

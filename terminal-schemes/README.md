@@ -2,7 +2,8 @@
 
 Each of the 62 free themes (the 50 and Vol. 2) has a matched terminal color scheme here: its
 background, foreground, cursor, selection and 16 ANSI colors, contrast-checked against that
-background.
+background, except that Konsole's schemes set no cursor or selection color and Warp's no selection
+color.
 
 The Claude Code theme colors Claude Code only. The scheme colors the rest of the window: your shell
 prompt, `git`, `ls`, test runners. Its background is the theme's recommended terminal background, so
@@ -129,8 +130,10 @@ above, but Claude Code's own theme colors are exact only when it starts with 24-
 rounds them to 256 colors or fewer, and the tinted panels turn gray. Terminal.app has 24-bit color only
 on macOS 26 or later, and Claude Code uses it there only when `COLORTERM=truecolor` is set. The scheme's
 own colors are exact on any macOS version. Claude Code also limits the VS Code and Cursor terminals to
-256 colors, and starts at 256 inside tmux, in WSL under Windows Terminal and over SSH unless those are
-set up for 24-bit.
+256 colors, and starts at 256 in WSL under Windows Terminal and over SSH unless those are set up for
+24-bit. Inside tmux it stays at 256 even when tmux is set up for 24-bit and `COLORTERM=truecolor` is
+set, until `CLAUDE_CODE_TMUX_TRUECOLOR=1` is set as well (after `set -ga terminal-overrides ',*:Tc'` in
+`~/.tmux.conf`).
 
 ## Status lines
 
@@ -141,15 +144,17 @@ three other tools need one setting:
 - **ccstatusline:** set `"colorLevel": 1` in `~/.config/ccstatusline/settings.json` (or the file passed to
   its `--config` flag). Level 0 turns colors off, and colors written as `hex:` or `ansi256:`, and
   gradients, show plain at level 1.
-- **@fbincon/claude-code-statusline:** run `claude-statusline config set theme terminal`, or set the
-  top-level `"theme": "terminal"` in `~/.claude/claude-statusline.json` (under `$CLAUDE_CONFIG_DIR` if
-  set; the file is checked strictly, so change only that value). If you set your own item colors, also
-  set `"palette": "ansi"`.
+- **@fbincon/claude-code-statusline:** run `claude-statusline config set theme terminal`, or, once it has
+  written `~/.claude/claude-statusline.json` (under `$CLAUDE_CONFIG_DIR` if set), set the top-level
+  `"theme": "terminal"` there; the file is checked strictly, so change only that value. If you set your
+  own item colors, or chose a Quick setup scheme that adds a background gradient (Powerline Daily, Agent
+  Workbench, Quota Cost or Light Readable), also set `"palette": "ansi"`.
 - **@owloops/claude-powerline:** set `"colorCompatibility": "ansi"` under `display` in the config file it
   reads: `~/.claude/claude-powerline.json`, or `~/.config/claude-powerline/config.json` if you keep it
-  there, or the file named by `CLAUDE_POWERLINE_CONFIG` or `--config`. A project's `.claude-powerline.json`
-  replaces that file completely, so it needs the key too. Text then uses only the scheme's red, green,
-  blue, white and gray, and segment backgrounds are dropped.
+  there, or the file named by `CLAUDE_POWERLINE_CONFIG` or `--config`. Unless `CLAUDE_POWERLINE_CONFIG` or
+  `--config` names a file, a project's `.claude-powerline.json` replaces the home one completely, so it
+  needs the key too. Text then uses only the scheme's foreground, red, green, blue, white and gray, and
+  segment backgrounds are dropped.
 - **claude-hud:** its documented default colors are named terminal colors, except `colors.custom`
   (256-color 208), which only the optional custom line uses.
 
@@ -158,7 +163,8 @@ and the claude-hud README; later versions may move these settings.
 
 ## Licence
 
-MIT, the same as the rest of this repository: see [LICENSE](../LICENSE). By
+MIT, like the themes, the plugins and the installer: see [LICENSE](../LICENSE). The product folders
+under `products/` carry their own licences. By
 [NotGabriels](https://github.com/notgabriels-sys/claude-code-50-dark-themes).
 
 The paid Claude Code Theme Setup Assistant (on Agensi; the [repository README](../README.md) links it)

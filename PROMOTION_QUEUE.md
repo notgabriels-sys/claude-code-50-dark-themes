@@ -211,7 +211,8 @@ What the current card shows, regenerated 2026-08-30:
 - Headline: "50 dark themes for Claude Code"
 - Stat row: 50 + 12 themes · 894 role-aware checks · MIT licensed · Claude Code v2.1.118+
 - A terminal panel with the two-line marketplace + install command
-- A strip of the pack's accent colors
+- A strip of the site's own interface colors (its syntax-role tokens — none of
+  them is a theme accent)
 
 Anything stated on the card is a public claim, so it has to stay true: the
 check count and theme counts were both stale before this regeneration (726
