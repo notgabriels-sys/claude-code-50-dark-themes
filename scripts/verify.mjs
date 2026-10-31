@@ -400,16 +400,17 @@ const vol2Manifest = JSON.parse(await readFile(new URL(".claude-plugin/plugin.js
 if (marketplace.name !== "notgabriels-themes") fail("Unexpected marketplace name.");
 // The addresses /plugin shows an installer ("Open homepage", "View
 // repository") are pinned: a theme pack's homepage is its gallery on the
-// domain CNAME serves, the skills plugin's is its README on GitHub, and every
-// repository and author address is this repository and its owner. Each is
-// compared as the exact string, so an array, a second host after a space, or
-// any other page cannot pass (an array once did: Claude Code then refused to
-// install the pack, with CI green).
+// domain CNAME serves, the gallery mod's and the skills plugin's are their
+// READMEs on GitHub, and every repository and author address is this
+// repository and its owner. Each is compared as the exact string, so an
+// array, a second host after a space, or any other page cannot pass (an array
+// once did: Claude Code then refused to install the pack, with CI green).
 const site = (await readFile(new URL("CNAME", root), "utf8")).trim();
 const REPOSITORY_URL = "https://github.com/notgabriels-sys/claude-code-50-dark-themes";
 const OWNER_URL = "https://github.com/notgabriels-sys";
 // The theme packs also name the install guide and the issue tracker, for the
-// plugin directory (main's #67); the skills plugin names neither.
+// plugin directory (main's #67); the gallery mod names its own README and the
+// issue tracker; the skills plugin names neither.
 const themePackLinks = {
   documentationUrl: `https://${site}/claude-code-theme-install-guide.html`,
   supportUrl: `${REPOSITORY_URL}/issues`,
@@ -419,6 +420,14 @@ const expectedPlugins = [
   {
     name: "dark-themes-vol-2", source: "./plugins/dark-themes-vol-2", homepage: `https://${site}/#vol2`,
     ...themePackLinks,
+  },
+  // The free mod that shows the two packs' themes. Its links go to its own
+  // README, never the repository root, whose README is the storefront.
+  {
+    name: "theme-gallery", source: "./plugins/theme-gallery",
+    homepage: `${REPOSITORY_URL}/tree/main/plugins/theme-gallery`,
+    documentationUrl: `${REPOSITORY_URL}/tree/main/plugins/theme-gallery#readme`,
+    supportUrl: `${REPOSITORY_URL}/issues`,
   },
   {
     name: "berlin-studio-skills", source: "./plugins/berlin-studio-skills",
@@ -453,6 +462,66 @@ if (vol2Manifest.experimental?.themes !== "./themes/") fail("Vol. 2 plugin manif
 if (!/^\d+\.\d+\.\d+$/.test(vol2Manifest.version)) fail("Vol. 2 plugin version must use semantic versioning.");
 if (marketplace.plugins[1].version !== vol2Manifest.version) {
   fail("Marketplace and Vol. 2 plugin manifest versions must match.");
+}
+
+// ---------------------------------------------------------------------------
+// Dark Themes Gallery — a mod that draws the free themes; it ships none.
+// ---------------------------------------------------------------------------
+const galleryRoot = new URL("../plugins/theme-gallery/", import.meta.url);
+const galleryManifest = JSON.parse(await readFile(new URL(".claude-plugin/plugin.json", galleryRoot), "utf8"));
+// Found by name, not position: expectedPlugins above pins where it sits.
+const galleryEntry = marketplace.plugins.find((entry) => entry.name === "theme-gallery");
+if (!galleryEntry) fail("The marketplace must list the theme-gallery plugin.");
+if (galleryEntry.source !== "./plugins/theme-gallery") fail("Unexpected gallery plugin source path.");
+if (galleryManifest.name !== "theme-gallery") fail("Unexpected gallery plugin manifest name.");
+if (!/^\d+\.\d+\.\d+$/.test(galleryManifest.version)) fail("Gallery plugin version must use semantic versioning.");
+if (galleryEntry.version !== galleryManifest.version) {
+  fail("Marketplace and gallery plugin manifest versions must match.");
+}
+// A themes/ folder would make the release zip pack the gallery as a theme pack, and a
+// theme declared here would be a second copy of a theme that can drift from its pack.
+if (galleryManifest.experimental?.themes !== undefined) fail("The gallery plugin must not declare themes of its own.");
+if (await stat(new URL("themes/", galleryRoot)).then(() => true, () => false)) {
+  fail("The gallery plugin must not have a themes/ folder; it reads its data from hooks/themes.ts.");
+}
+const galleryHooks = JSON.parse(await readFile(new URL("hooks/hooks.json", galleryRoot), "utf8"));
+if (JSON.stringify(galleryHooks) !== JSON.stringify({ modules: ["./register.tsx"] })) {
+  fail('plugins/theme-gallery/hooks/hooks.json must name exactly one hooks module, "./register.tsx", and no command hooks.');
+}
+for (const file of ["README.md", "LICENSE"]) {
+  if (!(await stat(new URL(file, galleryRoot)).then(() => true, () => false))) fail(`plugins/theme-gallery/${file} is missing.`);
+}
+// The listing's Documentation and homepage links go to the mod's own README,
+// never the repository root, whose README is the storefront.
+const galleryHome = `${REPOSITORY_URL}/tree/main/plugins/theme-gallery`;
+if (galleryManifest.documentationUrl !== `${galleryHome}#readme`) {
+  fail(`The gallery plugin's documentationUrl must be its own README, ${galleryHome}#readme.`);
+}
+if (galleryManifest.homepage !== galleryHome || galleryEntry.homepage !== galleryHome) {
+  fail(`The gallery plugin's homepage, in plugin.json and the marketplace, must be ${galleryHome}.`);
+}
+const { GALLERY_ICON_PATH, decodePng, iconColourProblems, loadFreeColours } = await import("./build-gallery-icon.mjs");
+await verifyPng(GALLERY_ICON_PATH, { label: "Gallery plugin icon", width: 1024, height: 1024 });
+// The free mod's icon carries only colours the free theme files publish, plus
+// the anti-aliased edges between them: no paid theme's colours, however the
+// image was made.
+let galleryIcon;
+try {
+  galleryIcon = decodePng(await readFile(new URL(GALLERY_ICON_PATH, root)));
+} catch (error) {
+  fail(`Gallery plugin icon cannot be decoded: ${error.message}.`);
+}
+const galleryIconProblems = iconColourProblems(galleryIcon, await loadFreeColours(root));
+if (galleryIconProblems.length > 0) {
+  fail(`${GALLERY_ICON_PATH} may only use free theme colours: ${galleryIconProblems.join("; ")}.`);
+}
+const { GALLERY_DATA_PATH, buildGalleryData, loadGalleryThemes } = await import("./build-gallery-data.mjs");
+const galleryDataThemes = await loadGalleryThemes(root);
+if (galleryDataThemes.length !== files.length + vol2Files.length) {
+  fail(`The gallery must show every free theme: ${files.length + vol2Files.length} files, ${galleryDataThemes.length} gallery entries.`);
+}
+if ((await readFile(new URL(GALLERY_DATA_PATH, root), "utf8").catch(() => "")) !== (await buildGalleryData(root))) {
+  fail(`${GALLERY_DATA_PATH} is out of date with the theme files. Run node scripts/build-gallery-data.mjs.`);
 }
 
 // The skills live in .claude/skills/ (source of truth) and are mirrored
@@ -685,6 +754,11 @@ const shippedCounts = {
   "dark-themes-vol-2": vol2Files.length,
   "berlin-studio-skills": sourceSkills.length,
 };
+// The gallery mod ships no themes or skills of its own, so its description
+// opens with what it is ("A /themes pane ...") rather than a count. The number
+// it does state, the free themes it shows, is read against the packs' sizes
+// with the other manifest descriptions further down.
+const uncountedPlugins = new Set(["theme-gallery"]);
 // Key allowlists, checked before the agreement comparison so that a component
 // key gets this message rather than the agreement check's "make them agree".
 // Why they exist is under "Exactly what ships" below.
@@ -699,6 +773,11 @@ const PLUGIN_METADATA_KEYS = [
 const MANIFEST_ONLY_KEYS = new Set(["experimental", "icon", "documentationUrl", "supportUrl"]);
 const LISTING_ONLY_KEYS = ["category", "source", "tags"];
 const themePluginNames = new Set(["50-dark-themes", "dark-themes-vol-2"]);
+// The gallery mod's plugin.json also names its types contract, "types": the
+// .d.ts declaring the state the mod keeps in $.state, which Claude Code holds
+// to types only, nothing that runs. Only the mod may declare one, and only in
+// plugin.json, where Claude Code reads it; its listing does not repeat it.
+const modManifestKeys = new Map([["theme-gallery", ["types"]]]);
 for (const [index, expected] of expectedPlugins.entries()) {
   const entry = marketplace.plugins[index];
   const manifest = JSON.parse(
@@ -706,7 +785,7 @@ for (const [index, expected] of expectedPlugins.entries()) {
   );
   const allowedManifestKeys = themePluginNames.has(expected.name)
     ? [...PLUGIN_METADATA_KEYS, "experimental"]
-    : PLUGIN_METADATA_KEYS;
+    : [...PLUGIN_METADATA_KEYS, ...(modManifestKeys.get(expected.name) ?? [])];
   for (const key of Object.keys(manifest)) {
     if (!allowedManifestKeys.includes(key)) {
       fail(
@@ -745,7 +824,7 @@ for (const [index, expected] of expectedPlugins.entries()) {
     }
   }
   for (const [key, value] of Object.entries(manifest)) {
-    if (MANIFEST_ONLY_KEYS.has(key)) continue;
+    if (MANIFEST_ONLY_KEYS.has(key) || modManifestKeys.get(expected.name)?.includes(key)) continue;
     if (JSON.stringify(entry[key]) !== JSON.stringify(value)) {
       fail(
         `Marketplace entry for ${expected.name} disagrees with its plugin manifest on ${key}: ` +
@@ -771,11 +850,13 @@ for (const [index, expected] of expectedPlugins.entries()) {
       );
     }
   }
-  const stated = statedCount(manifest.description ?? "");
-  if (stated === undefined) {
-    fail(`${expected.name}'s description must open with the number of things it ships, as a word.`);
-  } else if (stated !== shippedCounts[expected.name]) {
-    fail(`${expected.name} describes itself as shipping ${stated} but ${shippedCounts[expected.name]} ship.`);
+  if (!uncountedPlugins.has(expected.name)) {
+    const stated = statedCount(manifest.description ?? "");
+    if (stated === undefined) {
+      fail(`${expected.name}'s description must open with the number of things it ships, as a word.`);
+    } else if (stated !== shippedCounts[expected.name]) {
+      fail(`${expected.name} describes itself as shipping ${stated} but ${shippedCounts[expected.name]} ship.`);
+    }
   }
 }
 // The same count is stated in prose in the READMEs. Any "<number> skills"
@@ -1022,6 +1103,15 @@ const expectedPackageFiles = new Map([
   ["50-dark-themes", [...packageBasics, ...files.map((file) => `themes/${file}`)]],
   ["dark-themes-vol-2", [
     ...packageBasics, "preview.png", "previews.json", ...vol2Files.map((file) => `themes/${file}`),
+  ]],
+  // The gallery mod: one hooks module and the data it draws from, its types
+  // contract, and the tests and tsconfig `claude plugin test` reads. The
+  // .claude-plugin/types/ that Claude Code's mod tooling generates beside them
+  // is ignored by git and is not listed: the walk reads the checkout, so move
+  // it aside before running verify locally, as with any untracked file.
+  ["theme-gallery", [
+    ...packageBasics, "hooks/hooks.json", "hooks/register.tsx", "hooks/themes.ts", "tests/gallery.test.ts",
+    "tsconfig.json", "types/index.d.ts",
   ]],
   ["berlin-studio-skills", [...packageBasics, ...skillPackageFiles]],
 ]);
@@ -3711,6 +3801,15 @@ const SERVED_TYPES = new Map([
   // live, shown as text or saved. Every page is in standards mode and loads no
   // script by src, so none can use it as a stylesheet or a script.
   ["py", "inert"],
+  // The gallery mod's TypeScript (plugins/theme-gallery: its hooks module, its
+  // data, its types contract and its tests). By mime-db, which GitHub Pages
+  // types files by, .ts is video/mp2t and .tsx is unknown, so
+  // application/octet-stream: played or saved, never opened as a page. Not
+  // read back live. Every page is in standards mode and loads no script by
+  // src, and a browser runs no module script or worker served as either type,
+  // so none can use one as a stylesheet or a script.
+  ["ts", "inert"],
+  ["tsx", "inert"],
   // No extension: LICENSE, served as application/octet-stream.
   ["", "inert"],
 ]);
@@ -3977,12 +4076,13 @@ await themePageFreshness("sitemap.xml", themePages.get("sitemap.xml"));
 // bumped version installed at once. Nothing has slipped through yet: each theme
 // pack's payload last changed in the commit that set its version, and
 // berlin-studio-skills has never been on the default branch, so 1.0.0 is what
-// it first ships. Each package's payload, the directory Claude Code loads
-// themes or skills from, is held to the digest recorded beside the version
-// that ships it, so a changed payload fails until its version moves. READMEs
-// and previews are outside the payload; editing them needs no release. It runs
-// last, so a change meets every check of its content before it is asked for a
-// release.
+// it first ships; nor has theme-gallery, which first ships 0.1.0. Each
+// package's payload, the directory Claude Code loads themes, skills or the
+// gallery's hooks module from, is held to the digest recorded beside the
+// version that ships it, so a changed payload fails until its version moves.
+// READMEs and previews are outside the payload; editing them needs no release.
+// It runs last, so a change meets every check of its content before it is
+// asked for a release.
 const releasedPackages = [
   {
     name: "50-dark-themes", payload: "themes", version: "1.0.1",
@@ -3991,6 +4091,12 @@ const releasedPackages = [
   {
     name: "dark-themes-vol-2", payload: "themes", version: "1.0.0",
     sha256: "2f38a03d9634f80174f62bfec9958dbbd5dadd7a08d75111bf33adb2c77216f2",
+  },
+  // hooks/ holds themes.ts, which build-gallery-data.mjs writes from the theme
+  // files, so a changed free theme moves this digest too.
+  {
+    name: "theme-gallery", payload: "hooks", version: "0.1.0",
+    sha256: "131fcc6df1281b23d336822e3868065a01d2cf7783400d950ad3ca1e213d4e85",
   },
   {
     name: "berlin-studio-skills", payload: "skills", version: "1.0.0",
@@ -4017,6 +4123,7 @@ const releaseFollowUp = {
     "; verify then holds the storefront's softwareVersion and every release link to the new version, " +
     "and the GitHub release those links name must exist",
   "dark-themes-vol-2": "; verify then holds every Vol. 2 release link to the new version",
+  "theme-gallery": "",
   "berlin-studio-skills": "",
 };
 if (JSON.stringify(releasedPackages.map((entry) => entry.name).sort()) !==
@@ -4074,7 +4181,7 @@ for (const { name, payload, version, sha256 } of releasedPackages) {
 }
 console.log(
   `Verified ${files.length} themes, ${pluginFiles.length} plugin themes, ${vol2Files.length} Vol. 2 themes, ` +
-    `${galleryThemes.length} gallery cards, ` +
+    `${galleryThemes.length} gallery cards, ${galleryDataThemes.length} /themes gallery entries, ` +
     `${verifiedGumroadSlugs.size} Gumroad products (prices checked against the recorded page, NOT against Gumroad), ` +
     `${verifiedPayPalIds.length} PayPal links, ${sourceSkills.length} skills, ` +
     `the stated ${roleAwareComparisonCount}-check claims, and the safe install command.`,
