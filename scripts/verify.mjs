@@ -3066,14 +3066,15 @@ for (const host of reviewedLinkHosts) {
 // off what the checks above refuse by reading: workers, plugins, frames, <base>
 // and form posts. This reviews; it does not read what a script does.
 const reviewedInlineScripts = new Map([
-  // The storefront (read 2026-10-30 for #72). In <head>, before the first paint: applies the
+  // The storefront (read 2026-10-31 for #72). In <head>, before the first paint: applies the
   // theme and the motion pause saved under familiars-theme and familiars-motion, as data-theme
   // and data-motion on the root. Then the gallery: renders THEMES and VOL2_THEMES, filters and
   // copies install commands; the light/dark switch and the motion switch, each saving its choice
-  // under those keys and writing only its own label's text; a scrollBy that moves focused
-  // controls clear of the floating switch; and the pointer light, which sets --mx and --my on
-  // the .lit surfaces. It loads, fetches and navigates nothing.
-  ["index.html", ["sha256-NIZ5jxPqHe76C4AEHPJCjXNeTRDJC4LsWQG/g6melI4=", "sha256-7ocUsB7hskZCEQWlNsScrlDqa8kle3nVWk1oiW/ZMTQ="]],
+  // under those keys and writing only its own label's text, the motion switch also marking the
+  // hero .risen so its entrance plays once; a scrollBy that moves keyboard focus clear of the
+  // floating switch, never a tap's or a click's; and the pointer light, which sets --mx and --my
+  // on the .lit surfaces. It loads, fetches and navigates nothing.
+  ["index.html", ["sha256-NIZ5jxPqHe76C4AEHPJCjXNeTRDJC4LsWQG/g6melI4=", "sha256-mjisD9e/JGOAwyrjiv6i6o5hKBQL5KBvtiox8+xq8Wg="]],
   // Familiars (main's #65, read 2026-10-24): the light/dark switch, kept in
   // localStorage; the kind filter; a pointer-following light on each card; the
   // copy button, which writes the request address to the clipboard; and the
