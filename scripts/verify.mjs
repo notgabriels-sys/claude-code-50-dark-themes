@@ -2578,6 +2578,26 @@ for (const file of [...repositoryFiles.filter((path) => path.endsWith(".html")),
   }
 }
 
+// Claude Code reads CLAUDE_CODE_SAFE_MODE from the env block of ~/.claude/settings.json
+// as well as from the shell. Read 2026-10-31 from Claude Code 2.1.314: with the key in
+// user settings and the variable unset in the shell, it started in safe mode and /theme
+// hid every custom and plugin theme, still saying "unset CLAUDE_CODE_SAFE_MODE"; only
+// deleting the key brought them back. README told readers to unset the variable "and
+// remove it from your shell profile", which leaves that reader in safe mode. A passage
+// that tells the reader how to clear the variable must name settings.json.
+for (const file of [...repositoryFiles.filter((path) => path.endsWith(".html")), ...repositoryReadmes, "llms.txt"]) {
+  for (const block of readableBlocks(file, await readFile(fileUrl(file), "utf8"))) {
+    if (!block.includes("CLAUDE_CODE_SAFE_MODE") || block.includes("settings.json")) continue;
+    const sentence = sentencesOf(block).find((part) => /\b(?:unset|remove|delete|clear)\b/i.test(part) && part.includes("CLAUDE_CODE_SAFE_MODE"));
+    if (!sentence) continue;
+    const at = sentence.search(/\b(?:unset|remove|delete|clear)\b/i);
+    fail(
+      `${file} tells the reader how to clear CLAUDE_CODE_SAFE_MODE ("…${sentence.slice(Math.max(0, at - 70), at + 70).trim()}…") without naming settings.json. ` +
+        `Claude Code also reads it from the env block of ~/.claude/settings.json, where unsetting it in the shell does nothing: say to remove it there too.`,
+    );
+  }
+}
+
 // CI runs on pull requests and on pushes to main only (verify.yml's push
 // trigger is filtered to main). README and CONTRIBUTING said it ran "on every
 // push"; this branch had dozens of pushes and not one push-triggered run. When

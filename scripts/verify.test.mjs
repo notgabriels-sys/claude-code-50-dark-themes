@@ -2895,6 +2895,54 @@ test("accepts tmux color-depth passages that name the variable, and tmux beside 
   assert.equal(result.code, 0, `a passage that names the variable, or a sentence with no color depth, was rejected:\n${result.stderr}`);
 });
 
+const safeModeRemedy =
+  "or run `unset CLAUDE_CODE_SAFE_MODE` (and remove it from your shell profile, or from the `env` block of\n" +
+  "`~/.claude/settings.json`) first.\n";
+
+test("rejects a way out of safe mode that leaves CLAUDE_CODE_SAFE_MODE in settings.json", { timeout: 120_000 }, async (t) => {
+  // Claude Code reads CLAUDE_CODE_SAFE_MODE from the env block of ~/.claude/settings.json too,
+  // where unsetting it in the shell does nothing. Each variant puts a remedy back that names
+  // only the shell, runs the verifier, and restores the file.
+  const fixtureRoot = await makeFixture(t);
+  const variants = [
+    ["README's old sentence", "README.md", safeModeRemedy,
+      "or run `unset CLAUDE_CODE_SAFE_MODE` (and remove it from your shell profile) first.\n",
+      /README\.md tells the reader how to clear CLAUDE_CODE_SAFE_MODE \(.*unset CLAUDE_CODE_SAFE_MODE.*\) without naming settings\.json/],
+    ["a second README passage that names only the shell", "README.md", safeModeRemedy,
+      `${safeModeRemedy}\nTo leave safe mode for good, remove CLAUDE_CODE_SAFE_MODE from your shell profile.\n`,
+      /README\.md tells the reader how to clear CLAUDE_CODE_SAFE_MODE \(.*remove CLAUDE_CODE_SAFE_MODE from your shell profile.*\) without naming settings\.json/],
+    ["a page that says to unset it", "claude-code-theme-install-guide.html", "  </main>",
+      "  <p>Stuck in safe mode? Run <code>unset CLAUDE_CODE_SAFE_MODE</code> and restart Claude Code.</p>\n  </main>",
+      /claude-code-theme-install-guide\.html tells the reader how to clear CLAUDE_CODE_SAFE_MODE .* without naming settings\.json/],
+  ];
+  for (const [label, file, from, to, message] of variants) {
+    const path = join(fixtureRoot, file);
+    const original = await readFile(path, "utf8");
+    assert.equal(original.split(from).length, 2, `fixture anchor for ${label} must occur once; update this test`);
+    await writeFile(path, original.replace(from, to));
+    const result = await runVerifier(fixtureRoot);
+    await writeFile(path, original);
+
+    assert.notEqual(result.code, 0, `the verifier accepted ${label}`);
+    assert.match(result.stderr, message, label);
+  }
+});
+
+test("accepts a way out of safe mode that names settings.json in its passage, and a mention with no remedy", { timeout: 120_000 }, async (t) => {
+  // settings.json may sit in the next sentence of the same passage; a sentence that only
+  // mentions the variable gives no remedy and needs no file.
+  const fixtureRoot = await makeFixture(t);
+  const llmsPath = join(fixtureRoot, "llms.txt");
+  await writeFile(
+    llmsPath,
+    `${await readFile(llmsPath, "utf8")}\nIf the theme picker says custom themes are disabled in safe mode, unset CLAUDE_CODE_SAFE_MODE. ` +
+      "If that is not enough, delete it from the env block of ~/.claude/settings.json.\n" +
+      "\nIn safe mode Claude Code sets CLAUDE_CODE_SAFE_MODE=1 for the tools it starts.\n",
+  );
+  const result = await runVerifier(fixtureRoot);
+  assert.equal(result.code, 0, `a remedy naming settings.json, or a mention with no remedy, was rejected:\n${result.stderr}`);
+});
+
 test("rejects a page that still offers the withdrawn free Gumroad download", { timeout: 90_000 }, async (t) => {
   // The install guide's FAQ has its own guard (from #61); this one covers every
   // other public page, so plant the offer where only it looks.
