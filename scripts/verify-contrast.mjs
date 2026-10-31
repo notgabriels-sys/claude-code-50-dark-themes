@@ -1,7 +1,12 @@
 import { readdir, readFile } from "node:fs/promises";
+import { isThemeFile } from "./build-theme-index.mjs";
 
 const root = new URL("../", import.meta.url);
-const themes = (await readdir(root)).filter((file) => file.endsWith(".json")).sort();
+// A name from disk as a URL, each segment encoded: passed raw, a "#" or "?"
+// cuts the name short and a "%2e%2e" segment reads as "..".
+const fileUrl = (path, base) => new URL(path.split("/").map(encodeURIComponent).join("/"), base);
+// isThemeFile, not a bare .json glob: themes.json is the published index.
+const themes = (await readdir(root)).filter(isThemeFile).sort();
 const html = await readFile(new URL("index.html", root), "utf8");
 const match = html.match(/const THEMES = (\[[\s\S]*?\n\]);/);
 
@@ -159,7 +164,7 @@ if (galleryByName.size !== gallery.length) {
 }
 
 for (const file of themes) {
-  const theme = JSON.parse(await readFile(new URL(file, root), "utf8"));
+  const theme = JSON.parse(await readFile(fileUrl(file, root), "utf8"));
   const row = galleryByName.get(theme.name);
   if (!row) {
     failures.push(`${file}: missing gallery row`);
@@ -211,9 +216,9 @@ for (const file of themes) {
   }
 }
 
-// Dark Themes Vol. 2 has its own storefront section (VOL2_THEMES in index.html);
-// its preview terminal colours come from the plugin's previews.json, which
-// verify.mjs holds equal to that section, and meet the same floors.
+// Dark Themes Vol. 2's preview terminal colours live in the plugin's
+// previews.json (verify.mjs holds the storefront's Vol. 2 cards to them) and
+// are held to the same floors.
 const vol2Root = new URL("../plugins/dark-themes-vol-2/", import.meta.url);
 const vol2Themes = (await readdir(new URL("themes/", vol2Root)))
   .filter((file) => file.endsWith(".json"))
@@ -221,7 +226,7 @@ const vol2Themes = (await readdir(new URL("themes/", vol2Root)))
 const vol2Previews = JSON.parse(await readFile(new URL("previews.json", vol2Root), "utf8"));
 
 for (const file of vol2Themes) {
-  const theme = JSON.parse(await readFile(new URL(`themes/${file}`, vol2Root), "utf8"));
+  const theme = JSON.parse(await readFile(fileUrl(`themes/${file}`, vol2Root), "utf8"));
   const terminal = vol2Previews[theme.name];
   if (!terminal) {
     failures.push(`dark-themes-vol-2/${file}: missing preview terminal colour in previews.json`);

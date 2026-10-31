@@ -1,6 +1,6 @@
 # 50 dark themes for Claude Code
 
-[![verify](https://img.shields.io/github/actions/workflow/status/notgabriels-sys/claude-code-50-dark-themes/verify.yml?branch=main&label=verify)](https://github.com/notgabriels-sys/claude-code-50-dark-themes/actions/workflows/verify.yml)
+[![verify](https://img.shields.io/github/actions/workflow/status/notgabriels-sys/claude-code-50-dark-themes/verify.yml?branch=main)](https://github.com/notgabriels-sys/claude-code-50-dark-themes/actions/workflows/verify.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 **Free dark themes for Claude Code's `/theme` picker: 50 in the main pack, 12 more in Vol. 2.**
@@ -93,7 +93,7 @@ pack stops the run before anything changes.
 ```bash
 git clone https://github.com/notgabriels-sys/claude-code-50-dark-themes
 mkdir -p ~/.claude/themes
-cp claude-code-50-dark-themes/*.json ~/.claude/themes/
+cp claude-code-50-dark-themes/plugins/50-dark-themes/themes/*.json ~/.claude/themes/
 ```
 
 Or copy only the `.json` files you want. In Claude Code, run `/theme`: each file appears in the
@@ -213,6 +213,28 @@ claude plugin install dark-themes-vol-2@notgabriels-themes
 
 If Claude Code was open while you installed, restart it: plugin themes load when it starts.
 
+Building something on top of these? The id, display name and key palette roles
+of each of the original 50 themes are published as one generated JSON file
+(Vol. 2 is not in it yet):
+
+**[gabs-utilities.com/themes.json](https://gabs-utilities.com/themes.json)**
+
+It is generated from the theme files by `scripts/build-theme-index.mjs` and CI
+fails if it drifts, so it always matches what actually installs. Free themes
+only — no pricing in it.
+
+## Also in this marketplace — Berlin Studio Skills
+
+```bash
+claude plugin install berlin-studio-skills@notgabriels-themes
+```
+
+Five skills for running a techno studio and a freelance audio practice in Berlin: building a
+specific sound, diagnosing a mix that will not translate, getting masters and metadata out the
+door, formal German correspondence, and German freelance invoicing and tax admin. The audio pair
+and the admin pair route to each other, so you rarely have to name one. See
+[the plugin README](plugins/berlin-studio-skills/README.md).
+
 
 ## Familiars: Claude skills for sound work
 
@@ -288,5 +310,4 @@ Themes in this repo are free and stay free — MIT. If they saved you some fiddl
 a ⭐ helps other people find them.
 
 Contributions are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) before adding or changing a theme;
-the repository verifies the theme schema, gallery parity, installation command and payment links on
-every pull request and every push to `main`.
+the repository verifies the theme schema, gallery parity, installation command and payment links on every pull request and every push to main.

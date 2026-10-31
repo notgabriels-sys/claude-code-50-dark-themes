@@ -83,5 +83,8 @@ test("follows CLAUDE_CONFIG_DIR to the folder Claude Code reads", (t) => {
   const defaultDest = run(home, ["acid"], { CLAUDE_CONFIG_DIR: config });
 
   assert.match(there.stdout, /restart Claude Code once/i, "--dir at Claude Code's own themes folder lost the restart note");
-  assert.match(defaultDest.stdout, /Claude Code reads themes from .*\/cfg\/themes, so \/theme won't list these/);
+  // Since main's #39 the default destination is $CLAUDE_CONFIG_DIR/themes, the
+  // folder Claude Code reads, so there is nothing to warn about there.
+  assert.match(defaultDest.stdout, /Installed 1 theme\(s\) into .*\/cfg\/themes/);
+  assert.doesNotMatch(defaultDest.stdout, /won't list these/);
 });

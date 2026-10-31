@@ -39,9 +39,10 @@ Best single-line pitch:
    - Tone: short, visual, maker story.
    - Use representative project screenshots.
    - Ask for feedback, not “please upvote”.
-   - Current gate: the personal account welcome email arrived on 2026-08-23.
-     Product Hunt's current help center requires new accounts to complete
-     onboarding before posting; use the live account dashboard as the gate.
+   - Current state: see the 2026-10-24 Product Hunt row in the channel status
+     log. The storefront already links a Product Hunt product page; whether it
+     exists and whether a launch ran is read from the signed-in dashboard, not
+     assumed.
 
 4. GitHub discovery
    - Keep README clear.
@@ -71,20 +72,28 @@ the slug to `verifiedGumroadSlugs`, then put it back in the copy.
 
 ## Ready-to-post copy
 
-### X — Dark Themes Vol. 2 announcement (post once the Vol. 2 PR is merged and live)
+### X — Dark Themes Vol. 2 announcement (Vol. 2 is live; posting is Gabriel's)
+
+A two-post thread. As one post it ran to 352 characters by X's count (a link
+counts as 23), over the 280 limit, and its single command failed on any
+machine that had not added the marketplace. Measured 2026-10-19: 268 and 184.
 
 ```text
 Shipped a free expansion to my Claude Code theme pack: Dark Themes Vol. 2.
 
-12 all-new dark themes — Afterglow, Neon Noir, Cryosleep, Biolume and more — same semantic status colors, same WCAG contrast floors as the original 50.
-
-Same marketplace, one command:
-claude plugin install dark-themes-vol-2@notgabriels-themes
+12 all-new dark themes — Afterglow, Neon Noir, Cryosleep, Biolume and more — with the same semantic status colors and WCAG contrast floors as the original 50.
 
 Gallery: https://gabs-utilities.com/#vol2
 ```
 
-### GitHub release — Dark Themes Vol. 2 (create only after the Vol. 2 PR is merged to main)
+```text
+Install it from the same marketplace (add it once):
+
+claude plugin marketplace add notgabriels-sys/claude-code-50-dark-themes
+claude plugin install dark-themes-vol-2@notgabriels-themes
+```
+
+### GitHub release — Dark Themes Vol. 2 (Vol. 2 is on main since #46, 2026-08-31; creating it is Gabriel's)
 
 Suggested tag: `dark-themes-vol-2-v1.0.0`. Do not reuse the `themes-plugin-v*`
 namespace — those tags version the flagship 50-pack (currently
@@ -119,6 +128,11 @@ Preview every palette in its own colors: https://gabs-utilities.com/#vol2
 
 The original 50-theme pack is unchanged and stays free and MIT licensed.
 ```
+
+After publishing it, run the "Attach themes zip to a release" workflow from the
+repository's Actions tab with the tag `dark-themes-vol-2-v1.0.0`. It builds a
+zip of the Vol. 2 themes alone from the tagged files and attaches it, so the
+release page delivers the pack and not only GitHub's whole-repository archive.
 
 ### Free Gumroad archive — held from acquisition
 
@@ -169,22 +183,14 @@ I’d especially like feedback on whether the install flow and theme gallery are
 
 ### Product Hunt maker comment
 
-```text
-Maker here.
-
-This started as a practical thing for myself: I wanted a set of dark Claude Code themes that stayed readable and did not destroy semantic colors like errors, warnings, success states, and diffs.
-
-I kept expanding it into a small catalog of dark developer/creator utilities: UI kits, HTML templates, email templates, cheat sheets, wallpapers, and palettes.
-
-The core Claude Code themes are free and MIT licensed. The paid packs are there for people who want the broader toolkit.
-
-I’d love feedback from developers, Claude Code users, and people who care about practical dark UI systems: what feels useful, what feels unclear, and what should be improved before I keep expanding it.
-```
+One copy only, so the two cannot drift: post the "Prepared first comment" in
+`DIRECTORY_SUBMISSION_PACK.md`, which names Vol. 2 and the readability issue
+form. (Until 2026-10-24 this file kept a second, older copy.)
 
 ### Short directory description
 
 ```text
-Gabs Utilities is a compact catalog of dark developer and creator tools: 50 free Claude Code themes, UI/template packs, cheat sheets, wallpapers, and palettes.
+Gabs Utilities is a compact catalog of dark developer and creator tools: 50 free Claude Code themes plus a free 12-theme Vol. 2 expansion, UI/template packs, cheat sheets, wallpapers, and palettes.
 ```
 
 ### Social share assets
@@ -217,11 +223,43 @@ never been.
 
 ### GitHub awesome lists — prepared entries
 
-Entries only. Per the submission pack's rule, open at most one careful PR per
-list, and only to lists whose scope explicitly covers Claude Code, terminal or
-CLI themes, or developer tooling. Read each list's CONTRIBUTING file first and
-match its existing line format instead of pasting these verbatim — most lists
-sort alphabetically and pin a specific dash/pipe style.
+Entries only. Per the submission pack's rule, make at most one careful
+submission per list, by the route its CONTRIBUTING file names, and only to
+lists whose scope explicitly covers Claude Code, terminal or CLI themes, or
+developer tooling. Read each list's CONTRIBUTING file first and match its
+existing line format instead of pasting these verbatim — most lists sort
+alphabetically and pin a specific dash/pipe style.
+
+#### awesome-claude-code — web issue form only, never a PR
+
+`hesreallyhim/awesome-claude-code` on GitHub, read in a clone of its
+CONTRIBUTING.md (30a4c09) on 2026-10-19: every recommendation goes through the
+web UI issue form and is made by a person. It says not to open a pull request,
+that the `gh` CLI cannot submit one, and that other routes risk a restriction.
+Eligibility is 14 days since the first commit with active development, or 100
+stars: this repository's first commit is 38d4f82 (2026-08-14) and it is under
+active development. One resource at a time.
+Descriptions are "descriptive, not promotional", do not address the reader, and
+run 10 to 500 characters. The repository was not listed in that clone. Re-read
+the CONTRIBUTING file just before submitting; its rules change.
+
+Form fields:
+
+- Display Name: `50 Dark Themes for Claude Code`
+- Category: `Configuration` (where that list files other theme tweaks;
+  `Design & UI/UX` is the alternative — check the dropdown)
+- Link: this repository's GitHub address
+- Author Name: `notgabriels-sys`, Author Link: its GitHub profile
+- Description (244 characters, measured 2026-10-24):
+
+```text
+Plugin marketplace with 62 dark themes in two packs (50 + 12) for the /theme picker. Each palette leaves success, error, warning and diff colors on the base dark preset and is checked in CI against role-aware WCAG contrast floors. MIT licensed.
+```
+
+Wait for the outcome before any other list, and add no "Mentioned in" badge
+unless it is accepted.
+
+#### Other lists — Markdown lines for lists that take a PR
 
 Claude Code-focused lists (best fit):
 
@@ -250,7 +288,9 @@ Rules for this route:
 ### Longer directory description
 
 ```text
-Gabs Utilities is a small, practical catalog for developers and technical creators who like dark, readable tools. The core project is 50 free MIT-licensed themes for Claude Code, built with semantic colors for errors, warnings, success states, diffs, and terminal UI clarity. The catalog also includes paid packs such as dark UI kits, HTML/email/social templates, developer cheat sheets, wallpapers, and palettes.
+Gabs Utilities is a small, practical catalog for developers and technical creators who like dark, readable tools. The core project is 50 free MIT-licensed themes for Claude Code, built with semantic colors for errors, warnings, success states, diffs, and terminal UI clarity. The same marketplace carries Dark Themes Vol. 2, a free 12-theme expansion held to the same contrast standards.
+
+The catalog also includes paid packs such as dark UI kits, HTML/email/social templates, developer cheat sheets, wallpapers, and palettes.
 ```
 
 ## Do not post
@@ -289,3 +329,8 @@ Use the result to improve positioning before posting again elsewhere.
 | 2026-08-24 | TheDevToolsDir | Initial read at 06:40 CEST returned 404 while publication was processing; at 06:57 CEST the exact listing URL returned HTTP 200 and the public title, description, website, Standard tier, categories and tags read back correctly | Listing is independently verified live; keep the required footer badge while the Standard listing remains active and monitor useful referral traffic |
 | 2026-08-24 | DevHunt | The new-tool route redirected to “Log in to your account”; no DevHunt account email was found | Keep the prepared developer-tool fields, but do not create an account merely to add another listing |
 | 2026-08-24 | DEV Community | Paste-ready article draft created in `DEV_COMMUNITY_ARTICLE_DRAFT.md`; browser path not signed in | Preview and publish manually from the owner's DEV account, or reopen when signed in for final action-time confirmation |
+| 2026-10-24 | Product Hunt | The storefront footer has linked a Product Hunt product page, "50 Dark Themes for Claude Code", since 3fd0b55 (2026-08-24), and `verify` requires that link. This session cannot reach Product Hunt, so whether that page exists and whether a launch ran are unread; nothing here claims a launch | Gabriel reads the signed-in dashboard and records the page's state and any launch date here; if no product page exists, the footer link comes out (a deliberate edit to `verify`'s check) |
+| 2026-10-24 | Dark Themes Vol. 2 announcement | Vol. 2 has been on main since #46 (af24eb7, 2026-08-31), which merged 4365c25. GitHub's releases, read 2026-10-24, are only `themes-plugin-v1.0.0` and `themes-plugin-v1.0.1`, so the prepared Vol. 2 release is not created; the prepared X thread is not recorded as posted | Gabriel creates the release from the prepared tag and body, attaches its zip with the release-zip workflow, posts the thread, and records both here |
+| 2026-10-24 | GitHub description and topics | Live description, read 2026-10-24: "50 hand-tuned dark themes for Claude Code, plus links into the Gabs Utilities ecosystem." The topics include `syntax-theme` and `dotfiles`, which the repository does not match, and not `wcag` | Gabriel runs the edit command in `.github/REPO_METADATA.md` |
+| 2026-10-24 | Anthropic plugin directory | Not submitted. Each plugin now ships a listing icon, and all three pass `claude plugin validate --strict --profile directory` (Claude Code 2.1.310) | Gabriel submits the two theme packs by the route in `DIRECTORY_SUBMISSION_PACK.md`; nothing is claimed until a listing appears in `/plugin` Discover |
+| 2026-10-24 | awesome-claude-code | Not listed in a clone read 2026-10-19; the repository is eligible; recommendations go by web issue form only | Gabriel submits once through the form with the prepared block above and records the issue here |

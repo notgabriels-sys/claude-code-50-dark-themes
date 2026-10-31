@@ -1,0 +1,48 @@
+name: Theme readability report
+description: A theme is hard to read in your terminal, or a color does not do its job.
+title: "Readability: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. Each theme is checked against contrast floors measured on its own terminal background, so the background you use matters as much as the theme.
+
+        This repository is public, and so is every issue. A screenshot of a Claude Code session usually shows your code, file paths and commands: crop it to the hard-to-read part, or blur the rest, or give the colour's hex value instead.
+  - type: input
+    id: theme
+    attributes:
+      label: Theme
+      description: The name as it appears in the /theme picker.
+      placeholder: Undertow
+    validations:
+      required: true
+  - type: input
+    id: terminal
+    attributes:
+      label: Terminal app and operating system
+      placeholder: iTerm2 3.5 on macOS 15
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Claude Code version
+      description: The output of `claude --version`.
+  - type: dropdown
+    id: background
+    attributes:
+      label: Is your terminal background set to the theme's terminal background?
+      description: The hex printed on the theme's gallery card and on its page.
+      options:
+        - "Yes"
+        - "No"
+        - Not sure
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What is hard to read?
+      description: Which text or element (a prompt, a diff, plan mode, a permission dialog, ...), and a cropped screenshot or the hex value of the hard-to-read colour if you can.
+    validations:
+      required: true

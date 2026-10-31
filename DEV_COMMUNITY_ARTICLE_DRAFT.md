@@ -131,10 +131,11 @@ The basic lesson: if the thing is free and practical, the path to use it should 
 The 50 Claude Code themes are free and MIT licensed.
 
 The same marketplace later grew a free expansion, Dark Themes Vol. 2: twelve
-more palettes held to the same contrast floors, installable with one command
-once the marketplace is added:
+more palettes held to the same contrast floors, installable from the same
+marketplace (the first line is needed only once):
 
 ```text
+claude plugin marketplace add notgabriels-sys/claude-code-50-dark-themes
 claude plugin install dark-themes-vol-2@notgabriels-themes
 ```
 
