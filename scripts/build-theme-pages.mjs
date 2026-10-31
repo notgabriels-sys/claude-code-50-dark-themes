@@ -586,7 +586,7 @@ async function datedPageModified(root) {
   const modified = new Map();
   for (const page of DATED_PAGES) {
     if (!FIXED_SITEMAP_PAGES.some(([listed]) => listed === page)) {
-      throw new Error(`${page} is a dated page with no sitemap entry; add it to FIXED_SITEMAP_PAGES.`);
+      throw new Error(`${page} is a dated page with no sitemap entry; add it to FIXED_SITEMAP_PAGES. A dated page stays in the sitemap with its <lastmod>, so it cannot carry a robots noindex; to take it out of search, first take it out of DATED_PAGES in scripts/page-dates.mjs.`);
     }
     const dates = statedDates(await readFile(new URL(page, root), "utf8"));
     if (!dates) throw new Error(`${page} does not state one datePublished and dateModified; node scripts/verify.mjs says what to fix.`);

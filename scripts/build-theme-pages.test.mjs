@@ -158,13 +158,32 @@ for (const [defect, edits, message] of [
     /impressum\.html writes a robots meta with "&" in its content/],
   ["leaves out a page whose noindex sits in its body, where a crawler does not read it",
     [["impressum.html", `  ${impressumRobots}\n`, ""], ["impressum.html", "<body>\n", `<body>\n${impressumRobots}\n`]],
-    /impressum\.html's robots meta must sit in the head; <\/head> comes before it/],
+    /impressum\.html's robots meta must sit in the head, with only head tags, comments and whitespace before it; <\/head> comes before it here/],
   ["leaves out a page whose noindex follows a tag that ends the head",
     [["impressum.html", `  ${impressumRobots}\n`, `  <br>\n  ${impressumRobots}\n`]],
-    /impressum\.html's robots meta must sit in the head; <br> comes before it/],
+    /impressum\.html's robots meta must sit in the head, with only head tags, comments and whitespace before it; <br> comes before it here/],
   ["leaves out a page whose noindex follows text in the head",
     [["impressum.html", `  ${impressumRobots}\n`, `  Legal notice\n  ${impressumRobots}\n`]],
-    /impressum\.html's robots meta must sit in the head; text comes before it/],
+    /impressum\.html's robots meta must sit in the head, with only head tags, comments and whitespace before it; text comes before it here/],
+  ["leaves out a page whose noindex follows a comment in the head",
+    [["impressum.html", `  ${impressumRobots}\n`, `  <!-- legal notice: not for search -->\n  ${impressumRobots}\n`]], null],
+  ["reads a meta name written with a character reference", [["impressum.html", impressumRobots, '<meta name="r&#111;bots" content="noindex">']],
+    /impressum\.html writes a meta name as "r&#111;bots"; write it plainly/],
+  ["reads a meta name with a space after it", [["impressum.html", impressumRobots, '<meta name="robots " content="noindex">']],
+    /impressum\.html writes a meta name as "robots "; write it plainly/],
+  ["reads a noindex for one other crawler",
+    [["familiars.html", '<meta name="twitter:card" content="summary_large_image">', '<meta name="bingbot" content="noindex">\n<meta name="twitter:card" content="summary_large_image">']],
+    /familiars\.html has a meta for one crawler, "bingbot"/],
+  ["reads directives separated by a semicolon", [["impressum.html", impressumRobots, '<meta name="robots" content="noindex;nofollow">']],
+    /impressum\.html's robots meta reads "noindex;nofollow", which is not a directive verify knows/],
+  ["reads a directive verify does not model", [["impressum.html", impressumRobots, '<meta name="robots" content="noindex, unavailable_after: 2026-01-01">']],
+    /impressum\.html's robots meta reads "unavailable_after: 2026-01-01", which is not a directive verify knows/],
+  ["lists a page whose canonical names another address",
+    [["semantic-terminal-colors.html", '<link rel="canonical" href="https://gabs-utilities.com/semantic-terminal-colors.html">', '<link rel="canonical" href="https://gabs-utilities.com/">']],
+    /sitemap\.xml lists https:\/\/gabs-utilities\.com\/semantic-terminal-colors\.html, but semantic-terminal-colors\.html names https:\/\/gabs-utilities\.com\/ as its canonical address/],
+  ["lists a dated page that asks not to be indexed",
+    [["semantic-terminal-colors.html", '<meta name="robots" content="index,follow,max-image-preview:large">', '<meta name="robots" content="noindex">']],
+    /semantic-terminal-colors\.html carries a robots noindex\. A dated page stays in the sitemap with its <lastmod>, so it cannot carry one/],
   ["lists a page the site does not serve", [[builderPath, familiarsRow, `${familiarsRow}  ["missing.html", "monthly", "0.5"],\n`]],
     /sitemap\.xml lists https:\/\/gabs-utilities\.com\/missing\.html, which is not the address of a page this site serves/],
   ["lists a page twice", [[builderPath, familiarsRow, `${familiarsRow}${familiarsRow}`]],
@@ -200,6 +219,10 @@ for (const [defect, edits, message] of [
 
     const result = await runVerifier(fixtureRoot);
 
+    if (message === null) {
+      assert.equal(result.code, 0, `a sitemap that ${defect} was refused: ${result.stderr}`);
+      return;
+    }
     assert.notEqual(result.code, 0, `the verifier accepted a sitemap that ${defect}`);
     assert.match(result.stderr, message);
   });

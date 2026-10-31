@@ -3968,30 +3968,53 @@ for (const file of servedFiles) {
 
 await themePageFreshness("sitemap.xml", themePages.get("sitemap.xml"));
 // Which served pages a search engine may index: a page asks not to be with a robots or googlebot
-// meta naming noindex or none. The sitemap and llms.txt both read this one map.
+// meta naming noindex or none. The sitemap and llms.txt both read this one map. What verify does
+// not model is refused rather than guessed at: a meta name written with a character reference or
+// a space (a browser decodes the one and keeps the other), a meta for one other crawler (a
+// bingbot noindex would leave the page listed for a crawler that drops it), and a directive
+// outside the documented set or separated by anything but a comma.
+const ROBOTS_DIRECTIVE = /^(all|index|follow|noindex|nofollow|none|noarchive|nocache|nosnippet|notranslate|noimageindex|indexifembedded|max-snippet:-?\d+|max-image-preview:(none|standard|large)|max-video-preview:-?\d+)$/;
 const robotsTokens = (page, markup) => {
   const tags = htmlTags(markup);
   return tags
-    .filter((tag) => !tag.closing && tag.name === "meta" && /^(robots|googlebot)$/i.test(tag.attributes.find((a) => a.name === "name")?.value ?? ""))
+    .filter((tag) => !tag.closing && tag.name === "meta")
     .flatMap((tag) => {
-      // A robots meta counts only in the head, and a browser ends the head at the first tag or
-      // text that cannot sit there: only head tags and whitespace (outside a title, style or
-      // script's text) may come before it.
+      const name = tag.attributes.find((a) => a.name === "name")?.value ?? "";
+      if (/&|^[\t\n\f\r ]|[\t\n\f\r ]$/.test(name)) {
+        fail(`${page} writes a meta name as ${JSON.stringify(name)}; write it plainly, with no character reference and no space around it, so every reader sees the same name.`);
+      }
+      if (!/^(robots|googlebot)$/i.test(name)) {
+        if (/bot$/i.test(name)) {
+          fail(`${page} has a meta for one crawler, "${name}"; verify reads only robots and googlebot metas, so write the directive in a robots meta for every crawler.`);
+        }
+        return [];
+      }
+      // A robots meta counts only in the head, and a browser may end the head at a tag or text
+      // that cannot sit there: only head tags, comments and whitespace (outside a title, style
+      // or script's text) may come before it.
       const before = tags.filter((other) => other.start < tag.start);
       const intruder = before.find((other) => other.closing
         ? !["title", "style", "script"].includes(other.name)
         : !["html", "head", "meta", "title", "link", "style", "script"].includes(other.name));
       let gap = markup.slice(0, tag.start);
       for (const other of [...before].reverse()) gap = gap.slice(0, other.start) + gap.slice(other.end + other.text.length);
-      const stray = gap.replace(/^\uFEFF?<!doctype html>/i, "").replace(/[\t\n\f\r ]+/g, "");
+      const stray = gap
+        .replace(/^\uFEFF?<!doctype html>/i, "")
+        .replace(/<!--(?:>|->|[\s\S]*?(?:--!?>|$))/g, "")
+        .replace(/[\t\n\f\r ]+/g, "");
       if (intruder || stray) {
-        fail(`${page}'s robots meta must sit in the head; ${intruder ? `<${intruder.closing ? "/" : ""}${intruder.name}>` : "text"} comes before it, which ends the head in a browser. Move it up beside the page's other <meta> tags.`);
+        fail(`${page}'s robots meta must sit in the head, with only head tags, comments and whitespace before it; ${intruder ? `<${intruder.closing ? "/" : ""}${intruder.name}>` : "text"} comes before it here. Move it up beside the page's other <meta> tags.`);
       }
       const content = tag.attributes.find((a) => a.name === "content")?.value ?? "";
       if (content.includes("&")) {
         fail(`${page} writes a robots meta with "&" in its content; write its directives plainly, as noindex, so every reader sees the same one.`);
       }
-      return content.toLowerCase().split(",").map((token) => token.trim());
+      const tokens = content.toLowerCase().split(",").map((token) => token.trim());
+      const unknown = tokens.find((token) => !ROBOTS_DIRECTIVE.test(token));
+      if (unknown !== undefined) {
+        fail(`${page}'s robots meta reads ${JSON.stringify(unknown)}, which is not a directive verify knows; write documented directives (index, follow, noindex, nofollow, none, noarchive, nosnippet, max-image-preview:large and the like), separated by commas.`);
+      }
+      return tokens;
     });
 };
 const indexablePages = new Map();
@@ -4025,7 +4048,18 @@ const pageAddress = (page) => `${siteUrl}${urlPath(page).replace(/(^|\/)index\.h
     if (listed.has(page)) fail(`sitemap.xml lists ${location} twice.`);
     listed.add(page);
     if (!indexablePages.get(page)) {
-      fail(`sitemap.xml lists ${location}, but ${page} carries a robots noindex; a sitemap lists only pages a search engine may index. Drop it from FIXED_SITEMAP_PAGES in scripts/build-theme-pages.mjs and rebuild, or drop the noindex.`);
+      fail(
+        pageDates.DATED_PAGES.includes(page)
+          ? `sitemap.xml lists ${location}, but ${page} carries a robots noindex. A dated page stays in the sitemap with its <lastmod>, so it cannot carry one: drop the noindex, or take the page out of DATED_PAGES in scripts/page-dates.mjs (which first needs its date stamp gone) and then out of FIXED_SITEMAP_PAGES.`
+          : `sitemap.xml lists ${location}, but ${page} carries a robots noindex; a sitemap lists only pages a search engine may index. Drop it from FIXED_SITEMAP_PAGES in scripts/build-theme-pages.mjs and rebuild, or drop the noindex.`,
+      );
+    }
+    const canonicals = htmlTags(await readFile(fileUrl(page), "utf8"))
+      .filter((tag) => !tag.closing && tag.name === "link" && /(^|[\t\n\f\r ])canonical([\t\n\f\r ]|$)/i.test(tag.attributes.find((a) => a.name === "rel")?.value ?? ""))
+      .map((tag) => tag.attributes.find((a) => a.name === "href")?.value ?? "");
+    const canonical = canonicals.length === 1 ? URL.parse(canonicals[0], location)?.href : null;
+    if (canonicals.length > 1 || (canonicals.length === 1 && canonical !== location)) {
+      fail(`sitemap.xml lists ${location}, but ${page} names ${canonicals.join(" and ")} as its canonical address; a sitemap lists a page only at the address it calls its own.`);
     }
     const lastmods = [...entry.matchAll(/<lastmod>([^<]*)<\/lastmod>/g)].map(([, day]) => day);
     if (pageDates.DATED_PAGES.includes(page)) {
@@ -4047,48 +4081,95 @@ const pageAddress = (page) => `${siteUrl}${urlPath(page).replace(/(^|\/)index\.h
   }
 }
 
+// The paths below are read as a crawler matches them: percent-decoded, and with a note's every
+// address. GitHub Pages serves a note at its raw .md and at the page Jekyll renders from it, and a
+// README or index note in a directory with no index.html at the directory itself.
+const decodedPath = (pathname) => {
+  try {
+    return decodeURIComponent(pathname);
+  } catch {
+    return pathname;
+  }
+};
+const noteAddresses = (note) => {
+  const directory = note.slice(0, note.lastIndexOf("/") + 1);
+  const addresses = [`/${note}`, `/${note.slice(0, -".md".length)}.html`];
+  if (/^(readme|index)\.md$/i.test(note.slice(directory.length)) && !servedFiles.includes(`${directory}index.html`)) addresses.push(`/${directory}`);
+  return addresses;
+};
+const servedPaths = new Set([
+  ...servedFiles.map((file) => `/${file}`),
+  ...servedFiles.filter((file) => /(^|\/)index\.html$/.test(file)).map((file) => `/${file.slice(0, -"index.html".length)}`),
+  ...servedNotes.flatMap(noteAddresses),
+]);
+
 // What llms.txt gives an agent. It is read and followed by machines, so it links only to this
 // site, and only to files the site serves: a payment link there would pass every other check,
-// since it is not a page, and an off-site address is never one it needs. Every root page a search
-// engine may index is linked from it, and the theme pages by their index and their pattern line.
+// since it is not a page, and an off-site address is never one it needs. Every destination a
+// reader could follow is read as the URL parser reads it, against llms.txt's own address:
+// Markdown link and reference destinations, autolinks, raw HTML URL attributes, and any bare
+// address, with a scheme or without one ("//host"), so a host spelled with a percent-escape or
+// another full stop is read as the host it resolves to. Every root page a search engine may
+// index is linked from it, and the theme pages by their index and their pattern line.
+const llmsPaths = new Set();
 {
+  const llmsUrl = `${siteUrl}llms.txt`;
   const llms = await readFile(new URL("llms.txt", root), "utf8");
   const lineOf = (index) => llms.slice(0, index).split("\n").length;
   const themePattern = `${siteUrl}theme/<slug>/`;
-  const servedAddress = new Set(servedFiles.flatMap((file) => [`${siteUrl}${urlPath(file)}`, ...(/(^|\/)index\.html$/.test(file) ? [pageAddress(file)] : [])]));
-  for (const match of llms.matchAll(/[a-z][a-z0-9+.-]*:\/\/[^\s<>()\[\]"'`]*/gi)) {
-    const address = match[0].replace(/[.,;:!?]+$/, "");
-    if (!address.startsWith(siteUrl)) {
-      fail(`llms.txt:${lineOf(match.index)} gives ${address}, which is not on ${siteUrl}; llms.txt links only to this site's own pages and files.`);
+  const destinations = [];
+  const read = (pattern, link) => {
+    for (const match of llms.matchAll(pattern)) destinations.push({ written: match[1], index: match.index, link });
+  };
+  read(/\]\(\s*<([^>\n]*)>/g, true);
+  read(/\]\(\s*([^\s<>()][^\s()]*)/g, true);
+  read(/^ {0,3}\[[^\]\n]+\]:[\t ]*<?([^\s<>]+)/gm, true);
+  read(/<([a-z][a-z0-9+.-]*:[^\s<>]*)>/gi, true);
+  read(/\b(?:href|src)[\t ]*=[\t ]*["']?([^"'\s>]+)/gi, true);
+  read(/((?:[a-z][a-z0-9+.-]*:)?[\\/]{2}[^\s<>()\[\]"'`]+)/gi, false);
+  const linked = new Set();
+  for (const { written: raw, index, link } of destinations) {
+    const written = raw.replace(/[.,;:!?*_]+$/, "");
+    const url = URL.parse(written, llmsUrl);
+    if (!url) fail(`llms.txt:${lineOf(index)} gives ${written}, which no reader can resolve to an address.`);
+    if (PAYMENT_DOMAIN.test(url.hostname)) {
+      fail(`llms.txt:${lineOf(index)} gives ${written}, which leads to ${url.hostname}, a payment host; llms.txt names no checkout, linked or not.`);
     }
-    if (!servedAddress.has(address.replace(/#.*$/, ""))) {
-      fail(`llms.txt:${lineOf(match.index)} gives ${address}, which is not a file this site serves.`);
+    if (url.origin !== new URL(siteUrl).origin) {
+      fail(`llms.txt:${lineOf(index)} gives ${written}, which is not on ${siteUrl}; llms.txt links only to this site's own pages and files.`);
     }
+    const path = decodedPath(url.pathname);
+    if (!servedPaths.has(path)) {
+      fail(`llms.txt:${lineOf(index)} gives ${written}, which is not a file this site serves${servedPaths.has(`${path}/`) ? `; write it with its closing slash, ${siteUrl}${path.slice(1)}/` : ""}.`);
+    }
+    llmsPaths.add(path);
+    if (link) linked.add(path);
   }
   for (const match of llms.matchAll(/[a-z0-9-]+(?:\.[a-z0-9-]+)+/gi)) {
     if (PAYMENT_DOMAIN.test(match[0].toLowerCase())) {
       fail(`llms.txt:${lineOf(match.index)} names ${match[0]}, a payment host; llms.txt names no checkout, linked or not.`);
     }
   }
-  const linked = new Set([...llms.matchAll(/\]\(([^()\s]+)\)/g)].map(([, address]) => address.replace(/#.*$/, "")));
   for (const [page, open] of indexablePages) {
-    if (!open || page.includes("/") || linked.has(pageAddress(page))) continue;
+    if (!open || page.includes("/") || linked.has(decodedPath(new URL(pageAddress(page)).pathname))) continue;
     fail(`${page} is a page a search engine may index, and llms.txt does not link it. Add a line under "Primary pages": - [<the page's title>](${pageAddress(page)})`);
   }
   if (servedFiles.some((file) => file.startsWith("theme/"))) {
-    if (!linked.has(`${siteUrl}theme/`)) fail(`llms.txt does not link the theme pages' index, ${siteUrl}theme/.`);
+    if (!linked.has("/theme/")) fail(`llms.txt does not link the theme pages' index, ${siteUrl}theme/.`);
     if (!llms.includes(themePattern)) fail(`llms.txt does not give the theme pages' address pattern, ${themePattern}.`);
   }
 }
 
 // What robots.txt lets a crawler fetch. GitHub Pages renders every note into a page on this
-// domain, and a note cannot carry a robots meta, so robots.txt keeps the internal ones out of
-// search. It is written in the one shape every parser reads alike: one "User-agent: *" group of
-// plain-prefix Disallow lines, no Allow, no wildcard, then the sitemap. Under it a path is blocked
-// exactly when a rule is a prefix of it, whether a crawler takes the longest match (Google) or
-// the first (Python's robotparser). No rule may block a path the public pages use, read without
-// regard to case, since a rule in another case is a typo away from it; every served note is
-// blocked unless it is in crawlableNotes; and every rule blocks something.
+// domain, and a note cannot carry a robots meta, so robots.txt is the one way to keep crawlers
+// from fetching the internal ones (a blocked address that something links can still be listed
+// in search, without its content). It is written in the one shape every parser reads alike: one
+// "User-agent: *" group of plain-prefix Disallow lines, no Allow, no wildcard, then the sitemap.
+// Under it a path is blocked exactly when a rule is a prefix of it, whether a crawler takes the
+// longest match (Google) or the first (Python's robotparser). No rule may block a path the
+// public pages or llms.txt use, read percent-decoded and without regard to case, since a rule in
+// another case is a typo away from it; every served note is blocked at each of its addresses
+// unless it is in crawlableNotes; and every rule blocks something.
 const crawlableNotes = ["terminal-schemes/README.md"];
 {
   const robots = await readFile(new URL("robots.txt", root), "utf8");
@@ -4098,63 +4179,84 @@ const crawlableNotes = ["terminal-schemes/README.md"];
     fail(`robots.txt must read "User-agent: *", then its Disallow lines, then a blank line and "${sitemapLine}", in plain ASCII with LF line ends; crawlers read other shapes differently.`);
   }
   const rules = lines.slice(1, -3).map((line, index) => {
-    const rule = /^Disallow: (\/[A-Za-z0-9._\/-]+)$/.exec(line)?.[1];
-    if (!rule) {
-      fail(`robots.txt:${index + 2} reads ${JSON.stringify(line)}; each rule is "Disallow: " and a plain path prefix, with no Allow, wildcard, "$", comment or blank line between.`);
+    const rule = /^Disallow: (\/[A-Za-z0-9._\/-]*)$/.exec(line)?.[1];
+    if (rule === undefined) {
+      fail(
+        /^user-agent:/i.test(line)
+          ? `robots.txt:${index + 2} opens a second group, ${JSON.stringify(line)}; robots.txt holds one group, for every crawler, since first-match parsers read only one group per crawler and a second changes what the first one means.`
+          : line === ""
+            ? `robots.txt:${index + 2} is a blank line inside the group; a blank line ends a group for some parsers, so the rules after it would apply to no crawler. Keep the Disallow lines together.`
+            : `robots.txt:${index + 2} reads ${JSON.stringify(line)}; each rule is "Disallow: " and a plain path prefix, with no Allow, wildcard, "$" or comment.`,
+      );
     }
     return rule;
   });
   const blocks = (path) => rules.some((rule) => path.startsWith(rule));
-  // The paths the public pages use: every root file that is not a note, every served page, and
-  // every address on this site that a page gives, absolute in its text or relative in a src,
-  // href or url().
-  const publicPaths = new Set();
+  // The paths the public pages use: every root file that is not a note, every served page, every
+  // address llms.txt gives, and every address on this site that a page gives: in any URL
+  // attribute or srcset, in a meta's content, absolute anywhere in its text, relative in its
+  // JSON-LD, and in its CSS url() and image-set().
+  const publicPaths = new Set(llmsPaths);
   const addPublic = (address, base) => {
-    let url;
-    try {
-      url = new URL(address, base);
-    } catch {
-      return;
-    }
-    if (url.host === cname) publicPaths.add(url.pathname);
+    const url = URL.parse(address.trim(), base);
+    if (url && url.host === cname) publicPaths.add(decodedPath(url.pathname));
   };
-  const onSite = new RegExp(`https?://${escapeRegExp(cname)}/[^\\s"'<>()\\\\]*`, "g");
-  for (const file of servedFiles) if (!file.includes("/") && !servedNotes.includes(file)) publicPaths.add(`/${urlPath(file)}`);
+  const URL_ATTRIBUTE_NAMES = new Set(["href", "src", "poster", "action", "cite", "data", "background", "formaction"]);
+  for (const file of servedFiles) if (!file.includes("/") && !servedNotes.includes(file)) publicPaths.add(`/${file}`);
   for (const page of indexablePages.keys()) {
     const base = pageAddress(page);
-    publicPaths.add(`/${urlPath(page)}`);
+    publicPaths.add(`/${page}`);
     const markup = await readFile(fileUrl(page), "utf8");
-    for (const [address] of markup.matchAll(onSite)) addPublic(address);
-    for (const [, address] of markup.matchAll(/url\(\s*["']?([^"')\s]+)/g)) addPublic(address, base);
+    const text = markup.replace(/&quot;|&#0*34;|&#x0*22;/gi, '"').replace(/&apos;|&#0*39;|&#x0*27;/gi, "'");
+    for (const [address] of text.matchAll(/[a-z][a-z0-9+.-]*:\/\/[^\s"'<>()\\]+/gi)) addPublic(address);
+    for (const [, , address] of text.matchAll(/url\(\s*(["']?)([^"')]+?)\1\s*\)/gi)) addPublic(address, base);
+    for (const [, inner] of text.matchAll(/image-set\(([^)]*)\)/gi)) {
+      for (const [, , address] of inner.matchAll(/(["'])([^"']+)\1/g)) addPublic(address, base);
+    }
     for (const tag of htmlTags(markup)) {
-      for (const { name, value } of tag.attributes ?? []) if (name === "href" || name === "src") addPublic(value, base);
+      for (const { name, value } of tag.attributes ?? []) {
+        if (URL_ATTRIBUTE_NAMES.has(name)) addPublic(value, base);
+        else if (name === "srcset" || name === "imagesrcset") for (const address of srcsetUrls(value)) addPublic(address, base);
+        else if (name === "content" && /^([a-z][a-z0-9+.-]*:)?\/\//i.test(value.trim())) addPublic(value, base);
+      }
+      if (tag.name === "script" && /^application\/ld\+json$/i.test(tag.attributes.find((a) => a.name === "type")?.value ?? "")) {
+        let data;
+        try {
+          data = JSON.parse(tag.text);
+        } catch {
+          continue;
+        }
+        const walk = (value) => {
+          if (typeof value === "string" && /^(\/|\.\.?\/)/.test(value)) addPublic(value, base);
+          else if (value && typeof value === "object") for (const inner of Object.values(value)) walk(inner);
+        };
+        walk(data);
+      }
     }
   }
   for (const path of publicPaths) {
     const rule = rules.find((candidate) => path.toLowerCase().startsWith(candidate.toLowerCase()));
-    if (rule) {
-      fail(`robots.txt's "Disallow: ${rule}" blocks ${path}, which the site's public pages use (read without regard to case, as some crawlers read it); narrow the rule.`);
+    if (rule !== undefined) {
+      fail(`robots.txt's "Disallow: ${rule}" blocks ${path}, which the site's public pages or llms.txt use (read without regard to case, as some crawlers read it); narrow the rule (a root note's own addresses are /<NAME>.md and /<NAME>.html), or rename what it collides with.`);
     }
   }
   for (const note of crawlableNotes) {
     if (!servedNotes.includes(note)) fail(`crawlableNotes in scripts/verify.mjs names ${note}, which is not a note this site serves.`);
   }
   for (const note of servedNotes) {
-    const directory = note.slice(0, note.lastIndexOf("/") + 1);
-    const addresses = [`/${urlPath(note)}`, `/${urlPath(note.slice(0, -".md".length))}.html`];
-    if (/^readme\.md$/i.test(note.slice(directory.length)) && !servedFiles.includes(`${directory}index.html`)) addresses.push(`/${urlPath(directory)}`);
-    for (const address of addresses) {
+    for (const address of noteAddresses(note)) {
       if (crawlableNotes.includes(note) && blocks(address)) {
         fail(`robots.txt blocks ${address}, but ${note} is in crawlableNotes in scripts/verify.mjs, kept open to search on purpose.`);
       }
-      if (!crawlableNotes.includes(note) && !blocks(address)) {
-        fail(`${note} is a note GitHub Pages renders or serves at ${address}, and robots.txt lets crawlers fetch it. Add a Disallow line for it (a root note as "/<NAME>.", a directory as "/<directory>/"), or add it to crawlableNotes in scripts/verify.mjs if it is meant for search.`);
+      if (crawlableNotes.includes(note) || blocks(address)) continue;
+      if (address.endsWith("/") && [...publicPaths].some((path) => path.toLowerCase().startsWith(address.toLowerCase()))) {
+        fail(`${note} is served at ${address}, a directory that also holds files the public pages use, so no prefix rule can block it without blocking them. Rename the note (it is then served only at its own .md and .html addresses, which a rule can block), or add it to crawlableNotes in scripts/verify.mjs if it is meant for search.`);
       }
+      fail(`${note} is a note GitHub Pages renders or serves at ${address}, and robots.txt lets crawlers fetch it. Add a Disallow line for it (a root note as "/<NAME>.", a directory as "/<directory>/"), or add it to crawlableNotes in scripts/verify.mjs if it is meant for search. A local note that will not be committed belongs in .git/info/exclude instead.`);
     }
   }
-  const servedPaths = [...servedFiles.map((file) => `/${urlPath(file)}`), ...servedNotes.map((note) => `/${urlPath(note.slice(0, -".md".length))}.html`)];
   for (const rule of rules) {
-    if (!servedPaths.some((path) => path.startsWith(rule))) fail(`robots.txt's "Disallow: ${rule}" blocks nothing this site serves; drop it.`);
+    if (![...servedPaths].some((path) => path.startsWith(rule))) fail(`robots.txt's "Disallow: ${rule}" blocks nothing this site serves; drop it.`);
   }
 }
 
