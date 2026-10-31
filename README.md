@@ -109,8 +109,9 @@ background. The themes themselves stay free here.
 ## Matching terminal colors
 
 Every one of the 62 themes also has a matched terminal color scheme (background, foreground, cursor,
-selection and the 16 ANSI colors) for iTerm2, Ghostty, kitty, Alacritty, WezTerm, Windows Terminal,
-VS Code, Warp, Konsole and Terminal.app, so your prompt, `git` and `ls` match Claude Code. Files and
+selection and the 16 ANSI colors; Konsole's schemes set no cursor or selection color, Warp's no
+selection color) for iTerm2, Ghostty, kitty, Alacritty, WezTerm, Windows Terminal, VS Code, Warp,
+Konsole and Terminal.app, so your prompt, `git` and `ls` match Claude Code. Files and
 setup steps: [terminal-schemes/README.md](terminal-schemes/README.md).
 
 ## What each file sets

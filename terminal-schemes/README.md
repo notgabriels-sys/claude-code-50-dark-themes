@@ -2,7 +2,8 @@
 
 Each of the 62 free themes (the 50 and Vol. 2) has a matched terminal color scheme here: its
 background, foreground, cursor, selection and 16 ANSI colors, contrast-checked against that
-background.
+background, except that Konsole's schemes set no cursor or selection color and Warp's no selection
+color.
 
 The Claude Code theme colors Claude Code only. The scheme colors the rest of the window: your shell
 prompt, `git`, `ls`, test runners. Its background is the theme's recommended terminal background, so

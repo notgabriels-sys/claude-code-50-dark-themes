@@ -2774,6 +2774,76 @@ test("accepts per-terminal promises that lead to per-terminal steps", { timeout:
   assert.equal(guideCovers.code, 0, `the guide naming every terminal still failed:\n${guideCovers.stderr}`);
 });
 
+const schemesClaim =
+  "background, foreground, cursor, selection and 16 ANSI colors, contrast-checked against that\n" +
+  "background, except that Konsole's schemes set no cursor or selection color and Warp's no selection\n" +
+  "color.";
+const readmeSchemesClaim =
+  "selection and the 16 ANSI colors; Konsole's schemes set no cursor or selection color, Warp's no\n" +
+  "selection color) for";
+
+test("rejects a list of scheme colours that the terminal's own files leave out", { timeout: 120_000 }, async (t) => {
+  // README and the schemes README said every scheme sets the cursor and selection colours;
+  // Konsole's 62 files set neither and Warp's no selection colour. Each variant puts a claim
+  // back in one place, runs the verifier, and restores the file.
+  const fixtureRoot = await makeFixture(t);
+  const variants = [
+    ["README's old sentence", "README.md", readmeSchemesClaim, "selection and the 16 ANSI colors) for",
+      /README\.md lists the cursor colour among what the terminal schemes set .* terminal-schemes\/konsole\/ set none/],
+    ["the schemes README's old sentence", "terminal-schemes/README.md", schemesClaim,
+      "background, foreground, cursor, selection and 16 ANSI colors, contrast-checked against that\nbackground.",
+      /terminal-schemes\/README\.md lists the cursor colour .* terminal-schemes\/konsole\/ set none/],
+    ["Warp's exception dropped", "terminal-schemes/README.md", schemesClaim,
+      "background, foreground, cursor, selection and 16 ANSI colors, contrast-checked against that\n" +
+        "background, except that Konsole's schemes set no cursor or selection color.",
+      /terminal-schemes\/README\.md lists the selection colour .* terminal-schemes\/warp\/ set none/],
+    ["a claim about Konsole alone", "terminal-schemes/README.md", "- **File:** `konsole/Gabs <Theme>.colorscheme`\n",
+      "- **File:** `konsole/Gabs <Theme>.colorscheme`: background, foreground, cursor, selection and the 16 ANSI colors.\n",
+      /terminal-schemes\/README\.md says konsole's schemes set the cursor colour .* terminal-schemes\/konsole\/ set none/],
+  ];
+  for (const [label, file, from, to, message] of variants) {
+    const path = join(fixtureRoot, file);
+    const original = await readFile(path, "utf8");
+    assert.equal(original.split(from).length, 2, `fixture anchor for ${label} must occur once; update this test`);
+    await writeFile(path, original.replace(from, to));
+    const result = await runVerifier(fixtureRoot);
+    await writeFile(path, original);
+
+    assert.notEqual(result.code, 0, `the verifier accepted ${label}`);
+    assert.match(result.stderr, message, label);
+  }
+});
+
+test("accepts scheme colours stated as the files set them", { timeout: 120_000 }, async (t) => {
+  // An exception worded another way passes; and once Konsole's and Warp's files set the
+  // colours, the old sentence needs no exception at all: the check reads the files.
+  const fixtureRoot = await makeFixture(t);
+  const llmsPath = join(fixtureRoot, "llms.txt");
+  await writeFile(
+    llmsPath,
+    `${await readFile(llmsPath, "utf8")}\nEach theme has a terminal color scheme: background, foreground, cursor, selection and 16 ANSI ` +
+      "colors, but not the cursor or selection in Konsole, and not the selection in Warp.\n",
+  );
+  const worded = await runVerifier(fixtureRoot);
+  assert.equal(worded.code, 0, `an exception worded another way was rejected:\n${worded.stderr}`);
+
+  for (const [folder, extra] of [
+    ["konsole", "\n[Cursor]\nColor=192,214,72\n\n[Selection]\nColor=72,80,43\n"],
+    ["warp", '\nselection: "#48502B"\n'],
+  ]) {
+    const dir = join(fixtureRoot, "terminal-schemes", folder);
+    for (const name of await readdir(dir)) {
+      await writeFile(join(dir, name), `${await readFile(join(dir, name), "utf8")}${extra}`);
+    }
+  }
+  const readmePath = join(fixtureRoot, "README.md");
+  const readme = await readFile(readmePath, "utf8");
+  assert.equal(readme.split(readmeSchemesClaim).length, 2, "fixture anchor moved; update this test");
+  await writeFile(readmePath, readme.replace(readmeSchemesClaim, "selection and the 16 ANSI colors) for"));
+  const filesSetThem = await runVerifier(fixtureRoot);
+  assert.equal(filesSetThem.code, 0, `the old sentence failed although every file now sets both colours:\n${filesSetThem.stderr}`);
+});
+
 test("rejects a page that still offers the withdrawn free Gumroad download", { timeout: 90_000 }, async (t) => {
   // The install guide's FAQ has its own guard (from #61); this one covers every
   // other public page, so plant the offer where only it looks.

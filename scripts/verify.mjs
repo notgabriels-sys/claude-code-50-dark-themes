@@ -2353,8 +2353,9 @@ const schemeTerminals = (await readdir(new URL("terminal-schemes/", root), { wit
   .filter((entry) => entry.isDirectory())
   .map((entry) => entry.name)
   .sort();
-const namesTerminal = (folder, text) =>
-  new RegExp(`\\b${[...folder.replaceAll("-", "")].map(escapeRegExp).join("[\\s.-]?")}\\b`, "i").test(text);
+const terminalPattern = (folder, flags = "i") =>
+  new RegExp(`\\b${[...folder.replaceAll("-", "")].map(escapeRegExp).join("[\\s.-]?")}\\b`, flags);
+const namesTerminal = (folder, text) => terminalPattern(folder).test(text);
 // A page as the blocks a reader gets, each link's address kept in (…) after
 // its label or, for HTML, in ⟨…⟩ on both sides of it (a storefront card's
 // label holds a whole sentence, and its link must stay inside it). HTML keeps its JSON-LD and description meta tags
@@ -2497,6 +2498,58 @@ for (const file of [...repositoryFiles.filter((path) => path.endsWith(".html")),
       }
     }
     blockStart += block.length + 1;
+  }
+}
+
+// README and the schemes README said every scheme sets the cursor and the
+// selection colour, beside the background, foreground and 16 ANSI colours.
+// Konsole's 62 files set neither and Warp's 62 set no selection colour. So what
+// each terminal's files set is read from the files, and a sentence that lists
+// what the schemes set (the ANSI colours with a cursor or selection colour) is
+// held to it. If the sentence names one terminal, that terminal's files must
+// set what it lists. Otherwise every terminal whose files leave a listed colour
+// out must be named in it as an exception: with "no", "not", "neither",
+// "except", "but", "without" or "leaves out" close to its name.
+const schemeLacks = new Map();
+for (const element of ["cursor", "selection"]) {
+  const lacking = [];
+  for (const folder of schemeTerminals) {
+    // A scheme file is named for its theme, "Gabs <Theme>" or "gabs-<slug>", as the schemes README says.
+    for (const file of (await readdir(fileUrl(`terminal-schemes/${folder}/`))).filter((name) => /^(?:Gabs |gabs-)/.test(name))) {
+      if (!new RegExp(element, "i").test(await readFile(fileUrl(`terminal-schemes/${folder}/${file}`), "utf8"))) {
+        lacking.push(folder);
+        break;
+      }
+    }
+  }
+  schemeLacks.set(element, lacking);
+}
+const exceptionWord = /\b(?:no|not|neither|nor|without|except|but|lacks?|leaves?|omits?)\b/i;
+for (const file of [...repositoryFiles.filter((path) => path.endsWith(".html")), ...repositoryReadmes, "llms.txt"]) {
+  for (const block of readableBlocks(file, await readFile(fileUrl(file), "utf8"))) {
+    for (const sentence of sentencesOf(block)) {
+      const prose = sentence.replace(sentenceLinks, (link) => " ".repeat(link.length));
+      if (!/\bANSI\b/i.test(prose)) continue;
+      const excepted = (folder) =>
+        [...prose.matchAll(terminalPattern(folder, "gi"))].some((match) =>
+          exceptionWord.test(prose.slice(Math.max(0, match.index - 40), match.index + match[0].length + 80)),
+        );
+      // A sentence is about one terminal when it names one that it does not except.
+      const subjects = schemeTerminals.filter((folder) => namesTerminal(folder, prose) && !excepted(folder));
+      for (const [element, lacking] of schemeLacks) {
+        if (!new RegExp(`\\b${element}\\b`, "i").test(prose)) continue;
+        for (const folder of lacking) {
+          if (excepted(folder) || (subjects.length === 1 && subjects[0] !== folder)) continue;
+          if (subjects.length === 1) {
+            fail(`${file} says ${folder}'s schemes set the ${element} colour ("${prose.trim().slice(0, 120)}"), but its files in terminal-schemes/${folder}/ set none.`);
+          }
+          fail(
+            `${file} lists the ${element} colour among what the terminal schemes set ("${prose.trim().slice(0, 120)}"), ` +
+              `but the files in terminal-schemes/${folder}/ set none. Name ${folder} there as the exception.`,
+          );
+        }
+      }
+    }
   }
 }
 
