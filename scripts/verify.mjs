@@ -2683,6 +2683,25 @@ for (const file of [
   }
 }
 
+// The same holds the other way. Checked live on 2.1.316 (2026-10-31): after
+// `claude plugin uninstall` from a shell while a session is open, /theme in that
+// session still lists the whole pack with its theme ticked, and only a restart
+// drops it. So the passage that gives a theme plugin's uninstall command must
+// say to restart. Read by passage, not by distance: the plugin READMEs' old
+// step sat a few lines above a troubleshooting "Restart" about installing.
+const themeUninstall = new RegExp(`plugin uninstall (?:${[...themePluginNames].map(escapeRegExp).join("|")})@notgabriels-themes`);
+for (const file of [...repositoryFiles.filter((path) => path.endsWith(".html")), ...repositoryReadmes, "llms.txt"]) {
+  for (const block of readableBlocks(file, await readFile(fileUrl(file), "utf8"))) {
+    const command = block.match(themeUninstall);
+    if (command && !/\brestart/i.test(block)) {
+      fail(
+        `${file} gives "${command[0]}" without saying, in that passage, to restart Claude Code. A session that is open ` +
+          "during the uninstall keeps listing the pack in /theme, with its theme ticked, until Claude Code restarts.",
+      );
+    }
+  }
+}
+
 // The install guide's manual fallback is a procedure people follow verbatim on
 // a page that search can land them on directly. It used to open with
 // `cp *.json ~/.claude/themes/` and never say where the files come from — the

@@ -2995,6 +2995,51 @@ test("accepts status-line advice that names the gradient in its passage and the 
   assert.equal(result.code, 0, `correct status-line advice was rejected:\n${result.stderr}`);
 });
 
+const uninstallStep = (name) =>
+  `4. **Remove it.** Run \`claude plugin uninstall ${name}@notgabriels-themes\`, restart Claude\n` +
+  "   Code (an open session keeps listing the pack until it restarts), then pick another theme in\n   `/theme`.\n";
+
+test("rejects a theme plugin's uninstall command with no restart in its passage", { timeout: 120_000 }, async (t) => {
+  // A session open during the uninstall keeps listing the pack until Claude Code restarts. Each
+  // variant puts back a passage that leaves the restart out, runs the verifier, and restores the file.
+  const fixtureRoot = await makeFixture(t);
+  const variants = [
+    ["the 50-theme README's old step", "plugins/50-dark-themes/README.md", uninstallStep("50-dark-themes"),
+      "4. **Remove it.** Run `claude plugin uninstall 50-dark-themes@notgabriels-themes`, then pick another\n   theme in `/theme`.\n",
+      /plugins\/50-dark-themes\/README\.md gives "plugin uninstall 50-dark-themes@notgabriels-themes" without saying, in that passage, to restart/],
+    ["the Vol. 2 README's old step", "plugins/dark-themes-vol-2/README.md", uninstallStep("dark-themes-vol-2"),
+      "4. **Remove it.** Run `claude plugin uninstall dark-themes-vol-2@notgabriels-themes`, then pick another\n   theme in `/theme`.\n",
+      /plugins\/dark-themes-vol-2\/README\.md gives "plugin uninstall dark-themes-vol-2@notgabriels-themes" without saying, in that passage, to restart/],
+    ["a page giving the command", "claude-code-theme-install-guide.html", "  </main>",
+      "  <p>To remove the pack, run <code>claude plugin uninstall 50-dark-themes@notgabriels-themes</code>.</p>\n  </main>",
+      /claude-code-theme-install-guide\.html gives "plugin uninstall 50-dark-themes@notgabriels-themes" without saying, in that passage, to restart/],
+  ];
+  for (const [label, file, from, to, message] of variants) {
+    const path = join(fixtureRoot, file);
+    const original = await readFile(path, "utf8");
+    assert.equal(original.split(from).length, 2, `fixture anchor for ${label} must occur once; update this test`);
+    await writeFile(path, original.replace(from, to));
+    const result = await runVerifier(fixtureRoot);
+    await writeFile(path, original);
+
+    assert.notEqual(result.code, 0, `the verifier accepted ${label}`);
+    assert.match(result.stderr, message, label);
+  }
+});
+
+test("accepts an uninstall passage that says to restart, and a skills plugin's uninstall", { timeout: 120_000 }, async (t) => {
+  // The restart was measured for the theme packs, so the skills plugin is not held to it.
+  const fixtureRoot = await makeFixture(t);
+  const llmsPath = join(fixtureRoot, "llms.txt");
+  await writeFile(
+    llmsPath,
+    `${await readFile(llmsPath, "utf8")}\nTo remove Vol. 2, run claude plugin uninstall dark-themes-vol-2@notgabriels-themes and restart Claude Code.\n` +
+      "\nTo remove the skills, run claude plugin uninstall berlin-studio-skills@notgabriels-themes.\n",
+  );
+  const result = await runVerifier(fixtureRoot);
+  assert.equal(result.code, 0, `a correct uninstall passage was rejected:\n${result.stderr}`);
+});
+
 test("rejects a page that still offers the withdrawn free Gumroad download", { timeout: 90_000 }, async (t) => {
   // The install guide's FAQ has its own guard (from #61); this one covers every
   // other public page, so plant the offer where only it looks.

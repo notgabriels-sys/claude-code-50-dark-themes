@@ -60,8 +60,9 @@ Source and manual installation: https://github.com/notgabriels-sys/claude-code-5
    on each theme's page, so panels and text look as designed. Step-by-step for each terminal, with a
    matching color scheme:
    https://github.com/notgabriels-sys/claude-code-50-dark-themes/tree/main/terminal-schemes
-4. **Remove it.** Run `claude plugin uninstall dark-themes-vol-2@notgabriels-themes`, then pick another
-   theme in `/theme`.
+4. **Remove it.** Run `claude plugin uninstall dark-themes-vol-2@notgabriels-themes`, restart Claude
+   Code (an open session keeps listing the pack until it restarts), then pick another theme in
+   `/theme`.
 
 ## Troubleshooting
 
