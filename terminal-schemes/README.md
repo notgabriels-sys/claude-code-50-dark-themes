@@ -130,6 +130,30 @@ own colors are exact on any macOS version. Claude Code also limits the VS Code a
 256 colors, and starts at 256 inside tmux, in WSL under Windows Terminal and over SSH unless those are
 set up for 24-bit.
 
+## Status lines
+
+A Claude Code status line draws in its own colors. With the scheme installed, one that uses the
+terminal's 16 colors follows the scheme by itself. claude-hud (the Claude Code plugin) already does;
+three other tools need one setting:
+
+- **ccstatusline:** set `"colorLevel": 1` in `~/.config/ccstatusline/settings.json` (or the file passed to
+  its `--config` flag). Level 0 turns colors off, and colors written as `hex:` or `ansi256:`, and
+  gradients, show plain at level 1.
+- **@fbincon/claude-code-statusline:** run `claude-statusline config set theme terminal`, or set the
+  top-level `"theme": "terminal"` in `~/.claude/claude-statusline.json` (under `$CLAUDE_CONFIG_DIR` if
+  set; the file is checked strictly, so change only that value). If you set your own item colors, also
+  set `"palette": "ansi"`.
+- **@owloops/claude-powerline:** set `"colorCompatibility": "ansi"` under `display` in the config file it
+  reads: `~/.claude/claude-powerline.json`, or `~/.config/claude-powerline/config.json` if you keep it
+  there, or the file named by `CLAUDE_POWERLINE_CONFIG` or `--config`. A project's `.claude-powerline.json`
+  replaces that file completely, so it needs the key too. Text then uses only the scheme's red, green,
+  blue, white and gray, and segment backgrounds are dropped.
+- **claude-hud:** its documented default colors are named terminal colors, except `colors.custom`
+  (256-color 208), which only the optional custom line uses.
+
+Read from ccstatusline 2.2.33, @fbincon/claude-code-statusline 3.16.0, @owloops/claude-powerline 1.32.5
+and the claude-hud README; later versions may move these settings.
+
 ## Licence
 
 MIT, the same as the rest of this repository: see [LICENSE](../LICENSE). By
