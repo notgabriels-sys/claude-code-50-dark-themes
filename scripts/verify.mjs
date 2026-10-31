@@ -14,6 +14,7 @@ import {
   serializeThemeIndex,
   serializeThemeItemList,
 } from "./build-theme-index.mjs";
+import { HTML_SPACE, htmlTags } from "./html-tags.mjs";
 
 const root = new URL("../", import.meta.url);
 const pluginRoot = new URL("../plugins/50-dark-themes/", import.meta.url);
@@ -2454,105 +2455,8 @@ const INERT_CONTAINER = /<(template|noscript|textarea|xmp|plaintext|iframe|noemb
 const RAW_SCAN_NOTE =
   "This check reads the raw page, comments, attribute values and CSS included, so a mention counts too: " +
   'write its "<" as &lt; or name the element in words.';
-// Every start and end tag with its attributes, read as the HTML tokenizer reads
-// them: "/" separates attributes as whitespace does, a quoted value runs to its
-// own quote whatever it holds, and an attribute may follow a closing quote with
-// no space at all. A comment ends where a browser ends one (<!-->, <!--->, -->
-// or --!>, whichever comes first), and the elements whose content a browser
-// reads as text — <script>, <style>, <title>, <textarea> and the rest — end at
-// the first matching end tag, with nothing inside read as markup. Reading that
-// text as markup is not the safe side: the first version did so for <title>,
-// and "<title>x<!--</title>" opened a comment that hid a real microdata list
-// after it (Chromium's DOM, checked). A differential run of this reader against
-// Chromium over 20,000 generated snippets found nothing else. Inline <math> is
-// refused below, and inline <svg> is held to a shape-only allowlist, because
-// inside them <style> is not raw text; and a <script> may not hold "<!--", from
-// which a browser can run it past its </script>.
-const HTML_SPACE = /[\t\n\f\r ]/;
-const TEXT_ELEMENTS = new Set(["script", "style", "title", "textarea", "xmp", "iframe", "noembed", "noframes"]);
-const htmlTags = (markup) => {
-  const tags = [];
-  let at = 0;
-  const readWhile = (test) => {
-    const from = at;
-    while (at < markup.length && test(markup[at])) at++;
-    return markup.slice(from, at);
-  };
-  const skipPast = (ending) => {
-    ending.lastIndex = at;
-    const found = ending.exec(markup);
-    at = found ? found.index + found[0].length : markup.length;
-  };
-  let svgDepth = 0;
-  while ((at = markup.indexOf("<", at)) !== -1) {
-    const start = at;
-    at++;
-    if (markup.startsWith("!--", at)) {
-      at += 3;
-      if (markup[at] === ">") at += 1;
-      else if (markup.startsWith("->", at)) at += 2;
-      else skipPast(/--!?>/g);
-      continue;
-    }
-    const closing = markup[at] === "/";
-    if (closing) at++;
-    if (!/[A-Za-z]/.test(markup[at] ?? "")) {
-      // <!DOCTYPE …>, <?…> and </ before a non-letter run to the first ">";
-      // "<" before anything else is text.
-      if (closing || markup[at] === "!" || markup[at] === "?") skipPast(/>/g);
-      continue;
-    }
-    const name = readWhile((c) => !/[\t\n\f\r />]/.test(c)).toLowerCase();
-    const attributes = [];
-    let selfClosing = false;
-    while (at < markup.length && markup[at] !== ">") {
-      if (/[\t\n\f\r /]/.test(markup[at])) {
-        if (markup[at] === "/" && markup[at + 1] === ">") selfClosing = true;
-        at++;
-        continue;
-      }
-      // A name may begin with "=" and runs to a space, "/", ">" or "=".
-      const attribute = (markup[at++] + readWhile((c) => !/[\t\n\f\r />=]/.test(c))).toLowerCase();
-      readWhile((c) => HTML_SPACE.test(c));
-      let value = "";
-      if (markup[at] === "=") {
-        at++;
-        readWhile((c) => HTML_SPACE.test(c));
-        const quote = markup[at];
-        if (quote === '"' || quote === "'") {
-          at++;
-          value = readWhile((c) => c !== quote);
-          at++;
-        } else {
-          value = readWhile((c) => !/[\t\n\f\r >]/.test(c));
-        }
-      }
-      attributes.push({ name: attribute, value });
-    }
-    at++;
-    // foreign: the tag sits inside an inline <svg> (the <svg> and </svg> tags
-    // included), where the page check below holds it to an SVG allowlist. An
-    // <svg/> is empty, as in a browser.
-    const opensSvg = !closing && name === "svg" && !selfClosing;
-    const tag = {
-      name, closing, selfClosing, attributes, text: "", start, end: at, foreign: svgDepth > 0 || name === "svg",
-    };
-    if (opensSvg) svgDepth++;
-    if (closing && name === "svg" && svgDepth > 0) svgDepth--;
-    tags.push(tag);
-    if (!closing && name === "plaintext") {
-      tag.text = markup.slice(at);
-      at = markup.length;
-    } else if (!closing && TEXT_ELEMENTS.has(name)) {
-      const end = new RegExp(`</${name}[\\t\\n\\f\\r />]`, "gi");
-      end.lastIndex = at;
-      const stop = end.exec(markup)?.index ?? markup.length;
-      tag.text = markup.slice(at, stop);
-      at = stop;
-    }
-  }
-  return tags;
-};
+// htmlTags (scripts/html-tags.mjs) reads every start and end tag as the HTML
+// tokenizer does; scripts/site-style.mjs reads the site's pages with it too.
 // Inline <svg>, held to shapes. Inside one a browser reads <style>, <title> and
 // <script> as markup rather than text, honours CDATA, and leaves it for HTML
 // again at tags such as <p> or <font color> -- so the tags htmlTags reads there
@@ -3162,8 +3066,15 @@ for (const host of reviewedLinkHosts) {
 // off what the checks above refuse by reading: workers, plugins, frames, <base>
 // and form posts. This reviews; it does not read what a script does.
 const reviewedInlineScripts = new Map([
-  // The gallery: renders THEMES and VOL2_THEMES, filters and copies install commands.
-  ["index.html", ["sha256-IuzE/u5N1mik+4VQKPk4nMJAX0zoz6BmCVoo+rL7LMw="]],
+  // The storefront (read 2026-10-31 for #72). In <head>, before the first paint: applies the
+  // theme and the motion pause saved under familiars-theme and familiars-motion, as data-theme
+  // and data-motion on the root. Then the gallery: renders THEMES and VOL2_THEMES, filters and
+  // copies install commands; the light/dark switch and the motion switch, each saving its choice
+  // under those keys and writing only its own label's text, the motion switch and a change of the
+  // motion setting also marking the hero .risen so its entrance plays once; a scrollBy that moves keyboard focus clear of the
+  // floating switch, never a tap's or a click's; and the pointer light, which sets --mx and --my
+  // on the .lit surfaces. It loads, fetches and navigates nothing.
+  ["index.html", ["sha256-NIZ5jxPqHe76C4AEHPJCjXNeTRDJC4LsWQG/g6melI4=", "sha256-yQjCaHNN9EhMHqdGIwFELVT3c7GPz7YUCbH1jKu7ogE="]],
   // Familiars (main's #65, read 2026-10-24): the light/dark switch, kept in
   // localStorage; the kind filter; a pointer-following light on each card; the
   // copy button, which writes the request address to the clipboard; and the
@@ -3908,14 +3819,21 @@ const checkXmlDocument = (file, bytes, allowed) => {
   }
   return body;
 };
+// The site's look (scripts/site-style.mjs, run at the end) names the one stylesheet served here.
+const siteStyle = await import("./site-style.mjs");
 for (const file of servedFiles) {
   const name = file.slice(file.lastIndexOf("/") + 1);
   const type = name.includes(".") ? name.slice(name.lastIndexOf(".") + 1) : "";
   // An image's extension may be written in capitals (IMG_0001.JPG); a page's
   // or a note's may not, because .HTML and .MD are what this check refuses.
-  const reading = SERVED_TYPES.get(type) ??
+  // The one served stylesheet is the site's shared one (#72): scripts/site-style.mjs, run at the
+  // end, reads every request it makes, which is only its own @font-face files (no @import, no other
+  // url(), and no backslash to spell one), so a page that links it makes no request verify does
+  // not read. Opened directly, Pages serves it as text/css, which a browser shows as text.
+  const siteStylesheet = file === siteStyle.STYLESHEET;
+  const reading = siteStylesheet ? "site stylesheet" : SERVED_TYPES.get(type) ??
     (SERVED_TYPES.get(type.toLowerCase()) === "inert" ? "inert" : undefined);
-  if (type.toLowerCase() === "css") {
+  if (type.toLowerCase() === "css" && !siteStylesheet) {
     fail(
       `${file} is a stylesheet. A page here may load one, and CSS makes requests (@import, url()) verify does ` +
         `not read; keep styles in the page's own <style>.`,
@@ -4072,6 +3990,28 @@ for (const { name, payload, version, sha256 } of releasedPackages) {
     );
   }
 }
+// ---------------------------------------------------------------------------
+// The site's look: assets/site.css holds the Familiars page's palette, both themes, contrast
+// that holds in each, and motion that runs only when the visitor allows it; the pages on it link
+// it first, carry the lights and the theme switch, and serve their own fonts under the OFL. The
+// rules and their messages live in scripts/site-style.mjs. They run last: the guards above name
+// what they find more precisely, and the first failure is the one reported.
+// ---------------------------------------------------------------------------
+const siteCss = await readFile(new URL(siteStyle.STYLESHEET, root), "utf8");
+for (const problem of siteStyle.stylesheetProblems(siteCss)) fail(problem);
+const siteFontFiles = Object.fromEntries(
+  await Promise.all(
+    (await readdir(new URL("assets/fonts/", root))).map(async (name) => [name, name.endsWith(".txt") ? await readFile(new URL(`assets/fonts/${name}`, root), "utf8") : true]),
+  ),
+);
+const pageFonts = (await Promise.all(htmlFiles.map(async (path) => siteStyle.pageFontFiles(await readFile(new URL(path, root), "utf8"), path)))).flat();
+for (const problem of siteStyle.fontProblems(siteCss, siteFontFiles, pageFonts)) fail(problem);
+const siteFonts = siteStyle.fontFaces(siteCss).flatMap(({ urls }) => urls);
+const siteTokens = siteStyle.sharedTokens(siteCss);
+for (const path of siteStyle.SITE_PAGES) {
+  for (const problem of siteStyle.pageProblems(await readFile(new URL(path, root), "utf8"), path, siteFonts, siteTokens)) fail(problem);
+}
+
 console.log(
   `Verified ${files.length} themes, ${pluginFiles.length} plugin themes, ${vol2Files.length} Vol. 2 themes, ` +
     `${galleryThemes.length} gallery cards, ` +
