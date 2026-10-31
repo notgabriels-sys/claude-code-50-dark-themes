@@ -346,6 +346,7 @@ test("pages: the storefront on disk wears the base, and each part of it is requi
   assert.deepEqual(check(withStyle(page, "  .cmd .syntax-command+.syntax-keyword{color:var(--syntax-purple)}")), [], "a sibling inside the specimen");
   assert.deepEqual(check(withStyle(page, "  .lede+.cmd .syntax-keyword{color:var(--syntax-purple)}")), [], "a specimen that follows a sibling");
   bad(check(withStyle(page, "  .cmd~p{color:var(--syntax-purple)}")), /\.cmd~p \{ color: var\(--syntax-purple\) \}: outside a specimen/, "a later sibling of a specimen");
+  assert.deepEqual(check(withStyle(page, "  .card>.term .hint{color:var(--mut)}")), [], "a child of a theme preview");
   // Outside one, the page's text and surfaces take the shared tokens.
   bad(check(swap(page, "  .finder-empty{margin:0;padding:18px 0 26px;color:var(--mute);", "  .finder-empty{margin:0;padding:18px 0 26px;color:var(--ground);")), /\.finder-empty \{ color: var\(--ground\) \}: outside a specimen or a theme preview, text takes/, "the page colour as text off a fill");
   bad(check(withStyle(page, "  .lede{color:transparent;text-shadow:0 0 0 #EDEBF3}")), /\.lede \{ color: transparent \}: outside a specimen/, "text drawn by its shadow");
@@ -361,6 +362,7 @@ test("pages: the storefront on disk wears the base, and each part of it is requi
   bad(check(withStyle(page, "  .tool{background:var(--terminal-surface)}")), /\.tool \{ background: var\(--terminal-surface\) \}: .* --terminal-surface is neither/, "a surface in a token of the page's own");
   bad(check(withStyle(page, "  .tool{background-image:linear-gradient(#16161C,#16161C)}")), /\.tool \{ background-image: linear-gradient\(#16161C,#16161C\) \}: outside a specimen or a theme preview, a surface takes/, "a surface painted as a gradient");
   bad(check(withStyle(page, "  .tool{background:rgba(255,255,255,.06)}")), /\.tool \{ background: rgba\(255,255,255,\.06\) \}: .* a wash of white or black at most 5% opaque/, "a wash thicker than the floors allow");
+  bad(check(withStyle(page, "  .tool{background:rgba(168,152,255,.04)}")), /\.tool \{ background: rgba\(168,152,255,\.04\) \}: .* a wash of white or black at most 5% opaque/, "a thin wash of a colour");
   assert.deepEqual(check(withStyle(page, "  .tool{background:rgba(0,0,0,.05)}")), [], "the thickest wash allowed");
   // The specimen's ink is the one value scripts/verify-contrast.mjs reads, the first on the page.
   bad(check(withStyle(page, "  .cmd{--ink:#2A2933;}")), /\.cmd \{ --ink: #2A2933 \}: scripts\/verify-contrast\.mjs holds the first --ink the page declares, #e9eaec/, "a second ink in the specimen");

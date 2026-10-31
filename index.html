@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="script-src 'sha256-NIZ5jxPqHe76C4AEHPJCjXNeTRDJC4LsWQG/g6melI4=' 'sha256-mjisD9e/JGOAwyrjiv6i6o5hKBQL5KBvtiox8+xq8Wg='; worker-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="script-src 'sha256-NIZ5jxPqHe76C4AEHPJCjXNeTRDJC4LsWQG/g6melI4=' 'sha256-yQjCaHNN9EhMHqdGIwFELVT3c7GPz7YUCbH1jKu7ogE='; worker-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>50 Dark Themes for Claude Code</title>
 <meta name="description" content="Browse and install 50 hand-tuned dark themes for Claude Code as a native plugin, plus the free Vol. 2 expansion pack. Free, MIT licensed, and verified with 894 role-aware contrast comparisons.">
@@ -476,7 +476,8 @@ footer>span>a.in-text{display:inline;min-height:0;border-bottom:0;text-decoratio
     .monolith-mark::after{animation:mark-pulse 3s ease-out infinite}
     /* The opening lines rise in once; under the pause they would hold the first frame at 30%,
        so the pause removes the rise (and its delays, which the gated shorthand would outrank).
-       The motion switch marks the hero .risen, so Play does not run the rise again. */
+       The motion switch, or a change of the motion setting, marks the hero .risen, so the rise
+       does not run again or late. */
     :root:not([data-motion="paused"]) .hero-layout:not(.risen)>div:first-child>*{animation:hero-rise .7s ease both}
     :root:not([data-motion="paused"]) .hero-layout>div:first-child>:nth-child(2){animation-delay:.08s}
     :root:not([data-motion="paused"]) .hero-layout>div:first-child>:nth-child(3){animation-delay:.16s}
@@ -1161,7 +1162,11 @@ vol2Btn.addEventListener("click", async () => {
     motionSwitch.textContent = root.getAttribute("data-motion") === "paused" ? "Play motion" : "Pause motion";
   };
   paintMotion();
-  allowsMotion.addEventListener("change", paintMotion);
+  allowsMotion.addEventListener("change", () => {
+    // Turning reduced motion off mid-visit would otherwise run the rise late, or again.
+    hero.classList.add("risen");
+    paintMotion();
+  });
   motionSwitch.addEventListener("click", () => {
     // The opening lines rise in once per visit: un-pausing would otherwise run the rise again.
     hero.classList.add("risen");
