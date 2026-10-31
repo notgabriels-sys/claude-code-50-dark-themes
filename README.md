@@ -97,7 +97,7 @@ exist before, restart Claude Code once).
 
 ### With an agent
 
-The **[Claude Code Theme Setup Assistant](https://agensi.io/skills/claude-code-theme-setup-assistant)** (on Agensi)
+The **[Claude Code Theme Setup Assistant](https://agensi.io/skills/claude-code-theme-setup-assistant)** (paid, on Agensi)
 picks a theme with you, installs it, checks it shows in `/theme` and gives you the matching terminal
 background. The themes themselves stay free here.
 
