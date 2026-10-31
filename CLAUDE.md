@@ -231,6 +231,13 @@ demand, and **fails the build** on:
 - **(added 2026-10-24)** an inline `svg` element holding anything but plain shapes
   with geometry and paint attributes — see "Main's #65, the Familiars page"
   below;
+- **(added 2026-10-30)** a sitemap that lists a page with a robots `noindex`,
+  a page that is not served or not at its canonical address, or leaves out an
+  indexable page, with a `<lastmod>` other than a dated page's `dateModified`;
+  an `llms.txt` destination that is off the site, not served or on a payment
+  host, however it is spelled; and a robots.txt that blocks a path the public
+  pages use or leaves an internal note open — see "What the sitemap,
+  `llms.txt` and robots.txt say the site holds" below;
 - the retired résumé checkout slug `notgabriel.gumroad.com/l/wmlrk`;
 - any of the three verified PayPal links going missing;
 - **(added 2026-08-24)** any of the three carrying a price other than its
@@ -844,6 +851,106 @@ the page-dates tests and the real tree:
   leaving the line unsorted each fail the new test at the branch's day and turn
   the real tree red;
 - dropping the parting limit fails it at the made-and-unmade case alone.
+
+**(added 2026-10-30) What the sitemap, `llms.txt` and robots.txt say the site
+holds is read against the pages.** WP10. `verify` compared the sitemap only
+with the builder that writes it, and read neither `llms.txt`'s links nor
+robots.txt. Reproduced with `verify` green on `main` (a5e5208), in scratch
+copies: eight builder bugs (listing the noindex Impressum, a page that does
+not exist or a page twice; dropping `familiars.html` or a theme page; dating
+a page by its publication; no `lastmod`; a `lastmod` on an undated page);
+`familiars.html` (main's #65) missing from `llms.txt`, and a link there to
+another host; and robots.txt reading `Allow: /`, with `Disallow: /` or a
+`/claude` rule over the install guide passing too.
+
+- **Sitemap.** The builder writes a `<lastmod>` only on the two dated pages,
+  read from each page's own JSON-LD `dateModified`, and drops the Impressum.
+  After the freshness check, `verify` reads the sitemap against the pages:
+  every `<loc>` is the address of a served page with no robots or googlebot
+  `noindex`/`none`, listed once, at the address its canonical link names;
+  every such `.html` page is listed; a dated page's `lastmod` equals its
+  `dateModified` and no other page has one. The share-card source
+  `assets/social-preview.html` carries `noindex`, as an unlinked render
+  source. A robots meta counts only in the head, with only head tags,
+  comments and whitespace before it; one written with a character reference
+  or a space in its name or content, one for another single crawler
+  (bingbot), and any directive outside the documented set or not separated
+  by commas are refused rather than guessed at. The placement rule was
+  checked against Chromium over 14 placements by the WP10 noindex reader,
+  with its harness proven first (the rule without it missed 6): 0 misses and
+  4 refusals in the safe direction (after </head>, a stray </div> or </p>,
+  and, until the review below, a comment).
+- **`llms.txt`.** It links the Familiars page by the page's own title, with a
+  paragraph in the page's own words (no number, price or address). Every
+  destination a reader could follow — Markdown and reference links, angle
+  and autolinks, raw HTML links, bare addresses with or without a scheme —
+  is resolved by the URL parser against `llms.txt`'s own address, and must be
+  on this site, over https, and served; `PAYMENT_DOMAIN` is tested against
+  the parsed host, and a payment host named in prose is refused too. Every
+  root page a search engine may index is linked, with the theme index and
+  its address pattern.
+- **robots.txt.** Root notes are disallowed by stem with their dot
+  (`/CLAUDE.`, clear of `/claude-code-…`), and `docs/`, `products/`,
+  `scripts/`, `plugins/` and the Product Hunt draft by directory;
+  `terminal-schemes/README.md` stays crawlable (`crawlableNotes`). The file
+  is held to one `User-agent: *` group of plain-prefix `Disallow` lines,
+  under which longest-match and first-match parsers agree (measured by the
+  WP10 robots reader on Python's `urllib.robotparser`, protego and npm
+  robots-parser over 1,074 URLs from a local github-pages build: no
+  disagreement; the harness lived in /tmp and is not kept). No rule may
+  block a path the public pages or `llms.txt` use, read percent-decoded and
+  case-folded from every URL attribute, `srcset`, meta content, CSS `url()`
+  and `image-set()`, JSON-LD and absolute address; every served note is
+  blocked at each address Pages serves it at (raw `.md`, rendered `.html`,
+  and the directory for a README or `index.md` with no `index.html`) unless
+  kept open; no rule blocks nothing. robots.txt keeps crawlers from
+  fetching the notes; a blocked address that something links can still be
+  listed in search without its content, and removing what is already
+  indexed is a Search Console step.
+
+The noindex reader, run while the first commits landed, attacked them and
+found the body-placement hole (fixed in b618104). An independent review of
+the six commits then followed (three lenses — bypass, false refusals,
+records — every finding re-run from a fresh worktree by a second agent told
+to refute it): 31 findings, 19 held in full and 12 in part (53232e4's
+message says 23 and 8, miscounted). The serious one:
+`llms.txt` passed a checkout written `//www.pay%70al.com/…`, with an
+ideographic full stop, with backslashes or with no scheme, because the
+guard read only text with "://" and matched hosts literally. All the
+others are fixed above or below, except: a root note's extensionless
+address (`/CLAUDE`), which Pages may serve (inferred from Jekyll's
+documentation; the site was out of reach and Firecrawl out of credits) and
+which a prefix rule cannot block without colliding with
+`/claude-code-…` under the case-folded rule; og:updated_time and other
+second modified dates (main's page-dates guard); and `llms.txt` linking the
+GitHub repository, which it refuses by design.
+
+Corrections to this round's own records. fda08a3 said four removed
+branches "could never decide": two could — the addresses `llms.txt` gives
+(it accepted a link to a blocked note) and `srcset`/`poster` (a fixture
+pins them) — and both are restored. ce98a3f's "three of them controls" were
+two. b618104's message told contributors a comment or a stray end tag ends
+the head in a browser; it does not, and the message now states the rule
+instead. And a literal byte-order mark slipped into a regex again, through
+a Python heredoc, and the rule-7 check caught it before commit.
+
+Mutation-tested (rule 5), each branch gutted alone against the real tree
+and the tests of its own guard, not the whole suite:
+- the sitemap guard and its builder (49d4c28): 20 branches, each turning its
+  own tests red; reading a directory's index page at its own address and
+  writing no lastmod also turn the real tree red;
+- the head-placement rule (b618104): 7 branches; the whole check, its tag
+  half and its text half each turn their own tests red, and allowing no
+  closing or opening tag, keeping the doctype or the title's text each turn
+  the real tree red;
+- the llms.txt and robots guards as first written (fda08a3): 31 branches; 30
+  turned their own tests red at once, and the one that turned nothing red,
+  every served page as a public path, is pinned by a test added after it
+  (d5eb15d: a rule over the unlinked share-card source);
+- the review's fixes (53232e4): 37 branches, 6 of the robots meta reader and
+  the sitemap, 14 of llms.txt and 17 of robots.txt, each turning its own
+  tests red; dropping the directory addresses of index pages from what the
+  site serves turns the real tree red too.
 
 **(added 2026-10-20) The cards print the terminal background.** The footer, the
 install guide (its text and its HowTo structured data) and `README.md` told

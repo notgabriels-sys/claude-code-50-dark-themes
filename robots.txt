@@ -1,3 +1,15 @@
 User-agent: *
-Allow: /
+Disallow: /CLAUDE.
+Disallow: /CONTRIBUTING.
+Disallow: /DEV_COMMUNITY_ARTICLE_DRAFT.
+Disallow: /DIRECTORY_SUBMISSION_PACK.
+Disallow: /DOMAIN_SETUP.
+Disallow: /PROMOTION_QUEUE.
+Disallow: /README.
+Disallow: /assets/product-hunt/
+Disallow: /docs/
+Disallow: /plugins/
+Disallow: /products/
+Disallow: /scripts/
+
 Sitemap: https://gabs-utilities.com/sitemap.xml
