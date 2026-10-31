@@ -101,7 +101,8 @@ for (const surfaceName of ["ground", "ground-2"]) {
 // terminal canvas, page canvas, and raised install panel—not merely look
 // distinct in one screenshot. The page canvas here is the dark theme's: the
 // palette is never text on the light page, because scripts/site-style.mjs
-// allows it only inside a specimen, which keeps the dark ground in both themes.
+// allows it only inside a specimen, which keeps the dark ground in both themes,
+// or a theme preview, which paints its own theme's ground.
 const semanticTokens = [
   "syntax-purple",
   "syntax-light-purple",

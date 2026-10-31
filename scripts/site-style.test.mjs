@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { spawn } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { cp, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, relative, sep } from "node:path";
@@ -125,6 +125,19 @@ test("palette: a colour the design base does not name fails, however it is writt
   bad(stylesheetProblems(`${css}\n.lights .l1 { background: u\\72 l(glow.png); }\n`), /holds a backslash/, "url( spelled with an escape");
   bad(stylesheetProblems(`${css}\n@font-face { font-family: "Extra"; font-display: url(swap.png); }\n`), /@font-face \{ font-display \} fetches with url\(\)/, "a url() in a face, outside its src");
   assert.deepEqual(stylesheetProblems(`${css}\n.x::before { content: "url(not a request)"; }\n`), [], "url( inside a string is text");
+  // What the browser reads otherwise than these rules is refused, not guessed at.
+  const familjen = '  src: url("fonts/FamiljenGrotesk-VF.woff2") format("woff2");\n';
+  bad(stylesheetProblems(swap(css, familjen, `${familjen}  src: url("https://example.com/second.woff2") format("woff2");\n`)), /assets\/site\.css @font-face declares src twice/, "a second src, the one the browser uses");
+  bad(stylesheetProblems(`${css}\n.lights {\n  --note: "\n  ; background-image: url(https://example.com/p.png); --end: "\n}\n`), /assets\/site\.css has a string that runs across a line break/, "a url() hidden in a string the browser ends at the line break");
+  bad(stylesheetProblems(`@layer x "\n" /*\n;@import url(https://example.com/s.css);\n/* */@layer y;\n${css}`), /has a string that runs across a line break/, "an @import hidden behind a broken string and a comment");
+  bad(stylesheetProblems(swap(css, 'url("fonts/IBMPlexMono-Medium-Pi.woff2")', "url(fonts/IBMPlexMono-Medium-Pi.woff2)")), /assets\/site\.css writes url\( without quotes/, "a plain url(, which the browser reads to its \")\"");
+  bad(stylesheetProblems(`${css}\n<!-- .lights .l1 { opacity: 1 } -->\n`), /assets\/site\.css holds <!-- or -->/, "HTML comment markers");
+  bad(stylesheetProblems(`${css}\n.lights .l1 { --x: ( } ; opacity: 1 ) ; }\n`), /assets\/site\.css has brackets that do not pair up/, "a brace inside brackets, which the browser does not close the rule at");
+  bad(stylesheetProblems(`${css}\n.lights .l1 { opacity: 1 }\n;\n.lights .l2 { opacity: 1 }\n`), /assets\/site\.css has a ";" that ends no at-rule/, "a stray semicolon, which drops the rule after it");
+  assert.deepEqual(stylesheetProblems(`@layer base;\n${css}`), [], "a semicolon that ends an at-rule");
+  bad(stylesheetProblems(`${css}\n.lights .l2 { opacity: 1;\n`), /has brackets that do not pair up/, "a rule left open at the end");
+  assert.deepEqual(stylesheetProblems(swap(css, 'url("fonts/IBMPlexMono-Medium-Pi.woff2")', 'url( "fonts/IBMPlexMono-Medium-Pi.woff2" )')), [], "a quoted address with spaces around it");
+  assert.deepEqual(stylesheetProblems(`${css}\n.lights .l1 { opacity: 1; opacity: 0.5; }\n`), [], "a property written twice outside a face, the usual fallback");
 });
 
 test("two themes: both light declarations say the same, cover every colour, and add nothing the dark theme lacks", () => {
@@ -165,6 +178,18 @@ test("contrast: every pair holds its floor in each theme, and ember is never tex
   bad(stylesheetProblems(`${css}\n.fine { color: rgba(237, 235, 243, 0.3); }\n`), /\.fine \{ color: rgba\(237, 235, 243, 0\.3\) \}: text takes/, "ink at a third");
   bad(stylesheetProblems(`${css}\n.card { color: #EDEBF3; }\n`), /\.card \{ color: #EDEBF3 \}: text takes/, "a literal that the light theme never re-declares");
   assert.equal(contrast([0xb8, 0x60, 0x1a], [0xf2, 0xf1, 0xf6]) < 4.5, true, "which it would fail on the light page");
+  // A grey that holds on every bare surface (4.86:1) but not under the darkest wash a page may lay on one.
+  bad(stylesheetProblems(lightMute("#6A6874")), /light theme: --mute on --\S+ under a 5% #000000 wash is 4\.\d\d:1, below the 4\.5:1 floor/, "a grey a page's wash would push under the floor");
+  // Text is painted by its colour alone.
+  bad(stylesheetProblems(`${css}\n.fine { color: transparent; }\n`), /\.fine \{ color: transparent \}: text takes/, "transparent text, which a shadow or a background shows through");
+  bad(stylesheetProblems(`${css}\n.fine { color: var(--ground); }\n`), /\.fine \{ color: var\(--ground\) \}: text takes/, "the page colour as text, off a fill");
+  assert.deepEqual(stylesheetProblems(`${css}\n.fine { background: var(--accent); color: var(--ground); }\n`), [], "the page colour on a violet fill");
+  bad(stylesheetProblems(`${css}\n.fine { background: var(--raise); color: var(--ground); }\n`), /\.fine \{ color: var\(--ground\) \}: text takes/, "the page colour on a surface, not a fill");
+  bad(stylesheetProblems(`${css}\n.fine { all: initial; }\n`), /\.fine \{ all: initial \} paints text with something other than its colour/, "a reset to the browser's colours");
+  bad(stylesheetProblems(`${css}\n.fine { background: var(--ink); -webkit-background-clip: text; }\n`), /\{ -webkit-background-clip: text \} paints text/, "a background clipped to the text");
+  bad(stylesheetProblems(swap(css, "  color: var(--ink);\n  font-family: var(--body);", "  color: var(--ink);\n  -webkit-text-stroke: 1px var(--ember);\n  font-family: var(--body);")), /\{ -webkit-text-stroke: 1px var\(--ember\) \} paints text/, "ember stroked round the text");
+  bad(stylesheetProblems(`@property --ink { syntax: "<color>"; inherits: false; initial-value: #EDEBF3; }\n${css}`), /assets\/site\.css registers a property \(@property --ink\)/, "a token that stops inheriting");
+  bad(stylesheetProblems(`${css}\n.fine { opacity: 0.5; }\n`), /assets\/site\.css \.fine \{ opacity: 0\.5 \} dims or recolours what it is set on/, "text at half strength");
 });
 
 test("motion: every animation and hover transform waits for the visitor's permission, or the same selector turns it off", () => {
@@ -172,6 +197,8 @@ test("motion: every animation and hover transform waits for the visitor's permis
   bad(stylesheetProblems(unguarded), /\.lights \.l1 \{ animation: drift-a 26s ease-in-out infinite alternate \} runs whatever the visitor's motion setting/, "a drift outside the block");
   assert.deepEqual(stylesheetProblems(`${unguarded}@media (prefers-reduced-motion: reduce) { .lights .l1 { animation: none; } }\n`), [], "turned off for the same selector when motion is reduced");
   bad(stylesheetProblems(`${unguarded}@media (prefers-reduced-motion: reduce) { .lights .l2 { animation: none; } }\n`), /\.lights \.l1 \{ animation/, "turned off for another selector");
+  bad(stylesheetProblems(`${unguarded}@media (prefers-reduced-motion: reduce) { .lights.l1 { animation: none; } }\n`), /\.lights \.l1 \{ animation/, "turned off for an element with both classes, which is not the same");
+  assert.deepEqual(stylesheetProblems(`${css}\n.a > .b { animation: drift-a 2s infinite; }\n@media (prefers-reduced-motion: reduce) { .a>.b { animation: none; } }\n`), [], "the same selector written with other spacing");
   bad(stylesheetProblems(`${css}\n@media not (prefers-reduced-motion: no-preference) { .x { animation: drift-a 2s; } }\n`), /\.x \{ animation: drift-a 2s \} runs whatever/, "a block that means the opposite");
   bad(stylesheetProblems(`${css}\n.theme-switch:hover { transform: translateY(-2px); }\n`), /\.theme-switch:hover \{ transform: translateY\(-2px\) \} runs whatever the visitor's motion setting/, "a hover lift outside the block");
   assert.deepEqual(stylesheetProblems(`${css}\n.theme-switch:hover { transform: none; }\n.skip-link:focus { transform: translateY(0); }\n`), [], "no movement, or not a hover");
@@ -197,12 +224,15 @@ test("motion: every animation and hover transform waits for the visitor's permis
   bad(stylesheetProblems(`${css}\n@media not screen and (prefers-reduced-motion: no-preference) { .x { animation: drift-a 2s; } }\n`), /\.x \{ animation: drift-a 2s \} runs whatever/, "a query that not turns around");
   bad(stylesheetProblems(`${css}\n@media (prefers-reduced-motion: reduce) { .x { animation: drift-a 2s; } }\n`), /\.x \{ animation: drift-a 2s \} runs whatever/, "an animation for the visitors who asked for less motion");
   bad(stylesheetProblems(css.replace(':root[data-motion="paused"] *::after { animation-play-state: paused !important; }', "")), /must pause every animation while the page's motion switch is off/, "no pause");
-  // Movement is anything a transition can change but colour, opacity, shadow and filter.
+  // Movement is anything a transition can change but colour and opacity: a shadow or a filter has an offset.
   bad(stylesheetProblems(`${css}\n.rise { transition: -webkit-transform .6s; }\n`), /\.rise \{ transition: -webkit-transform \.6s \} runs whatever/, "a transform behind a vendor prefix");
   bad(stylesheetProblems(`${css}\n.drawer { transition: margin-left .3s ease; }\n`), /\.drawer \{ transition: margin-left \.3s ease \} runs whatever/, "a slide by margin");
   bad(stylesheetProblems(`${css}\n.pop { transition: opacity .2s, top .3s; }\n`), /\.pop \{ transition: opacity \.2s, top \.3s \} runs whatever/, "a drop by offset, beside a fade");
   bad(stylesheetProblems(`${css}\n.pop { transition-property: inset; }\n`), /\.pop \{ transition-property: inset \} runs whatever/, "a move by inset");
-  assert.deepEqual(motionProblems(parseCss(".b { transition: color .3s, opacity .2s, box-shadow .2s, filter .2s, outline-color .1s, -webkit-text-fill-color .2s, background-color .2s; }"), "x"), [], "colours, opacity, shadows and filters fade; nothing moves");
+  assert.deepEqual(motionProblems(parseCss(".b { transition: color .3s, opacity .2s, outline-color .1s, -webkit-text-fill-color .2s, background-color .2s, fill .2s; }"), "x"), [], "colours and opacity fade; nothing moves");
+  bad(stylesheetProblems(`${css}\n.filter:hover { box-shadow: inset 160px 0 0 var(--accent-soft); }\n.filter { transition: box-shadow .6s ease; }\n`), /\.filter \{ transition: box-shadow \.6s ease \} runs whatever/, "a fill swept in by a shadow's offset");
+  bad(stylesheetProblems(`${css}\n.t { transition: text-shadow .6s; }\n`), /\.t \{ transition: text-shadow \.6s \} runs whatever/, "a text shadow that slides");
+  bad(stylesheetProblems(`${css}\n.t { transition: filter .6s; }\n`), /\.t \{ transition: filter \.6s \} runs whatever/, "a drop shadow in a filter");
   // !important on motion outranks the rules that turn it off, and the pause.
   bad(stylesheetProblems(`${css}\n@media (prefers-reduced-motion: no-preference) { .lights .l1 { animation: drift-a 2s linear infinite !important; } }\n`), /\.lights \.l1 \{ animation \} is !important, which outranks the pause/, "a drift the pause cannot hold");
   bad(stylesheetProblems(`${css}\n@media (prefers-reduced-motion: no-preference) { ${PAUSE_GATE} .x { transition: transform .2s !important; } }\n`), /\{ transition \} is !important/, "a transition marked important");
@@ -224,6 +254,20 @@ test("pause: a loop holds its frame; what would hold a half-finished frame or st
   bad(stylesheetProblems(inBlock("html { scroll-behavior: smooth; }")), /html \{ scroll-behavior: smooth \} still moves while/, "smooth scrolling under the pause");
   bad(stylesheetProblems(inBlock(`${PAUSE_GATE} .a, .b { transition: transform .2s; }`)), /still moves while/, "the gate on one selector of a list only");
   bad(stylesheetProblems(inBlock(':root:not([data-motion="still"]) .a { transition: transform .2s; }')), /still moves while/, "a gate that is not the pause");
+  // The gate is matched as the browser matches it: an attribute value is case-sensitive and keeps its spaces.
+  bad(stylesheetProblems(inBlock(':root:not([data-motion="Paused"]) .rise { animation: drift-a .7s ease both; }')), /\.rise \{ animation: drift-a \.7s ease both \} keeps its first frame/, "a gate in other capitals");
+  bad(stylesheetProblems(inBlock(':root:not([data-motion="paused "]) .a:hover { transform: translateY(-6px); }')), /\.a:hover \{ transform: translateY\(-6px\) \} still moves while/, "a gate with a space inside the value");
+  assert.deepEqual(stylesheetProblems(inBlock(":root:not([data-motion='paused'])  .rise { animation: drift-a .7s ease both; }")), [], "the gate in single quotes, with spaces after it");
+  // A loop counted down elsewhere, or counted by a var(), is a one-off.
+  bad(stylesheetProblems(`${inBlock(".rise { animation: drift-a .7s ease both infinite; }")}.rise { animation-iteration-count: 1; }\n`), /\.rise \{ animation-iteration-count: 1 \} counts an animation's runs outside the pause gate/, "a loop counted down by a later rule");
+  bad(stylesheetProblems(inBlock(".rise { animation: drift-a .7s ease both var(--count, infinite ); }")), /\.rise \{ animation: drift-a \.7s ease both var\(--count, infinite \) \} keeps its first frame/, "a count that only a fallback calls infinite");
+  assert.deepEqual(stylesheetProblems(`${inBlock(`.rise { animation: drift-a .7s ease both infinite; } ${PAUSE_GATE} .rise.once { animation-iteration-count: 1; }`)}`), [], "a count the pause removes");
+  // Only the pause itself is !important: a play state that says anything else outranks it.
+  bad(stylesheetProblems(`${css}\n:root[data-motion="paused"] .lights span { animation-play-state: running !important; }\n`), /\{ animation-play-state \} is !important, which outranks the pause/, "a play state that runs under the pause's own selector");
+  bad(stylesheetProblems(`${css}\n:root[data-motion="PAUSED"] .hero > * { animation-play-state: paused !important; }\n`), /\{ animation-play-state \} is !important, which outranks the pause/, "a pause for a value the switch never sets is not the pause");
+  // The pause holds the root's own animations too.
+  bad(stylesheetProblems(css.replace(':root[data-motion="paused"],\n', "")), /must pause every animation while the page's motion switch is off/, "a pause that leaves the root running");
+  bad(stylesheetProblems(css.replace(':root[data-motion="paused"] *::before', ':root[data-motion="PAUSED"] *::before')), /must pause every animation/, "a pause for a value the switch never sets");
   assert.deepEqual(stylesheetProblems(inBlock(`${PAUSE_GATE} .card:hover { transform: translateY(-2px); } ${PAUSE_GATE} .card { transition: transform .2s; } .card { transition: border-color .2s; }`)), [], "movement removed by the pause, colour left to fade");
   // The same holds on a page, and for motion the reduce block turns off: it runs, and pauses, when motion is allowed.
   const check = (html) => pageProblems(html, "index.html", fontFiles, tokens);
@@ -239,6 +283,7 @@ test("pages: the storefront on disk wears the base, and each part of it is requi
   bad(check(swap(page, '<link rel="stylesheet" href="assets/site.css">\n<style>', '<style></style>\n<link rel="stylesheet" href="assets/site.css">\n<style>')), /links assets\/site\.css after its own <style>/, "the stylesheet after the page's style");
   bad(check(swap(page, '<span class="l3"></span>', "")), /does not carry the ambient lights/, "a light missing");
   bad(check(swap(page, '<div class="lights" aria-hidden="true">', '<div class="lights">')), /does not carry the ambient lights/, "lights a screen reader would visit");
+  bad(check(swap(page, '<span class="l3"></span></div>', '</div><span class="l3"></span>')), /does not carry the ambient lights/, "a light outside the lights");
   bad(check(swap(page, 'id="themeSwitch" type="button" hidden>', 'id="themeSwitch" type="button">')), /does not carry the theme switch/, "a switch shown before its script can work it");
   bad(check(swap(page, 'const THEME_KEY = "familiars-theme";', 'const THEME_KEY = "storefront-theme";')), /does not work the theme switch under the key "familiars-theme"/, "a key of its own");
   bad(check(swap(page, 'const THEME_KEY = "familiars-theme";', 'const THEME_KEY = "storefront-theme"; // was "familiars-theme"')), /does not work the theme switch/, "the key only in a comment");
@@ -294,6 +339,32 @@ test("pages: the storefront on disk wears the base, and each part of it is requi
   bad(check(swap(swap(page, "    --radius:10px;\n", "    --radius:10px;\n    --note:#c7b8ff;\n"), "  .finder-empty{margin:0;padding:18px 0 26px;color:var(--mute);", "  .finder-empty{margin:0;padding:18px 0 26px;color:var(--note);")), /\.finder-empty \{ color: var\(--note\) \}: outside a specimen or a theme preview/, "a literal in a token of the page's own");
   bad(check(swap(page, "  .finder-empty{margin:0;padding:18px 0 26px;color:var(--mute);", "  .finder-empty{margin:0;padding:18px 0 26px;color:var(--fg);")), /\.finder-empty \{ color: var\(--fg\) \}: outside a specimen or a theme preview/, "a theme preview's colour outside it");
   assert.deepEqual(THEME_PREVIEWS, [".theme-monolith", ".pick", ".card"]);
+  // Inside a specimen or a theme preview, text takes its own colours, never a literal.
+  bad(check(swap(page, ".card .term .hint{margin-top:8px;font-size:10.5px;color:var(--mut)}", ".card .term .hint{margin-top:8px;font-size:10.5px;color:#2A2933}")), /\.card \.term \.hint \{ color: #2A2933 \}: inside a specimen or a theme preview, text takes .* not a literal/, "a literal in a theme card");
+  bad(check(withStyle(page, "  .card .term .hint{color:var(--mut,#2A2933)}")), /inside a specimen or a theme preview, text takes/, "a literal behind a fallback");
+  // A sibling after a step into the specimen is still inside it; one beside the specimen is not.
+  assert.deepEqual(check(withStyle(page, "  .cmd .syntax-command+.syntax-keyword{color:var(--syntax-purple)}")), [], "a sibling inside the specimen");
+  assert.deepEqual(check(withStyle(page, "  .lede+.cmd .syntax-keyword{color:var(--syntax-purple)}")), [], "a specimen that follows a sibling");
+  bad(check(withStyle(page, "  .cmd~p{color:var(--syntax-purple)}")), /\.cmd~p \{ color: var\(--syntax-purple\) \}: outside a specimen/, "a later sibling of a specimen");
+  // Outside one, the page's text and surfaces take the shared tokens.
+  bad(check(swap(page, "  .finder-empty{margin:0;padding:18px 0 26px;color:var(--mute);", "  .finder-empty{margin:0;padding:18px 0 26px;color:var(--ground);")), /\.finder-empty \{ color: var\(--ground\) \}: outside a specimen or a theme preview, text takes/, "the page colour as text off a fill");
+  bad(check(withStyle(page, "  .lede{color:transparent;text-shadow:0 0 0 #EDEBF3}")), /\.lede \{ color: transparent \}: outside a specimen/, "text drawn by its shadow");
+  bad(check(withStyle(page, "  .lede{-webkit-text-stroke:1px var(--ember)}")), /index\.html \.lede \{ -webkit-text-stroke: 1px var\(--ember\) \} paints text/, "a stroke round the page's text");
+  bad(check(withStyle(page, '  @property --ink{syntax:"<color>";inherits:false;initial-value:#EDEBF3}')), /index\.html registers a property/, "a token re-registered on the page");
+  // Opacity, filters and blends stay off text: a ::before or ::after, an image or a mark only.
+  bad(check(withStyle(page, "  .lede{opacity:.25}")), /index\.html \.lede \{ opacity: \.25 \} dims or recolours/, "the page's text at a quarter");
+  bad(check(withStyle(page, "  .lede{filter:invert(1)}")), /\.lede \{ filter: invert\(1\) \} dims or recolours/, "the page's text inverted");
+  bad(check(withStyle(page, "  .lede{backdrop-filter:invert(1)}")), /\.lede \{ backdrop-filter: invert\(1\) \} dims or recolours/, "the surface behind the text inverted");
+  bad(check(withStyle(page, "  .lede{mix-blend-mode:difference}")), /\.lede \{ mix-blend-mode: difference \} dims or recolours/, "the text blended into its surface");
+  assert.deepEqual(check(withStyle(page, "  .lede{opacity:1}\n  .lede::after{opacity:.5}\n  .product-proof img{filter:grayscale(1)}\n  .card .dots b{opacity:.3}")), [], "full strength, a pseudo-element, an image and a mark");
+  bad(check(withStyle(page, "  .tool{background:#16161C}")), /index\.html \.tool \{ background: #16161C \}: outside a specimen or a theme preview, a surface takes the shared tokens/, "a dark card that stays dark in the light theme");
+  bad(check(withStyle(page, "  .tool{background:var(--terminal-surface)}")), /\.tool \{ background: var\(--terminal-surface\) \}: .* --terminal-surface is neither/, "a surface in a token of the page's own");
+  bad(check(withStyle(page, "  .tool{background-image:linear-gradient(#16161C,#16161C)}")), /\.tool \{ background-image: linear-gradient\(#16161C,#16161C\) \}: outside a specimen or a theme preview, a surface takes/, "a surface painted as a gradient");
+  bad(check(withStyle(page, "  .tool{background:rgba(255,255,255,.06)}")), /\.tool \{ background: rgba\(255,255,255,\.06\) \}: .* a wash of white or black at most 5% opaque/, "a wash thicker than the floors allow");
+  assert.deepEqual(check(withStyle(page, "  .tool{background:rgba(0,0,0,.05)}")), [], "the thickest wash allowed");
+  // The specimen's ink is the one value scripts/verify-contrast.mjs reads, the first on the page.
+  bad(check(withStyle(page, "  .cmd{--ink:#2A2933;}")), /\.cmd \{ --ink: #2A2933 \}: scripts\/verify-contrast\.mjs holds the first --ink the page declares, #e9eaec/, "a second ink in the specimen");
+  bad(check(swap(page, "  .cmd{--ink:#e9eaec;}", "  /* --ink:#e9eaec; */ .cmd{--ink:#2A2933;}")), /\.cmd \{ --ink: #2A2933 \}: scripts\/verify-contrast\.mjs holds the first --ink/, "the ink that script reads only in a comment");
 
   // Links and styles as a browser reads them.
   const afterSheet = (markup) => swap(page, '<link rel="stylesheet" href="assets/site.css">', `<link rel="stylesheet" href="assets/site.css">\n${markup}`);
@@ -309,6 +380,34 @@ test("pages: the storefront on disk wears the base, and each part of it is requi
   bad(check(swap(page, '<p class="monolith-mark" aria-hidden="true">', '<p class="monolith-mark" aria-hidden="true" style="animation:mark-spin 4s linear infinite">')), /index\.html has a style attribute that sets animation/, "motion in a style attribute");
   bad(check(swap(page, '<p class="lede">', '<p class="lede" style="--mute:#2A2933">')), /index\.html has a style attribute that re-declares --mute/, "a shared token in a style attribute");
   bad(check(swap(page, '<p class="lede">', '<p class="lede" style="--x:1&#59 color:#c7b8ff">')), /index\.html has a style attribute that sets color/, "a declaration split by a reference without its semicolon");
+  bad(check(swap(page, '<p class="lede">', '<p class="lede" style="--x:1;anim\\61tion:nudge 2s infinite">')), /index\.html has a style attribute that holds a backslash/, "a property spelled with an escape in a style attribute");
+  // The page's own <style> is read as the stylesheet is: no escapes, and for every medium.
+  bad(check(withStyle(page, "  .tool:\\68over{tr\\61nsform:translateY(-6px)}")), /index\.html's <style> holds a backslash/, "a hover lift spelled with escapes");
+  bad(check(swap(page, "</style>\n", '</style>\n<style media="print">@media (prefers-reduced-motion:reduce){.theme-monolith{animation:none}}</style>\n')), /index\.html has a <style media="print">/, "a reduce rule that applies only in print");
+  bad(check(swap(page, '<p class="lede">', '<marquee>50 themes</marquee>\n<p class="lede">')), /index\.html carries a <marquee>/, "text that scrolls itself");
+  bad(check(swap(page, "</style>\n", '</style>\n<style type="text/plain">@media (prefers-reduced-motion:reduce){.theme-monolith{animation:none}}</style>\n')), /index\.html has a <style type="text\/plain">/, "a reduce rule the browser does not apply");
+  bad(check(swap(page, '<link rel="stylesheet" href="assets/site.css">', '<link rel="stylesheet" href="assets/site.css" type="text/plain">')), /links assets\/site\.css with type="text\/plain"/, "a stylesheet the browser does not load as CSS");
+  // The markup is read as the browser's tokenizer reads it: comments, end tags and quoted values end where the browser ends them.
+  const afterStyle = (markup) => swap(page, "</style>\n", `</style>\n${markup}\n`);
+  bad(check(afterStyle('<!-->\n<style>@import url("https://example.com/a.css");</style>\n<!-- end -->')), /index\.html's <style> uses @import/, "a style after a comment that ends at once");
+  bad(check(afterStyle('<!-- a --!>\n<style>@import url("https://example.com/b.css");</style>\n<!-- end -->')), /index\.html's <style> uses @import/, "a style after a comment ended with --!>");
+  bad(check(swap(page, "</style>\n", '</style/>\n<meta name="x" content=/*>\n<style>@import url("https://example.com/c.css");</style>\n')), /index\.html's <style> uses @import/, "a style after an end tag with a slash");
+  bad(check(afterStyle('<style title="a>/*">@import url("https://example.com/d.css");</style>')), /index\.html's <style> uses @import/, "a style whose attribute holds a >");
+  bad(check(afterStyle('<link href="https://example.com/e.css" title="a>b" rel="stylesheet">')), /links https:\/\/example\.com\/e\.css \(stylesheet\) from another host/, "a stylesheet whose attribute holds a >");
+  bad(check(afterSheet('<link rel="preconnect" href="https://fonts.bunny.net" href="assets/fonts/">')), /links https:\/\/fonts\.bunny\.net \(preconnect\) from another host/, "a repeated attribute, of which the browser keeps the first");
+  bad(check(swap(page, '<p class="lede">', '<p class="lede" style=color:#c7b8ff>')), /index\.html has a style attribute that sets color/, "a style attribute without quotes");
+  // The page's styles fetch nothing but their own @font-face files, read entry by entry.
+  bad(check(withStyle(page, '  body{background-image:url("https://example.com/bg.png")}')), /index\.html body \{ background-image \} fetches with url\(\)/, "a background from anywhere");
+  bad(check(swap(page, '<p class="lede">', '<p class="lede" style="background:url(&quot;https://example.com/bg.png&quot;)">')), /index\.html has a style attribute that fetches with url\(\)/, "a background in a style attribute");
+  bad(check(withStyle(page, '  @font-face{font-family:"Own";src:url("assets/fonts/FamiljenGrotesk-VF.woff2") format("woff2");src:url("https://example.com/own.woff2") format("woff2")}')), /index\.html @font-face declares src twice/, "a page face with a second src");
+  bad(check(withStyle(page, '  @font-face{font-family:"Own";src:url("assets/fonts/FamiljenGrotesk-VF.woff2") format("woff2") url("https://example.com/own.woff2")}')), /index\.html @font-face for "Own" has a src entry these rules cannot read/, "a page face entry these rules cannot read");
+  bad(check(withStyle(page, '  .lede::before{content:"\n"}')), /index\.html's <style> has a string that runs across a line break/, "a broken string on the page");
+  bad(check(swap(page, '<p class="lede">', '<p class="lede" style="--x:);color:#c7b8ff">')), /index\.html: a style attribute has brackets that do not pair up/, "a declaration hidden behind a bracket in a style attribute");
+  bad(check(withStyle(page, "  <!-- body{--ink:#EDEBF3} -->")), /index\.html's <style> holds <!-- or -->/, "a rule between HTML comment markers, which CSS skips");
+  bad(check(swap(page, '<p class="lede">', '<p class="lede" title="<!--" style="color:#ff0000" data-x="-->">')), /index\.html has a style attribute that sets color/, "comment markers inside attribute values");
+  bad(check(swap(page, '<p class="lede">', '<p class="lede"style="color:#ff0000">')), /has a style attribute that sets color/, "a style attribute straight after a quoted value");
+  bad(check(swap(page, '<h1>', '<h1/style="color:#ff0000">')), /has a style attribute that sets color/, "a style attribute after a slash");
+  bad(check(swap(page, '<p class="lede">', '<p class="lede" style="background:#16161C">')), /has a style attribute that sets background/, "a surface in a style attribute");
 });
 
 test("fonts: each face loads a file that is there, each file is used, and each family carries the OFL", async () => {
@@ -332,9 +431,34 @@ test("fonts: each face loads a file that is there, each file is used, and each f
   bad(fontProblems(css, { ...files, "Spare.woff2": true }, pageFontFiles(ownFaces, "guide/index.html")), /assets\/fonts\/Spare\.woff2 is not loaded by any @font-face/, "a page url that resolves somewhere else");
   bad(fontProblems(css.replace('url("fonts/IBMPlexMono-Medium-Latin1.woff2")', 'url("https://example.com/IBMPlexMono-Medium-Latin1.woff2")'), files), /loads https:\/\/example\.com\/IBMPlexMono-Medium-Latin1\.woff2 from another host/, "a face served from elsewhere");
   bad(fontProblems(css.replace('url("fonts/IBMPlexMono-Medium-Latin1.woff2")', 'url("https://cdn.example.net/assets/fonts/IBMPlexMono-Medium-Latin1.woff2")'), files), /loads https:\/\/cdn\.example\.net\/assets\/fonts\/IBMPlexMono-Medium-Latin1\.woff2 from another host/, "a face from another host under the same path");
+  // Every src a face declares is read, entry by entry, and an entry these rules cannot read is reported.
+  const familjen = '  src: url("fonts/FamiljenGrotesk-VF.woff2") format("woff2");\n';
+  bad(fontProblems(css.replace(familjen, `${familjen}  src: url("https://example.com/second.woff2") format("woff2");\n`), files), /loads https:\/\/example\.com\/second\.woff2 from another host/, "a second src");
+  bad(fontProblems(css.replace(familjen, '  src: url("https://example.com/f.woff2\'") format("woff2"), url("fonts/FamiljenGrotesk-VF.woff2") format("woff2");\n'), files), /loads https:\/\/example\.com\/f\.woff2' from another host/, "a quote inside a quoted address");
+  bad(fontProblems(css.replace(familjen, '  src: url("fonts/FamiljenGrotesk-VF.woff2") format("woff2") url("https://example.com/g.woff2");\n'), files), /"Familjen Grotesk" has a src entry these rules cannot read, url\("fonts\/FamiljenGrotesk-VF\.woff2"\) format\("woff2"\) url/, "two addresses in one entry");
+  assert.deepEqual(
+    fontFaces('@font-face{font-family:"A";src:local("A"),url( "a.woff2" ) format("woff2") tech(variations),URL(\'b.woff2\'),url(c.woff2)}').map(({ urls, unread }) => [urls, unread]),
+    [[["assets/a.woff2", "assets/b.woff2", "assets/c.woff2"], []]],
+    "local(), hints, either quote and a plain address are read",
+  );
+  assert.equal(fontFaces('@font-face{font-family:"A";font-family:"B";src:url("b.woff2")}')[0].family, "B", "the family the browser takes, the last");
+  assert.deepEqual(pageFontFiles(`<!-- ${ownFaces} -->`, "familiars.html"), [], "a face in a comment loads nothing");
 });
 
 // --- the verifier on the real files -----------------------------------------------------------
+
+// A fixture holds only what git would commit, as in scripts/verify.test.mjs: a
+// sample pack a product's generator wrote (ignored) must not turn these tests
+// red, as it does not turn verify red.
+let ignoredPaths = [];
+try {
+  ignoredPaths = execFileSync("git", ["ls-files", "-z", "--others", "--ignored", "--exclude-standard", "--directory"], { cwd: projectRoot, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] })
+    .split("\0")
+    .filter(Boolean)
+    .map((path) => path.replace(/\/$/, ""));
+} catch {
+  ignoredPaths = [];
+}
 
 async function makeFixture(t) {
   const temporaryRoot = await mkdtemp(join(tmpdir(), "gabs-site-style-"));
@@ -343,7 +467,9 @@ async function makeFixture(t) {
     recursive: true,
     filter(source) {
       const pathFromRoot = relative(projectRoot, source);
-      return ![".git", ".worktrees", "node_modules"].some((directory) => pathFromRoot === directory || pathFromRoot.startsWith(`${directory}${sep}`));
+      const path = pathFromRoot.split(sep).join("/");
+      const isIgnored = ignoredPaths.some((ignored) => path === ignored || path.startsWith(`${ignored}/`));
+      return !isIgnored && ![".git", ".worktrees", "node_modules"].some((directory) => pathFromRoot === directory || pathFromRoot.startsWith(`${directory}${sep}`));
     },
   });
   t.after(() => rm(temporaryRoot, { recursive: true, force: true }));

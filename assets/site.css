@@ -221,9 +221,10 @@ body {
 :root[data-eff="light"] .theme-switch .moon { display: block; }
 
 /* Paused from the page (data-motion="paused" on the root): every looping animation holds its
-   frame. What would hold a half-finished frame or still answer the pointer (a one-off
-   animation, a lift on hover, the pointer light) is written under
+   frame, the root's own included. What would hold a half-finished frame or still answer the
+   pointer (a one-off animation, a lift on hover, the pointer light) is written under
    :root:not([data-motion="paused"]) below and on the page, so the pause removes it. */
+:root[data-motion="paused"],
 :root[data-motion="paused"] *,
 :root[data-motion="paused"] *::before,
 :root[data-motion="paused"] *::after { animation-play-state: paused !important; }

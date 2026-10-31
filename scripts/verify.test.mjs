@@ -3301,7 +3301,8 @@ test("rejects a stylesheet, which a page could load", { timeout: 90_000 }, async
 // it makes; a request it adds is refused there.
 for (const [request, rule, message] of [
   ["an @import", '@import "https://pay.example.invalid/x.css";\n', /assets\/site\.css uses @import/],
-  ["an image", ".lights .l1 { background-image: url(https://pay.example.invalid/x.png); }\n", /assets\/site\.css \.lights \.l1 \{ background-image \} fetches with url\(\)/],
+  ["an image", '.lights .l1 { background-image: url("https://pay.example.invalid/x.png"); }\n', /assets\/site\.css \.lights \.l1 \{ background-image \} fetches with url\(\)/],
+  ["an image at an unquoted address", ".lights .l1 { background-image: url(https://pay.example.invalid/x.png); }\n", /assets\/site\.css writes url\( without quotes/],
 ]) {
   test(`rejects the site stylesheet with ${request}`, { timeout: 90_000 }, async (t) => {
     const fixtureRoot = await makeFixture(t);
