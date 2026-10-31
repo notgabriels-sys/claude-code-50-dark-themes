@@ -48,6 +48,8 @@ server.
   macOS), use the `themes` folder next to it: the `include` path is relative to the folder that holds
   `kitty.conf`.
 - Color lines after the `include` win over it.
+- Each file also sets kitty's tab bar and window borders from the same palette: the active tab and border in
+  the theme's accent, inactive tabs on its ANSI black (`color0`).
 
 ## Alacritty (macOS, Linux, Windows)
 
