@@ -649,7 +649,9 @@ the document checks pass, and a reader requiring double quotes fails it.
 against. Its inline script — the light/dark switch, the kind filter, a pointer
 light on each card, the copy button and the familiar's eye — loads, fetches and
 navigates nothing; it is reviewed in `reviewedInlineScripts` and the page
-carries its policy. It loaded Familjen Grotesk and IBM Plex Mono from Google's
+carries its policy. (Since main's #79, merged here 2026-11-06, the page runs two:
+a head script that applies the saved theme and motion choice before paint,
+and the body script; both are reviewed there and named in the policy.) It loaded Familjen Grotesk and IBM Plex Mono from Google's
 servers, which hands every visitor's address to Google before the page shows,
 and which the link guard refuses; the twelve WOFF2 files it asked for (latin
 and latin-ext, from the fontsource packages, SIL Open Font License 1.1, the
@@ -689,7 +691,11 @@ at 390 and 1280 px: all six font faces load from the site, no request leaves
 it, no policy violation or console error, and the filters, the theme switch,
 the copy button and the eye behave. The page scrolls up to 28 px sideways at
 390 px while its background drifts, on `main` too, before any of this; that
-is left to the page's owner. The harness lives in the scratchpad.
+is left to the page's owner. (Re-measured 2026-11-06 over 15 s of drift,
+sampled every 250 ms: the page before #79 still reaches 28 px at 390 px and
+19 px at 320 px; with #79, which keeps the drifting beam inside its stage,
+neither scrolls. #79's own Chromium check, run here against the merged tree,
+passes all 16 cases.) The harness lives in the scratchpad.
 Mutation-tested (rule 5), 14 branches each gutted alone: the element,
 attribute, value, namespace, `<!`, end-tag and self-closing rules and the
 `math` refusal each turn their own tests red (the element rule also the older
