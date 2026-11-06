@@ -1,0 +1,6 @@
+# The verifier compares generated files (the theme pages, sitemap.xml and the
+# storefront's quick picks) byte for byte with what their builders write, and
+# the builders write LF. Keep every text file LF in the working tree, including
+# under Git for Windows' default core.autocrlf=true, so a fresh clone passes
+# `node scripts/verify.mjs`. Binary files are detected and left alone.
+* text=auto eol=lf

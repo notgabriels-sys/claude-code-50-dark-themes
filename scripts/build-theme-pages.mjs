@@ -18,7 +18,7 @@ const SHARE_IMAGE = `${SITE}/preview.png`;
 // One image, one description: this string must stay identical to the alt text
 // the other public pages give preview.png, or the verifier fails the page.
 const SHARE_IMAGE_ALT =
-  "Title card: 50 dark themes for Claude Code, with the plugin install command and a strip of the pack&#39;s accent colors";
+  "Title card: 50 dark themes for Claude Code, with the plugin install command and a strip of the site&#39;s interface colors";
 
 // The sitemap entries that exist independently of the theme pages, verbatim.
 const FIXED_SITEMAP_ENTRIES = [
@@ -51,30 +51,35 @@ const PACKS = [
 ];
 
 // Mirrors scripts/verify-contrast.mjs: the same tokens, surfaces and floors,
-// so a page states exactly what the verifier enforces.
-const CONTRAST_CHECKS = [
+// so a page states exactly what the verifier enforces. verify.mjs fails if
+// the two lists drift apart.
+export const CONTRAST_CHECKS = [
   { token: "text", floor: 7, surfaces: ["terminal", "userMessageBackground"], standard: "WCAG AAA, normal text" },
   { token: "inactive", floor: 4.5, surfaces: ["terminal", "userMessageBackground"], standard: "WCAG AA, normal text" },
   { token: "claude", floor: 4.5, surfaces: ["terminal"], standard: "WCAG AA, normal text" },
   { token: "claudeShimmer", floor: 4.5, surfaces: ["terminal"], standard: "WCAG AA, normal text" },
   { token: "suggestion", floor: 4.5, surfaces: ["terminal"], standard: "WCAG AA, normal text" },
-  { token: "permission", floor: 3, surfaces: ["terminal"], standard: "WCAG AA, non-text" },
-  { token: "planMode", floor: 3, surfaces: ["terminal"], standard: "WCAG AA, non-text" },
+  // Held to the non-text floor like the verifier, though Claude Code also draws
+  // text in both (README's contrast paragraph says how many themes fall below AA).
+  { token: "permission", floor: 3, surfaces: ["terminal"], standard: "WCAG AA non-text floor; also colours text" },
+  { token: "planMode", floor: 3, surfaces: ["terminal"], standard: "WCAG AA non-text floor; also colours text" },
   { token: "promptBorder", floor: 3, surfaces: ["terminal"], standard: "WCAG AA, non-text" },
   { token: "promptBorderShimmer", floor: 3, surfaces: ["terminal"], standard: "WCAG AA, non-text" },
   { token: "rate_limit_fill", floor: 3, surfaces: ["terminal"], standard: "WCAG AA, non-text" },
 ];
 
+// Each role in the words of Claude Code's token reference (code.claude.com,
+// terminal-config, "Color token reference").
 const ROLES = {
   claude: "Claude's mark and accent",
   claudeShimmer: "Accent highlight while Claude works",
   text: "Primary text",
   inactive: "Secondary text",
-  subtle: "Decorative hairlines (reserved, carries no meaning)",
+  subtle: "Faint borders and de-emphasised secondary text (not contrast-checked)",
   suggestion: "Autocomplete suggestions",
-  permission: "Permission prompt border and indicator",
+  permission: "Dialog borders and titles, permission prompts and pickers",
   promptBorder: "Input prompt border",
-  promptBorderShimmer: "Prompt border highlight",
+  promptBorderShimmer: "Lighter partner of promptBorder in animated gradients",
   planMode: "Plan mode indicator",
   userMessageBackground: "Surface behind your messages",
   userMessageBackgroundHover: "That surface, hovered",
@@ -293,6 +298,7 @@ const PAGE_CSS = `
   .neighbours a:hover{color:var(--ink)}
   footer{margin-top:clamp(56px,9vw,100px);padding-top:24px;border-top:1px solid var(--hair);display:flex;flex-wrap:wrap;gap:10px 28px;color:var(--faint);font-size:11px}
   footer a{color:var(--faint)}
+  .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
   .index-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:4px 24px;margin:0 0 8px}
   .index-grid a{display:flex;align-items:center;gap:10px;min-height:44px;padding:4px 0;color:var(--ink);text-decoration:none;border-top:1px solid var(--hair);font-size:13px}
   .index-grid a:hover{color:var(--accent)}
@@ -300,7 +306,10 @@ const PAGE_CSS = `
   .index-grid .hexv{margin-left:auto;color:var(--faint);font-size:11px}
 `;
 
+// The buttons' aria-label outlasts their visible "Copied", so the outcome is
+// also announced through the page's live region.
 const COPY_SCRIPT = `
+const copyStatus = document.getElementById("copyStatus");
 document.querySelectorAll("[data-copy]").forEach((button) => {
   button.addEventListener("click", async () => {
     const text = button.getAttribute("data-copy");
@@ -308,8 +317,10 @@ document.querySelectorAll("[data-copy]").forEach((button) => {
     try {
       await navigator.clipboard.writeText(text);
       button.textContent = "Copied";
+      copyStatus.textContent = "Copied to clipboard: " + text;
     } catch {
       button.textContent = "Select and copy";
+      copyStatus.textContent = "Could not copy. Select the command and copy it: " + text;
     }
     setTimeout(() => { button.textContent = original; }, 1400);
   });
@@ -375,7 +386,8 @@ ${JSON.stringify(jsonLd, null, 2)}
 }
 
 function foot() {
-  return `  </main>
+  return `    <p class="sr-only" id="copyStatus" aria-live="polite"></p>
+  </main>
   <footer>
     <span>50 dark themes for Claude Code · Gabs Utilities</span>
     <span>Free, <a href="https://opensource.org/license/mit">MIT licensed</a></span>
@@ -389,8 +401,10 @@ function foot() {
 `;
 }
 
-function commandPanel(command, label) {
-  return `      <div class="cmd"><span><span class="prompt">$ </span><code>${esc(command)}</code></span><button class="copy" type="button" data-copy="${esc(command)}" aria-label="Copy: ${esc(label)}">Copy</button></div>\n`;
+// The prompt glyph says where the command runs: "$ " in a shell, "> " in
+// Claude Code.
+function commandPanel(command, label, prompt = "$ ") {
+  return `      <div class="cmd"><span><span class="prompt">${esc(prompt)}</span><code>${esc(command)}</code></span><button class="copy" type="button" data-copy="${esc(command)}" aria-label="Copy: ${esc(label)}">Copy</button></div>\n`;
 }
 
 export function renderThemePage(theme) {
@@ -417,7 +431,8 @@ export function renderThemePage(theme) {
         name: title,
         description,
         isPartOf: { "@type": "WebSite", "@id": `${SITE}/#website`, name: "Gabs Utilities", url: `${SITE}/` },
-        about: { "@id": `${SITE}/#plugin` },
+        // index.html's #plugin is the 50-theme plugin; a Vol. 2 theme is not in it.
+        ...(pack.id === "50-dark-themes" ? { about: { "@id": `${SITE}/#plugin` } } : {}),
         author: { "@type": "Organization", name: "Gabs Utilities", url: SITE },
         license: "https://opensource.org/license/mit",
       },
@@ -464,26 +479,27 @@ export function renderThemePage(theme) {
           <div class="row"><span class="acc">●</span> <span class="fg">Applied theme &ldquo;${esc(name)}&rdquo;</span></div>
           <div class="row"><span class="mut">&nbsp;&nbsp;3 files changed · staged</span></div>
           <div class="usermsg">&gt; show me the diff</div>
-          <div class="prompt-box"><span class="gt">&gt;</span><span class="txt">theme ${esc(slug)}</span><span class="caret" aria-hidden="true"></span></div>
-          <div class="hint">/theme &nbsp;·&nbsp; ⏎ send &nbsp;·&nbsp; esc to interrupt</div>
+          <div class="prompt-box"><span class="gt">&gt;</span><span class="txt">/theme</span><span class="caret" aria-hidden="true"></span></div>
+          <div class="hint">then choose &ldquo;${esc(name)}&rdquo;</div>
         </div>
       </article>
     </div>
 
     <section aria-labelledby="install-title">
       <h2 id="install-title">Install ${esc(name)}.</h2>
-      <p>Requires Claude Code v2.1.118 or later. The marketplace command is needed once per machine; the plugin command installs the whole ${esc(pack.label)} pack, and <code>/theme</code> inside Claude Code switches to this one.</p>
-${commandPanel(MARKETPLACE_COMMAND, "marketplace command")}${commandPanel(pack.installCommand, `${pack.label} install command`)}${commandPanel(`/theme ${slug}`, `select ${name} in Claude Code`)}      <p class="note">Plugin themes are read-only. Press <code>Ctrl+E</code> on one in <code>/theme</code> for an editable copy in <code>~/.claude/themes/</code>.</p>
+      <p>Requires Claude Code v2.1.118 or later. The marketplace command is needed once per machine; the plugin command installs the whole ${esc(pack.label)} pack. Then run <code>/theme</code> in Claude Code and choose &ldquo;${esc(name)}&rdquo; from the list.</p>
+${commandPanel(MARKETPLACE_COMMAND, "marketplace command")}${commandPanel(pack.installCommand, `${pack.label} install command`)}      <p class="note">If Claude Code was open while you installed, restart it: plugin themes load when it starts.</p>
+${commandPanel("/theme", `the /theme command, then choose ${name} in Claude Code`, "> ")}      <p class="note">Plugin themes are read-only. Press <code>Ctrl+E</code> on one in <code>/theme</code> for an editable copy in <code>~/.claude/themes/</code>.</p>
     </section>
 
     <section aria-labelledby="manual-title">
       <h2 id="manual-title">Or copy just this file.</h2>
       <p>One theme, no plugin: fetch <a href="${blobUrl}"><code>${esc(pack.rawDir)}${esc(theme.file)}</code></a> from the repository into your themes folder. If that folder did not exist when Claude Code started, restart it once.</p>
-${commandPanel(manualCommand, `copy ${name} manually`)}    </section>
+${commandPanel(manualCommand, `single-file install command for ${name}`)}    </section>
 
     <section aria-labelledby="terminal-title">
       <h2 id="terminal-title">Terminal background: <code>${terminal}</code>.</h2>
-      <p>Claude Code colours its own interface; the terminal application owns the canvas behind it. Every figure below is measured against <code>${terminal}</code>, so set that as the terminal background for the result the numbers describe. On a different background the ratios move.</p>
+      <p>Claude Code colours its own interface; the terminal application owns the canvas behind it. The terminal rows below are measured against <code>${terminal}</code>, so set that as the terminal background for the result the numbers describe; on a different background they move. The rest compare text with the surface behind your messages, and that surface with its hovered state.</p>
     </section>
 
     <section aria-labelledby="palette-title">
@@ -501,7 +517,7 @@ ${paletteRows}
 
     <section aria-labelledby="contrast-title">
       <h2 id="contrast-title">Measured contrast.</h2>
-      <p>Computed from the hex values above with the WCAG 2 relative-luminance formula, by the same script that gates every change to this repository. Figures are truncated, never rounded up. Each row meets its floor.</p>
+      <p>Computed from the hex values above with the WCAG 2 relative-luminance formula, against the same floors <code>scripts/verify-contrast.mjs</code> checks on every pull request. Figures are truncated, never rounded up. Each row meets its floor.</p>
       <div class="table-wrap">
         <table>
           <thead><tr><th scope="col">Pair</th><th scope="col">Colours</th><th scope="col">Ratio</th><th scope="col">Floor</th><th scope="col">Standard</th></tr></thead>
@@ -536,7 +552,6 @@ export function renderIndexPage(themes) {
     name: title,
     description,
     isPartOf: { "@type": "WebSite", "@id": `${SITE}/#website`, name: "Gabs Utilities", url: `${SITE}/` },
-    about: { "@id": `${SITE}/#plugin` },
     author: { "@type": "Organization", name: "Gabs Utilities", url: SITE },
   };
   const sections = PACKS.map((pack) => {
@@ -549,7 +564,7 @@ export function renderIndexPage(themes) {
       .join("\n");
     return `    <section aria-labelledby="${pack.id}-title">
       <h2 id="${pack.id}-title">${esc(pack.label)} · ${packThemes.length}</h2>
-      <p>Installs as one plugin: <code>${esc(installCommandFor(pack.id))}</code>. Previewed in colour in the <a href="/${pack.galleryAnchor}">gallery</a>.</p>
+      <p>Installs as one plugin: <code>${esc(installCommandFor(pack.id))}</code>. If Claude Code was open while you installed, restart it: plugin themes load when it starts. Previewed in colour in the <a href="/${pack.galleryAnchor}">gallery's ${esc(pack.label)} section</a>.</p>
       <div class="index-grid">
 ${links}
       </div>

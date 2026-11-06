@@ -52,4 +52,6 @@ Immediate download after purchase.
 - Human audition: approved by Gabriel on 2026-08-20 and checksum-bound in `AUDIO_APPROVAL.json`
 - Gumroad publication: verified live on 2026-08-20
 - Public URL: https://notgabriel.gumroad.com/l/industrial-tension-fx
-- Post-purchase delivered-file checksum: pending a seller-side test delivery or approved test purchase
+- Post-purchase delivered-file checksum: verified by a zero-charge creator test purchase; the
+  delivered ZIP's SHA-256 matches the approved archive (see `PUBLISHING.md`, "Completed
+  post-purchase delivery gate")
