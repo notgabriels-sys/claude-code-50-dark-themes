@@ -3075,12 +3075,13 @@ const reviewedInlineScripts = new Map([
   // floating switch, never a tap's or a click's; and the pointer light, which sets --mx and --my
   // on the .lit surfaces. It loads, fetches and navigates nothing.
   ["index.html", ["sha256-NIZ5jxPqHe76C4AEHPJCjXNeTRDJC4LsWQG/g6melI4=", "sha256-yQjCaHNN9EhMHqdGIwFELVT3c7GPz7YUCbH1jKu7ogE="]],
-  // Familiars (main's #65, read 2026-10-24): the light/dark switch, kept in
-  // localStorage; the kind filter; a pointer-following light on each card; the
-  // copy button, which writes the request address to the clipboard; and the
-  // familiar's eye, which follows the pointer and blinks. It loads, fetches and
-  // navigates nothing, and writes no markup.
-  ["familiars.html", ["sha256-tW017ch2iUy4IDsMqdWpXKZStidvDhnxjoIcLgbw5vY="]],
+  // Familiars (read 2026-11-06): a head bootstrap applies the saved theme and
+  // motion choice before paint. The body script handles theme, kind filters
+  // and their status, the clipboard, pointer lights, and one cancellable eye
+  // frame/blink loop. Pause, live reduced-motion changes and tab visibility
+  // stop motion; only keyboard focus is scrolled clear of the floating switch.
+  // Neither script loads, fetches, navigates or writes markup.
+  ["familiars.html", ["sha256-y2IRHedCw+eW1rSiNN5ItkoqruQasjSZqLoVAZZfzWg=", "sha256-Wsx2v03yhjdW+TTSi6o+74nMiMNliuWLPnFCf1bllaA="]],
 ]);
 // Every page under theme/ is rendered by scripts/build-theme-pages.mjs (main's
 // #59) and runs one script, the same on each: its copy button, which writes a
