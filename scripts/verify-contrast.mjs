@@ -78,10 +78,16 @@ function cssColour(variable, source = html) {
   return variableMatch[1];
 }
 
-const storefrontFaint = cssColour("faint");
+// The storefront's page colours are declared in its shared stylesheet, and the
+// first declaration of each is the dark theme these floors were set for;
+// scripts/site-style.mjs holds the light theme to its own. The syntax palette
+// and the terminal surface stay in index.html.
+const siteCss = await readFile(new URL("assets/site.css", root), "utf8");
+const storefrontColour = (token) => cssColour(token, siteCss + html);
+const storefrontFaint = storefrontColour("faint");
 for (const surfaceName of ["ground", "ground-2"]) {
   comparisons += 1;
-  const surface = cssColour(surfaceName);
+  const surface = storefrontColour(surfaceName);
   const ratio = contrast(storefrontFaint, surface);
   if (ratio < 4.5) {
     failures.push(
@@ -93,7 +99,10 @@ for (const surfaceName of ["ground", "ground-2"]) {
 // The storefront's syntax sample is also the shared personal coding palette.
 // Every semantic foreground must remain readable as normal text across the
 // terminal canvas, page canvas, and raised install panel—not merely look
-// distinct in one screenshot.
+// distinct in one screenshot. The page canvas here is the dark theme's: the
+// palette is never text on the light page, because scripts/site-style.mjs
+// allows it only inside a specimen, which keeps the dark ground in both themes,
+// or a theme preview, which paints its own theme's ground.
 const semanticTokens = [
   "syntax-purple",
   "syntax-light-purple",
@@ -108,7 +117,7 @@ for (const token of semanticTokens) {
   const foreground = cssColour(token);
   for (const surfaceName of ["terminal-surface", "ground", "ground-2"]) {
     comparisons += 1;
-    const surface = cssColour(surfaceName);
+    const surface = storefrontColour(surfaceName);
     const ratio = contrast(foreground, surface);
     if (ratio < 4.5) {
       failures.push(
