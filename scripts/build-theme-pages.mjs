@@ -9,6 +9,7 @@ import { createHash } from "node:crypto";
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { isThemeFile } from "./build-theme-index.mjs";
+import { DATED_PAGES, statedDates } from "./page-dates.mjs";
 
 const SITE = "https://gabs-utilities.com";
 const REPO = "https://github.com/notgabriels-sys/claude-code-50-dark-themes";
@@ -20,13 +21,14 @@ const SHARE_IMAGE = `${SITE}/preview.png`;
 const SHARE_IMAGE_ALT =
   "Title card: 50 dark themes for Claude Code, with the plugin install command and a strip of the pack&#39;s accent colors";
 
-// The sitemap entries that exist independently of the theme pages, verbatim.
-const FIXED_SITEMAP_ENTRIES = [
-  `  <url><loc>${SITE}/</loc><changefreq>monthly</changefreq><priority>1.0</priority></url>`,
-  `  <url><loc>${SITE}/claude-code-theme-install-guide.html</loc><changefreq>monthly</changefreq><priority>0.82</priority></url>`,
-  `  <url><loc>${SITE}/semantic-terminal-colors.html</loc><changefreq>monthly</changefreq><priority>0.78</priority></url>`,
-  `  <url><loc>${SITE}/familiars.html</loc><changefreq>monthly</changefreq><priority>0.76</priority></url>`,
-  `  <url><loc>${SITE}/impressum.html</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>`,
+// The sitemap entries that exist independently of the theme pages: the page,
+// how often it changes and its priority. A dated page (scripts/page-dates.mjs)
+// also gets a <lastmod>, its JSON-LD dateModified, read from the page itself.
+const FIXED_SITEMAP_PAGES = [
+  ["index.html", "monthly", "1.0"],
+  ["claude-code-theme-install-guide.html", "monthly", "0.82"],
+  ["semantic-terminal-colors.html", "monthly", "0.78"],
+  ["familiars.html", "monthly", "0.76"],
 ];
 
 const PACKS = [
@@ -567,15 +569,30 @@ ${sections}` +
   );
 }
 
-export function renderSitemap(themes) {
+const sitemapEntry = (loc, changefreq, priority, lastmod) =>
+  `  <url><loc>${loc}</loc>${lastmod ? `<lastmod>${lastmod}</lastmod>` : ""}<changefreq>${changefreq}</changefreq><priority>${priority}</priority></url>`;
+export function renderSitemap(themes, lastModified = new Map()) {
   const entries = [
-    ...FIXED_SITEMAP_ENTRIES,
-    `  <url><loc>${SITE}/theme/</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>`,
-    ...themes.map(
-      (theme) => `  <url><loc>${SITE}/theme/${theme.slug}/</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>`,
-    ),
+    ...FIXED_SITEMAP_PAGES.map(([page, changefreq, priority]) =>
+      sitemapEntry(`${SITE}/${page.replace(/(^|\/)index\.html$/, "$1")}`, changefreq, priority, lastModified.get(page))),
+    sitemapEntry(`${SITE}/theme/`, "monthly", "0.7"),
+    ...themes.map((theme) => sitemapEntry(`${SITE}/theme/${theme.slug}/`, "monthly", "0.6")),
   ];
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${entries.join("\n")}\n</urlset>\n`;
+}
+
+// The day each dated page says it was last modified, read from the page.
+async function datedPageModified(root) {
+  const modified = new Map();
+  for (const page of DATED_PAGES) {
+    if (!FIXED_SITEMAP_PAGES.some(([listed]) => listed === page)) {
+      throw new Error(`${page} is a dated page with no sitemap entry; add it to FIXED_SITEMAP_PAGES. A dated page stays in the sitemap with its <lastmod>, so it cannot carry a robots noindex; to take it out of search, first take it out of DATED_PAGES in scripts/page-dates.mjs.`);
+    }
+    const dates = statedDates(await readFile(new URL(page, root), "utf8"));
+    if (!dates) throw new Error(`${page} does not state one datePublished and dateModified; node scripts/verify.mjs says what to fix.`);
+    modified.set(page, dates.modified);
+  }
+  return modified;
 }
 
 // Every file this builder owns, keyed by repository-relative path.
@@ -584,7 +601,7 @@ export async function buildThemePages(root) {
   const files = new Map();
   for (const theme of themes) files.set(`theme/${theme.slug}/index.html`, renderThemePage(theme));
   files.set("theme/index.html", renderIndexPage(themes));
-  files.set("sitemap.xml", renderSitemap(themes));
+  files.set("sitemap.xml", renderSitemap(themes, await datedPageModified(root)));
   return files;
 }
 

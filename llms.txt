@@ -9,6 +9,7 @@ and technical creators.
 - [Claude Code theme install guide](https://gabs-utilities.com/claude-code-theme-install-guide.html)
 - [Semantic terminal color design article](https://gabs-utilities.com/semantic-terminal-colors.html)
 - [Every theme, one page each](https://gabs-utilities.com/theme/)
+- [Familiars: Claude skills, plugins and themes for sound work](https://gabs-utilities.com/familiars.html)
 - [Impressum](https://gabs-utilities.com/impressum.html)
 
 ## Install
@@ -50,3 +51,10 @@ The install guide gives the native Claude Code plugin command, manual JSON
 fallback, terminal background setup, and common troubleshooting steps:
 
 [Open the Claude Code theme install guide.](https://gabs-utilities.com/claude-code-theme-install-guide.html)
+
+Familiars are Claude skills and plugins built in a Berlin studio for people who
+make and deliver sound, each with a narrow job and the exclusions it states.
+Those marked early access are requested by email from the page; the Graphite
+dark theme listed there is public under the MIT license:
+
+[Open the Familiars page.](https://gabs-utilities.com/familiars.html)
