@@ -852,6 +852,18 @@ the page-dates tests and the real tree:
   the real tree red;
 - dropping the parting limit fails it at the made-and-unmade case alone.
 
+**(merged 2026-11-06) Main's #79, the Familiars finishing pass.** #79
+finished `familiars.html` (request links, a motion pause, keyboard focus
+clear of the theme switch). It split the page's script into a head
+bootstrap and a body script, each reviewed in `reviewedInlineScripts`. It
+also added `scripts/check-familiars-browser.mjs` and a workflow that runs it
+in Chromium, against the page before the pass as a red control and against
+the candidate. Merged here it needed no change: `verify`, all 642 tests and
+that browser check pass on the merge. The check ran locally on Playwright
+1.56.1, not the pinned 1.65.0. The workflow watches `scripts/verify.mjs`, so
+it runs on this branch's pull requests too. It pins its actions by tag, which
+WP13's pinned-actions rule will meet when that branch is rebased.
+
 **(added 2026-10-30) What the sitemap, `llms.txt` and robots.txt say the site
 holds is read against the pages.** WP10. `verify` compared the sitemap only
 with the builder that writes it, and read neither `llms.txt`'s links nor
