@@ -1,0 +1,77 @@
+name: Familiars browser checks
+
+on:
+  pull_request:
+    paths:
+      - familiars.html
+      - scripts/check-familiars-browser.mjs
+      - scripts/verify.mjs
+      - .github/workflows/familiars-browser.yml
+      - assets/fonts/**
+  push:
+    branches: [main]
+    paths:
+      - familiars.html
+      - scripts/check-familiars-browser.mjs
+      - scripts/verify.mjs
+      - .github/workflows/familiars-browser.yml
+      - assets/fonts/**
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      # Fixed historical red control, not a claim that every future PR base
+      # lacks these behaviors. This is main immediately before the finishing pass.
+      BASELINE_SHA: 26d3fed281f215c44099a65b25fc21ff41901abb
+      # Pinned to the npm registry's current playwright release, read 2026-11-06.
+      PLAYWRIGHT_VERSION: 1.65.0
+      FAMILIARS_URL: http://127.0.0.1:4173/familiars.html
+      FAMILIARS_BASELINE_URL: http://127.0.0.1:4174/familiars.html
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install pinned browser tooling outside the checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/familiars-browser-artifacts"
+          npm install --prefix "$RUNNER_TEMP/familiars-playwright" --ignore-scripts --no-audit --no-fund "playwright@$PLAYWRIGHT_VERSION"
+          node "$RUNNER_TEMP/familiars-playwright/node_modules/playwright/cli.js" install --with-deps chromium
+          echo "PLAYWRIGHT_MODULE=$RUNNER_TEMP/familiars-playwright/node_modules/playwright/index.mjs" >> "$GITHUB_ENV"
+          echo "FAMILIARS_ARTIFACTS=$RUNNER_TEMP/familiars-browser-artifacts" >> "$GITHUB_ENV"
+      - name: Check historical failures and candidate behavior in Chromium
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/familiars-baseline"
+          git show "${BASELINE_SHA}:familiars.html" > "$RUNNER_TEMP/familiars-baseline/familiars.html"
+          ln -s "$GITHUB_WORKSPACE/assets" "$RUNNER_TEMP/familiars-baseline/assets"
+          ln -s "$GITHUB_WORKSPACE/favicon.svg" "$RUNNER_TEMP/familiars-baseline/favicon.svg"
+          python3 -m http.server 4173 --bind 127.0.0.1 --directory "$GITHUB_WORKSPACE" > "$FAMILIARS_ARTIFACTS/candidate-server.log" 2>&1 &
+          candidate_pid=$!
+          python3 -m http.server 4174 --bind 127.0.0.1 --directory "$RUNNER_TEMP/familiars-baseline" > "$FAMILIARS_ARTIFACTS/baseline-server.log" 2>&1 &
+          baseline_pid=$!
+          trap 'kill "$candidate_pid" "$baseline_pid" 2>/dev/null || true' EXIT
+          for port in 4173 4174; do
+            curl --fail --silent --retry 10 --retry-connrefused --retry-delay 1 "http://127.0.0.1:$port/familiars.html" > /dev/null
+          done
+          node scripts/check-familiars-browser.mjs 2>&1 | tee "$FAMILIARS_ARTIFACTS/checks.log"
+      - name: Upload browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: familiars-browser-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/familiars-browser-artifacts/
+          if-no-files-found: warn
+          retention-days: 14
