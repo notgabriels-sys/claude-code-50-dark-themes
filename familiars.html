@@ -127,7 +127,7 @@ h1 .soft { color: var(--muted); font-weight: 500; }
 .btn:hover { border-color: var(--accent); }
 .btn.primary { background: var(--fg); color: var(--bg); border-color: var(--fg); }
 
-.stage { position: relative; display: grid; place-items: center; aspect-ratio: 1 / 1; max-width: 100%; }
+.stage { position: relative; display: grid; place-items: center; aspect-ratio: 1 / 1; max-width: 100%; overflow: clip; }
 .beam { position: absolute; inset: 6%; border-radius: 50%; background: conic-gradient(from 0deg, transparent 0 70%, var(--accent-soft) 82%, transparent 94%); filter: blur(6px); }
 .ring { position: absolute; width: 58%; aspect-ratio: 1; border-radius: 50%; border: 1px solid var(--line); }
 .ring.r2 { width: 82%; border-style: dashed; opacity: .6; }
