@@ -24,7 +24,7 @@ function observePage({ savedTheme, denyStorage } = {}) {
     Object.defineProperty(window, "localStorage", {
       get() { throw new DOMException("Storage denied for browser check", "SecurityError"); },
     });
-  } else if (savedTheme) {
+  } else if (savedTheme && location.protocol !== "about:") {
     localStorage.setItem("familiars-theme", savedTheme);
   }
   window.__themeBoot = [];
@@ -281,7 +281,20 @@ try {
   for (const [width, height] of [[320, 740], [390, 844], [1280, 900]]) {
     await check(`layout and keyboard focus at ${width}px`, async (context) => {
       const page = await open(context);
-      assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth && document.body.scrollWidth <= innerWidth), "page must not overflow horizontally");
+      const layout = await page.evaluate(() => ({
+        viewport: innerWidth,
+        root: { scroll: document.documentElement.scrollWidth, client: document.documentElement.clientWidth },
+        body: { scroll: document.body.scrollWidth, client: document.body.clientWidth },
+        outside: [...document.body.querySelectorAll("*")].filter((element) => {
+          if (element.closest(".lights") || element.closest("svg")) return false;
+          const box = element.getBoundingClientRect();
+          return box.width && (box.left < -1 || box.right > innerWidth + 1);
+        }).slice(0, 20).map((element) => ({
+          tag: element.tagName, id: element.id, class: element.className,
+          box: element.getBoundingClientRect().toJSON(),
+        })),
+      }));
+      assert.ok(layout.root.scroll <= width && layout.body.scroll <= width, `page must not overflow horizontally: ${JSON.stringify(layout)}`);
       const clipped = await page.locator("a[href], button").evaluateAll((elements) => elements
         .filter((element) => element.getClientRects().length && getComputedStyle(element).visibility !== "hidden")
         .map((element) => ({ text: element.textContent.trim(), bounds: element.getBoundingClientRect().toJSON() }))
