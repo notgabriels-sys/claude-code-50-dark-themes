@@ -48,6 +48,10 @@ server.
   macOS), use the `themes` folder next to it: the `include` path is relative to the folder that holds
   `kitty.conf`.
 - Color lines after the `include` win over it.
+- If `dark-theme.auto.conf`, `light-theme.auto.conf` or `no-preference-theme.auto.conf` sits next to
+  `kitty.conf` (`kitten themes` writes them for automatic light/dark switching), kitty takes its colors from
+  the one for your OS's current mode, over every color in `kitty.conf`, the `include` too. Move that file
+  aside, or copy the scheme over it (keep a backup), then restart kitty.
 - Each file also sets kitty's tab bar and window borders from the same palette: the active tab and border in
   the theme's accent, inactive tabs on its ANSI black (`color0`).
 
