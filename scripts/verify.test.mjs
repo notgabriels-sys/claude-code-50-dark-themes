@@ -573,9 +573,11 @@ test("rejects a Vol. 2 theme whose text drops below its contrast floor", { timeo
 
 test("rejects a storefront faint colour that is unreadable on the page canvas", { timeout: 90_000 }, async (t) => {
   const fixtureRoot = await makeFixture(t);
-  const page = join(fixtureRoot, "index.html");
-  const html = await readFile(page, "utf8");
-  await writeFile(page, html.replace("--faint:#858991", "--faint:#0a0a0a"));
+  // The page colours live in the shared stylesheet; its first --faint is the dark theme's.
+  const stylesheet = join(fixtureRoot, "assets", "site.css");
+  const css = await readFile(stylesheet, "utf8");
+  assert.ok(css.includes("--faint: #9C99AA;"), "fixture has no dark --faint to break");
+  await writeFile(stylesheet, css.replace("--faint: #9C99AA;", "--faint: #0a0a0a;"));
 
   const result = await runContrastVerifier(fixtureRoot);
 
@@ -3287,13 +3289,32 @@ test("rejects an untracked page of an unreviewed type, in a repository", { timeo
 });
 
 test("rejects a stylesheet, which a page could load", { timeout: 90_000 }, async (t) => {
-  const fixtureRoot = await addFile(t, "assets/site.css", '@import "https://pay.example.invalid/x.css";\n');
+  const fixtureRoot = await addFile(t, "assets/other.css", '@import "https://pay.example.invalid/x.css";\n');
 
   const result = await runVerifier(fixtureRoot);
 
   assert.notEqual(result.code, 0, "a stylesheet shipped green");
-  assert.match(result.stderr, /assets\/site\.css is a stylesheet\. A page here may load one, and CSS makes requests/);
+  assert.match(result.stderr, /assets\/other\.css is a stylesheet\. A page here may load one, and CSS makes requests/);
 });
+
+// The site's shared stylesheet is served (#72) because scripts/site-style.mjs reads every request
+// it makes; a request it adds is refused there.
+for (const [request, rule, message] of [
+  ["an @import", '@import "https://pay.example.invalid/x.css";\n', /assets\/site\.css uses @import/],
+  ["an image", '.lights .l1 { background-image: url("https://pay.example.invalid/x.png"); }\n', /assets\/site\.css \.lights \.l1 \{ background-image \} fetches with url\(\)/],
+  ["an image at an unquoted address", ".lights .l1 { background-image: url(https://pay.example.invalid/x.png); }\n", /assets\/site\.css writes url\( without quotes/],
+]) {
+  test(`rejects the site stylesheet with ${request}`, { timeout: 90_000 }, async (t) => {
+    const fixtureRoot = await makeFixture(t);
+    const sheet = join(fixtureRoot, "assets/site.css");
+    await writeFile(sheet, (await readFile(sheet, "utf8")) + rule);
+
+    const result = await runVerifier(fixtureRoot);
+
+    assert.notEqual(result.code, 0, `the site stylesheet shipped green with ${request}`);
+    assert.match(result.stderr, message);
+  });
+}
 
 for (const [control, path, content] of [
   ["an image whose extension is in capitals", "assets/products/IMG_0001.JPG", "not really a jpeg\n"],
