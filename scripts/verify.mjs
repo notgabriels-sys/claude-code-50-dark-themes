@@ -2770,6 +2770,26 @@ for (const file of [...repositoryFiles.filter((path) => path.endsWith(".html")),
   }
 }
 
+// Terminal.app keeps two profiles apart. Read 2026-11-08 from Apple's "Specify default and
+// startup Terminal window profiles on Mac" and "Change General settings in Terminal on Mac"
+// (support.apple.com, through search; the host is outside this session's network): the
+// first window at launch uses the startup profile, set in General under "On startup, open"
+// with "New window with profile", and the default profile, set with the Default button in
+// Profiles, is used for additional windows. The schemes README said only "click Default; new
+// windows use it", so a reader who quits and relaunches Terminal opens it in the old profile
+// and takes the import for failed. A passage that says to click Default must name the
+// startup setting too.
+for (const file of [...repositoryFiles.filter((path) => path.endsWith(".html")), ...repositoryReadmes, "llms.txt"]) {
+  for (const block of readableBlocks(file, await readFile(fileUrl(file), "utf8"))) {
+    if (/\bclick\s+Default\b/i.test(block) && !/\bOn startup\b/i.test(block)) {
+      fail(
+        `${file} says to click Default ("${block.slice(0, 140)}") without naming Terminal's startup setting. ` +
+          "The default profile covers windows opened later; the window at launch uses the one set in Settings → General → On startup, open: say so in that passage.",
+      );
+    }
+  }
+}
+
 // The install guide's manual fallback is a procedure people follow verbatim on
 // a page that search can land them on directly. It used to open with
 // `cp *.json ~/.claude/themes/` and never say where the files come from — the

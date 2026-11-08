@@ -125,7 +125,9 @@ server.
 - **File:** `terminal-app/Gabs <Theme>.terminal`, a color-only profile: background, text, bold, cursor,
   selection and the 16 ANSI colors. No font, window size or keyboard settings.
 - **Install:** Terminal → Settings → Profiles → the **⋯** menu below the list → **Import…** → the file.
-- **Activate:** select `Gabs <Theme>` and click **Default**; new windows use it.
+- **Activate:** select `Gabs <Theme>` and click **Default**; new windows use it. The window Terminal opens at
+  launch uses the startup profile instead: in Settings → General, set **On startup, open** → **New window
+  with profile** to `Gabs <Theme>` too.
 - It is a new profile, so it starts with Terminal's default font and window size. If you ran Claude Code's
   `/terminal-setup` in your old profile, run it again with the new one as the default.
 

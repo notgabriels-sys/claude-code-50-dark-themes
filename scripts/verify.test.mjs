@@ -3138,6 +3138,48 @@ test("accepts Ghostty config advice with the 1.2.3 rename, one file, or which fi
   assert.equal(result.code, 0, `correct Ghostty config advice was rejected:\n${result.stderr}`);
 });
 
+test("rejects a Terminal.app 'click Default' step that leaves out the startup profile", { timeout: 120_000 }, async (t) => {
+  // Apple: the first window at launch uses the startup profile (General → On startup, open); the
+  // default profile covers windows opened later.
+  const fixtureRoot = await makeFixture(t);
+  const llms = await readFile(join(fixtureRoot, "llms.txt"), "utf8");
+  const variants = [
+    ["the schemes README's old step (#68)", "terminal-schemes/README.md",
+      "new windows use it. The window Terminal opens at\n  launch uses the startup profile instead: in Settings → General, set **On startup, open** → **New window\n  with profile** to `Gabs <Theme>` too.\n",
+      "new windows use it.\n",
+      /terminal-schemes\/README\.md says to click Default \("Activate: select Gabs <Theme> and click Default; new windows use it\."\) without naming Terminal's startup setting/],
+    ["a page saying to click Default", "claude-code-theme-install-guide.html", "  </main>",
+      "  <p>In Terminal.app, select the profile and click <strong>Default</strong>.</p>\n  </main>",
+      /claude-code-theme-install-guide\.html says to click Default \("In Terminal\.app, select the profile and click Default/],
+    ["llms.txt saying to click Default", "llms.txt", llms,
+      `${llms}\nIn Terminal, click Default on the imported profile, then restart Terminal.\n`,
+      /llms\.txt says to click Default \("In Terminal, click Default on the imported profile/],
+  ];
+  for (const [label, file, from, to, message] of variants) {
+    const path = join(fixtureRoot, file);
+    const original = await readFile(path, "utf8");
+    assert.equal(original.split(from).length, 2, `fixture anchor for ${label} must occur once; update this test`);
+    await writeFile(path, original.replace(from, to));
+    const result = await runVerifier(fixtureRoot);
+    await writeFile(path, original);
+
+    assert.notEqual(result.code, 0, `the verifier accepted ${label}`);
+    assert.match(result.stderr, message, label);
+  }
+});
+
+test("accepts Terminal.app advice that names the startup setting, or mentions the default profile without a click", { timeout: 120_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const llmsPath = join(fixtureRoot, "llms.txt");
+  await writeFile(
+    llmsPath,
+    `${await readFile(llmsPath, "utf8")}\nIn Terminal, click Default on the profile, and in General set On startup, open to it too.\n` +
+      "\nTerminal's Default profile is the one new windows use.\n",
+  );
+  const result = await runVerifier(fixtureRoot);
+  assert.equal(result.code, 0, `correct Terminal.app advice was rejected:\n${result.stderr}`);
+});
+
 test("rejects a page that still offers the withdrawn free Gumroad download", { timeout: 90_000 }, async (t) => {
   // The install guide's FAQ has its own guard (from #61); this one covers every
   // other public page, so plant the offer where only it looks.
