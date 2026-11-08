@@ -3040,6 +3040,52 @@ test("accepts an uninstall passage that says to restart, and a skills plugin's u
   assert.equal(result.code, 0, `a correct uninstall passage was rejected:\n${result.stderr}`);
 });
 
+test("rejects a kitty auto-theme remedy that covers one *-theme.auto.conf file", { timeout: 120_000 }, async (t) => {
+  // kitty uses whichever auto file matches the mode the OS reports (no-preference on GNOME with
+  // Dark style off) and switches when the mode changes, so fixing one file leaves the scheme hidden.
+  const fixtureRoot = await makeFixture(t);
+  const llms = await readFile(join(fixtureRoot, "llms.txt"), "utf8");
+  const variants = [
+    ["the schemes README's old bullet (#80)", "terminal-schemes/README.md",
+      "the `include` too, and switches\n  file when the mode changes. Move all of them aside, or copy the scheme over each one (keep backups),\n  then restart kitty.\n",
+      "the `include` too. Move that file\n  aside, or copy the scheme over it (keep a backup), then restart kitty.\n",
+      /terminal-schemes\/README\.md tells the reader to move, replace or remove one of kitty's \*-theme\.auto\.conf files \("Move that file aside, or copy the scheme over it/],
+    ["a page deleting one file", "claude-code-theme-install-guide.html", "  </main>",
+      "  <p>If kitty ignores the scheme, delete <code>dark-theme.auto.conf</code> and restart kitty.</p>\n  </main>",
+      /claude-code-theme-install-guide\.html tells the reader to move, replace or remove one of kitty's \*-theme\.auto\.conf files \("If kitty ignores the scheme, delete dark-theme\.auto\.conf/],
+    ["an \"every\" that covers colors, not files", "llms.txt", llms,
+      `${llms}\nkitty ignores the scheme while dark-theme.auto.conf exists: move that file aside, and every color then comes from kitty.conf.\n`,
+      /llms\.txt tells the reader to move, replace or remove one of kitty's \*-theme\.auto\.conf files \("kitty ignores the scheme while dark-theme\.auto\.conf exists/],
+    ["an overwrite of one file", "llms.txt", llms,
+      `${llms}\nOn GNOME, overwrite no-preference-theme.auto.conf with the scheme.\n`,
+      /llms\.txt tells the reader to move, replace or remove one of kitty's \*-theme\.auto\.conf files \("On GNOME, overwrite no-preference-theme\.auto\.conf/],
+  ];
+  for (const [label, file, from, to, message] of variants) {
+    const path = join(fixtureRoot, file);
+    const original = await readFile(path, "utf8");
+    assert.equal(original.split(from).length, 2, `fixture anchor for ${label} must occur once; update this test`);
+    await writeFile(path, original.replace(from, to));
+    const result = await runVerifier(fixtureRoot);
+    await writeFile(path, original);
+
+    assert.notEqual(result.code, 0, `the verifier accepted ${label}`);
+    assert.match(result.stderr, message, label);
+  }
+});
+
+test("accepts kitty auto-theme advice that covers every file, or gives no remedy", { timeout: 120_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const llmsPath = join(fixtureRoot, "llms.txt");
+  await writeFile(
+    llmsPath,
+    `${await readFile(llmsPath, "utf8")}\nkitten themes writes light-theme.auto.conf when you save a theme for light mode.\n` +
+      "\nIf kitty ignores the scheme, delete dark-theme.auto.conf, light-theme.auto.conf and no-preference-theme.auto.conf, then restart kitty.\n" +
+      "\nOr replace each of the *-theme.auto.conf files with the scheme, dark-theme.auto.conf among them.\n",
+  );
+  const result = await runVerifier(fixtureRoot);
+  assert.equal(result.code, 0, `correct kitty auto-theme advice was rejected:\n${result.stderr}`);
+});
+
 test("rejects a page that still offers the withdrawn free Gumroad download", { timeout: 90_000 }, async (t) => {
   // The install guide's FAQ has its own guard (from #61); this one covers every
   // other public page, so plant the offer where only it looks.

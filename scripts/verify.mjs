@@ -2702,6 +2702,38 @@ for (const file of [...repositoryFiles.filter((path) => path.endsWith(".html")),
   }
 }
 
+// kitty's automatic light/dark themes, read 2026-11-08 from its themes-kitten page
+// (sw.kovidgoyal.net/kitty/kittens/themes/, fetched live): `kitten themes` writes
+// dark-theme.auto.conf, light-theme.auto.conf and no-preference-theme.auto.conf
+// into the config directory; "When these files exist, kitty queries the OS for its
+// color scheme and uses the appropriate file", their colors "override all other
+// colors", and kitty "will also automatically change colors when the OS color
+// scheme changes". GNOME with Dark style off reports no-preference. The schemes
+// README (#80) said to move "that file" aside, the one for the OS's current mode,
+// or copy the scheme over it: on GNOME's light style a reader moves
+// light-theme.auto.conf and sees no change, and anyone else loses the scheme at
+// the next mode switch. So a sentence that tells the reader to move, replace or
+// remove one of these files must cover them all: "all of them", "each one" and
+// the like, or all three names.
+const kittyAutoThemes = ["dark-theme.auto.conf", "light-theme.auto.conf", "no-preference-theme.auto.conf"];
+const kittyAutoTheme = /\b(?:dark|light|no-preference)-theme\.auto\.conf\b/;
+const kittyAutoRemedy = /\b(?:move|copy|delete|remove|rename|replace|overwrite)\b/i;
+const coversEveryFile = /\b(?:all|each|every)\s+(?:of\s+)?(?:them|these|those|the|three|one|files?)\b/i;
+for (const file of [...repositoryFiles.filter((path) => path.endsWith(".html")), ...repositoryReadmes, "llms.txt"]) {
+  for (const block of readableBlocks(file, await readFile(fileUrl(file), "utf8"))) {
+    if (!kittyAutoTheme.test(block)) continue;
+    const remedy = sentencesOf(block).find(
+      (part) => kittyAutoRemedy.test(part) && !coversEveryFile.test(part) && !kittyAutoThemes.every((name) => part.includes(name)),
+    );
+    if (!remedy) continue;
+    fail(
+      `${file} tells the reader to move, replace or remove one of kitty's *-theme.auto.conf files ("${remedy.trim().slice(0, 140)}"). ` +
+        "kitty uses whichever matches the mode the OS reports (no-preference on GNOME with Dark style off) and switches file when the mode changes: " +
+        "say to move all of them aside, or copy the scheme over each one.",
+    );
+  }
+}
+
 // The install guide's manual fallback is a procedure people follow verbatim on
 // a page that search can land them on directly. It used to open with
 // `cp *.json ~/.claude/themes/` and never say where the files come from — the
