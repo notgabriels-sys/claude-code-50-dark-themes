@@ -896,7 +896,7 @@ verification, and it must never be described as verification. The priced half
 stays unbuilt until someone reads every product in a signed-in browser
 (15 as of 2026-10-18 — the count in `verify`'s summary line is the live one).
 
-`verify` also guards the plugin marketplace: it asserts all three plugins are
+`verify` also guards the plugin marketplace: it asserts all four plugins (the two theme packs, the `/themes` gallery mod and the studio skills) are
 registered with the right source paths, that every field of each plugin's
 `plugin.json` matches its marketplace entry, that each description's opening
 count matches what ships, that every skill in `.claude/skills/`
