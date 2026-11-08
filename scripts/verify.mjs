@@ -2734,6 +2734,42 @@ for (const file of [...repositoryFiles.filter((path) => path.endsWith(".html")),
   }
 }
 
+// Ghostty's config files, read 2026-11-08 from ghostty.org/docs/config (fetched live):
+// "The configuration file is named `config.ghostty` (or `config` before 1.2.3), is loaded
+// from these locations in the following order": ~/.config/ghostty/config.ghostty, then
+// ~/.config/ghostty/config, then on macOS the same two names in ~/Library/Application
+// Support/com.mitchellh.ghostty/, "with conflicting values in later files overriding
+// earlier ones", and "all macOS-specific files are loaded _after_ all XDG files". The
+// schemes README (#68) put the rename at 1.3, and listed the files without saying that
+// all of them load: a reader who upgraded keeps the old `config`, adds the theme to
+// `config.ghostty` as told, and the later file keeps its own theme. So a sentence that
+// ties config.ghostty to a version must name 1.2.3, and a passage that names more than
+// one of these files must say which one wins.
+const ghosttyConfigRename = "1.2.3";
+const ghosttyConfigKinds = [/config\.ghostty/, /ghostty\/config(?![.\w])/, /com\.mitchellh\.ghostty/];
+const saysWhichWins = /\b(?:wins?|later|last)\b/i;
+for (const file of [...repositoryFiles.filter((path) => path.endsWith(".html")), ...repositoryReadmes, "llms.txt"]) {
+  for (const block of readableBlocks(file, await readFile(fileUrl(file), "utf8"))) {
+    const kinds = ghosttyConfigKinds.filter((kind) => kind.test(block)).length;
+    if (!kinds) continue;
+    for (const sentence of sentencesOf(block).filter((part) => part.includes("config.ghostty"))) {
+      const versions = (sentence.match(/\b\d+\.\d+(?:\.\d+)?\b/g) ?? []).filter((version) => version !== ghosttyConfigRename);
+      if (versions.length) {
+        fail(
+          `${file} ties config.ghostty to Ghostty ${versions.join(", ")} ("${sentence.trim().slice(0, 140)}"). ` +
+            `Ghostty's docs put the rename at ${ghosttyConfigRename}: the file "is named config.ghostty (or config before ${ghosttyConfigRename})".`,
+        );
+      }
+    }
+    if (kinds > 1 && !saysWhichWins.test(block)) {
+      fail(
+        `${file} names more than one Ghostty config file ("${block.slice(0, 140)}") without saying which one wins. ` +
+          "Ghostty loads every one that exists, the macOS Application Support ones after ~/.config, and a later file overrides an earlier one: say so in that passage.",
+      );
+    }
+  }
+}
+
 // The install guide's manual fallback is a procedure people follow verbatim on
 // a page that search can land them on directly. It used to open with
 // `cp *.json ~/.claude/themes/` and never say where the files come from — the

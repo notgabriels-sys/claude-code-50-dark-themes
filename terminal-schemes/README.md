@@ -33,9 +33,10 @@ server.
 - **File:** `ghostty/Gabs <Theme>`. It has no extension.
 - **Install:** copy it to `~/.config/ghostty/themes/`, on macOS too.
 - **Activate:** add `theme = Gabs <Theme>` (no quotes) to your config: `~/.config/ghostty/config.ghostty`
-  on Ghostty 1.3+, `~/.config/ghostty/config` before that (on macOS it can also be in
-  `~/Library/Application Support/com.mitchellh.ghostty/`). Reload with `cmd+shift+,` (macOS) or
-  `ctrl+shift+,` (Linux).
+  on Ghostty 1.2.3+, `~/.config/ghostty/config` before that (on macOS it can also be in
+  `~/Library/Application Support/com.mitchellh.ghostty/`). Ghostty reads every one of these that exists,
+  the macOS ones last, and a later file's `theme` line wins, so keep only one. Reload with `cmd+shift+,`
+  (macOS) or `ctrl+shift+,` (Linux).
 - `background`, `foreground` or `palette` lines in your config override the theme.
 
 ## kitty (macOS, Linux)

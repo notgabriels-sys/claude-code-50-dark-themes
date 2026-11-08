@@ -3086,6 +3086,58 @@ test("accepts kitty auto-theme advice that covers every file, or gives no remedy
   assert.equal(result.code, 0, `correct kitty auto-theme advice was rejected:\n${result.stderr}`);
 });
 
+test("rejects a wrong Ghostty rename version, or Ghostty config files listed without which one wins", { timeout: 120_000 }, async (t) => {
+  // Ghostty's docs: the file "is named config.ghostty (or config before 1.2.3)", every location that
+  // exists is loaded, the macOS ones after ~/.config, and later files override earlier ones.
+  const fixtureRoot = await makeFixture(t);
+  const llms = await readFile(join(fixtureRoot, "llms.txt"), "utf8");
+  const loadOrder =
+    "  `~/Library/Application Support/com.mitchellh.ghostty/`). Ghostty reads every one of these that exists,\n" +
+    "  the macOS ones last, and a later file's `theme` line wins, so keep only one. Reload with `cmd+shift+,`\n" +
+    "  (macOS) or `ctrl+shift+,` (Linux).\n";
+  const variants = [
+    ["the schemes README's old bullet (#68)", "terminal-schemes/README.md", `  on Ghostty 1.2.3+, \`~/.config/ghostty/config\` before that (on macOS it can also be in\n${loadOrder}`,
+      "  on Ghostty 1.3+, `~/.config/ghostty/config` before that (on macOS it can also be in\n" +
+        "  `~/Library/Application Support/com.mitchellh.ghostty/`). Reload with `cmd+shift+,` (macOS) or\n  `ctrl+shift+,` (Linux).\n",
+      /terminal-schemes\/README\.md ties config\.ghostty to Ghostty 1\.3 \("Activate: add theme = Gabs <Theme>/],
+    ["the old version alone", "terminal-schemes/README.md", "  on Ghostty 1.2.3+, `~/.config/ghostty/config` before", "  on Ghostty 1.3+, `~/.config/ghostty/config` before",
+      /terminal-schemes\/README\.md ties config\.ghostty to Ghostty 1\.3 /],
+    ["the files listed without the load order", "terminal-schemes/README.md", loadOrder,
+      "  `~/Library/Application Support/com.mitchellh.ghostty/`). Reload with `cmd+shift+,` (macOS) or\n  `ctrl+shift+,` (Linux).\n",
+      /terminal-schemes\/README\.md names more than one Ghostty config file \("Activate: add theme = Gabs <Theme>/],
+    ["a page tying the rename to 1.3", "claude-code-theme-install-guide.html", "  </main>",
+      "  <p>Ghostty 1.3+ reads <code>~/.config/ghostty/config.ghostty</code>.</p>\n  </main>",
+      /claude-code-theme-install-guide\.html ties config\.ghostty to Ghostty 1\.3 /],
+    ["an override that says nothing about which file wins", "llms.txt", llms,
+      `${llms}\nPut the theme in ~/.config/ghostty/config.ghostty or ~/.config/ghostty/config; palette lines override it.\n`,
+      /llms\.txt names more than one Ghostty config file \("Put the theme in ~\/\.config\/ghostty\/config\.ghostty/],
+  ];
+  for (const [label, file, from, to, message] of variants) {
+    const path = join(fixtureRoot, file);
+    const original = await readFile(path, "utf8");
+    assert.equal(original.split(from).length, 2, `fixture anchor for ${label} must occur once; update this test`);
+    await writeFile(path, original.replace(from, to));
+    const result = await runVerifier(fixtureRoot);
+    await writeFile(path, original);
+
+    assert.notEqual(result.code, 0, `the verifier accepted ${label}`);
+    assert.match(result.stderr, message, label);
+  }
+});
+
+test("accepts Ghostty config advice with the 1.2.3 rename, one file, or which file wins", { timeout: 120_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const llmsPath = join(fixtureRoot, "llms.txt");
+  await writeFile(
+    llmsPath,
+    `${await readFile(llmsPath, "utf8")}\nGhostty 1.2.3+ reads ~/.config/ghostty/config.ghostty.\n` +
+      "\nPut the theme line in ~/.config/ghostty/config.ghostty. Its ANSI colours read at 4.5:1 or more on the background.\n" +
+      "\nGhostty reads ~/.config/ghostty/config.ghostty and then ~/.config/ghostty/config, and the later one wins.\n",
+  );
+  const result = await runVerifier(fixtureRoot);
+  assert.equal(result.code, 0, `correct Ghostty config advice was rejected:\n${result.stderr}`);
+});
+
 test("rejects a page that still offers the withdrawn free Gumroad download", { timeout: 90_000 }, async (t) => {
   // The install guide's FAQ has its own guard (from #61); this one covers every
   // other public page, so plant the offer where only it looks.
