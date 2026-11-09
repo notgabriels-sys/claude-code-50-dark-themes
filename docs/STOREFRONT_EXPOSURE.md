@@ -54,14 +54,14 @@ produces for the paid products before anything ships.
 | `index.html` JSON-LD | search engines; free plugin only | `verify` checks the plugin's version and download URL, allows one script-tag spelling and only the plain schema.org context, refuses microdata and RDFa, and requires exactly one ItemList on the site, checked against the theme files |
 | `index.html` "Start here" row | a few picks, each chosen by a measured contrast ratio | written by `scripts/build-quick-picks.mjs` from the theme files; `verify` compares the block with a fresh build and checks each pick's theme page exists |
 | `theme/` pages | one crawlable page per theme, and an index | written by `scripts/build-theme-pages.mjs` from the theme files; `verify` compares every page with a fresh build and reviews their one copy script by hash |
-| `sitemap.xml` | crawler discovery of the public pages and the theme pages | written by the same builder; `verify` holds it to a sitemap element allowlist, with no stylesheet, every `<loc>` to the site, and then compares it with a fresh build |
-| `robots.txt` | crawl permission; points at the sitemap | — |
-| `llms.txt` | agents and LLM crawlers reading the catalog | `verify` reads the counts it states and the install commands it gives |
+| `sitemap.xml` | crawler discovery of the public pages and the theme pages | written by the same builder, with a `<lastmod>` only on the two dated pages, read from each page's JSON-LD `dateModified`; `verify` holds it to a sitemap element allowlist, with no stylesheet, every `<loc>` to the site, compares it with a fresh build, and then reads it against the pages: every `<loc>` a served page with no robots `noindex` (read only in the head, with any meta verify does not model refused), listed once at the address its canonical link names, every such `.html` page listed, and each `<lastmod>` equal to its page's `dateModified` |
+| `robots.txt` | crawl permission; keeps crawlers from fetching the internal notes at every address Pages serves them at, all but `/CLAUDE` (a blocked address something links can still be listed in search, without its content); points at the sitemap | `verify` holds it to one `User-agent: *` group of plain-prefix `Disallow` lines, which every crawler reads alike, refuses a rule over any path the public pages or `llms.txt` use (read percent-decoded and without regard to case, from every URL attribute, `srcset`, CSS `url()` and `image-set()`, JSON-LD and absolute address on a page), requires every served note to be blocked at each address Pages serves it at (its raw `.md` unless it has front matter, the page Jekyll renders and that page without `.html`, the last read back on 2026-11-09, and the directory of a README or `index.md` that becomes its index) unless it is in `crawlableNotes` or the address is in `unblockableNoteAddresses` (only `/CLAUDE`, which under verify's case-folded rule no plain-prefix rule can block without covering `/claude-code-theme-install-guide.html`), refuses a link from the public pages, `llms.txt` or a note in `crawlableNotes` to an internal note's address, and refuses a rule that blocks nothing |
+| `llms.txt` | agents and LLM crawlers reading the catalog | `verify` reads the counts it states and the install commands it gives, requires a link to every root page a search engine may index and to the theme pages' index and address pattern, and reads every destination a reader could follow (Markdown and reference links, autolinks, raw HTML links and bare addresses, with or without a scheme) as the URL parser resolves it, and refuses any that is not on the site or not served, and any payment host, linked or named |
 | `themes.json` | tools, aggregators and agents consuming the original pack | `verify` rebuilds and byte-compares, and checks the content against the theme files |
 | `README.md` | GitHub arrivals, the install path | `verify` checks the install commands and Gumroad slugs |
 | `.claude-plugin/marketplace.json` | `claude plugin install` | `verify` checks every plugin: keys, manifests and the exact files each ships |
 | Every link on every public page | visitors leaving the site | `verify` resolves each link as a browser does and holds its host to `reviewedLinkHosts`; PayPal, Gumroad and Agensi only at a verified id, slug or reviewed page |
-| Every Markdown note (rendered by GitHub Pages as a page on the domain) | anyone who finds a note's URL | `verify` holds every link a note could render to `reviewedLinkHosts`, no payment host; front matter only `name`/`title`/`description`; no Liquid |
+| Every Markdown note (rendered by GitHub Pages as a page on the domain) | anyone who finds a note's URL | `verify` holds every link a note could render to `reviewedLinkHosts`, no payment host; front matter only `name`/`title`/`description`, with LF or CRLF line ends; no whitespace or `(` inside a link destination; no Liquid |
 | Every other file Pages serves | anyone who opens its URL | `verify` allows only reviewed types (`SERVED_TYPES`); an SVG, opened directly, is a document, so SVG artwork is held to an element and attribute allowlist with no link, fetch or script (design-tool exports with presentation attributes pass); every page opens with `<!doctype html>` |
 
 A directory badge, a launch-site link or any other link to a host the site has
@@ -71,10 +71,12 @@ checkout or payment host never goes on that list from exposure work; it is a
 payment surface (see `CLAUDE.md`).
 
 Adding a public page means adding it to `llms.txt` by hand and to
-`FIXED_SITEMAP_ENTRIES` in `scripts/build-theme-pages.mjs`, then rebuilding.
-`llms.txt` is not generated, so it does not notice a page that was never
-listed; the sitemap is regenerated from that list, so a page missing from it
-is missing from the sitemap too.
+`FIXED_SITEMAP_PAGES` in `scripts/build-theme-pages.mjs`, then rebuilding.
+`verify` fails on a served page a search engine may index that the sitemap
+does not list, or, at the root, that `llms.txt` does not link, so a page that
+should stay out of search carries a robots meta naming `noindex` instead, as
+`impressum.html` and `assets/social-preview.html` do. Moving a dated page's `dateModified` moves its
+`<lastmod>` too, so rebuild after it.
 
 ## themes.json — the pattern worth copying
 

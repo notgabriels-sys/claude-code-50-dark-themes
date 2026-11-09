@@ -132,8 +132,9 @@ Every theme has a page under `theme/<slug>/`, plus the index at `theme/index.htm
 `sitemap.xml`. They are generated, never edited by hand: `scripts/build-theme-pages.mjs` renders
 them from the theme files, the gallery's terminal backgrounds and `previews.json`, and the verifier
 fails if a page on disk differs from that render, if a theme has no page, or if a page has no theme.
-After changing a theme, a gallery terminal colour or a preview colour, run the builder and commit
-what it writes:
+The sitemap's `<lastmod>` for the install guide and the semantic-colors article is each page's JSON-LD
+`dateModified`. After changing a theme, a gallery terminal colour, a preview colour or a dated page's
+`dateModified`, run the builder and commit what it writes:
 
 ```bash
 node scripts/build-theme-pages.mjs
@@ -226,9 +227,32 @@ The command checks:
   container, and no comment opener inside a script. The inert-element and script-tag checks read the
   raw page, comments and attribute values included: to mention one of those elements, write its `<`
   as `&lt;`;
-- that every Markdown note GitHub Pages serves as a page (any `.md` outside a `.` or `_` directory) links
-  only to reviewed hosts and never to a payment host, sets no front matter beyond `name`,
-  `title` and `description`, and holds no Liquid — and that the root has no `_config.yml` or other `_` entry;
+- that every Markdown note GitHub Pages serves (any `.md` outside a `.` or `_` directory, nearly all of them
+  rendered as pages) links only to reviewed hosts and never to a payment host, writes no `(` and no
+  whitespace inside a link destination (write them as `%28` and `%20`, and keep a destination on one
+  line; this is read inside code too), is saved as UTF-8, sets no front matter beyond `name`, `title`
+  and `description`, each at the start of its line and followed by a space or tab, with a value that is
+  plain or quoted text or a block scalar (a long value as `description: >-` and the text indented; a
+  value opening with `!`, `&`, `*`, `[` or `{` goes in quotes), with no line break but LF or CRLF and
+  no control character but a tab, holds no Liquid, and, if Pages renders it, has no `:` or `..` in its
+  path — and that the root has no `_config.yml` or other `_` entry;
+- that robots.txt keeps crawlers from fetching every such note at each address GitHub Pages serves it at
+  (its `.md` unless it has front matter, the page Jekyll renders and that page without `.html`, and the
+  directory of a README or `index.md` that becomes its directory's index): a new note needs a `Disallow`
+  line (a root note as `/<NAME>`, a directory as `/<directory>/`), or an entry in `crawlableNotes` in
+  `scripts/verify.mjs` if it is meant to be found; that no rule blocks a path the public pages,
+  `llms.txt` or a note in `crawlableNotes` use (read from every URL attribute and `ping`, a meta's
+  content, what CSS can fetch in style elements and style attributes — `url()`, `@import`, the strings
+  in `image-set()` and its kin, and custom properties' strings — and JSON-LD, each after its character
+  references and escapes are decoded); and that none of those links an internal note. `llms.txt` holds
+  no numeric character reference and no named one with its `;` ("Q&A" is fine), and no whitespace
+  inside a link destination.
+  `CLAUDE.md` is blocked as `/CLAUDE.`, because under verify's case-folded rule a rule over `/CLAUDE`
+  would also cover `/claude-code-theme-install-guide.html`; its page without `.html`, `/CLAUDE`, is
+  named in `unblockableNoteAddresses` and stays open to crawlers;
+- that `sitemap.xml` and `llms.txt` list every served `.html` page a search engine may index (`llms.txt`
+  the root ones; the note kept open in `crawlableNotes` is in neither), and that `llms.txt` links only to
+  files this site serves and names no payment host, however an address is spelled;
 - that every file GitHub Pages serves is a reviewed type: a page is `.html` and a note `.md`, SVG
   artwork and the sitemap stay inside element and attribute allowlists (export SVG with presentation
   attributes rather than CSS; `verify` lists every construct to change, with each tool's setting), every page opens with
@@ -242,7 +266,8 @@ The command checks:
 - that stated check and theme counts on public pages, plugin descriptions and the READMEs match the
   computed values, in digits or in words;
 - that share images carry alternative text, and that one image is described one way.
-- that every page under `theme/` is a fresh render of its theme file and `sitemap.xml` lists each one.
+- that every page under `theme/` is a fresh render of its theme file, and that `sitemap.xml` lists every
+  served page without a robots `noindex`, nothing else, and a dated page with its `dateModified`.
 
 GitHub Actions runs the regression tests and the same repository check on every pull request, on every
 push to `main`, and on demand from the repository's Actions tab.
