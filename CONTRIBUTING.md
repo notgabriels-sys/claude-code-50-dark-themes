@@ -228,19 +228,25 @@ The command checks:
   raw page, comments and attribute values included: to mention one of those elements, write its `<`
   as `&lt;`;
 - that every Markdown note GitHub Pages serves (any `.md` outside a `.` or `_` directory, nearly all of them
-  rendered as pages) links only to reviewed hosts and never to a payment host, writes no `(` inside a
-  link destination (write it as `%28`), sets no front matter beyond `name`, `title` and `description`,
-  each at the start of its line (a long value as a block scalar, `description: >-` and the text
-  indented), holds no Liquid, and, if Pages renders it, has no `:` or `..` in its path — and that the
-  root has no `_config.yml` or other `_` entry;
+  rendered as pages) links only to reviewed hosts and never to a payment host, writes no `(` and no
+  whitespace inside a link destination (write them as `%28` and `%20`, and keep a destination on one
+  line; this is read inside code too), is saved as UTF-8, sets no front matter beyond `name`, `title`
+  and `description`, each at the start of its line and followed by a space or tab, with a value that is
+  plain or quoted text or a block scalar (a long value as `description: >-` and the text indented; a
+  value opening with `!`, `&`, `*`, `[` or `{` goes in quotes), with no line break but LF or CRLF and
+  no control character but a tab, holds no Liquid, and, if Pages renders it, has no `:` or `..` in its
+  path — and that the root has no `_config.yml` or other `_` entry;
 - that robots.txt keeps crawlers from fetching every such note at each address GitHub Pages serves it at
   (its `.md` unless it has front matter, the page Jekyll renders and that page without `.html`, and the
   directory of a README or `index.md` that becomes its directory's index): a new note needs a `Disallow`
   line (a root note as `/<NAME>`, a directory as `/<directory>/`), or an entry in `crawlableNotes` in
   `scripts/verify.mjs` if it is meant to be found; that no rule blocks a path the public pages,
-  `llms.txt` or a note in `crawlableNotes` use (read from every URL attribute, from CSS strings and
-  `url()` in style elements and decoded style attributes, and from JSON-LD); and that none of those
-  links an internal note.
+  `llms.txt` or a note in `crawlableNotes` use (read from every URL attribute and `ping`, a meta's
+  content, what CSS can fetch in style elements and style attributes — `url()`, `@import`, the strings
+  in `image-set()` and its kin, and custom properties' strings — and JSON-LD, each after its character
+  references and escapes are decoded); and that none of those links an internal note. `llms.txt` holds
+  no numeric character reference and no named one with its `;` ("Q&A" is fine), and no whitespace
+  inside a link destination.
   `CLAUDE.md` is blocked as `/CLAUDE.`, because under verify's case-folded rule a rule over `/CLAUDE`
   would also cover `/claude-code-theme-install-guide.html`; its page without `.html`, `/CLAUDE`, is
   named in `unblockableNoteAddresses` and stays open to crawlers;

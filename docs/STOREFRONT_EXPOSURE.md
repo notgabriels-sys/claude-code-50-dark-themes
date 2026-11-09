@@ -61,7 +61,7 @@ produces for the paid products before anything ships.
 | `README.md` | GitHub arrivals, the install path | `verify` checks the install commands and Gumroad slugs |
 | `.claude-plugin/marketplace.json` | `claude plugin install` | `verify` checks every plugin: keys, manifests and the exact files each ships |
 | Every link on every public page | visitors leaving the site | `verify` resolves each link as a browser does and holds its host to `reviewedLinkHosts`; PayPal, Gumroad and Agensi only at a verified id, slug or reviewed page |
-| Every Markdown note (rendered by GitHub Pages as a page on the domain) | anyone who finds a note's URL | `verify` holds every link a note could render to `reviewedLinkHosts`, no payment host; front matter only `name`/`title`/`description`; no Liquid |
+| Every Markdown note (rendered by GitHub Pages as a page on the domain) | anyone who finds a note's URL | `verify` holds every link a note could render to `reviewedLinkHosts`, no payment host; front matter only `name`/`title`/`description`, with LF or CRLF line ends; no whitespace or `(` inside a link destination; no Liquid |
 | Every other file Pages serves | anyone who opens its URL | `verify` allows only reviewed types (`SERVED_TYPES`); an SVG, opened directly, is a document, so SVG artwork is held to an element and attribute allowlist with no link, fetch or script (design-tool exports with presentation attributes pass); every page opens with `<!doctype html>` |
 
 A directory badge, a launch-site link or any other link to a host the site has

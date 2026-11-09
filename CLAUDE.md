@@ -245,6 +245,16 @@ demand, and **fails the build** on:
   a `(` inside a link destination in a note or `llms.txt`; and a style
   attribute holding a character reference verify does not decode — see "A
   rendered note is served without `.html` too" below;
+- **(added 2026-11-09, third review)** a note's front matter holding a
+  character YAML reads as a line break, skips or refuses, or a key with no
+  space after its colon; whitespace inside a link destination in a note or
+  `llms.txt`; a character reference in `llms.txt`; and any attribute value on
+  a public page holding a character reference verify does not decode — see
+  "The third review" below;
+- **(added 2026-11-09, fourth review)** a served note that is not UTF-8; a
+  front-matter value opening with a YAML tag, anchor, alias or flow
+  collection; and an `@import` of a `data:` stylesheet — see "The third
+  review" below;
 - the retired résumé checkout slug `notgabriel.gumroad.com/l/wmlrk`;
 - any of the three verified PayPal links going missing;
 - **(added 2026-08-24)** any of the three carrying a price other than its
@@ -400,9 +410,16 @@ must stay on the site or reach a reviewed host, and never a payment host
 (`README.md` excepted: its prices are read line by line). Reading code as links
 only adds candidates; it cannot hide one. The cost is that a note cannot quote
 an angle-bracket autolink or a link destination even in code; describe it in
-words, as this paragraph does. A served note may carry front matter
-only as `name`, `title` and `description` (a `permalink` of `/index.html` would replace
-the storefront), no Liquid delimiters, and the root no `_` entry
+words, as this paragraph does. (Widened 2026-11-09: a link destination with
+whitespace in it is refused in code too, and so is a code line shaped like a
+definition or a link, such as a template line that puts a bracketed year,
+a colon and a bracketed degree in a row, or a call whose bracketed index runs
+straight into its argument list; put a space between the "]" and the ":" or
+"(" after it.) A served note may carry front matter
+only as `name`, `title` and `description` (a `permalink` moves the note to any
+address, `/404.html` among them, which Pages serves for every missing URL;
+corrected 2026-11-09: this said `/index.html` would replace the storefront,
+which the third review's local build showed the static storefront keeps), no Liquid delimiters, and the root no `_` entry
 (`_config.yml`, `_layouts`, `_includes`) that would reshape the build.
 Differentially tested against kramdown (rule 13): 18,900 generated notes — 23
 link forms plus 21 spellings in which the URL never appears literally, in 20
@@ -1078,7 +1095,10 @@ Also fixed from the first review:
   them, and one this reader does not know is refused. A small tokenizer
   drops comments, decodes CSS escapes, and takes every string and unquoted
   `url()` as an address, including a font name's or a custom property's.
-  Reading too many only refuses more.
+  Reading too many only refuses more. (Narrowed 2026-11-09 by the third
+  review: it refused `content: "claude.json"` and sent the contributor to
+  weaken robots.txt, so it now reads only what CSS can fetch; see "The
+  third review" below.)
 - JSON-LD is read for absolute addresses after JSON's escapes, and for
   every `@id`.
 - A rendered note whose path Jekyll rewrites (`:`, `..`, or a directory
@@ -1105,7 +1125,9 @@ work:
   linked `github.com/notgabriels-sys/a(b)/../../../sponsors/<anyone>`, a
   Sponsors checkout for any account, past the path rule. A `(` inside a
   link destination is now refused in notes and in `llms.txt`, and the
-  angle form is read to its `>`.
+  inline angle form is read to its `>` (corrected 2026-11-09: a reference
+  definition's angle form was still read to its first space until the
+  third review).
 
 The other spellings the readers missed are now read:
 - reference definitions in a quote or a list item, or with an escaped or
@@ -1121,7 +1143,12 @@ The other spellings the readers missed are now read:
 It also found false refusals and looping messages in the first fix:
 - A backslash anywhere in page CSS was refused, so an em dash written
   `\2014` failed. So was any `&` in a style attribute. Both are now decoded
-  rather than refused.
+  rather than refused. (Corrected 2026-11-09: the third review's fix refused
+  "R&D" in a style attribute again. Since the fourth review, an `&` that
+  starts no reference a browser decodes is text, and only a named reference
+  with its `;` that verify does not know is refused, and only in a URL
+  attribute, a style attribute, or a content value that reads as an
+  address.)
 - `www.` inside a code span, or inside a link's text in `llms.txt`, was
   read as an address.
 - The `..` rule caught a note that Pages serves only as a file.
@@ -1193,6 +1220,170 @@ of them.
   alone fails: an `@import` with no space after a comment holding an
   apostrophe, and a README beside an index page in a directory named in
   other capitals.
+
+**(added 2026-11-09) The third review: line breaks YAML reads, whitespace
+kramdown keeps.** A third independent review of c011d4f had three lenses:
+the note link reader against kramdown, front matter against Jekyll, and
+`llms.txt` and the public-page readers against real consumers. A second
+agent, told to refute, re-ran the six most severe findings: two held in full
+and four in part. The five unverified lows were read here against the code,
+and all held.
+- The note-link lens was stopped by a safety classifier before it built
+  anything (9 experiments, no harness). It is recorded here as unrun and is
+  not retried in other words, as with the earlier stopped lenses. The
+  `llms.txt` lens reached the note reader on its own, and two of its high
+  findings are there.
+- The front-matter lens ran 4,617 experiments, and the `llms.txt` lens ran
+  4,541. Both harnesses were proven first on weakened readers.
+
+Three findings were high, each reproduced with `verify` green:
+- **Front matter.** YAML breaks a line at CR, U+0085, U+2028 and U+2029, and
+  skips a byte-order mark at the start of a line. JavaScript's `^` and the
+  line rule broke at none of these. `title: x`, then U+0085, then a
+  `canonical_url` key, gave a rendered note a canonical link. jekyll-seo-tag
+  prints that link unescaped, so the note carried a script that sent
+  Chromium to a PayPal checkout. A `permalink` the same way moved a note to
+  `/launch/` or took `/404.html`. A front matter now holds LF and CRLF line
+  ends only, and none of the control characters YAML refuses. The lens's
+  4,538-case corpus, re-run on the fix, gives 0 notes that Jekyll moves,
+  where c011d4f gave 88.
+- **Angle-bracket reference definitions.** In both readers, such a
+  definition was read only to its first space. So
+  `https://gabs-utilities.com @www.pay%70al.com/...` was read as the site,
+  while every renderer kept the whole and Chromium went to www.paypal.com,
+  with the site name as user name. Both readers now read it to its `>`.
+- **Whitespace kramdown keeps.** kramdown ends an inline destination only at
+  a bracket, or at whitespace before a title's quote. A definition's
+  destination runs to the end of its line, and an autolink's to its `>`. A
+  browser drops tabs and line breaks from an address. So a destination
+  broken across two lines, or split by a tab, reached an unverified NCP
+  checkout from a rendered note, and the readers saw only `/`. A link
+  destination in a note or `llms.txt` now holds no whitespace, except
+  before a quoted title. A definition is read where a renderer starts one:
+  at the start of a line, after any quote and list markers, and not a
+  footnote's or an abbreviation's.
+
+The lows, each fixed:
+- `llms.txt` named a checkout in prose spelled with character references.
+  It now refuses any character reference.
+- `llms.txt` did not read kramdown attribute lists. It now reads them.
+- A style attribute's numeric reference without its `;`, which Chromium
+  decodes, hid `/CLAUDE`. A meta's content, the same way, hid it from Open
+  Graph readers. Every attribute value is now decoded as a browser decodes
+  it, and one this reader cannot decode is refused.
+- The CSS reader read the text twice, once decoded whole. So an escaped quote
+  earlier on the same line swallowed a `url()` whose escape ended in a
+  space. It is now one tokenizer that decodes each escape where it stands.
+- A `ping` on a link POSTed to `/CLAUDE`. The robots reader now reads every
+  attribute the link guard reads.
+- `title:Launch notes`, with no space after the colon, is one string to
+  YAML. Jekyll then stops the whole Pages build. A key now needs a space or
+  the line's end after it.
+- False refusals, now accepted:
+  - empty front matter, a `...` closer and an indented comment;
+  - CSS strings that are only shown or matched (`content: "claude.json"`,
+    `[href^="/docs/"]`). These sent the contributor to weaken robots.txt.
+    The CSS reader now reads only what CSS can fetch: an unquoted `url()`;
+    the strings in `url()`, `src()`, `image()`, `image-set()` and their
+    `-webkit-` and `cross-fade()` kin; an `@import`'s; and a custom
+    property's, since `var()` can carry one into `image-set()`.
+
+Proof:
+- **Reproductions.** All 41 run against c011d4f and the fix. Every finding
+  is green on c011d4f and red on the fix, each on its own message. The three
+  false refusals and the two CSS strings are refused on c011d4f and pass on
+  the fix. Seven controls fail on both, and three ordinary forms pass on
+  both: a titled link, a titled definition, a footnote.
+- **Rule 4.** On the real tree the note readers read the same 126 links as
+  before, and nothing matches the whitespace rule. The CSS reader reads 271
+  values where it read 349. Every value it no longer reads is a font name, a
+  `format()` string, an attribute selector's string or an empty string;
+  none is a `url()`.
+- **Tests.** The two reviews add 60 tests, and the full suite passes at the
+  pushed head (its count is in the commit message). Of the third review's
+  34, 27 fail on c011d4f, each on its own message. The other seven pin what c011d4f already did: six CSS
+  strings it read, and the titles, footnote and abbreviation it accepted.
+- **Mutation-tested (rule 5).** 48 branches, each gutted alone, were run
+  against the real tree and the 71 tests of these guards.
+  - 45 turn exactly their own tests red, and none turns the real tree red.
+  - Three fail nothing. Each is shadowed by a check that runs first, and is
+    recorded as a second wall:
+    - the byte-order mark among the front-matter characters, since the line
+      rule refuses a line it starts;
+    - the `llms.txt` reference read to its `>`, since the whitespace rule
+      refuses first;
+    - `-webkit-image-set` among the fetching functions, since the
+      page-wide `image-set(` pattern reads it.
+
+**The fourth review** attacked the fix before it was pushed. It had three
+lenses: front matter against Jekyll, the CSS and attribute readers against
+Chromium, and false refusals, messages and records. They ran 45,463, 20,673
+and 239 experiments. Each harness was first run on c011d4f's reader, where
+it reported the third review's misses.
+- The front-matter fix held. Over the third review's 4,617 cases and 40,368
+  new ones, no note `verify` accepts gets a key past the three or loads as
+  anything but a mapping. c011d4f's reader, on the same corpus, let 86 keys
+  through and had 92 notes stop the build.
+- 15 findings. A second agent re-ran the five most severe: four held in full
+  and one in part. The other ten, all low, were read here against the code,
+  and all held.
+
+Two were medium, and both are older than this work. In each, a verify-green
+commit stops every Pages deploy, and the last deploy stays live:
+- `title: !!binary /w==` decodes to bytes that are not UTF-8. A chain of
+  YAML aliases five levels deep runs for over ten minutes. A front-matter
+  value is now plain text, quoted text or a block scalar. One that opens
+  with `!`, `&`, `*`, `[`, `{`, `%`, `@`, a backtick or `?` is refused, and
+  the message says to quote it.
+- A note saved as Latin-1. Notes are now read as strict UTF-8.
+
+The lows are each fixed:
+- **Narrowed too far.** Narrowing the CSS reader dropped a string reached
+  through a `var()` or `env()` fallback, an `if()` branch, an `@function`
+  or an `@property`. A string is now read when any function around it
+  fetches or is dashed, and in a `result` or `initial-value` descriptor.
+- **Comment before the colon.** A comment between a custom property's name
+  and its colon hid the property. Such comments are now skipped.
+- **Case of reference names.** `&Quot;`, which a browser leaves as text, was
+  decoded as a quote. Names are now looked up exactly as written.
+- **`data:` stylesheets.** An `@import` of a `data:` stylesheet is refused,
+  since its CSS is not read.
+- **Meta content.** A meta's content written `https:host/...` or with
+  backslashes was not read. It is now read whenever a URL parser would read
+  it as an address.
+- **False refusals, now accepted:**
+  - "Q&A" and "R&D" in an attribute or in `llms.txt`;
+  - `&eacute;` in a meta's keywords;
+  - empty front matter followed by a horizontal rule;
+  - a first line of `----`.
+- **Messages.** Each changed message now gives a remedy that reaches green.
+  A custom property's string that is only shown is still read, so its
+  message now says where it came from and to reword it.
+- **Code.** The whitespace rule reads code too, as the link readers do. The
+  cost is recorded above, and the message says how to write such code.
+
+Proof for the fourth review's fixes:
+- **Reproductions.** Every reproduction is green on a784298 and red on the
+  fix, and every false refusal passes on the fix.
+- **Mutation-tested (rule 5).** Two more rounds, 18 and 9 branches, each
+  gutted alone against the real tree and the tests of these guards. All 27
+  turn exactly their own tests red, and none turns the real tree red. Over
+  the three rounds that is 75 branches: 72 pinned, 3 shadowed.
+
+Not covered, and recorded rather than chased:
+- The readers are still patterns and small tokenizers, not parsers.
+- A block-scalar line indented less than the scalar's first line still
+  passes. YAML refuses it, and Jekyll warns and builds the note with no
+  front matter. No key gets through, and the build does not stop.
+- A named reference with its `;` that verify does not know (`&Lt;`, a real
+  one) is refused in a URL attribute, a style attribute or an address-like
+  content value. Write the character itself.
+- A front-matter value wrapped onto an indented next line is refused with
+  the key message. Write it as a block scalar.
+- YAML that libyaml refuses, such as `description: Notes: the launch`, makes
+  Jekyll warn and drop the note's whole front matter, and the build goes on.
+  verify makes no promise about it: the fourth review counted 23,516 such
+  cases among the notes it accepts.
 
 **(added 2026-10-20) The cards print the terminal background.** The footer, the
 install guide (its text and its HowTo structured data) and `README.md` told

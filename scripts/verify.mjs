@@ -3558,6 +3558,32 @@ for (const manifest of [
   );
   for (const failure of statedCountFailures(manifest, [descriptions])) fail(failure);
 }
+// A Markdown link destination with whitespace in it. kramdown keeps a space, a tab or a line
+// break inside a destination -- an inline one ends only at a bracket or at whitespace before a
+// title's quote, a definition's runs to the end of its line, and an autolink to its ">" -- and a
+// browser drops the tabs and line breaks from the address, or reads the text before an "@" as a
+// user name. So "[x](/<newline>/www.paypal.com/...)" and "[x]: <https://gabs-utilities.com
+// @www.paypal.com/...>" went to a checkout from a rendered note with verify green, since every
+// reader here stops at the first whitespace (third review, 2026-11-09). A destination holds no
+// whitespace except before a quoted title; write a space as %20. A definition is read at the
+// start of a line, after any quote and list markers, and not a footnote's "[^...]:" or an
+// abbreviation's "*[...]:". Like the link readers, these read code too, since where a renderer's
+// code ends is not something a pattern can be sure of: the cost is that a code line such as
+// "f[x](a, b)" or "[Year]: [Degree], [City]" is refused, and is written "f[x] (a, b)" or
+// "[Year] : ..." instead.
+const DESTINATION_WHITESPACE = [
+  /\]\(\s*(?!<)[^\s()]+\s+(?![\s"')])/g,
+  /\]\(\s*<[^>\n]*\s/g,
+  /(?:^|\n)[ \t]*(?:(?:>|[-+:]|\*(?=[ \t])|\d{1,9}[.)])[ \t]*)*\[(?!\^)(?:\\.|[^\]\\])+\]:[ \t]*\n?[ \t]*(?:<[^>\n]*\s|(?!<)\S+[ \t]+(?![\s"']))/g,
+  /<(?:https?|ftps?|mailto):[^>\n]*?[ \t]/gi,
+];
+const destinationsWithWhitespace = (text) =>
+  DESTINATION_WHITESPACE.flatMap((pattern) =>
+    [...text.matchAll(pattern)].map((match) => {
+      const start = match.index + (match[0].startsWith("\n") ? 1 : 0);
+      return { line: text.slice(0, start).split("\n").length, shown: match[0].trim().slice(0, 60) };
+    }),
+  );
 const NOTE_LINK_PATTERNS = [
   // [text](url) and ![alt](url), with or without <...> around the url; in the angle form the url
   // runs to the ">", ")" included.
@@ -3565,8 +3591,9 @@ const NOTE_LINK_PATTERNS = [
   /\]\(\s*<([^>\n]*)>/g,
   // [id]: url -- anywhere on a line, not only at its start: kramdown reads a
   // definition inside a blockquote, a list item or a definition list too. The
-  // label may hold escapes or a line break, and the url may sit on the next line.
-  /\[(?:\\.|[^\]\\])+\]:[ \t]*\n?[ \t]*<?([^\s>]+)/g,
+  // label may hold escapes or a line break, and the url may sit on the next line;
+  // in the angle form the url runs to the ">".
+  /\[(?:\\.|[^\]\\])+\]:[ \t]*\n?[ \t]*(?:<([^>\n]*)>|([^\s<>]+))/g,
   // <https://...>, <mailto:...>
   /<([A-Za-z][A-Za-z0-9+.-]{1,31}:[^<>\s]*)>/g,
   // href="..." and every other URL attribute, in raw HTML or {: ...}.
@@ -3577,11 +3604,29 @@ const NOTE_LINK_PATTERNS = [
   ),
 ];
 const checkNote = (note, text) => {
-  const frontMatter = text.match(/^\uFEFF?---[ \t]*\r?\n([\s\S]*?)\r?\n---[ \t]*(\r?\n|$)/);
-  if (/^\uFEFF?---/.test(text) && !frontMatter) {
-    fail(`${note} opens with "---" but its front matter does not close; Jekyll reads it differently from verify.`);
+  // Front matter opens as Jekyll opens it, "---" and any spaces, tabs, CR, FF or VT before the line
+  // ends, so "----" or "--- Draft ---" on the first line is Markdown, as it is to Jekyll. It closes
+  // with the first "---" or "..." line, and an empty block is a page too.
+  const opensFrontMatter = /^\uFEFF?---[ \t\r\f\v]*\n/.test(text);
+  const frontMatter = text.match(/^\uFEFF?---[ \t\r\f\v]*\n(?:([\s\S]*?)\r?\n)??(?:---|\.\.\.)[ \t]*(\r?\n|$)/);
+  if (opensFrontMatter && !frontMatter) {
+    fail(`${note} opens with front matter, and no later line closes it with "---" or "..." on its own; Jekyll reads it differently from verify.`);
   }
-  for (const key of (frontMatter?.[1] ?? "").matchAll(/^([^\s#:][^:]*):/gm)) {
+  // YAML breaks a line at CR, U+0085, U+2028 and U+2029 as well as LF, and skips a byte-order
+  // mark at the start of a line. JavaScript's multiline "^" breaks at all of these but U+0085, and
+  // the split below at LF alone.
+  // "title: x<U+0085>canonical_url: ..." gave a note a canonical link that jekyll-seo-tag prints
+  // unescaped, and with it a script that sent Chromium to a PayPal checkout, with verify green
+  // (third review, 2026-11-09). A front matter holds LF and CRLF line ends only, and none of the
+  // control characters YAML refuses, which leave Jekyll with no front matter at all.
+  const odd = /\r(?!\n)|[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F\u2028\u2029\uFEFF\uFFFE\uFFFF]/.exec(frontMatter?.[1] ?? "");
+  if (odd) {
+    fail(
+      `${note}'s front matter holds U+${odd[0].codePointAt(0).toString(16).toUpperCase().padStart(4, "0")}, which YAML ` +
+        `reads as a line break, skips or refuses, so a key can hide after it. Use plain LF or CRLF line ends and printable text.`,
+    );
+  }
+  for (const key of (frontMatter?.[1] ?? "").matchAll(/^([^\s#:][^:\n]*):/gm)) {
     if (!["name", "title", "description"].includes(key[1].trim())) {
       fail(
         `${note} sets "${key[1].trim()}" in its front matter. Pages builds the note through Jekyll, and keys ` +
@@ -3593,11 +3638,21 @@ const checkNote = (note, text) => {
   // keys: "  permalink: /launch/" moved a note to /launch/ with verify green (review, 2026-11-09).
   // So each front-matter line is blank, a comment, one of the three keys at the start of the line,
   // or indented text inside a block scalar (">-", "|" and the like) that the key above it opened.
+  // A key is followed by a space, a tab or the line's end: YAML reads "title:Launch notes" as one
+  // string, not a key, and Jekyll then stops the whole Pages build. A blank line is spaces and
+  // tabs only, and a comment may be indented.
   let inBlockScalar = false;
   for (const line of (frontMatter?.[1] ?? "").split(/\r?\n/)) {
-    if (/^\s*$/.test(line) || line.startsWith("#")) continue;
+    if (/^[ \t]*$/.test(line)) continue;
     if (/^[ \t]/.test(line) && inBlockScalar) continue;
-    const key = /^(name|title|description):[ \t]*(.*)$/.exec(line);
+    if (/^ *#/.test(line)) {
+      inBlockScalar = false;
+      continue;
+    }
+    const key = /^(name|title|description):(?:[ \t]+(.*))?$/.exec(line);
+    if (!key && /^(name|title|description):/.test(line)) {
+      fail(`${note}'s front matter writes ${JSON.stringify(line.slice(0, 60))} with no space after the colon, which YAML reads as one string and Jekyll then stops the whole Pages build; put a space after the colon.`);
+    }
     if (!key) {
       fail(
         `${note}'s front matter has a line YAML could read as another key, ${JSON.stringify(line.slice(0, 60))}. ` +
@@ -3605,7 +3660,17 @@ const checkNote = (note, text) => {
           `scalar (description: >-, then the text indented).`,
       );
     }
-    inBlockScalar = /^[>|][1-9+-]*[ \t]*(#.*)?$/.test(key[2]);
+    // A value is plain text, quoted text or a block scalar's header. One that opens with a YAML
+    // tag, anchor, alias or flow collection reads as something else: "title: !!binary /w==" and an
+    // alias chain nine levels deep each stopped the whole Pages build with verify green (fourth
+    // review, 2026-11-09), and "title: [Draft] Launch" or "*Launch*" drops the front matter.
+    if (/^[!&*[{%@`?]/.test(key[2] ?? "")) {
+      fail(
+        `${note}'s front matter gives ${key[1]} a value YAML reads as a tag, an anchor, an alias or a list, ` +
+          `${JSON.stringify(key[2].slice(0, 40))}. A ${key[1]} is plain text: put it in quotes.`,
+      );
+    }
+    inBlockScalar = /^[>|][1-9+-]*[ \t]*(#.*)?$/.test(key[2] ?? "");
   }
   if (/\{\{|\{%/.test(text)) {
     fail(`${note} holds a Liquid delimiter ("{{" or "{%"), which Jekyll can turn into a link verify never read.`);
@@ -3671,9 +3736,26 @@ const checkNote = (note, text) => {
   for (const match of text.matchAll(/\]\(\s*(?!<)[^\s)]*\(/g)) {
     fail(`${note}:${text.slice(0, match.index).split("\n").length} writes "(" inside a link destination; Markdown reads balanced brackets as part of the address, so write ( and ) in it as %28 and %29.`);
   }
+  for (const { line, shown } of destinationsWithWhitespace(text)) {
+    fail(
+      `${note}:${line} has whitespace inside a link destination (${JSON.stringify(shown)}). kramdown keeps it in the ` +
+        `address, and a browser drops a tab or line break from it, or reads what comes before an "@" as a user name. ` +
+        `Write a space in an address as %20, and keep a destination on one line. This is read inside code too: if it ` +
+        `is code, not a link, put a space between "]" and the "(" or ":" after it.`,
+    );
+  }
 };
 for (const note of servedNotes) {
-  checkNote(note, await readFile(fileUrl(note), "utf8"));
+  // Jekyll reads a note as UTF-8 and stops the whole Pages build on one that is not; a lossy read
+  // here passed such a note (fourth review, 2026-11-09).
+  const bytes = await readFile(fileUrl(note));
+  let text;
+  try {
+    text = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes);
+  } catch {
+    fail(`${note} is not valid UTF-8, and Jekyll stops the whole Pages build on it. Save it as UTF-8.`);
+  }
+  checkNote(note, text);
 }
 
 // ---------------------------------------------------------------------------
@@ -4211,20 +4293,33 @@ const llmsPaths = new Set();
   for (const match of llms.matchAll(/\]\(\s*(?!<)[^\s)]*\(|(?:(?:[a-z][a-z0-9+.-]*:)?[\\/]{2}|(?<![\w.\/@-])www\.)[^\s<>()\[\]"'`]+\(/gi)) {
     fail(`llms.txt:${lineOf(match.index)} writes "(" inside an address; GFM reads balanced brackets as part of it, so write ( and ) in it as %28 and %29.`);
   }
+  // A destination with whitespace in it is read differently by every reader; see
+  // DESTINATION_WHITESPACE. And a character reference spells a host the scans below never see:
+  // "https:&#47;&#47;www.pay&#112;al.com/..." named a checkout in prose with verify green.
+  for (const { line, shown } of destinationsWithWhitespace(llms)) {
+    fail(`llms.txt:${line} has whitespace inside a link destination (${JSON.stringify(shown)}); readers keep it in the address. A destination ends at whitespace: put a title in quotes, write a space inside an address as %20, and keep a destination on one line.`);
+  }
+  // A numeric reference, with or without its ";", or a named one with it, which a Markdown reader
+  // decodes; "Q&A" and "?a=1&b=2" are text to every reader and pass.
+  for (const match of llms.matchAll(/&(?:#x?[0-9a-f]+;?|[a-z][a-z0-9]*;)/gi)) {
+    fail(`llms.txt:${lineOf(match.index)} writes a character reference, ${match[0]}; llms.txt is read as plain text and as Markdown, so write the character it stands for.`);
+  }
   read(/\]\(\s*<([^>\n]*)>/g, true);
   read(/\]\(\s*([^\s<>()][^\s()]*)/g, true);
   // A reference definition, anywhere on a line (a quote or a list item may hold one), with
-  // escapes or a line break in its label, and its destination on the same line or the next.
-  read(/\[((?:\\.|[^\]\\])+)\]:[\t ]*\n?[\t ]*<?([^\s<>]+)/g, true, (match) => [match[2]]);
+  // escapes or a line break in its label, and its destination on the same line or the next; in
+  // the angle form the destination runs to the ">".
+  read(/\[((?:\\.|[^\]\\])+)\]:[\t ]*\n?[\t ]*(?:<([^>\n]*)>|([^\s<>]+))/g, true, (match) => [match[2] ?? match[3]]);
   read(/<([a-z][a-z0-9+.-]*:[^\s<>]*)>/gi, true);
   // GFM links "www." text without a scheme, as http, but not inside a code span or a link's text.
   const outsideCodeAndLinkText = llms
     .replace(/(`+)[\s\S]*?\1/g, (span) => span.replace(/[^\n]/g, " "))
     .replace(/\[[^\]\n]*\](?=[(\[])/g, (label) => " ".repeat(label.length));
   read(/(?<![\w.\/@-])(www\.[^\s<>()\[\]"'`]+)/gi, true, (match) => [[`http://${match[1]}`, match[1]]], outsideCodeAndLinkText);
-  // Raw HTML: every URL attribute, with any whitespace around "=", and srcset read candidate by candidate.
+  // Raw HTML and kramdown attribute lists ({:href=...} and {:name: href=...}): every URL
+  // attribute, with any whitespace around "=", and srcset read candidate by candidate.
   read(
-    new RegExp(`(?:^|[\\s"'/<])(${[...URL_ATTRIBUTES].join("|")})\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s>]+))`, "gi"),
+    new RegExp(`(?:^|[\\s"'/<{:])(${[...URL_ATTRIBUTES].join("|")})\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s>}]+))`, "gi"),
     true,
     (match) => {
       const value = match[2] ?? match[3] ?? match[4];
@@ -4315,57 +4410,186 @@ const PUBLIC_SOURCES = "the site's public pages, llms.txt or a note in crawlable
   // address llms.txt gives, every destination a note kept open for search links (read as the note
   // scan reads it, against the page Pages renders it as), and every address on this site that a
   // page gives: in any URL attribute or srcset, in a meta's content, absolute anywhere in its text,
-  // in its JSON-LD (absolute or relative, read after JSON's escapes), and in its CSS url(),
-  // image-set() and @import. A style attribute may hold no character reference and a page's CSS
-  // no backslash, since either spells an address these patterns do not read.
+  // in its JSON-LD (absolute or relative, read after JSON's escapes), and in what its CSS can
+  // fetch (cssAddresses). Every attribute value is read after its character references are
+  // decoded as a browser decodes them, and one this reader cannot decode is refused.
   const publicPaths = new Set(llmsPaths);
   // www. on the site's domain is read as the site, since a host that redirects to it reaches the
   // same pages.
-  const addPublic = (address, base) => {
+  // A path read only from a custom property's string may be a label that is only shown
+  // (content: var(--label)), so its messages say where it came from and that rewording it is a
+  // remedy, rather than sending the contributor to robots.txt.
+  const fromCssStringOnly = new Map();
+  const addPublic = (address, base, cssString) => {
     const url = URL.parse(address.trim(), base);
-    if (url && (url.host === cname || url.host === `www.${cname}`)) publicPaths.add(decodedPath(url.pathname));
+    if (!url || (url.host !== cname && url.host !== `www.${cname}`)) return;
+    const path = decodedPath(url.pathname);
+    if (cssString === undefined) fromCssStringOnly.set(path, null);
+    else if (!fromCssStringOnly.has(path)) fromCssStringOnly.set(path, cssString);
+    publicPaths.add(path);
   };
-  // Every string and every unquoted url() in a stretch of CSS, read closely enough to CSS Syntax 3
-  // to over-read: comments dropped, escapes decoded, and the text read both as written and with
-  // every escape decoded, so "\\75 rl(" is read as url( too. Every string is taken as an address,
-  // a custom property's or a font name's included; reading too many only refuses more.
-  const decodeCssEscapes = (text) =>
-    text.replace(/\\(?:([0-9a-f]{1,6})[ \t\n\r\f]?|(\n)|([\s\S]))/gi, (whole, hex, newline, other) => {
-      if (newline !== undefined) return "";
-      if (other !== undefined) return other;
-      const code = Number.parseInt(hex, 16);
-      return code > 0 && code <= 0x10ffff && (code < 0xd800 || code > 0xdfff) ? String.fromCodePoint(code) : "\ufffd";
-    });
-  const cssAddresses = (css) => {
+  const cssStringNote = (path) =>
+    fromCssStringOnly.get(path)
+      ? ` It was read from a custom property's string in ${fromCssStringOnly.get(path)}, which verify reads as an address since var() can carry it into image-set(); if the string is only shown, reword it.`
+      : "";
+  // The addresses a stretch of CSS can fetch, read by a tokenizer that follows CSS Syntax 3 where
+  // it matters: comments dropped, escapes decoded as each token is read (a name, a string or an
+  // unquoted url()), so "\\75 rl(" is url( and an escaped quote stays inside its name. Two passes
+  // over the text, one of it decoded whole, disagreed with this: "url(/CL\\41 UDE)" after an
+  // escaped quote on the same line fetched /CLAUDE with verify green (third review, 2026-11-09).
+  // Read as addresses: every unquoted url(); every string with url(), src(), image(),
+  // image-set(), -webkit-image-set(), cross-fade() or a dashed function (--f()) anywhere around
+  // it, so a var() or env() fallback and an if() branch inside image-set() are read too; every
+  // string an @import gives; and every string a custom property, an @function's result or an
+  // @property's initial-value holds, since var() can carry one into image-set(). A string that is
+  // only shown or matched -- content: "claude.json", [href^="/docs/"] -- fetches nothing and is not
+  // read; refusing it sent contributors to weaken robots.txt instead. An @import of a data:
+  // stylesheet is refused, since its CSS is not read.
+  const FETCHING_FUNCTIONS = new Set(["url", "src", "image", "image-set", "-webkit-image-set", "cross-fade", "-webkit-cross-fade"]);
+  const cssAddresses = (source, where) => {
+    const css = source.replace(/\r\n?|\f/g, "\n").replace(/\u0000/g, "\ufffd");
     const found = [];
-    for (const text of [css, decodeCssEscapes(css)]) {
-      const url = /url\(\s*([^\s"'()]*)/iy;
-      let at = 0;
-      while (at < text.length) {
-        if (text.startsWith("/*", at)) {
-          const end = text.indexOf("*/", at + 2);
-          at = end < 0 ? text.length : end + 2;
-        } else if (text[at] === '"' || text[at] === "'") {
-          const quote = text[at];
-          let end = at + 1;
-          while (end < text.length && text[end] !== quote && text[end] !== "\n") end += text[end] === "\\" ? 2 : 1;
-          found.push(decodeCssEscapes(text.slice(at + 1, end)));
-          at = end + 1;
-        } else {
-          url.lastIndex = at;
-          const match = /[\w-]/.test(text[at - 1] ?? "") ? null : url.exec(text);
-          if (match) {
-            found.push(decodeCssEscapes(match[1]));
-            at += match[0].length;
+    const isHex = (char) => /^[0-9a-f]$/i.test(char ?? "");
+    const isNameChar = (char) => char !== undefined && (/[\w-]/.test(char) || char.codePointAt(0) >= 0x80);
+    const validEscape = (index) => css[index] === "\\" && index + 1 < css.length && css[index + 1] !== "\n";
+    // A name starts with a letter, "_", a non-ASCII character, an escape, or a "-" that does not
+    // start a number. A number's unit is read as a name too, which only reads more.
+    const startsName = (index) =>
+      /[A-Za-z_]/.test(css[index] ?? "") ||
+      (css.codePointAt(index) ?? 0) >= 0x80 ||
+      (css[index] === "-" && !/[0-9.]/.test(css[index + 1] ?? "")) ||
+      validEscape(index);
+    // The escape whose backslash is at index: [the character it stands for, the index after it].
+    const escape = (index) => {
+      let at = index + 1;
+      if (isHex(css[at])) {
+        const start = at;
+        while (at < css.length && at - start < 6 && isHex(css[at])) at += 1;
+        const code = Number.parseInt(css.slice(start, at), 16);
+        if (/[ \t\n]/.test(css[at] ?? "")) at += 1;
+        return [code > 0 && code <= 0x10ffff && (code < 0xd800 || code > 0xdfff) ? String.fromCodePoint(code) : "\ufffd", at];
+      }
+      const char = String.fromCodePoint(css.codePointAt(at));
+      return [char, at + char.length];
+    };
+    found.strings = new Set();
+    const functions = [];
+    let inImport = false;
+    let inCustomProperty = false;
+    let at = 0;
+    while (at < css.length) {
+      const char = css[at];
+      if (css.startsWith("/*", at)) {
+        const end = css.indexOf("*/", at + 2);
+        at = end < 0 ? css.length : end + 2;
+      } else if (char === '"' || char === "'") {
+        let value = "";
+        at += 1;
+        while (at < css.length && css[at] !== char && css[at] !== "\n") {
+          if (css[at] === "\\") {
+            if (css[at + 1] === "\n") at += 2;
+            else if (at + 1 >= css.length) at += 1;
+            else {
+              const [decoded, next] = escape(at);
+              value += decoded;
+              at = next;
+            }
           } else {
+            value += css[at];
             at += 1;
           }
         }
+        at += 1;
+        if (inImport && /^[\t\n ]*data:/i.test(value)) fail(`${where} imports a data: stylesheet, whose CSS verify does not read; write the CSS in the page.`);
+        const fetched = inImport || functions.some((name) => FETCHING_FUNCTIONS.has(name) || name.startsWith("--"));
+        if (fetched || inCustomProperty) found.push(value);
+        if (!fetched && inCustomProperty) found.strings.add(value);
+      } else if (startsName(at) || (char === "@" && startsName(at + 1))) {
+        const atRule = char === "@";
+        if (atRule) at += 1;
+        let name = "";
+        while (at < css.length && (isNameChar(css[at]) || validEscape(at))) {
+          if (css[at] === "\\") {
+            const [decoded, next] = escape(at);
+            name += decoded;
+            at = next;
+          } else {
+            name += css[at];
+            at += 1;
+          }
+        }
+        const lower = name.toLowerCase();
+        if (atRule) {
+          if (lower === "import") inImport = true;
+        } else if (css[at] === "(") {
+          at += 1;
+          if (lower === "url") {
+            while (/[ \t\n]/.test(css[at] ?? "")) at += 1;
+            if (css[at] === '"' || css[at] === "'") {
+              functions.push("url");
+              continue;
+            }
+            // An unquoted url(): its value runs to ")", escapes decoded; whatever a browser would
+            // make of a malformed one, it is read as an address.
+            let value = "";
+            while (at < css.length && css[at] !== ")") {
+              if (validEscape(at)) {
+                const [decoded, next] = escape(at);
+                value += decoded;
+                at = next;
+              } else {
+                value += css[at];
+                at += 1;
+              }
+            }
+            at += 1;
+            if (inImport && /^data:/i.test(value.trim())) fail(`${where} imports a data: stylesheet, whose CSS verify does not read; write the CSS in the page.`);
+            found.push(value.trim());
+          } else {
+            functions.push(lower);
+          }
+        } else if ((name.startsWith("--") || lower === "result" || lower === "initial-value") && functions.length === 0) {
+          // Whitespace and comments may stand between a property's name and its colon.
+          let next = at;
+          for (;;) {
+            while (/[ \t\n]/.test(css[next] ?? "")) next += 1;
+            if (!css.startsWith("/*", next)) break;
+            const end = css.indexOf("*/", next + 2);
+            next = end < 0 ? css.length : end + 2;
+          }
+          if (css[next] === ":") inCustomProperty = true;
+        }
+      } else {
+        if (char === "(") functions.push("(");
+        else if (char === ")") functions.pop();
+        else if (char === ";" || char === "{" || char === "}") {
+          if (functions.length === 0) inImport = false;
+          inCustomProperty = false;
+          if (char !== ";") functions.length = 0;
+        }
+        at += 1;
       }
     }
     return found;
   };
-  const URL_ATTRIBUTE_NAMES = new Set(["href", "src", "poster", "action", "cite", "data", "background", "formaction"]);
+  // What a browser makes of an attribute value's character references. A numeric one is decoded
+  // with or without its ";": "&#47CLAUDE" in a style attribute, decoded by Chromium, was read by
+  // the old decoder as text. A named one with its ";" is looked up as written, since names are
+  // case-sensitive ("&Quot;" is text, and reading it as a quote hid a url() behind it; fourth
+  // review, 2026-11-09). Without its ";", only the legacy names a browser still decodes in an
+  // attribute matter here -- amp, lt, gt and quot, when no letter, digit or "=" follows -- since
+  // every other legacy name stands for a character that is not ASCII; anything else is text, as
+  // in "Q&A". A named reference with its ";" that this table does not know is returned as U+FFFD
+  // for the caller to refuse.
+  const CONTENT_ADDRESS = /^[\u0000-\u0020]*(?:[a-z][a-z0-9+.-]*:|[\\/]{2})/i;
+  const LEGACY_ASCII = { amp: "&", AMP: "&", lt: "<", LT: "<", gt: ">", GT: ">", quot: '"', QUOT: '"' };
+  const decodeAttributeValue = (value) =>
+    value.replace(/&(?:#x([0-9a-f]+);?|#([0-9]+);?|([a-z][a-z0-9]*);|(amp|AMP|lt|LT|gt|GT|quot|QUOT)(?![A-Za-z0-9=]))/gi, (whole, hex, decimal, name, legacy) => {
+      if (legacy !== undefined) return LEGACY_ASCII[legacy] ?? whole;
+      if (name !== undefined) return NAMED_ENTITIES[name] ?? LEGACY_ASCII[name] ?? ({ COPY: "\u00a9", REG: "\u00ae" })[name] ?? "\ufffd";
+      const code = hex !== undefined ? Number.parseInt(hex, 16) : Number.parseInt(decimal, 10);
+      return code > 0 && code <= 0x10ffff && (code < 0xd800 || code > 0xdfff) ? String.fromCodePoint(code) : "\ufffd";
+    });
   for (const file of servedFiles) if (!file.includes("/") && !servedNotes.includes(file)) publicPaths.add(`/${file}`);
   for (const page of indexablePages.keys()) {
     const base = pageAddress(page);
@@ -4379,20 +4603,37 @@ const PUBLIC_SOURCES = "the site's public pages, llms.txt or a note in crawlable
     }
     for (const [, , address] of text.matchAll(/@import\s+(["'])([^"']+)\1/gi)) addPublic(address, base);
     for (const tag of htmlTags(markup)) {
-      for (const { name, value } of tag.attributes ?? []) {
-        if (URL_ATTRIBUTE_NAMES.has(name)) addPublic(value, base);
-        else if (name === "srcset" || name === "imagesrcset") for (const address of srcsetUrls(value)) addPublic(address, base);
-        else if (name === "content" && /^([a-z][a-z0-9+.-]*:)?\/\//i.test(value.trim())) addPublic(value, base);
+      for (const { name, value: written } of tag.attributes ?? []) {
+        // A browser decodes an attribute's character references before it reads the value.
+        const value = decodeAttributeValue(written);
+        // A reference this reader cannot decode is refused only where it can hide an address: in a
+        // URL attribute, a style attribute, or a content value a URL parser reads as an address.
+        // "&eacute;" in a meta's keywords is text.
+        const addressLike = URL_ATTRIBUTES.has(name) || name === "style" || (name === "content" && CONTENT_ADDRESS.test(value));
+        if (value.includes("\ufffd") && addressLike) {
+          fail(`${page} writes a character reference verify does not decode in a ${name} attribute (${JSON.stringify(written.slice(0, 60))}); write the character itself, or & as &amp;.`);
+        }
+        // The same attributes the link guard reads, ping split as a browser splits it.
+        if (name === "srcset" || name === "imagesrcset") for (const address of srcsetUrls(value)) addPublic(address, base);
+        else if (name === "ping") for (const address of value.split(/[\t\n\f\r ]+/).filter(Boolean)) addPublic(address, base);
+        else if (URL_ATTRIBUTES.has(name)) addPublic(value, base);
+        // A meta's content is read when a URL parser would read it as an address: it opens, after any
+        // control characters and spaces, with a scheme ("https:host/x" is https://host/x) or with two
+        // slashes or backslashes. "https:/gabs-utilities.com/CLAUDE" passed the old "//" test unread.
+        // A reader parses an absolute one on its own, not against the page.
+        else if (name === "content" && CONTENT_ADDRESS.test(value)) {
+          const address = value.replace(/^[\u0000-\u0020]+|[\u0000-\u0020]+$/g, "");
+          addPublic(address, /^[a-z][a-z0-9+.-]*:/i.test(address) ? undefined : base);
+        }
         else if (name === "style") {
-          // A browser decodes the attribute's character references before reading its CSS.
-          const css = decodeEntities(value);
-          if (css.includes("\ufffd")) {
-            fail(`${page} writes a character reference verify does not decode in a style attribute (${JSON.stringify(value.slice(0, 60))}); write the character itself, or & as &amp;.`);
-          }
-          for (const address of cssAddresses(css)) addPublic(address, base);
+          const addresses = cssAddresses(value, `${page}'s style attribute`);
+          for (const address of addresses) addPublic(address, base, addresses.strings.has(address) ? `${page}'s style attribute` : undefined);
         }
       }
-      if (tag.name === "style" && !tag.closing) for (const address of cssAddresses(tag.text)) addPublic(address, base);
+      if (tag.name === "style" && !tag.closing) {
+        const addresses = cssAddresses(tag.text, `${page}'s style element`);
+        for (const address of addresses) addPublic(address, base, addresses.strings.has(address) ? `${page}'s style element` : undefined);
+      }
       if (tag.name === "script" && /^application\/ld\+json$/i.test(tag.attributes.find((a) => a.name === "type")?.value ?? "")) {
         let data;
         try {
@@ -4429,7 +4670,7 @@ const PUBLIC_SOURCES = "the site's public pages, llms.txt or a note in crawlable
   for (const path of publicPaths) {
     const note = internalNoteAt.get(path) ?? internalNoteAt.get(`${path}/`);
     if (note !== undefined) {
-      fail(`${PUBLIC_SOURCES} use ${path}, an address of ${note}, an internal note. Link a public page instead, or add the note to crawlableNotes in scripts/verify.mjs if it is meant for search.`);
+      fail(`${PUBLIC_SOURCES} use ${path}, an address of ${note}, an internal note. Link a public page instead, or add the note to crawlableNotes in scripts/verify.mjs if it is meant for search.${cssStringNote(path)}`);
     }
   }
   // A note kept open for search is checked below, with its own message.
@@ -4443,7 +4684,8 @@ const PUBLIC_SOURCES = "the site's public pages, llms.txt or a note in crawlable
       `robots.txt's "Disallow: ${rule}" blocks ${path}, which ${PUBLIC_SOURCES} use (read without regard to case, as some crawlers read it). ` +
         (owner === undefined
           ? `Narrow the rule so it no longer covers ${path}, or move what it blocks.`
-          : `"${rule}" is an address of ${owner}, so no rule that blocks it can leave ${path} open: rename ${owner}, or, if it cannot be renamed, leave ${rule} out of robots.txt, name it in unblockableNoteAddresses in scripts/verify.mjs and record why in CLAUDE.md.`),
+          : `"${rule}" is an address of ${owner}, so no rule that blocks it can leave ${path} open: rename ${owner}, or, if it cannot be renamed, leave ${rule} out of robots.txt, name it in unblockableNoteAddresses in scripts/verify.mjs and record why in CLAUDE.md.`) +
+        cssStringNote(path),
     );
   }
   for (const note of crawlableNotes) {
