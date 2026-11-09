@@ -106,10 +106,14 @@ server.
 ## Warp (macOS, Linux, Windows)
 
 - **File:** `warp/gabs-<slug>.yaml`
-- **Install:** copy it to `~/.warp/themes/` (macOS), `~/.local/share/warp-terminal/themes/` (Linux) or
-  `%APPDATA%\warp\Warp\data\themes\` (Windows).
-- **Activate:** Settings → Appearance → Themes → `Gabs <Theme>`. A brand-new themes folder can take a few
-  minutes to show up; restart Warp if the theme isn't listed.
+- **Install:** create the themes folder if it is missing, then copy the file into it: `~/.warp/themes/`
+  (macOS), `$XDG_DATA_HOME/warp-terminal/themes/` (Linux; `~/.local/share/warp-terminal/themes/` if
+  `XDG_DATA_HOME` is not set) or `%APPDATA%\warp\Warp\data\themes\` (Windows). Warp Preview keeps its own:
+  `~/.warp-preview/themes/`, `$XDG_DATA_HOME/warp-terminal-preview/themes/` and
+  `%APPDATA%\warp\WarpPreview\data\themes\`.
+- **Activate:** Settings → Appearance → Themes → `Gabs <Theme>`, then press the checkmark to save it (the X
+  reverts). A brand-new themes folder can take a few minutes to show up; restart Warp if the theme isn't
+  listed.
 
 ## Konsole (KDE)
 

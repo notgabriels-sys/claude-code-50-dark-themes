@@ -2790,6 +2790,46 @@ for (const file of [...repositoryFiles.filter((path) => path.endsWith(".html")),
   }
 }
 
+// Warp's theme folders and picker, read 2026-11-09 from docs.warp.dev (fetched live).
+// custom-themes opens "To start, create the following directory" (mkdir -p, New-Item);
+// file-locations gives the Linux folder as ${XDG_DATA_HOME:-$HOME/.local/share}/warp-terminal/themes/
+// ("Each path below uses the standard XDG environment variable with its default fallback"),
+// covers "the **Stable** channel" only and moves Preview to ~/.warp-preview/, \warp\WarpPreview\
+// and warp-terminal-preview; and the theme picker's steps end "Press the checkmark to save the
+// selection, or the X to revert." The schemes README (#68) said only "copy it to" the three
+// Stable defaults and stopped at picking the theme. So a passage that names a Warp themes
+// folder must say to create it, name XDG_DATA_HOME beside the Linux one and name Preview's
+// folders, and a passage on a page about Warp that picks from Appearance → Themes must say to
+// press the checkmark.
+const warpThemeFolder = /\.warp\/themes|warp-terminal\/themes|\\warp\\Warp\\data\\themes/;
+const warpThemePicker = /\bAppearance\s*(?:→|>|->)\s*Themes\b/;
+for (const file of [...repositoryFiles.filter((path) => path.endsWith(".html")), ...repositoryReadmes, "llms.txt"]) {
+  const source = await readFile(fileUrl(file), "utf8");
+  const aboutWarp = /\bWarp\b/.test(source);
+  for (const block of readableBlocks(file, source)) {
+    if (warpThemeFolder.test(block)) {
+      const missing = [];
+      if (!/\bcreat(?:e|ing)\b/i.test(block)) missing.push("to create the folder (Warp's docs start with mkdir)");
+      if (/warp-terminal\/themes/.test(block) && !/\bXDG_DATA_HOME\b/.test(block)) {
+        missing.push("that the Linux folder sits under $XDG_DATA_HOME when that is set");
+      }
+      if (!/\bPreview\b/.test(block)) missing.push("where Warp Preview keeps its themes (~/.warp-preview, WarpPreview, warp-terminal-preview)");
+      if (missing.length) {
+        fail(
+          `${file} names Warp's themes folder ("${block.slice(0, 140)}") without saying ${missing.join("; ")}. ` +
+            "Warp's file-locations page lists Stable's folders only, the Linux one as ${XDG_DATA_HOME:-$HOME/.local/share}/warp-terminal/themes/.",
+        );
+      }
+    }
+    if (aboutWarp && warpThemePicker.test(block) && !/\bcheck\s?mark\b/i.test(block)) {
+      fail(
+        `${file} picks a Warp theme from Appearance → Themes ("${block.slice(0, 140)}") without the save step. ` +
+          'Warp\'s theme picker ends "Press the checkmark to save the selection, or the X to revert": say so in that passage.',
+      );
+    }
+  }
+}
+
 // The install guide's manual fallback is a procedure people follow verbatim on
 // a page that search can land them on directly. It used to open with
 // `cp *.json ~/.claude/themes/` and never say where the files come from — the

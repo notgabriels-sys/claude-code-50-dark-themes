@@ -3180,6 +3180,92 @@ test("accepts Terminal.app advice that names the startup setting, or mentions th
   assert.equal(result.code, 0, `correct Terminal.app advice was rejected:\n${result.stderr}`);
 });
 
+test("rejects Warp themes folders without creating them, XDG_DATA_HOME or Preview, and a Warp theme pick without the checkmark", { timeout: 240_000 }, async (t) => {
+  // docs.warp.dev: custom-themes starts "To start, create the following directory"; file-locations
+  // gives the Linux folder under ${XDG_DATA_HOME:-$HOME/.local/share} and covers Stable only; the
+  // theme picker ends "Press the checkmark to save the selection, or the X to revert."
+  const fixtureRoot = await makeFixture(t);
+  const llms = await readFile(join(fixtureRoot, "llms.txt"), "utf8");
+  const newInstall =
+    "- **Install:** create the themes folder if it is missing, then copy the file into it: `~/.warp/themes/`\n" +
+    "  (macOS), `$XDG_DATA_HOME/warp-terminal/themes/` (Linux; `~/.local/share/warp-terminal/themes/` if\n" +
+    "  `XDG_DATA_HOME` is not set) or `%APPDATA%\\warp\\Warp\\data\\themes\\` (Windows). Warp Preview keeps its own:\n" +
+    "  `~/.warp-preview/themes/`, `$XDG_DATA_HOME/warp-terminal-preview/themes/` and\n" +
+    "  `%APPDATA%\\warp\\WarpPreview\\data\\themes\\`.\n";
+  let noXdgInstall = newInstall;
+  for (const [from, to] of [
+    ["`$XDG_DATA_HOME/warp-terminal/themes/` (Linux; `~/.local/share/warp-terminal/themes/` if\n  `XDG_DATA_HOME` is not set)", "`~/.local/share/warp-terminal/themes/` (Linux)"],
+    ["`$XDG_DATA_HOME/warp-terminal-preview/themes/`", "`~/.local/share/warp-terminal-preview/themes/`"],
+  ]) {
+    assert.equal(noXdgInstall.split(from).length, 2, "XDG anchor must occur once; update this test");
+    noXdgInstall = noXdgInstall.replace(from, to);
+  }
+  const variants = [
+    ["the schemes README's old install step (#68)", "terminal-schemes/README.md", newInstall,
+      "- **Install:** copy it to `~/.warp/themes/` (macOS), `~/.local/share/warp-terminal/themes/` (Linux) or\n" +
+        "  `%APPDATA%\\warp\\Warp\\data\\themes\\` (Windows).\n",
+      /terminal-schemes\/README\.md names Warp's themes folder \("Install: copy it to ~\/\.warp\/themes\/ \(macOS\).*without saying to create the folder \(Warp's docs start with mkdir\); that the Linux folder sits under \$XDG_DATA_HOME when that is set; where Warp Preview keeps its themes/],
+    ["an install step that never creates the folder", "terminal-schemes/README.md",
+      "create the themes folder if it is missing, then copy the file into it:", "copy the file into the themes folder:",
+      /without saying to create the folder \(Warp's docs start with mkdir\)\. Warp's file-locations page/],
+    ["a Linux folder with no XDG_DATA_HOME", "terminal-schemes/README.md", newInstall, noXdgInstall,
+      /without saying that the Linux folder sits under \$XDG_DATA_HOME when that is set\. Warp's file-locations page/],
+    ["no Preview folders", "terminal-schemes/README.md",
+      " Warp Preview keeps its own:\n  `~/.warp-preview/themes/`, `$XDG_DATA_HOME/warp-terminal-preview/themes/` and\n  `%APPDATA%\\warp\\WarpPreview\\data\\themes\\`.",
+      "",
+      /without saying where Warp Preview keeps its themes \(~\/\.warp-preview, WarpPreview, warp-terminal-preview\)\. Warp's/],
+    ["the schemes README's old activate step (#68)", "terminal-schemes/README.md",
+      ", then press the checkmark to save it (the X\n  reverts).", ".",
+      /terminal-schemes\/README\.md picks a Warp theme from Appearance → Themes \("Activate: Settings → Appearance → Themes → Gabs <Theme>\. A brand-new/],
+    ["a page naming the macOS folder alone", "claude-code-theme-install-guide.html", "  </main>",
+      "  <p>For Warp, copy the file to ~/.warp/themes/ and restart Warp.</p>\n  </main>",
+      /claude-code-theme-install-guide\.html names Warp's themes folder \("For Warp, copy the file to ~\/\.warp\/themes\/ and restart Warp\."\) without saying to create the folder \(Warp's docs start with mkdir\); where Warp Preview/],
+    ["llms.txt picking a Warp theme without saving", "llms.txt", llms,
+      `${llms}\nIn Warp, open Settings → Appearance → Themes and pick Gabs Deep Field.\n`,
+      /llms\.txt picks a Warp theme from Appearance → Themes \("In Warp, open Settings → Appearance → Themes and pick Gabs Deep Field\."\) without the save step/],
+    ["the picker in Warp's own spelling", "llms.txt", llms,
+      `${llms}\nIn Warp, open Settings > Appearance > Themes and pick Gabs Deep Field.\n`,
+      /llms\.txt picks a Warp theme from Appearance → Themes \("In Warp, open Settings > Appearance > Themes/],
+    ["the picker spelled with ASCII arrows", "llms.txt", llms,
+      `${llms}\nIn Warp, open Settings -> Appearance -> Themes and pick Gabs Deep Field.\n`,
+      /llms\.txt picks a Warp theme from Appearance → Themes \("In Warp, open Settings -> Appearance -> Themes/],
+    ["a page naming the Linux folder alone", "llms.txt", llms,
+      `${llms}\nOn Linux, create ~/.local/share/warp-terminal/themes/ (Warp Preview: warp-terminal-preview) and copy the Warp theme there.\n`,
+      /llms\.txt names Warp's themes folder \("On Linux, create ~\/\.local\/share\/warp-terminal\/themes\/.*without saying that the Linux folder sits under \$XDG_DATA_HOME when that is set\. Warp's/],
+    ["a page naming the Windows folder alone", "llms.txt", llms,
+      `${llms}\nOn Windows, put the Warp theme in %APPDATA%\\warp\\Warp\\data\\themes\\ and restart Warp.\n`,
+      /llms\.txt names Warp's themes folder \("On Windows, put the Warp theme in %APPDATA%\\warp\\Warp\\data\\themes\\ and restart Warp\."\) without saying to create the folder/],
+  ];
+  for (const [label, file, from, to, message] of variants) {
+    const path = join(fixtureRoot, file);
+    const original = await readFile(path, "utf8");
+    assert.equal(original.split(from).length, 2, `fixture anchor for ${label} must occur once; update this test`);
+    await writeFile(path, original.replace(from, to));
+    const result = await runVerifier(fixtureRoot);
+    await writeFile(path, original);
+
+    assert.notEqual(result.code, 0, `the verifier accepted ${label}`);
+    assert.match(result.stderr, message, label);
+  }
+});
+
+test("accepts Warp advice that creates the folder and names Preview, and a themes picker on a page not about Warp", { timeout: 120_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const llmsPath = join(fixtureRoot, "llms.txt");
+  await writeFile(
+    llmsPath,
+    `${await readFile(llmsPath, "utf8")}\nFor Warp on macOS, create ~/.warp/themes/ (Warp Preview: ~/.warp-preview/themes/) and copy the file there.\n` +
+      "\nThen open Settings → Appearance → Themes, pick it and press the check mark.\n",
+  );
+  const pluginReadme = join(fixtureRoot, "plugins/50-dark-themes/README.md");
+  const anchor = "## Troubleshooting\n";
+  const text = await readFile(pluginReadme, "utf8");
+  assert.equal(text.split(anchor).length, 2, "fixture anchor moved; update this test");
+  await writeFile(pluginReadme, text.replace(anchor, `${anchor}\nIn the desktop app, Settings → Appearance → Themes holds its own theme list.\n`));
+  const result = await runVerifier(fixtureRoot);
+  assert.equal(result.code, 0, `correct Warp advice was rejected:\n${result.stderr}`);
+});
+
 test("rejects a page that still offers the withdrawn free Gumroad download", { timeout: 90_000 }, async (t) => {
   // The install guide's FAQ has its own guard (from #61); this one covers every
   // other public page, so plant the offer where only it looks.
