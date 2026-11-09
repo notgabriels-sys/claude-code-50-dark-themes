@@ -6,7 +6,7 @@ background.
 
 The Claude Code theme colors Claude Code only. The scheme colors the rest of the window: your shell
 prompt, `git`, `ls`, test runners. Its background is the theme's recommended terminal background, so
-installing the scheme also covers the background step in the [main README](../README.md#note-on-backgrounds).
+installing the scheme also covers the background step in the [main README](https://github.com/notgabriels-sys/claude-code-50-dark-themes#note-on-backgrounds).
 
 ## File names
 
@@ -165,6 +165,6 @@ and the claude-hud README; later versions may move these settings.
 MIT, the same as the rest of this repository: see [LICENSE](../LICENSE). By
 [NotGabriels](https://github.com/notgabriels-sys/claude-code-50-dark-themes).
 
-The paid Claude Code Theme Setup Assistant (on Agensi; the [repository README](../README.md) links it)
+The paid Claude Code Theme Setup Assistant (on Agensi; the [repository README](https://github.com/notgabriels-sys/claude-code-50-dark-themes#readme) links it)
 installs a theme for you, sets up its matching scheme in most of the terminals above, and
 adds 12 exclusive themes.

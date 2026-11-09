@@ -227,12 +227,23 @@ The command checks:
   container, and no comment opener inside a script. The inert-element and script-tag checks read the
   raw page, comments and attribute values included: to mention one of those elements, write its `<`
   as `&lt;`;
-- that every Markdown note GitHub Pages serves as a page (any `.md` outside a `.` or `_` directory) links
-  only to reviewed hosts and never to a payment host, sets no front matter beyond `name`,
-  `title` and `description`, and holds no Liquid — and that the root has no `_config.yml` or other `_` entry;
-- that robots.txt keeps crawlers from fetching every such note: a new note needs a `Disallow` line (a root
-  note as `/<NAME>.`, a directory as `/<directory>/`), or an entry in `crawlableNotes` in
-  `scripts/verify.mjs` if it is meant to be found; and that no rule blocks a path the public pages use;
+- that every Markdown note GitHub Pages serves (any `.md` outside a `.` or `_` directory, nearly all of them
+  rendered as pages) links only to reviewed hosts and never to a payment host, writes no `(` inside a
+  link destination (write it as `%28`), sets no front matter beyond `name`, `title` and `description`,
+  each at the start of its line (a long value as a block scalar, `description: >-` and the text
+  indented), holds no Liquid, and, if Pages renders it, has no `:` or `..` in its path — and that the
+  root has no `_config.yml` or other `_` entry;
+- that robots.txt keeps crawlers from fetching every such note at each address GitHub Pages serves it at
+  (its `.md` unless it has front matter, the page Jekyll renders and that page without `.html`, and the
+  directory of a README or `index.md` that becomes its directory's index): a new note needs a `Disallow`
+  line (a root note as `/<NAME>`, a directory as `/<directory>/`), or an entry in `crawlableNotes` in
+  `scripts/verify.mjs` if it is meant to be found; that no rule blocks a path the public pages,
+  `llms.txt` or a note in `crawlableNotes` use (read from every URL attribute, from CSS strings and
+  `url()` in style elements and decoded style attributes, and from JSON-LD); and that none of those
+  links an internal note.
+  `CLAUDE.md` is blocked as `/CLAUDE.`, because under verify's case-folded rule a rule over `/CLAUDE`
+  would also cover `/claude-code-theme-install-guide.html`; its page without `.html`, `/CLAUDE`, is
+  named in `unblockableNoteAddresses` and stays open to crawlers;
 - that `sitemap.xml` and `llms.txt` list every served `.html` page a search engine may index (`llms.txt`
   the root ones; the note kept open in `crawlableNotes` is in neither), and that `llms.txt` links only to
   files this site serves and names no payment host, however an address is spelled;

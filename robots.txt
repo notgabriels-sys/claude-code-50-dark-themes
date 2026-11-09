@@ -1,10 +1,10 @@
 User-agent: *
 Disallow: /CLAUDE.
 Disallow: /CONTRIBUTING.
-Disallow: /DEV_COMMUNITY_ARTICLE_DRAFT.
-Disallow: /DIRECTORY_SUBMISSION_PACK.
-Disallow: /DOMAIN_SETUP.
-Disallow: /PROMOTION_QUEUE.
+Disallow: /DEV_COMMUNITY_ARTICLE_DRAFT
+Disallow: /DIRECTORY_SUBMISSION_PACK
+Disallow: /DOMAIN_SETUP
+Disallow: /PROMOTION_QUEUE
 Disallow: /README.
 Disallow: /assets/product-hunt/
 Disallow: /docs/
