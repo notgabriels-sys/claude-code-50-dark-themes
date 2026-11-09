@@ -3308,6 +3308,62 @@ test("accepts a Windows Terminal override list with selectionBackground, and cur
   assert.equal(result.code, 0, `correct Windows Terminal advice was rejected:\n${result.stderr}`);
 });
 
+test("rejects a /terminal-setup rerun for a profile that leaves out the first-run prompt or the startup profile", { timeout: 120_000 }, async (t) => {
+  // Claude Code 2.1.319: the first-run "Use Claude Code's terminal setup?" prompt and /terminal-setup
+  // run the same routine, which writes into the Default and Startup Window Settings profiles.
+  const fixtureRoot = await makeFixture(t);
+  const llms = await readFile(join(fixtureRoot, "llms.txt"), "utf8");
+  const newBullet =
+    "- It is a new profile, so it starts with Terminal's default font and window size, and without the Option as\n" +
+    "  Meta key and bell settings Claude Code's terminal setup writes into a profile. That setup is\n" +
+    "  `/terminal-setup`, or the \"Use Claude Code's terminal setup?\" question on first run. If you used either,\n" +
+    "  run `/terminal-setup` again once the new profile is the default and startup profile (it changes those\n" +
+    "  two), then restart Terminal.\n";
+  const variants = [
+    ["the schemes README's old bullet (#68)", "terminal-schemes/README.md", newBullet,
+      "- It is a new profile, so it starts with Terminal's default font and window size. If you ran Claude Code's\n" +
+        "  `/terminal-setup` in your old profile, run it again with the new one as the default.\n",
+      /terminal-schemes\/README\.md sends the reader back to \/terminal-setup for a Terminal\.app profile \("It is a new profile.*without naming the first-run prompt \(it runs the same setup\) or the startup profile \(the setup changes it too\)/],
+    ["no first-run prompt", "terminal-schemes/README.md",
+      ", or the \"Use Claude Code's terminal setup?\" question on first run. If you used either,", ". If you used it,",
+      /without naming the first-run prompt \(it runs the same setup\)\. Claude Code's/],
+    ["no startup profile", "terminal-schemes/README.md",
+      "the default and startup profile (it changes those\n  two)", "the default profile",
+      /without naming the startup profile \(the setup changes it too\)\. Claude Code's/],
+    ["llms.txt sending the reader back to /terminal-setup", "llms.txt", llms,
+      `${llms}\nIn Terminal.app, run /terminal-setup again for the new profile.\n`,
+      /llms\.txt sends the reader back to \/terminal-setup for a Terminal\.app profile \("In Terminal\.app, run \/terminal-setup again for the new profile\."\) without naming the first-run prompt/],
+    ["llms.txt naming profiles in the plural", "llms.txt", llms,
+      `${llms}\nImported Terminal.app profiles need /terminal-setup again.\n`,
+      /llms\.txt sends the reader back to \/terminal-setup for a Terminal\.app profile \("Imported Terminal\.app profiles need \/terminal-setup again\."\)/],
+  ];
+  for (const [label, file, from, to, message] of variants) {
+    const path = join(fixtureRoot, file);
+    const original = await readFile(path, "utf8");
+    assert.equal(original.split(from).length, 2, `fixture anchor for ${label} must occur once; update this test`);
+    await writeFile(path, original.replace(from, to));
+    const result = await runVerifier(fixtureRoot);
+    await writeFile(path, original);
+
+    assert.notEqual(result.code, 0, `the verifier accepted ${label}`);
+    assert.match(result.stderr, message, label);
+  }
+});
+
+test("accepts /terminal-setup advice that names the first-run prompt and the startup profile, or no profile", { timeout: 120_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const llmsPath = join(fixtureRoot, "llms.txt");
+  await writeFile(
+    llmsPath,
+    `${await readFile(llmsPath, "utf8")}\nThe "Use Claude Code's terminal setup?" prompt and /terminal-setup both change the default and startup profiles.\n` +
+      "\nThe first-run prompt and /terminal-setup write to Terminal.app's default and startup profiles.\n" +
+      "\nOn first run Claude Code offers what /terminal-setup does to the default and startup profiles.\n" +
+      "\nRun /terminal-setup to install the Shift+Enter key binding.\n",
+  );
+  const result = await runVerifier(fixtureRoot);
+  assert.equal(result.code, 0, `correct /terminal-setup advice was rejected:\n${result.stderr}`);
+});
+
 test("rejects a page that still offers the withdrawn free Gumroad download", { timeout: 90_000 }, async (t) => {
   // The install guide's FAQ has its own guard (from #61); this one covers every
   // other public page, so plant the offer where only it looks.

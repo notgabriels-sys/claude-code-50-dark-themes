@@ -133,8 +133,11 @@ server.
 - **Activate:** select `Gabs <Theme>` and click **Default**; new windows use it. The window Terminal opens at
   launch uses the startup profile instead: in Settings → General, set **On startup, open** → **New window
   with profile** to `Gabs <Theme>` too.
-- It is a new profile, so it starts with Terminal's default font and window size. If you ran Claude Code's
-  `/terminal-setup` in your old profile, run it again with the new one as the default.
+- It is a new profile, so it starts with Terminal's default font and window size, and without the Option as
+  Meta key and bell settings Claude Code's terminal setup writes into a profile. That setup is
+  `/terminal-setup`, or the "Use Claude Code's terminal setup?" question on first run. If you used either,
+  run `/terminal-setup` again once the new profile is the default and startup profile (it changes those
+  two), then restart Terminal.
 
 ## Color depth
 

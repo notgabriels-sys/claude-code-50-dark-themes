@@ -2852,6 +2852,31 @@ for (const file of [...repositoryFiles.filter((path) => path.endsWith(".html")),
   }
 }
 
+// Claude Code's Terminal.app setup, read 2026-11-09 from the Claude Code 2.1.319 binary: the
+// first-run "Use Claude Code's terminal setup?" prompt and /terminal-setup call the same routine
+// (its cancel label is "No, maybe later with /terminal-setup"), and for Apple_Terminal that
+// routine reads "Default Window Settings" and "Startup Window Settings" from com.apple.Terminal
+// and writes useOptionAsMetaKey and Bell into each of those two profiles. The docs page
+// (code.claude.com terminal-config) says the same of the prompt: it "runs /terminal-setup for
+// you". The schemes README (#68) said "If you ran Claude Code's /terminal-setup in your old
+// profile, run it again", so a reader who only accepted the first-run prompt skips the step,
+// and nothing said which profiles the rerun changes. A passage that tells the reader to run
+// /terminal-setup for a profile must name the first-run prompt and the startup profile.
+for (const file of [...repositoryFiles.filter((path) => path.endsWith(".html")), ...repositoryReadmes, "llms.txt"]) {
+  for (const block of readableBlocks(file, await readFile(fileUrl(file), "utf8"))) {
+    if (!/\/terminal-setup\b/.test(block) || !/\bprofiles?\b/i.test(block)) continue;
+    const missing = [];
+    if (!/\bfirst[- ]run\b|terminal setup\?/i.test(block)) missing.push("the first-run prompt (it runs the same setup)");
+    if (!/\bstartup\b/i.test(block)) missing.push("the startup profile (the setup changes it too)");
+    if (missing.length) {
+      fail(
+        `${file} sends the reader back to /terminal-setup for a Terminal.app profile ("${block.slice(0, 140)}") without naming ${missing.join(" or ")}. ` +
+          "Claude Code's first-run \"Use Claude Code's terminal setup?\" prompt runs the same setup, which writes Option as Meta and the bell into the default and the startup profiles.",
+      );
+    }
+  }
+}
+
 // The install guide's manual fallback is a procedure people follow verbatim on
 // a page that search can land them on directly. It used to open with
 // `cp *.json ~/.claude/themes/` and never say where the files come from — the
