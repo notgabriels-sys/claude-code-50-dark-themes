@@ -2917,6 +2917,40 @@ for (const file of [...repositoryFiles.filter((path) => path.endsWith(".html")),
   }
 }
 
+// Alacritty's config file, read 2026-11-08 from alacritty.org/config-alacritty.html (0.17.0,
+// fetched live): "Alacritty doesn't create the config file for you, but it looks for one in the
+// following locations on UNIX systems: $XDG_CONFIG_HOME/alacritty/alacritty.toml,
+// $XDG_CONFIG_HOME/alacritty.toml, $HOME/.config/alacritty/alacritty.toml, $HOME/.alacritty.toml",
+// and "On Windows, the config file will be looked for in: %APPDATA%\alacritty\alacritty.toml".
+// The schemes README (#68) said "add the file's path to the import list in alacritty.toml" and
+// "copy it to ~/.config/alacritty/themes/" without saying that neither exists on a fresh
+// install or where the file goes, so a new user had nothing to add to and a folder that a
+// plain copy can't reach. A passage that copies a scheme into Alacritty's themes folder must
+// say to create it, and a sentence that adds to the import list in alacritty.toml must say
+// where that file lives (the Windows one too when the passage names Windows).
+for (const file of [...repositoryFiles.filter((path) => path.endsWith(".html")), ...repositoryReadmes, "llms.txt"]) {
+  for (const block of readableBlocks(file, await readFile(fileUrl(file), "utf8"))) {
+    if (/alacritty[\\/]themes/i.test(block) && /\bcop(?:y|ying)\b/i.test(block) && !/\bcreate\b/i.test(block)) {
+      fail(
+        `${file} copies a scheme into Alacritty's themes folder ("${block.slice(0, 140)}") without saying to create it. ` +
+          "Alacritty creates no config folder or file (\"Alacritty doesn't create the config file for you\"): say to create the folder.",
+      );
+    }
+    for (const sentence of sentencesOf(block)) {
+      if (!/\bimport\b[^.]*\bin\s+alacritty\.toml\b/i.test(sentence)) continue;
+      const missing = [];
+      if (!/\.config\/alacritty\/alacritty\.toml/.test(block)) missing.push("~/.config/alacritty/alacritty.toml");
+      if (/\bWindows\b/.test(block) && !/%APPDATA%\\alacritty\\alacritty\.toml/i.test(block)) missing.push("%APPDATA%\\alacritty\\alacritty.toml");
+      if (missing.length) {
+        fail(
+          `${file} has the reader add to alacritty.toml's import list ("${sentence.trim().slice(0, 140)}") without saying where that file lives (${missing.join(", ")}). ` +
+            "Alacritty doesn't create it, and reads it only from the locations its config page lists.",
+        );
+      }
+    }
+  }
+}
+
 // The install guide's manual fallback is a procedure people follow verbatim on
 // a page that search can land them on directly. It used to open with
 // `cp *.json ~/.claude/themes/` and never say where the files come from — the

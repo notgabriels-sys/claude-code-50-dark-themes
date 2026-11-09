@@ -60,9 +60,11 @@ server.
 ## Alacritty (macOS, Linux, Windows)
 
 - **File:** `alacritty/gabs-<slug>.toml`
-- **Install:** copy it to `~/.config/alacritty/themes/` (Windows: `%APPDATA%\alacritty\themes\`).
-- **Activate:** add the file's path to the `import` list in `alacritty.toml`. On 0.14+ that list lives
-  under `[general]`:
+- **Install:** create the themes folder if it is missing, then copy the file into it:
+  `~/.config/alacritty/themes/` (Windows: `%APPDATA%\alacritty\themes\`).
+- **Activate:** add the file's path to the `import` list in `alacritty.toml`. Alacritty doesn't create
+  that file: if you have none, make `~/.config/alacritty/alacritty.toml` (Windows:
+  `%APPDATA%\alacritty\alacritty.toml`). On 0.14+ the list lives under `[general]`:
 
   ```toml
   [general]

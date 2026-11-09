@@ -3425,6 +3425,57 @@ test("accepts VS Code steps with a save and a named color theme, and exact-color
   assert.equal(result.code, 0, `correct VS Code advice was rejected:\n${result.stderr}`);
 });
 
+test("rejects Alacritty steps that copy into an uncreated themes folder or add to an alacritty.toml they never locate", { timeout: 240_000 }, async (t) => {
+  // alacritty.org/config-alacritty.html: "Alacritty doesn't create the config file for you, but it
+  // looks for one in ... $HOME/.config/alacritty/alacritty.toml", and on Windows %APPDATA%\alacritty\alacritty.toml.
+  const fixtureRoot = await makeFixture(t);
+  const llms = await readFile(join(fixtureRoot, "llms.txt"), "utf8");
+  const variants = [
+    ["the schemes README's old install step (#68)", "terminal-schemes/README.md",
+      "- **Install:** create the themes folder if it is missing, then copy the file into it:\n  `~/.config/alacritty/themes/` (Windows: `%APPDATA%\\alacritty\\themes\\`).",
+      "- **Install:** copy it to `~/.config/alacritty/themes/` (Windows: `%APPDATA%\\alacritty\\themes\\`).",
+      /terminal-schemes\/README\.md copies a scheme into Alacritty's themes folder \("Install: copy it to ~\/\.config\/alacritty\/themes\/ \(Windows: %APPDATA%\\alacritty\\themes\\\)\."\) without saying to create it/],
+    ["the schemes README's old activate step (#68)", "terminal-schemes/README.md",
+      "Alacritty doesn't create\n  that file: if you have none, make `~/.config/alacritty/alacritty.toml` (Windows:\n  `%APPDATA%\\alacritty\\alacritty.toml`). On 0.14+ the list lives under `[general]`:",
+      "On 0.14+ that list lives\n  under `[general]`:",
+      /terminal-schemes\/README\.md has the reader add to alacritty\.toml's import list \("Activate: add the file's path to the import list in alacritty\.toml\."\) without saying where that file lives \(~\/\.config\/alacritty\/alacritty\.toml\)\./],
+    ["llms.txt naming Windows without its path", "llms.txt", llms,
+      `${llms}\nOn Windows too, add the theme to the import list in alacritty.toml (~/.config/alacritty/alacritty.toml elsewhere).\n`,
+      /llms\.txt has the reader add to alacritty\.toml's import list .*without saying where that file lives \(%APPDATA%\\alacritty\\alacritty\.toml\)/],
+    ["llms.txt copying with no create", "llms.txt", llms,
+      `${llms}\nCopying the theme to ~/.config/alacritty/themes/ is enough.\n`,
+      /llms\.txt copies a scheme into Alacritty's themes folder \("Copying the theme to ~\/\.config\/alacritty\/themes\/ is enough\."\)/],
+    ["llms.txt with the Windows themes folder", "llms.txt", llms,
+      `${llms}\nCopy the theme to %APPDATA%\\alacritty\\themes\\ on Windows.\n`,
+      /llms\.txt copies a scheme into Alacritty's themes folder \("Copy the theme to %APPDATA%\\alacritty\\themes\\ on Windows\."\)/],
+  ];
+  for (const [label, file, from, to, message] of variants) {
+    const path = join(fixtureRoot, file);
+    const original = await readFile(path, "utf8");
+    assert.equal(original.split(from).length, 2, `fixture anchor for ${label} must occur once; update this test`);
+    await writeFile(path, original.replace(from, to));
+    const result = await runVerifier(fixtureRoot);
+    await writeFile(path, original);
+
+    assert.notEqual(result.code, 0, `the verifier accepted ${label}`);
+    assert.match(result.stderr, message, label);
+  }
+});
+
+test("accepts Alacritty steps that create the folder and locate alacritty.toml, and mentions that instruct neither", { timeout: 120_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const llmsPath = join(fixtureRoot, "llms.txt");
+  await writeFile(
+    llmsPath,
+    `${await readFile(llmsPath, "utf8")}\nCreate ~/.config/alacritty/themes/ and copy the theme there.\n` +
+      "\nAdd the path to the import list in alacritty.toml (~/.config/alacritty/alacritty.toml).\n" +
+      "\nAlacritty's themes go in ~/.config/alacritty/themes/.\n" +
+      "\nA colors table in alacritty.toml wins over the import.\n",
+  );
+  const result = await runVerifier(fixtureRoot);
+  assert.equal(result.code, 0, `correct Alacritty advice was rejected:\n${result.stderr}`);
+});
+
 test("rejects a page that still offers the withdrawn free Gumroad download", { timeout: 90_000 }, async (t) => {
   // The install guide's FAQ has its own guard (from #61); this one covers every
   // other public page, so plant the offer where only it looks.
