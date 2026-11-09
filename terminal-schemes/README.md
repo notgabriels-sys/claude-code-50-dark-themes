@@ -101,8 +101,13 @@ server.
 
 - **File:** `vscode/gabs-<slug>.json`, a `"workbench.colorCustomizations"` object with the terminal color keys.
 - **Install and activate:** Command Palette → *Preferences: Open User Settings (JSON)*, then add those
-  keys inside `"workbench.colorCustomizations"` (create it if it is missing). They apply at once.
-  Remove the keys to undo.
+  keys inside `"workbench.colorCustomizations"` (create it if it is missing). If it already has any of
+  them, replace those and keep a copy of your old values. Save the file; the colors apply at once.
+- To undo, remove the keys and save: the terminal goes back to your color theme's colors, not to values
+  you replaced.
+- VS Code lightens or darkens text that falls below 4.5:1 against its background
+  (`terminal.integrated.minimumContrastRatio`, 4.5 by default). Against the terminal background, only
+  these schemes' ANSI black is below that; set the value to `1` to see every color exactly.
 
 ## Warp (macOS, Linux, Windows)
 
@@ -142,7 +147,8 @@ server.
 ## Color depth
 
 Claude Code themes need a terminal with 24-bit color. The scheme itself shows exactly in every terminal
-above, but Claude Code's own theme colors are exact only when it starts with 24-bit color; otherwise it
+above (in VS Code and Cursor once `terminal.integrated.minimumContrastRatio` is `1`; see their section),
+but Claude Code's own theme colors are exact only when it starts with 24-bit color; otherwise it
 rounds them to 256 colors or fewer, and the tinted panels turn gray. Terminal.app has 24-bit color only
 on macOS 26 or later, and Claude Code uses it there only when `COLORTERM=truecolor` is set. The scheme's
 own colors are exact on any macOS version. Claude Code also limits the VS Code and Cursor terminals to

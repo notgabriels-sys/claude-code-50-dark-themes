@@ -2877,6 +2877,46 @@ for (const file of [...repositoryFiles.filter((path) => path.endsWith(".html")),
   }
 }
 
+// VS Code's terminal colours, read 2026-11-09 from code.visualstudio.com (fetched live; the
+// default from a search of the same site). Its settings page gives settings.json edits with a
+// save ("save the file, and VS Code will go back to using the default values") and warns
+// "there is no way to recover your previous setting values"; its terminal appearance page
+// says the ANSI colours "are determined by the active color theme" unless set through
+// workbench.colorCustomizations, and that the minimum contrast ratio feature, on at 4.5 by
+// default, changes "the luminance of the text's foreground color until a 4.5:1 contrast
+// ratio is met" and "can cause colors to not be displayed as expected" until
+// terminal.integrated.minimumContrastRatio is 1. Every Gabs VS Code scheme has ANSI black
+// at 1.13 to 1.21:1 on its background. The schemes README (#68) said the keys "apply at
+// once" with no save, "Remove the keys to undo" though removing them brings back the
+// colour theme's colours, not any keys they replaced, and that the scheme "shows exactly
+// in every terminal above". So a passage that has the reader add the keys must say to
+// save, a passage that removes them must name the colour theme they fall back to, and a
+// sentence saying the scheme shows exactly everywhere must name minimumContrastRatio.
+for (const file of [...repositoryFiles.filter((path) => path.endsWith(".html")), ...repositoryReadmes, "llms.txt"]) {
+  for (const block of readableBlocks(file, await readFile(fileUrl(file), "utf8"))) {
+    if (/workbench\.colorCustomizations/.test(block) && /\b(?:add|paste|put)\b/i.test(block) && !/\bsav(?:e|ing)\b/i.test(block)) {
+      fail(
+        `${file} has the reader add VS Code's terminal colour keys ("${block.slice(0, 140)}") without saying to save settings.json. ` +
+          "VS Code's settings page applies settings.json edits when the file is saved: say so in that passage.",
+      );
+    }
+    if (/\bremov(?:e|ing) (?:the|those|these) keys\b/i.test(block) && !/\bcolou?r theme\b/i.test(block)) {
+      fail(
+        `${file} says to remove the terminal colour keys ("${block.slice(0, 140)}") without saying what comes back. ` +
+          "Without them VS Code takes the ANSI colours from the active color theme, not from any keys they replaced: name the color theme.",
+      );
+    }
+    for (const sentence of sentencesOf(block)) {
+      if (!/\bexact(?:ly)?\b/i.test(sentence) || !/\b(?:every|all(?: the)?) terminals?\b/i.test(sentence)) continue;
+      if (/\bminimumContrastRatio\b/.test(sentence)) continue;
+      fail(
+        `${file} says a scheme shows exactly in every terminal ("${sentence.trim().slice(0, 140)}") without naming VS Code's minimumContrastRatio. ` +
+          "VS Code changes text below 4.5:1 by default (every Gabs scheme's ANSI black is below it) until terminal.integrated.minimumContrastRatio is 1.",
+      );
+    }
+  }
+}
+
 // The install guide's manual fallback is a procedure people follow verbatim on
 // a page that search can land them on directly. It used to open with
 // `cp *.json ~/.claude/themes/` and never say where the files come from — the

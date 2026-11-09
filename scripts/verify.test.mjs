@@ -3364,6 +3364,67 @@ test("accepts /terminal-setup advice that names the first-run prompt and the sta
   assert.equal(result.code, 0, `correct /terminal-setup advice was rejected:\n${result.stderr}`);
 });
 
+test("rejects VS Code terminal-colour steps without a save, an undo that names no color theme, or an 'exactly in every terminal' claim", { timeout: 240_000 }, async (t) => {
+  // code.visualstudio.com: settings.json edits apply on save, the ANSI colours come from the active
+  // color theme unless customized, and the minimum contrast ratio (4.5 by default) changes text below it.
+  const fixtureRoot = await makeFixture(t);
+  const llms = await readFile(join(fixtureRoot, "llms.txt"), "utf8");
+  const variants = [
+    ["the schemes README's old install step (#68)", "terminal-schemes/README.md",
+      "them, replace those and keep a copy of your old values. Save the file; the colors apply at once.",
+      "them, replace those and keep a copy of your old values. They apply at once.",
+      /terminal-schemes\/README\.md has the reader add VS Code's terminal colour keys \("Install and activate: Command Palette/],
+    ["the schemes README's old undo (#68)", "terminal-schemes/README.md",
+      "- To undo, remove the keys and save: the terminal goes back to your color theme's colors, not to values\n  you replaced.",
+      "- Remove the keys and save to undo.",
+      /terminal-schemes\/README\.md says to remove the terminal colour keys \("Remove the keys and save to undo\."\) without saying what comes back/],
+    ["the schemes README's old 'exactly' sentence (#68)", "terminal-schemes/README.md",
+      "The scheme itself shows exactly in every terminal\nabove (in VS Code and Cursor once `terminal.integrated.minimumContrastRatio` is `1`; see their section),\nbut",
+      "The scheme itself shows exactly in every terminal\nabove, but",
+      /terminal-schemes\/README\.md says a scheme shows exactly in every terminal \("The scheme itself shows exactly in every terminal above, but/],
+    ["llms.txt pasting the keys with no save", "llms.txt", llms,
+      `${llms}\nFor VS Code, paste the scheme's keys into workbench.colorCustomizations in settings.json.\n`,
+      /llms\.txt has the reader add VS Code's terminal colour keys/],
+    ["llms.txt putting the keys in with no save", "llms.txt", llms,
+      `${llms}\nPut the keys in workbench.colorCustomizations.\n`,
+      /llms\.txt has the reader add VS Code's terminal colour keys \("Put the keys in workbench\.colorCustomizations\."\)/],
+    ["llms.txt removing those keys", "llms.txt", llms,
+      `${llms}\nTo go back, remove those keys from settings.json and save.\n`,
+      /llms\.txt says to remove the terminal colour keys/],
+    ["llms.txt removing these keys", "llms.txt", llms,
+      `${llms}\nRemoving these keys undoes it.\n`,
+      /llms\.txt says to remove the terminal colour keys \("Removing these keys undoes it\."\)/],
+    ["a page promising exact colors in all terminals", "claude-code-theme-install-guide.html", "  </main>",
+      "  <p>The schemes show their exact colors in all the terminals listed.</p>\n  </main>",
+      /claude-code-theme-install-guide\.html says a scheme shows exactly in every terminal \("The schemes show their exact colors in all the terminals listed\."\)/],
+  ];
+  for (const [label, file, from, to, message] of variants) {
+    const path = join(fixtureRoot, file);
+    const original = await readFile(path, "utf8");
+    assert.equal(original.split(from).length, 2, `fixture anchor for ${label} must occur once; update this test`);
+    await writeFile(path, original.replace(from, to));
+    const result = await runVerifier(fixtureRoot);
+    await writeFile(path, original);
+
+    assert.notEqual(result.code, 0, `the verifier accepted ${label}`);
+    assert.match(result.stderr, message, label);
+  }
+});
+
+test("accepts VS Code steps with a save and a named color theme, and exact-color claims that name minimumContrastRatio", { timeout: 120_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const llmsPath = join(fixtureRoot, "llms.txt");
+  await writeFile(
+    llmsPath,
+    `${await readFile(llmsPath, "utf8")}\nFor VS Code, put the keys in workbench.colorCustomizations and keep saving settings.json as you go.\n` +
+      "\nRemoving these keys brings back the colour theme's terminal colors.\n" +
+      "\nThe scheme shows exactly in all terminals once VS Code's minimumContrastRatio is 1.\n" +
+      "\nVS Code reads workbench.colorCustomizations from settings.json.\n",
+  );
+  const result = await runVerifier(fixtureRoot);
+  assert.equal(result.code, 0, `correct VS Code advice was rejected:\n${result.stderr}`);
+});
+
 test("rejects a page that still offers the withdrawn free Gumroad download", { timeout: 90_000 }, async (t) => {
   // The install guide's FAQ has its own guard (from #61); this one covers every
   // other public page, so plant the offer where only it looks.
