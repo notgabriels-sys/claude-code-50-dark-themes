@@ -2830,6 +2830,28 @@ for (const file of [...repositoryFiles.filter((path) => path.endsWith(".html")),
   }
 }
 
+// Windows Terminal's profile overrides, read 2026-11-09 from learn.microsoft.com's
+// "Appearance profile settings in Windows Terminal" (fetched live): a profile's foreground
+// and background each "overrides" the scheme's, and its selectionBackground and cursorColor
+// each "will override the ... set in the color scheme if colorScheme is set". Every Gabs
+// scheme sets all four. The schemes README (#68) said a profile's own foreground,
+// background or cursorColor wins, leaving out the selection colour, so a reader whose
+// profile sets one keeps it and takes the scheme's for the one that didn't apply. A
+// sentence that says a profile's cursorColor wins over the scheme must name
+// selectionBackground too.
+for (const file of [...repositoryFiles.filter((path) => path.endsWith(".html")), ...repositoryReadmes, "llms.txt"]) {
+  for (const block of readableBlocks(file, await readFile(fileUrl(file), "utf8"))) {
+    for (const sentence of sentencesOf(block)) {
+      if (!/\bcursorColor\b/.test(sentence) || !/\b(?:wins?|overrid\w*|precedence)\b/i.test(sentence)) continue;
+      if (/\bselectionBackground\b/.test(sentence)) continue;
+      fail(
+        `${file} lists what wins over a Windows Terminal scheme ("${sentence.trim().slice(0, 140)}") without selectionBackground. ` +
+          "Microsoft's profile settings page says a profile's selectionBackground \"will override the selectionBackground set in the color scheme\", as its foreground, background and cursorColor do.",
+      );
+    }
+  }
+}
+
 // The install guide's manual fallback is a procedure people follow verbatim on
 // a page that search can land them on directly. It used to open with
 // `cp *.json ~/.claude/themes/` and never say where the files come from — the

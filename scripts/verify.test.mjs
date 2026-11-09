@@ -3266,6 +3266,48 @@ test("accepts Warp advice that creates the folder and names Preview, and a theme
   assert.equal(result.code, 0, `correct Warp advice was rejected:\n${result.stderr}`);
 });
 
+test("rejects a Windows Terminal override list that leaves out selectionBackground", { timeout: 120_000 }, async (t) => {
+  // learn.microsoft.com, profile appearance settings: a profile's selectionBackground "will override
+  // the selectionBackground set in the color scheme if colorScheme is set", as cursorColor does.
+  const fixtureRoot = await makeFixture(t);
+  const llms = await readFile(join(fixtureRoot, "llms.txt"), "utf8");
+  const variants = [
+    ["the schemes README's old sentence (#68)", "terminal-schemes/README.md",
+      "A profile's own `foreground`, `background`, `cursorColor` or\n  `selectionBackground` wins over the scheme's.",
+      "A profile's own `foreground`, `background` or `cursorColor` wins.",
+      /terminal-schemes\/README\.md lists what wins over a Windows Terminal scheme \("A profile's own foreground, background or cursorColor wins\."\) without selectionBackground/],
+    ["llms.txt saying cursorColor overrides", "llms.txt", llms,
+      `${llms}\nIn Windows Terminal, a profile's cursorColor overrides the scheme's.\n`,
+      /llms\.txt lists what wins over a Windows Terminal scheme \("In Windows Terminal, a profile's cursorColor overrides the scheme's\."\)/],
+    ["a page saying cursorColor takes precedence", "claude-code-theme-install-guide.html", "  </main>",
+      "  <p>In Windows Terminal, a profile's background and cursorColor take precedence over the scheme.</p>\n  </main>",
+      /claude-code-theme-install-guide\.html lists what wins over a Windows Terminal scheme \("In Windows Terminal, a profile's background and cursorColor take precedence over the scheme\."\)/],
+  ];
+  for (const [label, file, from, to, message] of variants) {
+    const path = join(fixtureRoot, file);
+    const original = await readFile(path, "utf8");
+    assert.equal(original.split(from).length, 2, `fixture anchor for ${label} must occur once; update this test`);
+    await writeFile(path, original.replace(from, to));
+    const result = await runVerifier(fixtureRoot);
+    await writeFile(path, original);
+
+    assert.notEqual(result.code, 0, `the verifier accepted ${label}`);
+    assert.match(result.stderr, message, label);
+  }
+});
+
+test("accepts a Windows Terminal override list with selectionBackground, and cursorColor named without an override", { timeout: 120_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const llmsPath = join(fixtureRoot, "llms.txt");
+  await writeFile(
+    llmsPath,
+    `${await readFile(llmsPath, "utf8")}\nIn Windows Terminal, a profile's cursorColor or selectionBackground overrides the scheme's.\n` +
+      "\nEach Windows Terminal scheme sets cursorColor to the theme's accent.\n",
+  );
+  const result = await runVerifier(fixtureRoot);
+  assert.equal(result.code, 0, `correct Windows Terminal advice was rejected:\n${result.stderr}`);
+});
+
 test("rejects a page that still offers the withdrawn free Gumroad download", { timeout: 90_000 }, async (t) => {
   // The install guide's FAQ has its own guard (from #61); this one covers every
   // other public page, so plant the offer where only it looks.

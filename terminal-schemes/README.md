@@ -94,7 +94,8 @@ server.
 - **Activate:** Settings → (a profile, or *Defaults*) → Appearance → **Color scheme** → `Gabs <Theme>` →
   Save.
 - Or paste the object inside `"schemes"` into the `"schemes"` array of `settings.json` and set
-  `"colorScheme": "Gabs <Theme>"`. A profile's own `foreground`, `background` or `cursorColor` wins.
+  `"colorScheme": "Gabs <Theme>"`. A profile's own `foreground`, `background`, `cursorColor` or
+  `selectionBackground` wins over the scheme's.
 
 ## VS Code and Cursor integrated terminal
 
