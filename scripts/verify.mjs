@@ -2933,7 +2933,7 @@ for (const file of [...repositoryFiles.filter((path) => path.endsWith(".html")),
     if (/alacritty[\\/]themes/i.test(block) && /\bcop(?:y|ying)\b/i.test(block) && !/\bcreate\b/i.test(block)) {
       fail(
         `${file} copies a scheme into Alacritty's themes folder ("${block.slice(0, 140)}") without saying to create it. ` +
-          "Alacritty creates no config folder or file (\"Alacritty doesn't create the config file for you\"): say to create the folder.",
+          "Alacritty doesn't create its config file (\"Alacritty doesn't create the config file for you\"), and nothing in the step makes the folder: say to create it.",
       );
     }
     for (const sentence of sentencesOf(block)) {
