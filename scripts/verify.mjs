@@ -2951,6 +2951,31 @@ for (const file of [...repositoryFiles.filter((path) => path.endsWith(".html")),
   }
 }
 
+// Every folder a reader is told to copy a terminal scheme into. Run literally on an empty home
+// on 2026-11-09, the schemes README's copies into ~/.config/ghostty/themes/,
+// ~/.config/kitty/themes/, ~/.config/wezterm/colors/ and ~/.local/share/konsole/ each failed
+// with "cp: cannot create regular file ...: No such file or directory", as Warp's and
+// Alacritty's had (items 50 and 54). The terminals' own pages say where to put a scheme
+// (kitty: "Put them in the themes sub-directory of the kitty config directory"; WezTerm
+// recommends $HOME/.config/wezterm/colors; Ghostty looks in ~/.config/ghostty/themes) and
+// none of them says the terminal makes that folder. So a passage that copies into a folder
+// under a home or config path must say to create it (or give the mkdir). Claude Code's own
+// ~/.claude/themes is left out: Ctrl+E and the installer make it, and item 15 covers it.
+const schemeFolderPath = /(?:~|%[A-Za-z]+%|\$[A-Z_]+)[\/\\][^\s"]*/g;
+for (const file of [...repositoryFiles.filter((path) => path.endsWith(".html")), ...repositoryReadmes, "llms.txt"]) {
+  for (const block of readableBlocks(file, await readFile(fileUrl(file), "utf8"))) {
+    if (!/\bcop(?:y|ying)\b/i.test(block)) continue;
+    const folders = (block.match(schemeFolderPath) ?? [])
+      .map((path) => path.replace(/[.,;:)]+$/, ""))
+      .filter((path) => /[\/\\]$/.test(path) && !path.includes(".claude"));
+    if (!folders.length || /\bcreate\b|\bmkdir\b/i.test(block)) continue;
+    fail(
+      `${file} copies into ${folders[0]} ("${block.slice(0, 140)}") without saying to create the folder. ` +
+        "A fresh install has no such folder, and a copy into a missing folder fails: say to create it if it is missing.",
+    );
+  }
+}
+
 // The install guide's manual fallback is a procedure people follow verbatim on
 // a page that search can land them on directly. It used to open with
 // `cp *.json ~/.claude/themes/` and never say where the files come from — the

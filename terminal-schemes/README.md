@@ -31,7 +31,7 @@ server.
 ## Ghostty (macOS, Linux)
 
 - **File:** `ghostty/Gabs <Theme>`. It has no extension.
-- **Install:** copy it to `~/.config/ghostty/themes/`, on macOS too.
+- **Install:** create `~/.config/ghostty/themes/` if it is missing (on macOS too), then copy the file into it.
 - **Activate:** add `theme = Gabs <Theme>` (no quotes) to your config: `~/.config/ghostty/config.ghostty`
   on Ghostty 1.2.3+, `~/.config/ghostty/config` before that (on macOS it can also be in
   `~/Library/Application Support/com.mitchellh.ghostty/`). Ghostty reads every one of these that exists,
@@ -42,7 +42,7 @@ server.
 ## kitty (macOS, Linux)
 
 - **File:** `kitty/gabs-<slug>.conf`
-- **Install:** copy it to `~/.config/kitty/themes/`.
+- **Install:** create `~/.config/kitty/themes/` if it is missing, then copy the file into it.
 - **Activate:** add `include themes/gabs-<slug>.conf` near the end of `~/.config/kitty/kitty.conf`.
   Reload with `ctrl+shift+F5` (macOS also `ctrl+cmd+,`).
 - If your `kitty.conf` is somewhere else (`$KITTY_CONFIG_DIRECTORY`, or `~/Library/Preferences/kitty` on
@@ -82,8 +82,9 @@ server.
 ## WezTerm (macOS, Linux, Windows)
 
 - **File:** `wezterm/Gabs <Theme>.toml`
-- **Install:** copy it to `~/.config/wezterm/colors/` on every OS (Windows:
-  `%USERPROFILE%\.config\wezterm\colors\`), or `$XDG_CONFIG_HOME/wezterm/colors/` if that is set.
+- **Install:** create the colors folder if it is missing, then copy the file into it:
+  `~/.config/wezterm/colors/` on every OS (Windows: `%USERPROFILE%\.config\wezterm\colors\`), or
+  `$XDG_CONFIG_HOME/wezterm/colors/` if that is set.
 - **Activate:** in `wezterm.lua` (or `~/.wezterm.lua`), set `config.color_scheme = 'Gabs <Theme>'` before
   `return config`, or `color_scheme = 'Gabs <Theme>',` inside a returned table. It reloads by itself.
   A `colors = {...}` table in the config overrides any scheme.
@@ -126,7 +127,8 @@ server.
 ## Konsole (KDE)
 
 - **File:** `konsole/Gabs <Theme>.colorscheme`
-- **Install:** copy it to `~/.local/share/konsole/` (Flatpak: `~/.var/app/org.kde.konsole/data/konsole/`).
+- **Install:** create the folder if it is missing, then copy the file into it: `~/.local/share/konsole/`
+  (Flatpak: `~/.var/app/org.kde.konsole/data/konsole/`).
 - **Activate:** Settings → Edit Current Profile… → Appearance → `Gabs <Theme>` → OK. If the built-in
   profile can't be edited, create a new profile, pick the scheme there and make it the default.
 - In Konsole the cursor color belongs to the profile: set it under Appearance → Cursor if you want the

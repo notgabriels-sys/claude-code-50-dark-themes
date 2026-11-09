@@ -3477,6 +3477,64 @@ test("accepts Alacritty steps that create the folder and locate alacritty.toml, 
   assert.equal(result.code, 0, `correct Alacritty advice was rejected:\n${result.stderr}`);
 });
 
+test("rejects a copy into a terminal's config folder that never says to create it", { timeout: 240_000 }, async (t) => {
+  // Run literally on an empty home, a copy into ~/.config/ghostty/themes/, ~/.config/kitty/themes/,
+  // ~/.config/wezterm/colors/ or ~/.local/share/konsole/ fails: the folder isn't there.
+  const fixtureRoot = await makeFixture(t);
+  const llms = await readFile(join(fixtureRoot, "llms.txt"), "utf8");
+  const readme = "terminal-schemes/README.md";
+  const variants = [
+    ["the schemes README's old Ghostty step (#68)", readme,
+      "- **Install:** create `~/.config/ghostty/themes/` if it is missing (on macOS too), then copy the file into it.",
+      "- **Install:** copy it to `~/.config/ghostty/themes/`, on macOS too.",
+      /terminal-schemes\/README\.md copies into ~\/\.config\/ghostty\/themes\/ \("Install: copy it to ~\/\.config\/ghostty\/themes\/, on macOS too\."\) without saying to create the folder/],
+    ["the schemes README's old kitty step (#68)", readme,
+      "- **Install:** create `~/.config/kitty/themes/` if it is missing, then copy the file into it.",
+      "- **Install:** copy it to `~/.config/kitty/themes/`.",
+      /terminal-schemes\/README\.md copies into ~\/\.config\/kitty\/themes\/ /],
+    ["the schemes README's old WezTerm step (#68)", readme,
+      "- **Install:** create the colors folder if it is missing, then copy the file into it:\n  `~/.config/wezterm/colors/` on every OS",
+      "- **Install:** copy it to `~/.config/wezterm/colors/` on every OS",
+      /terminal-schemes\/README\.md copies into ~\/\.config\/wezterm\/colors\/ /],
+    ["the schemes README's old Konsole step (#68)", readme,
+      "- **Install:** create the folder if it is missing, then copy the file into it: `~/.local/share/konsole/`\n  (Flatpak:",
+      "- **Install:** copy it to `~/.local/share/konsole/` (Flatpak:",
+      /terminal-schemes\/README\.md copies into ~\/\.local\/share\/konsole\/ /],
+    ["llms.txt copying into an %APPDATA% folder", "llms.txt", llms,
+      `${llms}\nCopy the scheme to %APPDATA%\\sometool\\themes\\.\n`,
+      /llms\.txt copies into %APPDATA%\\sometool\\themes\\ /],
+    ["llms.txt copying into an $XDG folder", "llms.txt", llms,
+      `${llms}\nCopying it to $XDG_CONFIG_HOME/sometool/colors/ is all it takes.\n`,
+      /llms\.txt copies into \$XDG_CONFIG_HOME\/sometool\/colors\/ /],
+  ];
+  for (const [label, file, from, to, message] of variants) {
+    const path = join(fixtureRoot, file);
+    const original = await readFile(path, "utf8");
+    assert.equal(original.split(from).length, 2, `fixture anchor for ${label} must occur once; update this test`);
+    await writeFile(path, original.replace(from, to));
+    const result = await runVerifier(fixtureRoot);
+    await writeFile(path, original);
+
+    assert.notEqual(result.code, 0, `the verifier accepted ${label}`);
+    assert.match(result.stderr, message, label);
+  }
+});
+
+test("accepts copies that create the folder, copies into Claude Code's own folder, and paths that aren't folders", { timeout: 120_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const llmsPath = join(fixtureRoot, "llms.txt");
+  await writeFile(
+    llmsPath,
+    `${await readFile(llmsPath, "utf8")}\nRun mkdir -p ~/.config/sometool/themes/ and copy the file there.\n` +
+      "\nCopy it to ~/.config/sometool/themes/ after you create that folder.\n" +
+      "\nPress Ctrl+E to copy it into ~/.claude/themes/ for editing.\n" +
+      "\nCopy ~/.config/sometool/theme.toml somewhere safe first.\n" +
+      "\nThe schemes live in ~/.config/sometool/themes/.\n",
+  );
+  const result = await runVerifier(fixtureRoot);
+  assert.equal(result.code, 0, `correct copy steps were rejected:\n${result.stderr}`);
+});
+
 test("rejects a page that still offers the withdrawn free Gumroad download", { timeout: 90_000 }, async (t) => {
   // The install guide's FAQ has its own guard (from #61); this one covers every
   // other public page, so plant the offer where only it looks.
