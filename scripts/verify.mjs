@@ -2976,6 +2976,34 @@ for (const file of [...repositoryFiles.filter((path) => path.endsWith(".html")),
   }
 }
 
+// Where WezTerm reads a scheme file from. Its appearance page, read live on 2026-11-10: "It is
+// recommended that you place your custom scheme in a directory named $HOME/.config/wezterm/colors
+// if you're on a POSIX system. On a Windows system, wezterm will search for schemes in a directory
+// named colors that is in the same directory as the wezterm.exe", and any other folder must be
+// named in color_scheme_dirs. The schemes README put the file in ~/.config/wezterm/colors/ "on
+// every OS (Windows: %USERPROFILE%\.config\wezterm\colors\)", a folder WezTerm on Windows never
+// searches, so the scheme was missing from the list there. A passage that puts a scheme in a
+// wezterm colors folder may not say that holds on every OS, and one that speaks of Windows must
+// name color_scheme_dirs or the folder beside wezterm.exe.
+for (const file of [...repositoryFiles.filter((path) => path.endsWith(".html")), ...repositoryReadmes, "llms.txt"]) {
+  for (const block of readableBlocks(file, await readFile(fileUrl(file), "utf8"))) {
+    if (!/wezterm[\/\\]colors\b/i.test(block)) continue;
+    const everyOs = block.match(/\b(?:every|all|any)\s+(?:OS(?:es)?|operating\s+systems?|platforms?)\b/i);
+    if (everyOs) {
+      fail(
+        `${file} puts a WezTerm scheme in its colors folder on "${everyOs[0]}" ("${block.slice(0, 140)}"). ` +
+          "WezTerm searches ~/.config/wezterm/colors only on Linux and macOS; on Windows it searches the colors folder beside wezterm.exe.",
+      );
+    }
+    if (/\bWindows\b|%[A-Za-z]+%/.test(block) && !/\bcolor_scheme_dirs\b|\bwezterm\.exe\b/.test(block)) {
+      fail(
+        `${file} gives a Windows folder for WezTerm schemes ("${block.slice(0, 140)}") without color_scheme_dirs or the folder beside wezterm.exe. ` +
+          "On Windows WezTerm searches only the colors folder beside wezterm.exe, unless color_scheme_dirs names another.",
+      );
+    }
+  }
+}
+
 // The install guide's manual fallback is a procedure people follow verbatim on
 // a page that search can land them on directly. It used to open with
 // `cp *.json ~/.claude/themes/` and never say where the files come from — the

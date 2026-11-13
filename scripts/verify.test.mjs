@@ -3493,8 +3493,8 @@ test("rejects a copy into a terminal's config folder that never says to create i
       "- **Install:** copy it to `~/.config/kitty/themes/`.",
       /terminal-schemes\/README\.md copies into ~\/\.config\/kitty\/themes\/ /],
     ["the schemes README's old WezTerm step (#68)", readme,
-      "- **Install:** create the colors folder if it is missing, then copy the file into it:\n  `~/.config/wezterm/colors/` on every OS",
-      "- **Install:** copy it to `~/.config/wezterm/colors/` on every OS",
+      "- **Install:** create the colors folder if it is missing, then copy the file into it:\n  `~/.config/wezterm/colors/` on Linux and macOS.",
+      "- **Install:** copy it to `~/.config/wezterm/colors/` on Linux and macOS.",
       /terminal-schemes\/README\.md copies into ~\/\.config\/wezterm\/colors\/ /],
     ["the schemes README's old Konsole step (#68)", readme,
       "- **Install:** create the folder if it is missing, then copy the file into it: `~/.local/share/konsole/`\n  (Flatpak:",
@@ -3533,6 +3533,63 @@ test("accepts copies that create the folder, copies into Claude Code's own folde
   );
   const result = await runVerifier(fixtureRoot);
   assert.equal(result.code, 0, `correct copy steps were rejected:\n${result.stderr}`);
+});
+
+test("rejects a WezTerm colors folder given for every OS, or for Windows without color_scheme_dirs", { timeout: 240_000 }, async (t) => {
+  // WezTerm's appearance page: ~/.config/wezterm/colors on a POSIX system; on Windows the
+  // colors folder beside wezterm.exe, and any other folder only through color_scheme_dirs.
+  const fixtureRoot = await makeFixture(t);
+  const llms = await readFile(join(fixtureRoot, "llms.txt"), "utf8");
+  const readme = "terminal-schemes/README.md";
+  const current =
+    "- **Install:** create the colors folder if it is missing, then copy the file into it:\n" +
+    "  `~/.config/wezterm/colors/` on Linux and macOS. On Windows, WezTerm looks for schemes in a `colors`\n" +
+    "  folder next to `wezterm.exe`; to keep them in `%USERPROFILE%\\.config\\wezterm\\colors\\` instead, add\n" +
+    "  `config.color_scheme_dirs = { wezterm.home_dir .. '/.config/wezterm/colors' }` to `wezterm.lua` before\n" +
+    "  `return config` (or `color_scheme_dirs = { wezterm.home_dir .. '/.config/wezterm/colors' },` inside a\n" +
+    "  returned table), with `local wezterm = require 'wezterm'` at the top of the file if it is not there.";
+  const variants = [
+    ["the schemes README's old WezTerm folder (#68)", readme, current,
+      "- **Install:** create the colors folder if it is missing, then copy the file into it:\n" +
+        "  `~/.config/wezterm/colors/` on every OS (Windows: `%USERPROFILE%\\.config\\wezterm\\colors\\`), or\n" +
+        "  `$XDG_CONFIG_HOME/wezterm/colors/` if that is set.",
+      /terminal-schemes\/README\.md puts a WezTerm scheme in its colors folder on "every OS"/],
+    ["a Windows folder with no color_scheme_dirs", readme, current,
+      "- **Install:** create the colors folder if it is missing, then copy the file into it:\n" +
+        "  `~/.config/wezterm/colors/` on Linux and macOS (Windows: `%USERPROFILE%\\.config\\wezterm\\colors\\`).",
+      /terminal-schemes\/README\.md gives a Windows folder for WezTerm schemes /],
+    ["llms.txt giving the folder for all platforms", "llms.txt", llms,
+      `${llms}\nCreate ~/.config/wezterm/colors/ on all platforms and copy the scheme there.\n`,
+      /llms\.txt puts a WezTerm scheme in its colors folder on "all platforms"/],
+    ["llms.txt giving only a backslashed %APPDATA% folder", "llms.txt", llms,
+      `${llms}\nCreate %APPDATA%\\wezterm\\colors\\ and copy the scheme into it.\n`,
+      /llms\.txt gives a Windows folder for WezTerm schemes /],
+  ];
+  for (const [label, file, from, to, message] of variants) {
+    const path = join(fixtureRoot, file);
+    const original = await readFile(path, "utf8");
+    assert.equal(original.split(from).length, 2, `fixture anchor for ${label} must occur once; update this test`);
+    await writeFile(path, original.replace(from, to));
+    const result = await runVerifier(fixtureRoot);
+    await writeFile(path, original);
+
+    assert.notEqual(result.code, 0, `the verifier accepted ${label}`);
+    assert.match(result.stderr, message, label);
+  }
+});
+
+test("accepts a WezTerm colors folder for Linux and macOS, and a Windows one beside wezterm.exe or in color_scheme_dirs", { timeout: 120_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const llmsPath = join(fixtureRoot, "llms.txt");
+  await writeFile(
+    llmsPath,
+    `${await readFile(llmsPath, "utf8")}\nCreate ~/.config/wezterm/colors/ on Linux and macOS and copy the scheme there.\n` +
+      "\nOn Windows, create the colors folder beside wezterm.exe and copy the scheme there; ~/.config/wezterm/colors/ is for Linux and macOS.\n" +
+      "\nOn Windows, create %USERPROFILE%\\.config\\wezterm\\colors\\, copy the scheme there and name that folder in color_scheme_dirs.\n" +
+      "\nWezTerm itself runs on every OS.\n",
+  );
+  const result = await runVerifier(fixtureRoot);
+  assert.equal(result.code, 0, `correct WezTerm folder advice was rejected:\n${result.stderr}`);
 });
 
 test("rejects a page that still offers the withdrawn free Gumroad download", { timeout: 90_000 }, async (t) => {

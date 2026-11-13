@@ -83,8 +83,11 @@ server.
 
 - **File:** `wezterm/Gabs <Theme>.toml`
 - **Install:** create the colors folder if it is missing, then copy the file into it:
-  `~/.config/wezterm/colors/` on every OS (Windows: `%USERPROFILE%\.config\wezterm\colors\`), or
-  `$XDG_CONFIG_HOME/wezterm/colors/` if that is set.
+  `~/.config/wezterm/colors/` on Linux and macOS. On Windows, WezTerm looks for schemes in a `colors`
+  folder next to `wezterm.exe`; to keep them in `%USERPROFILE%\.config\wezterm\colors\` instead, add
+  `config.color_scheme_dirs = { wezterm.home_dir .. '/.config/wezterm/colors' }` to `wezterm.lua` before
+  `return config` (or `color_scheme_dirs = { wezterm.home_dir .. '/.config/wezterm/colors' },` inside a
+  returned table), with `local wezterm = require 'wezterm'` at the top of the file if it is not there.
 - **Activate:** in `wezterm.lua` (or `~/.wezterm.lua`), set `config.color_scheme = 'Gabs <Theme>'` before
   `return config`, or `color_scheme = 'Gabs <Theme>',` inside a returned table. It reloads by itself.
   A `colors = {...}` table in the config overrides any scheme.
