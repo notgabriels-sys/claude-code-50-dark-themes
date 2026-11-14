@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawn } from "node:child_process";
 import { createHash } from "node:crypto";
-import { chmod, cp, lstat, mkdir, mkdtemp, readdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
+import { chmod, cp, lstat, mkdir, mkdtemp, readdir, readFile, rename, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -9,6 +9,13 @@ import { crc32, deflateSync, inflateSync } from "node:zlib";
 import test from "node:test";
 
 const projectRoot = fileURLToPath(new URL("../", import.meta.url));
+
+// The numbers the public pages state move whenever a theme is added. Tests
+// that edit those claims start from today's real values, so following
+// CONTRIBUTING's add-a-theme step leaves them green.
+const { roleAwareComparisonCount, indicatorTextBelowAA } = await import("./verify-contrast.mjs");
+const vol2Count = (await readdir(join(projectRoot, "plugins/dark-themes-vol-2/themes"))).filter((file) => file.endsWith(".json")).length;
+const themeTotal = 50 + vol2Count;
 // verify reads a fixture as a plain tree, since it has no .git, so a fixture
 // holds only what git would commit: a sample pack a product's generator wrote
 // (ignored) must not turn the suite red, as it does not turn verify red.
@@ -63,6 +70,34 @@ async function runVerifier(cwd) {
     child.on("error", reject);
     child.on("close", (code) => resolve({ code, stdout, stderr }));
   });
+}
+
+// main's #39 holds every inline script to a reviewed hash, and each page's
+// Content-Security-Policy to the same list. The card tests change the page's
+// script on purpose, so record that change as reviewed in the fixture, as a
+// contributor would, before reading what the card checks say.
+async function runVerifierReviewed(fixtureRoot) {
+  for (let round = 0; round < 8; round++) {
+    const result = await runVerifier(fixtureRoot);
+    const unreviewed = result.stderr.match(
+      /Error: (\S+) runs an inline script nobody has reviewed \((sha256-[^)]+)\)\. [\s\S]*?then (?:replace (sha256-\S+) with it|add it) in reviewedInlineScripts for \S+ in scripts\/verify\.mjs, and use this Content-Security-Policy: (<meta [^\n]*?">)/,
+    );
+    const stale = result.stderr.match(/Error: reviewedInlineScripts lists (sha256-\S+) for (\S+), which no longer runs it/);
+    if (!unreviewed && !stale) return result;
+    const verifyPath = join(fixtureRoot, "scripts", "verify.mjs");
+    let source = await readFile(verifyPath, "utf8");
+    if (unreviewed) {
+      const [, page, hash, old, policy] = unreviewed;
+      source = old ? source.replace(old, hash) : source.replace(`["${page}", ["`, `["${page}", ["${hash}", "`);
+      const pagePath = join(fixtureRoot, page);
+      const markup = await readFile(pagePath, "utf8");
+      await writeFile(pagePath, markup.replace(/<meta http-equiv="Content-Security-Policy" content="[^"]*">/, () => policy));
+    } else {
+      source = source.replace(`"${stale[1]}", `, "").replace(`, "${stale[1]}"`, "").replace(`"${stale[1]}"`, "");
+    }
+    await writeFile(verifyPath, source);
+  }
+  throw new Error("the fixture's script review did not settle");
 }
 
 async function runNodeScript(cwd, script) {
@@ -245,12 +280,15 @@ test("rejects a share card that states a stale role-aware check count", { timeou
   const fixtureRoot = await makeFixture(t);
   const fixtureCard = join(fixtureRoot, "assets/social-preview.html");
   const card = await readFile(fixtureCard, "utf8");
-  await writeFile(fixtureCard, card.replace("<b>894</b> role-aware", "<b>726</b> role-aware"));
+  const stale = roleAwareComparisonCount - 168;
+  const claim = `<b>${roleAwareComparisonCount}</b> role-aware`;
+  assert.ok(card.includes(claim), "fixture anchor moved; update this test");
+  await writeFile(fixtureCard, card.replace(claim, `<b>${stale}</b> role-aware`));
 
   const result = await runVerifier(fixtureRoot);
 
   assert.notEqual(result.code, 0, "the verifier accepted a share card claiming a stale check count");
-  assert.match(result.stderr, /assets\/social-preview\.html:\d+ claims 726 role-aware checks/);
+  assert.match(result.stderr, new RegExp(`assets/social-preview\\.html:\\d+ claims ${stale} role-aware checks`));
 });
 
 test("rejects a storefront proofline that states a stale check count", { timeout: 90_000 }, async (t) => {
@@ -259,31 +297,38 @@ test("rejects a storefront proofline that states a stale check count", { timeout
   const html = await readFile(fixtureHtml, "utf8");
   // The number and the phrase are split by markup here; the guard must still
   // read it, because this is the surface that shipped stale before.
-  await writeFile(fixtureHtml, html.replace("<dt>894</dt>", "<dt>900</dt>"));
+  const stale = roleAwareComparisonCount + 6;
+  const claim = `<dt>${roleAwareComparisonCount}</dt>`;
+  assert.ok(html.includes(claim), "fixture anchor moved; update this test");
+  await writeFile(fixtureHtml, html.replace(claim, `<dt>${stale}</dt>`));
 
   const result = await runVerifier(fixtureRoot);
 
   assert.notEqual(result.code, 0, "the verifier accepted a proofline claiming a stale check count");
-  assert.match(result.stderr, /index\.html:\d+ claims 900 role-aware checks/);
+  assert.match(result.stderr, new RegExp(`index\\.html:\\d+ claims ${stale} role-aware checks`));
 });
 
 test("rejects a share card whose theme counts drift from the shipped packs", { timeout: 90_000 }, async (t) => {
   const fixtureRoot = await makeFixture(t);
   const fixtureCard = join(fixtureRoot, "assets/social-preview.html");
   const card = await readFile(fixtureCard, "utf8");
-  await writeFile(fixtureCard, card.replace("<b>50 + 12</b> themes", "<b>50 + 14</b> themes"));
+  const claim = `<b>50 + ${vol2Count}</b> themes`;
+  assert.ok(card.includes(claim), "fixture anchor moved; update this test");
+  await writeFile(fixtureCard, card.replace(claim, `<b>50 + ${vol2Count + 2}</b> themes`));
 
   const result = await runVerifier(fixtureRoot);
 
   assert.notEqual(result.code, 0, "the verifier accepted a share card overstating the theme count");
-  assert.match(result.stderr, /claims 50 \+ 14 themes; the repository ships 50 \+ 12/);
+  assert.match(result.stderr, new RegExp(`claims 50 \\+ ${vol2Count + 2} themes; the repository ships 50 \\+ ${vol2Count}`));
 });
 
 test("rejects a share card that drops its check-count claim entirely", { timeout: 90_000 }, async (t) => {
   const fixtureRoot = await makeFixture(t);
   const fixtureCard = join(fixtureRoot, "assets/social-preview.html");
   const card = await readFile(fixtureCard, "utf8");
-  await writeFile(fixtureCard, card.replace("<b>894</b> role-aware checks", "<b>MIT</b> licensed"));
+  const claim = `<b>${roleAwareComparisonCount}</b> role-aware checks`;
+  assert.ok(card.includes(claim), "fixture anchor moved; update this test");
+  await writeFile(fixtureCard, card.replace(claim, "<b>MIT</b> licensed"));
 
   const result = await runVerifier(fixtureRoot);
 
@@ -299,7 +344,7 @@ test("rejects two pages describing the same share image differently", { timeout:
   await writeFile(
     fixturePage,
     page.replaceAll(
-      "Title card: 50 dark themes for Claude Code, with the plugin install command and a strip of the pack&#39;s accent colors",
+      "Title card: 50 dark themes for Claude Code, with the plugin install command and a strip of the site&#39;s interface colors",
       "Gallery preview of dark Claude Code terminal themes.",
     ),
   );
@@ -1115,16 +1160,16 @@ for (const [form, page, from, to, message] of [
     "the repository verifies the theme schema, gallery parity, installation command and payment links on every pull request and every push to main.\n\nBrowse all 51[^1] themes in the gallery.\n",
     /README\.md:\d+ says "51 themes"/],
   ["an ampersand between", "README.md",
-    "Restart Claude Code, then run `/theme` and pick one.",
-    "Restart Claude Code, then run `/theme` and pick one (all 51 syntax & UI themes, plus the 12 Vol. 2 themes, are listed).",
+    "Restart Claude Code, then run `/theme` and pick one:",
+    "Restart Claude Code, then run `/theme` and pick one (all 51 syntax & UI themes, plus the 12 Vol. 2 themes, are listed):",
     /README\.md:\d+ says "51 syntax & UI themes"/],
   ["an accented word between", "README.md",
-    "Restart Claude Code, then run `/theme` and pick one.",
-    "Restart Claude Code, then run `/theme` and pick one (all 51 caf\u00e9-noir themes, plus the 12 Vol. 2 themes, are listed).",
+    "Restart Claude Code, then run `/theme` and pick one:",
+    "Restart Claude Code, then run `/theme` and pick one (all 51 caf\u00e9-noir themes, plus the 12 Vol. 2 themes, are listed):",
     /README\.md:\d+ says "51 caf\u00e9-noir themes"/],
   ["a pair joined by and", "README.md",
-    "Restart Claude Code, then run `/theme` and pick one.",
-    "Restart Claude Code, then run `/theme` and pick one (two packs, 51 and 12 themes, in one list).",
+    "Restart Claude Code, then run `/theme` and pick one:",
+    "Restart Claude Code, then run `/theme` and pick one (two packs, 51 and 12 themes, in one list):",
     /README\.md:\d+ says "51 and 12 themes"/],
   ["a < in a Markdown code block", "README.md",
     "the repository verifies the theme schema, gallery parity, installation command and payment links on every pull request and every push to main.",
@@ -1224,8 +1269,8 @@ for (const [prose, page, from, to] of [
     "## Note on backgrounds",
     "The picker offers 3 accent colours for dark themes.\n\n## Note on backgrounds"],
   ["one theme pack", "claude-code-theme-install-guide.html",
-    "<p>Both packs then appear together in <code>/theme</code>.",
-    "<p>Install one theme pack or both; installed packs appear together in <code>/theme</code>."],
+    "<p>Restart Claude Code if it was open, and both packs appear together in <code>/theme</code>.",
+    "<p>Restart Claude Code if it was open. Install one theme pack or both; installed packs appear together in <code>/theme</code>."],
   ["a count of theme packs", "README.md",
     "## Note on backgrounds",
     "Two theme packs, dark themes in both.\n\n## Note on backgrounds"],
@@ -1979,6 +2024,1964 @@ test("rejects paste-ready promotion copy that advertises the unpublished Workflo
   assert.match(result.stderr, /PROMOTION_QUEUE\.md paste-ready copy advertises the Workflow Kit/);
 });
 
+test("rejects gallery cards that copy /theme with a theme argument", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixturePage = join(fixtureRoot, "index.html");
+  const page = await readFile(fixturePage, "utf8");
+  await writeFile(
+    fixturePage,
+    page.replace('const command = "/theme";', "const command = `/theme ${button.dataset.themeName}`;"),
+  );
+
+  const result = await runVerifierReviewed(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a copied command Claude Code ignores the argument of");
+  assert.match(result.stderr, /copies a \/theme command with a theme argument/);
+});
+
+test("rejects cards that hide the surface hex the guides promise", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixturePage = join(fixtureRoot, "index.html");
+  const page = await readFile(fixturePage, "utf8");
+  // main's #39 prints it as a link; behind `${false ? ... : ""}` the template
+  // still holds it (its storefront contract) but no reader sees it.
+  const bgLink = '      <a class="bg-link" href="/theme/${themeSlug}/">Terminal background <span class="bghex">${bg}</span><span class="sr-only">, ${esc(name)} theme page</span></a>\n';
+  assert.ok(page.includes(bgLink), "fixture anchor moved; update this test");
+  await writeFile(fixturePage, page.replace(bgLink, () => '      ${false ? `' + bgLink.trim() + '` : ""}\n'));
+
+  const result = await runVerifierReviewed(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted cards that never show the surface hex readers are sent to find");
+  assert.match(result.stderr, /promise a surface hex in the gallery/);
+});
+
+test("rejects a live region hidden inside a closed disclosure", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixturePage = join(fixtureRoot, "index.html");
+  const page = await readFile(fixturePage, "utf8");
+  await writeFile(
+    fixturePage,
+    page.replace(
+      '      <div class="grid" id="grid"></div>\n    </details>\n    <p class="sr-only" id="themeCopyStatus" aria-live="polite"></p>\n',
+      '      <div class="grid" id="grid"></div>\n      <p class="sr-only" id="themeCopyStatus" aria-live="polite"></p>\n    </details>\n',
+    ),
+  );
+
+  const result = await runVerifierReviewed(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted an announcement no screen reader can hear while the archive is closed");
+  assert.match(result.stderr, /puts a live region inside a <details> body/);
+});
+
+test("rejects alt text that calls the share card's strip theme accents", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  for (const name of ["index.html", "claude-code-theme-install-guide.html", "semantic-terminal-colors.html"]) {
+    const path = join(fixtureRoot, name);
+    const page = await readFile(path, "utf8");
+    await writeFile(path, page.replaceAll("a strip of the site&#39;s interface colors", "a strip of the pack&#39;s accent colors"));
+  }
+
+  const result = await runVerifierReviewed(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted alt text describing colours the image does not show");
+  assert.match(result.stderr, /describe the share card's strip as theme accent colours/);
+});
+
+test("rejects a storefront Vol. 2 heading that misstates the pack size", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixturePage = join(fixtureRoot, "index.html");
+  const page = await readFile(fixturePage, "utf8");
+  const heading = /Vol\.&nbsp;2 — ([a-z]+|\d+) new atmospheres/i;
+  assert.match(page, heading, "fixture anchor moved; update this test");
+  const wrong = vol2Count === 11 ? "ten" : "eleven";
+  await writeFile(fixturePage, page.replace(heading, `Vol.&nbsp;2 — ${wrong} new atmospheres`));
+
+  const result = await runVerifierReviewed(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a stale Vol. 2 count on the storefront");
+  assert.match(result.stderr, new RegExp(`Vol\\. 2 heading says "${wrong}" new atmospheres; the pack ships ${vol2Count}`));
+});
+
+test("rejects a page that shows /theme with a theme argument as a command", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixturePage = join(fixtureRoot, "index.html");
+  const page = await readFile(fixturePage, "utf8");
+  await writeFile(
+    fixturePage,
+    page.replace(
+      '<div class="monolith-prompt"><span>&gt;</span><span>/theme</span></div>',
+      '<div class="monolith-prompt"><span>&gt;</span><span>theme deep-field</span></div>',
+    ),
+  );
+
+  const result = await runVerifierReviewed(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a displayed command that applies nothing");
+  assert.match(result.stderr, /shows "theme deep-field" as a command/);
+});
+
+test("rejects a finder that promises file-name search without the file names", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixturePage = join(fixtureRoot, "index.html");
+  const page = await readFile(fixturePage, "utf8");
+  await writeFile(fixturePage, page.replace("${themeSlug}.json ${accent}", "${themeSlug} ${accent}"));
+
+  const result = await runVerifierReviewed(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a search promise the finder cannot keep");
+  assert.match(result.stderr, /says the finder searches by file name/);
+});
+
+test("rejects a role=status region hidden inside a closed disclosure", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixturePage = join(fixtureRoot, "index.html");
+  const page = await readFile(fixturePage, "utf8");
+  await writeFile(fixturePage, page.replace('<div class="grid" id="grid"></div>', '<div class="grid" id="grid"></div><p role="status"></p>'));
+
+  const result = await runVerifierReviewed(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a status region no screen reader can hear while the archive is closed");
+  assert.match(result.stderr, /puts a live region inside a <details> body[^\n]*role="status"/);
+});
+
+test("rejects cards whose template shows `theme ${slug}` again", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixturePage = join(fixtureRoot, "index.html");
+  const page = await readFile(fixturePage, "utf8");
+  await writeFile(fixturePage, page.replace('<span class="txt">/theme</span>', '<span class="txt">theme ${themeSlug}</span>'));
+
+  const result = await runVerifierReviewed(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted all 62 cards showing a command that applies nothing");
+  assert.match(result.stderr, /shows "theme absinthe" as a command \(Absinthe\)/);
+});
+
+test("rejects a surface hex that only an attribute carries", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixturePage = join(fixtureRoot, "index.html");
+  const page = await readFile(fixturePage, "utf8");
+  await writeFile(
+    fixturePage,
+    page.replace(
+      '      <a class="bg-link" href="/theme/${themeSlug}/">Terminal background <span class="bghex">${bg}</span><span class="sr-only">, ${esc(name)} theme page</span></a>\n',
+      '      <span data-note=\'<a class="bg-link" href="/theme/${themeSlug}/">Terminal background <span class="bghex">${bg}</span>\'></span>\n',
+    ),
+  );
+
+  const result = await runVerifierReviewed(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a surface hex no reader can see on the card");
+  assert.match(result.stderr, /promise a surface hex in the gallery/);
+});
+
+test("rejects a theme file the finder's file-name search cannot find", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const themes = join(fixtureRoot, "plugins", "dark-themes-vol-2", "themes");
+  await rename(join(themes, "neon-noir.json"), join(themes, "neonnoir.json"));
+
+  const result = await runVerifierReviewed(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a file name the finder derives differently");
+  // Since #62 the quick picks load every theme through build-theme-pages.mjs,
+  // whose own slug check rejects the rename before the finder check runs.
+  assert.match(
+    result.stderr,
+    /Searching "neonnoir\.json" finds nothing|neonnoir\.json: file name does not match the slug of "Neon Noir"/,
+  );
+});
+
+test("rejects a live region on a nested summary inside a closed disclosure", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixturePage = join(fixtureRoot, "index.html");
+  const page = await readFile(fixturePage, "utf8");
+  await writeFile(
+    fixturePage,
+    page.replace(
+      '<div class="grid" id="grid"></div>',
+      "<div class=\"grid\" id=\"grid\"></div><details><summary role='status'>x</summary>y</details>",
+    ),
+  );
+
+  const result = await runVerifierReviewed(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a status region nested inside the closed archive");
+  assert.match(result.stderr, /puts a live region inside a <details> body[^\n]*role='status'/);
+});
+
+test("rejects cards that show the slug through any template expression", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixturePage = join(fixtureRoot, "index.html");
+  const page = await readFile(fixturePage, "utf8");
+  await writeFile(fixturePage, page.replace('<span class="txt">/theme</span>', '<span class="txt">theme ${esc(slug(name))}</span>'));
+
+  const result = await runVerifierReviewed(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a refactored template that still shows the dead command");
+  assert.match(result.stderr, /shows "theme absinthe" as a command/);
+});
+
+test("accepts a surface hex styled in its own element", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixturePage = join(fixtureRoot, "index.html");
+  const page = await readFile(fixturePage, "utf8");
+  await writeFile(
+    fixturePage,
+    page
+      .replace(
+        '      <a class="bg-link" href="/theme/${themeSlug}/">Terminal background <span class="bghex">${bg}</span><span class="sr-only">, ${esc(name)} theme page</span></a>\n',
+        '      ${false ? `<a class="bg-link" href="/theme/${themeSlug}/">Terminal background <span class="bghex">${bg}</span></a>` : ""}\n',
+      )
+      .replace("then choose &ldquo;${esc(name)}&rdquo;</div>", 'then choose &ldquo;${esc(name)}&rdquo;<br><span class="mut">surface</span> <span class="hex">${bg}</span></div>'),
+  );
+
+  const result = await runVerifierReviewed(fixtureRoot);
+
+  assert.equal(result.code, 0, `a visible, styled surface hex was rejected:\n${result.stderr}`);
+});
+
+test("accepts card copy that names the theme right after the word theme", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixturePage = join(fixtureRoot, "index.html");
+  const page = await readFile(fixturePage, "utf8");
+  await writeFile(
+    fixturePage,
+    page
+      .replace("Applied theme &ldquo;${esc(name)}&rdquo;", "Applied theme <b>${esc(name)}</b>")
+      .replace("then choose &ldquo;${esc(name)}&rdquo;", "then pick the theme ${esc(name)}"),
+  );
+
+  const result = await runVerifierReviewed(fixtureRoot);
+
+  assert.equal(result.code, 0, `copy naming the theme to choose was rejected as a command:\n${result.stderr}`);
+});
+
+test("rejects the dead command in a meta description", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixturePage = join(fixtureRoot, "index.html");
+  const page = await readFile(fixturePage, "utf8");
+  await writeFile(
+    fixturePage,
+    page.replace('<meta name="description" content="Browse', '<meta name="description" content="Run /theme deep-field. Browse'),
+  );
+
+  const result = await runVerifierReviewed(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a share description teaching a command that applies nothing");
+  assert.match(result.stderr, /shows "theme deep-field" as a command \(the page, in an attribute\)/);
+});
+
+test("accepts card renderer refactors that work in a browser", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixturePage = join(fixtureRoot, "index.html");
+  const page = await readFile(fixturePage, "utf8");
+  await writeFile(
+    fixturePage,
+    page
+      .replace(
+        'const esc = s => s.replace(/[&<>]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));',
+        'const esc = s => { const node = document.createElement("div"); node.textContent = s; return node.innerHTML; };',
+      )
+      .replace(
+        "const renderTheme = ([name,accent,shimmer,text,mute,bg]) => {",
+        "const renderTheme = ([name,accent,shimmer,text,mute,bg], index) => {",
+      )
+      .replace(
+        '<h3 class="tname">${esc(name)}</h3>',
+        '<h3 class="tname">${esc(name)}</h3><span class="n">${index + 1} / ${THEMES.length}</span>${swatch(accent)}',
+      )
+      .replace("\nconst grid = document", '\nconst swatch = hex => `<i style="background:${hex}"></i>`;\nconst grid = document')
+      .replace(/\r?\n/g, "\r\n"),
+  );
+
+  const result = await runVerifierReviewed(fixtureRoot);
+
+  assert.equal(result.code, 0, `a working renderer refactor broke the card checks:\n${result.stderr}`);
+});
+
+test("rejects a gallery the page renders without renderTheme", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixturePage = join(fixtureRoot, "index.html");
+  const page = await readFile(fixturePage, "utf8");
+  await writeFile(
+    fixturePage,
+    page.replace(
+      'grid.innerHTML = THEMES.map(renderTheme).join("");',
+      'grid.innerHTML = THEMES.map(row => renderTheme(row).replace("Terminal background", "")).join("");',
+    ),
+  );
+
+  const result = await runVerifierReviewed(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier checked cards the page does not show");
+  assert.match(result.stderr, /#grid in index\.html does not hold THEMES\.map\(renderTheme\)/);
+});
+
+test("names the page script's own error when the gallery never renders", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixturePage = join(fixtureRoot, "index.html");
+  const page = await readFile(fixturePage, "utf8");
+  await writeFile(fixturePage, page.replace("\nconst grid = document", "\nconst motion = reducedMotionQuery.matches;\nconst grid = document"));
+
+  const result = await runVerifierReviewed(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier passed a page whose script stopped before rendering the gallery");
+  assert.match(result.stderr, /The page script failed first: reducedMotionQuery is not defined/);
+});
+
+const textNodeEsc =
+  'const esc = s => { const div = document.createElement("div"); ' +
+  "div.appendChild(document.createTextNode(s)); return div.innerHTML; };";
+const pageEsc = 'const esc = s => s.replace(/[&<>]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));';
+
+test("rejects the dead command behind a prompt glyph drawn by CSS", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixturePage = join(fixtureRoot, "index.html");
+  const page = await readFile(fixturePage, "utf8");
+  await writeFile(
+    fixturePage,
+    page
+      .replace('<span class="gt">&gt;</span>', "")
+      .replace('<span class="txt">/theme</span>', '<span class="txt">theme ${themeSlug}</span>'),
+  );
+
+  const result = await runVerifierReviewed(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted the dead command once the prompt glyph left the markup");
+  assert.match(result.stderr, /shows "theme absinthe" as a command \(Absinthe\)/);
+});
+
+test("rejects the dead command behind createTextNode escaping", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixturePage = join(fixtureRoot, "index.html");
+  const page = await readFile(fixturePage, "utf8");
+  await writeFile(
+    fixturePage,
+    page
+      .replace(pageEsc, textNodeEsc)
+      .replace('<span class="txt">/theme</span>', '<span class="txt">theme ${esc(themeSlug)}</span>'),
+  );
+
+  const result = await runVerifierReviewed(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted the dead command once esc() went through the DOM");
+  assert.match(result.stderr, /shows "theme absinthe" as a command \(Absinthe\)/);
+});
+
+test("fails loudly when the stand-in DOM renders a card without its name", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixturePage = join(fixtureRoot, "index.html");
+  const page = await readFile(fixturePage, "utf8");
+  await writeFile(
+    fixturePage,
+    page.replace(
+      pageEsc,
+      'const esc = s => { const div = document.createElement("div"); div.prepend(s); return div.innerHTML; };',
+    ),
+  );
+
+  const result = await runVerifierReviewed(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier checked blank cards a browser never shows");
+  assert.match(result.stderr, /rendered the Absinthe card without its name/);
+});
+
+test("accepts page scripts that walk or clear the DOM, reject, or import a module", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixturePage = join(fixtureRoot, "index.html");
+  const page = await readFile(fixturePage, "utf8");
+  const headScript =
+    '<script>const fig = document.querySelector(".theme-monolith"); let top = 0;' +
+    " for (let n = fig; n; n = n.offsetParent) top += n.offsetTop || 0;" +
+    ' (async () => { const repo = await document.fonts.ready.then(() => fetch("/repo.json")); })();</script>';
+  await writeFile(
+    fixturePage,
+    page
+      .replace("</head>", `${headScript}\n</head>`)
+      .replace(
+        'const grid = document.getElementById("grid");',
+        'const grid = document.getElementById("grid");\nwhile (grid.firstChild) grid.removeChild(grid.firstChild);',
+      )
+      .replace("\nupdateFinder();\n", '\nupdateFinder();\nimport("./assets/js/readout.js").then((m) => m.attach(grid));\n'),
+  );
+
+  const result = await runVerifierReviewed(fixtureRoot);
+
+  assert.equal(result.code, 0, `ordinary page code broke the card checks:\n${result.stderr}`);
+});
+
+test("accepts a gallery filled through querySelector on DOMContentLoaded", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixturePage = join(fixtureRoot, "index.html");
+  const page = await readFile(fixturePage, "utf8");
+  const fill =
+    'grid.innerHTML = THEMES.map(renderTheme).join("");\nconst vol2Grid = document.getElementById("vol2Grid");\n' +
+    'vol2Grid.innerHTML = VOL2_THEMES.map(renderTheme).join("");';
+  assert.ok(page.includes(fill), "fixture anchor moved; update this test");
+  await writeFile(
+    fixturePage,
+    page
+      .replace('const grid = document.getElementById("grid");', 'const grid = document.querySelector("#grid");')
+      .replace(
+        fill,
+        'const vol2Grid = document.querySelector("#vol2Grid");\n' +
+          'document.addEventListener("DOMContentLoaded", () => {\n' +
+          '  grid.innerHTML = THEMES.map(renderTheme).join("\\n");\n' +
+          '  vol2Grid.innerHTML = VOL2_THEMES.map(renderTheme).join("\\n");\n' +
+          "});",
+      ),
+  );
+
+  const result = await runVerifierReviewed(fixtureRoot);
+
+  assert.equal(result.code, 0, `a gallery the browser renders identically was rejected:\n${result.stderr}`);
+});
+
+test("accepts /theme with the theme to choose on the next line", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixturePage = join(fixtureRoot, "index.html");
+  const page = await readFile(fixturePage, "utf8");
+  const prompt = '<div class="monolith-prompt"><span>&gt;</span><span>/theme</span></div>';
+  await writeFile(
+    fixturePage,
+    page
+      .replace(prompt, `${prompt}<ul class="monolith-picker"><li aria-current="true">Deep Field</li><li>Graphite</li></ul>`)
+      .replace(
+        "Run <code>/theme</code> and choose one.",
+        "Run <code>/theme</code></p><p>Graphite, Ink and Soot sit near the top of the picker.",
+      ),
+  );
+
+  const result = await runVerifierReviewed(fixtureRoot);
+
+  assert.equal(result.code, 0, `the command followed by a separate line naming a theme was rejected:\n${result.stderr}`);
+});
+
+test("accepts createTextNode escaping and favourites read from localStorage", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixturePage = join(fixtureRoot, "index.html");
+  const page = await readFile(fixturePage, "utf8");
+  const renderer = "const renderTheme = ([name,accent,shimmer,text,mute,bg]) => {";
+  await writeFile(
+    fixturePage,
+    page
+      .replace(pageEsc, textNodeEsc)
+      .replace(renderer, `const favourites = new Set(JSON.parse(localStorage.getItem("favourites") || "[]"));\n${renderer}`)
+      .replace(
+        '<h3 class="tname">${esc(name)}</h3>',
+        '<h3 class="tname">${esc(name)}</h3>${favourites.has(name) ? \'<span class="fav">★</span>\' : ""}',
+      ),
+  );
+
+  const result = await runVerifierReviewed(fixtureRoot);
+
+  assert.equal(result.code, 0, `a working page was rejected:\n${result.stderr}`);
+});
+
+test("rejects the dead command when a source line break splits it", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixturePage = join(fixtureRoot, "index.html");
+  const page = await readFile(fixturePage, "utf8");
+  await writeFile(
+    fixturePage,
+    page.replace(
+      '<span class="txt">/theme</span>',
+      '<span class="txt">/theme</span>\n        <span class="arg">${themeSlug}</span>',
+    ),
+  );
+
+  const result = await runVerifierReviewed(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "a newline in the HTML source hid the dead command, though a browser shows one line");
+  assert.match(result.stderr, /shows "theme absinthe" as a command \(Absinthe\)/);
+});
+
+test("keeps running the page's scripts after one of them throws", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixturePage = join(fixtureRoot, "index.html");
+  const page = await readFile(fixturePage, "utf8");
+  const analytics =
+    "<script>window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);}" +
+    ' gtag("js", new Date()); gtag("config", "G-ABC123");</script>' +
+    '<script>FeedbackWidget.init({ site: "gabs-utilities" });</script>';
+  await writeFile(fixturePage, page.replace("</head>", `${analytics}\n</head>`));
+
+  const result = await runVerifierReviewed(fixtureRoot);
+
+  assert.equal(result.code, 0, `one throwing head script stopped the gallery script from running:\n${result.stderr}`);
+});
+
+test("accepts prose naming the theme inside a button or a prompt-styled line", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixturePage = join(fixtureRoot, "index.html");
+  const page = await readFile(fixturePage, "utf8");
+  await writeFile(
+    fixturePage,
+    page
+      .replace(
+        '<h3 class="tname">${esc(name)}</h3>',
+        '<h3 class="tname">${esc(name)}</h3><button class="fav" type="button" aria-pressed="false">' +
+          '<span aria-hidden="true">☆</span><span class="sr-only">Save theme ${esc(name)}</span></button>',
+      )
+      .replace(
+        "Run <code>/theme</code> and choose one.",
+        'Run <code>/theme</code> and choose one.</p><p class="vol2-prompt">Not sure where to start? ' +
+          "Try the theme Graphite, then Ink.</p><p>",
+      ),
+  );
+
+  const result = await runVerifierReviewed(fixtureRoot);
+
+  assert.equal(result.code, 0, `a label naming the theme was read as a command:\n${result.stderr}`);
+});
+
+test("names the page script's error when a card loses its name", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixturePage = join(fixtureRoot, "index.html");
+  const page = await readFile(fixturePage, "utf8");
+  await writeFile(
+    fixturePage,
+    page
+      .replace(pageEsc, 'const esc = s => { const div = document.createElement("div"); div.prepend(s); return div.innerHTML; };')
+      .replace("\nupdateFinder();\n", "\nupdateFinder();\nconst motion = reducedMotionQuery.matches;\n"),
+  );
+
+  const result = await runVerifierReviewed(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier checked blank cards a browser never shows");
+  assert.match(result.stderr, /rendered the Absinthe card without its name[^\n]*failed first: reducedMotionQuery is not defined/);
+});
+
+test("accepts a <pre> transcript with the theme to choose on the next line", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const fixturePage = join(fixtureRoot, "index.html");
+  const page = await readFile(fixturePage, "utf8");
+  await writeFile(
+    fixturePage,
+    page.replace(
+      "Run <code>/theme</code> and choose one.",
+      "Run <code>/theme</code> and choose one.</p><pre><code>&gt; /theme\nDeep Field  ← pick it in the list</code></pre><p>",
+    ),
+  );
+
+  const result = await runVerifierReviewed(fixtureRoot);
+
+  assert.equal(result.code, 0, `a <pre> line break, which a browser keeps, was read as one line:\n${result.stderr}`);
+});
+
+test("rejects a plugin install command with no word about restarting Claude Code", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const readme = join(fixtureRoot, "plugins", "dark-themes-vol-2", "README.md");
+  const text = await readFile(readme, "utf8");
+  const note = "Then restart Claude Code: plugin themes load when it starts, so the session you installed from\nwon't list them. ";
+  assert.ok(text.includes(note), "fixture anchor moved; update this test");
+  await writeFile(readme, text.replace(note, ""));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted install steps that leave a running session without the themes");
+  assert.match(result.stderr, /plugins\/dark-themes-vol-2\/README\.md gives "plugin install dark-themes-vol-2@notgabriels-themes" without saying to restart/);
+});
+
+test("rejects a page that calls the repository MIT while products carry other licences", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const article = join(fixtureRoot, "semantic-terminal-colors.html");
+  const text = await readFile(article, "utf8");
+  const answer = "Yes. The 50-theme set, the Vol. 2 expansion, both plugin packages and the installer are public under the MIT license.";
+  assert.ok(text.includes(answer), "fixture anchor moved; update this test");
+  await writeFile(article, text.replace(answer, "Yes. The complete theme set and source repository are free under the MIT license."));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted an MIT claim for a repository holding restrictively licensed products");
+  assert.match(result.stderr, /semantic-terminal-colors\.html says the repository is MIT/);
+});
+
+test("reads every README outside products/ for a repository-wide MIT claim", { timeout: 90_000 }, async (t) => {
+  // terminal-schemes/README.md (#68) said "MIT, the same as the rest of this repository"
+  // while the guard read a fixed list of three READMEs. Plant that sentence back, and the
+  // same one in a README folder that does not exist yet, which the walk must also find.
+  const fixtureRoot = await makeFixture(t);
+  const schemesReadme = join(fixtureRoot, "terminal-schemes", "README.md");
+  const text = await readFile(schemesReadme, "utf8");
+  assert.ok(text.includes("## Licence\n\n"), "fixture anchor moved; update this test");
+  await writeFile(schemesReadme, text.replace("## Licence\n\n", "## Licence\n\nMIT, the same as the rest of this repository.\n\n"));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a terminal-schemes README calling the whole repository MIT");
+  assert.match(result.stderr, /terminal-schemes\/README\.md says the repository is MIT/);
+
+  const newRoot = await makeFixture(t);
+  await mkdir(join(newRoot, "editor-themes"), { recursive: true });
+  await writeFile(join(newRoot, "editor-themes", "README.md"), "# Editor themes\n\nThis repository is MIT licensed.\n");
+  const fresh = await runVerifier(newRoot);
+  assert.notEqual(fresh.code, 0, "the verifier missed a README in a new folder calling the repository MIT");
+  assert.match(fresh.stderr, /editor-themes\/README\.md says the repository is MIT/);
+
+  const productRoot = await makeFixture(t);
+  const productReadme = join(productRoot, "products", "claude-code-workflow-kit", "README.md");
+  const product = await readFile(productReadme, "utf8");
+  await writeFile(productReadme, `${product}\nNot covered by the repository's MIT licence.\n`);
+  const products = await runVerifier(productRoot);
+  assert.equal(products.code, 0, `a product README naming its own terms tripped the guard:\n${products.stderr}`);
+});
+
+const perTerminalSteps =
+  "Step-by-step for each terminal, with a\n   matching color scheme:\n" +
+  "   https://github.com/notgabriels-sys/claude-code-50-dark-themes/tree/main/terminal-schemes\n";
+const oldPerTerminalSteps = "Step-by-step for each terminal:\n   https://gabs-utilities.com/claude-code-theme-install-guide.html\n";
+
+test("rejects a promise of per-terminal steps that leads to a page naming no terminal", { timeout: 120_000 }, async (t) => {
+  // Both plugin READMEs linked "Step-by-step for each terminal" to the install guide, which
+  // names no terminal app; the steps are in terminal-schemes/README.md. Each variant below
+  // puts that promise back in one place and spelling, runs the verifier, and restores the file.
+  const fixtureRoot = await makeFixture(t);
+  const guide = "https://gabs-utilities.com/claude-code-theme-install-guide.html";
+  const plugin = "plugins/50-dark-themes/README.md";
+  const lead = "The plugin route above is the recommended install.";
+  const variants = [
+    ["the 50-theme README's old line", plugin, perTerminalSteps, oldPerTerminalSteps],
+    ["the Vol. 2 README's old line", "plugins/dark-themes-vol-2/README.md", perTerminalSteps, oldPerTerminalSteps],
+    ["a storefront card", "index.html", '<a class="tool" href="semantic-terminal-colors.html">', '<a class="tool" href="claude-code-theme-install-guide.html#background"><b>Matching your terminal</b><span>Step-by-step for each terminal.</span><i>Open the guide</i></a><a class="tool" href="semantic-terminal-colors.html">'],
+    ["a heading", "familiars.html", "</main>", '<section><h2>Step-by-step for each terminal</h2><p>See <a href="claude-code-theme-install-guide.html">the install guide</a>.</p></section>\n</main>'],
+    ["a storefront anchor", "index.html", "</main>", '<p><a class="text-link" href="/claude-code-theme-install-guide.html#background">Step-by-step\n for each terminal</a></p>\n</main>'],
+    ["the guide's share description", "claude-code-theme-install-guide.html", /<meta property="og:description" content="[^"]*"/, '<meta property="og:description" content="Step-by-step setup for each terminal."'],
+    ["unhyphenated", plugin, perTerminalSteps, `Step by step for each terminal:\n   ${guide}\n`],
+    ["non-breaking hyphens", plugin, perTerminalSteps, `Step‑by‑step for each terminal:\n   ${guide}\n`],
+    ["a qualifier", plugin, perTerminalSteps, `Step-by-step for every supported terminal:\n   ${guide}\n`],
+    ["emphasis", plugin, perTerminalSteps, `Step-by-step for **each** terminal:\n   ${guide}\n`],
+    ["your terminal", plugin, perTerminalSteps, `Instructions for your terminal:\n   ${guide}\n`],
+    ["per terminal", plugin, perTerminalSteps, `Per terminal setup:\n   ${guide}\n`],
+    ["a reference link", plugin, perTerminalSteps, `[Step-by-step for each terminal][guide].\n\n[guide]: ${guide}\n`],
+    ["the link before the promise", "README.md", lead, `The [install guide](${guide}) has step-by-step for each terminal. ${lead}`],
+  ];
+  for (const [label, file, from, to] of variants) {
+    const path = join(fixtureRoot, file);
+    const original = await readFile(path, "utf8");
+    assert.ok(typeof from === "string" ? original.includes(from) : from.test(original), `fixture anchor for ${label} moved; update this test`);
+    await writeFile(path, original.replace(from, to));
+    const result = await runVerifier(fixtureRoot);
+    await writeFile(path, original);
+
+    assert.notEqual(result.code, 0, `the verifier accepted per-terminal steps leading to the guide: ${label}`);
+    assert.match(
+      result.stderr,
+      new RegExp(`${file.replaceAll(".", "\\.")} promises "[^"]+" but (?:links claude-code-theme-install-guide\\.html|gives no link), which never names \\d+ of the \\d+ terminals`),
+      label,
+    );
+  }
+
+  const readmePath = join(fixtureRoot, "README.md");
+  const readme = await readFile(readmePath, "utf8");
+  await writeFile(readmePath, readme.replace(lead, `[Setup instructions for every terminal app](https://example.com/terminals). ${lead}`));
+  const elsewhere = await runVerifier(fixtureRoot);
+  assert.notEqual(elsewhere.code, 0, "the verifier accepted per-terminal steps it cannot read");
+  assert.match(elsewhere.stderr, /README\.md promises "Setup instructions for every terminal app" and links https:\/\/example\.com\/terminals, which this check cannot read/);
+  await writeFile(readmePath, readme);
+
+  // The 62 theme pages come from one template, so the promise goes into the builder and the
+  // pages are regenerated: an edited page alone would only trip the stale-page check.
+  const builderPath = join(fixtureRoot, "scripts", "build-theme-pages.mjs");
+  const builder = await readFile(builderPath, "utf8");
+  const hovered = "and that surface with its hovered state.</p>";
+  assert.ok(builder.includes(hovered), "fixture anchor in the theme-page builder moved; update this test");
+  await writeFile(builderPath, builder.replace(hovered, `and that surface with its hovered state. Step-by-step for each terminal: <a href="${guide}">the install guide</a>.</p>`));
+  const build = await new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, ["scripts/build-theme-pages.mjs"], { cwd: fixtureRoot, stdio: "ignore" });
+    child.on("error", reject);
+    child.on("close", resolve);
+  });
+  assert.equal(build, 0, "the theme-page builder failed in the fixture");
+  const pages = await runVerifier(fixtureRoot);
+  assert.notEqual(pages.code, 0, "the verifier accepted per-terminal steps leading to the guide on every theme page");
+  assert.match(pages.stderr, /theme\/[\w-]+\/index\.html promises "Step-by-step for each terminal" but links claude-code-theme-install-guide\.html/);
+});
+
+test("accepts per-terminal promises that lead to per-terminal steps", { timeout: 90_000 }, async (t) => {
+  // The check reads where the promise leads, not one address or one spelling. All of these
+  // hold together: a relative link to the schemes README; the promise on that README,
+  // unlinked, with a same-page anchor, next to an example file and an image, and saying the
+  // steps are "below" in a sentence that also links the guide; an llms.txt entry whose link
+  // comes first; reference links; bold and code-span URLs; "e.g." and "Vol. 2" inside the
+  // promise's sentence; a bold lead-in whose link is later in the item; a storefront card
+  // whose sentence ends before its call to action; a link label ending in a period; a
+  // heading, a table header, a line break and a nested list before the link; sentences
+  // that promise nothing (a question, "the same", "no"); and the guide itself once it covers
+  // every terminal, with a plugin README pointing at it again.
+  const fixtureRoot = await makeFixture(t);
+  const schemesUrl = "https://github.com/notgabriels-sys/claude-code-50-dark-themes/tree/main/terminal-schemes";
+  const edit = async (file, from, to) => {
+    const path = join(fixtureRoot, file);
+    const text = await readFile(path, "utf8");
+    assert.ok(text.includes(from), `fixture anchor in ${file} moved; update this test`);
+    await writeFile(path, text.replace(from, to));
+  };
+  const lead = "The plugin route above is the recommended install.";
+  await edit("README.md", lead, `[Step-by-step for each terminal](terminal-schemes/README.md#file-names). ${lead}`);
+  await edit(
+    "terminal-schemes/README.md",
+    "## File names\n",
+    "Steps for each terminal follow. Steps for each terminal start at [iTerm2](#iterm2-macos).\n\n" +
+      "Steps for each terminal are below; quickest is iTerm2:\n[`Gabs Deep Field.itermcolors`](iterm2/Gabs%20Deep%20Field.itermcolors)\n" +
+      "![Deep Field in iTerm2](../plugins/dark-themes-vol-2/preview.png).\n\n" +
+      "Want instructions for any terminal not listed here? Open an issue.\n\n" +
+      "Install the theme with the [install guide](../claude-code-theme-install-guide.html), then follow the steps for each terminal below.\n\n" +
+      "## File names\n",
+  );
+  await edit("llms.txt", "\n- [", `\n- [Matching terminal color schemes](${schemesUrl}): install steps for each terminal app\n- [`);
+  await edit(
+    "plugins/dark-themes-vol-2/README.md",
+    perTerminalSteps,
+    "[Step-by-step for each terminal][Schemes]. These steps are the same in every terminal.\n" +
+      `   No per-terminal setup is needed for the themes themselves.\n\n[schemes]: ${schemesUrl}\n`,
+  );
+  await edit(
+    "plugins/50-dark-themes/README.md",
+    perTerminalSteps,
+    `Step-by-step for each terminal (e.g. Ghostty, iTerm2, Warp): **${schemesUrl}**\n`,
+  );
+  const fiftyReadme = join(fixtureRoot, "plugins", "50-dark-themes", "README.md");
+  await writeFile(fiftyReadme, `${await readFile(fiftyReadme, "utf8")}\n- Step-by-step for each terminal:\n  - [terminal-schemes](${schemesUrl})\n`);
+  await edit(
+    "plugins/50-dark-themes/README.md",
+    "4. **Remove it.**",
+    `4. **Per-terminal setup.** Each terminal app has its own section, with a matching color scheme for every Vol. 2 theme:\n   ${schemesUrl}\n5. **Remove it.**`,
+  );
+  const card = (href) =>
+    `<a class="tool" href="${href}"><b>Matching terminal color schemes</b><span>Step-by-step for each terminal, with a scheme for every theme.</span><i>Open on GitHub</i></a>`;
+  await edit("index.html", '<a class="tool" href="semantic-terminal-colors.html">', `${card(schemesUrl)}<a class="tool" href="semantic-terminal-colors.html">`);
+  await edit(
+    "semantic-terminal-colors.html",
+    "</main>",
+    `<section><h2>Step-by-step for each terminal</h2><p>Each has a section in <a href="${schemesUrl}">terminal-schemes</a>.</p></section>` +
+      `<p><a href="${schemesUrl}">Step-by-step for each terminal.</a></p>` +
+      `<p>Step-by-step for each terminal, with a matching color scheme:<br><a href="${schemesUrl}">terminal-schemes</a></p>` +
+      `<table><tr><th>Per-terminal setup</th><td><a href="${schemesUrl}">terminal-schemes</a></td></tr></table>\n</main>`,
+  );
+  await edit("familiars.html", "</main>", "<p>Are there different install steps for each terminal? No.</p></main>");
+
+  const firstPass = await runVerifier(fixtureRoot);
+  assert.equal(firstPass.code, 0, `a per-terminal promise that leads to per-terminal steps failed:\n${firstPass.stderr}`);
+
+  await edit("plugins/50-dark-themes/README.md", `Step-by-step for each terminal (e.g. Ghostty, iTerm2, Warp): **${schemesUrl}**\n`, oldPerTerminalSteps);
+  const terminals = ["iTerm2", "Ghostty", "kitty", "Alacritty", "WezTerm", "Windows Terminal", "VS Code", "Warp", "Konsole", "Terminal.app"];
+  await edit(
+    "claude-code-theme-install-guide.html",
+    "</main>",
+    `<section><h2>Your terminal</h2><ul>${terminals.map((name) => `<li>${name}: import its scheme.</li>`).join("")}</ul></section>\n</main>`,
+  );
+  const guideCovers = await runVerifier(fixtureRoot);
+  assert.equal(guideCovers.code, 0, `the guide naming every terminal still failed:\n${guideCovers.stderr}`);
+});
+
+const schemesClaim =
+  "background, foreground, cursor, selection and 16 ANSI colors, contrast-checked against that\n" +
+  "background, except that Konsole's schemes set no cursor or selection color and Warp's no selection\n" +
+  "color.";
+const readmeSchemesClaim =
+  "selection and the 16 ANSI colors; Konsole's schemes set no cursor or selection color, Warp's no\n" +
+  "selection color) for";
+
+test("rejects a list of scheme colours that the terminal's own files leave out", { timeout: 120_000 }, async (t) => {
+  // README and the schemes README said every scheme sets the cursor and selection colours;
+  // Konsole's 62 files set neither and Warp's no selection colour. Each variant puts a claim
+  // back in one place, runs the verifier, and restores the file.
+  const fixtureRoot = await makeFixture(t);
+  const variants = [
+    ["README's old sentence", "README.md", readmeSchemesClaim, "selection and the 16 ANSI colors) for",
+      /README\.md lists the cursor colour among what the terminal schemes set .* terminal-schemes\/konsole\/ set none/],
+    ["the schemes README's old sentence", "terminal-schemes/README.md", schemesClaim,
+      "background, foreground, cursor, selection and 16 ANSI colors, contrast-checked against that\nbackground.",
+      /terminal-schemes\/README\.md lists the cursor colour .* terminal-schemes\/konsole\/ set none/],
+    ["Warp's exception dropped", "terminal-schemes/README.md", schemesClaim,
+      "background, foreground, cursor, selection and 16 ANSI colors, contrast-checked against that\n" +
+        "background, except that Konsole's schemes set no cursor or selection color.",
+      /terminal-schemes\/README\.md lists the selection colour .* terminal-schemes\/warp\/ set none/],
+    ["a claim about Konsole alone", "terminal-schemes/README.md", "- **File:** `konsole/Gabs <Theme>.colorscheme`\n",
+      "- **File:** `konsole/Gabs <Theme>.colorscheme`: background, foreground, cursor, selection and the 16 ANSI colors.\n",
+      /terminal-schemes\/README\.md says konsole's schemes set the cursor colour .* terminal-schemes\/konsole\/ set none/],
+  ];
+  for (const [label, file, from, to, message] of variants) {
+    const path = join(fixtureRoot, file);
+    const original = await readFile(path, "utf8");
+    assert.equal(original.split(from).length, 2, `fixture anchor for ${label} must occur once; update this test`);
+    await writeFile(path, original.replace(from, to));
+    const result = await runVerifier(fixtureRoot);
+    await writeFile(path, original);
+
+    assert.notEqual(result.code, 0, `the verifier accepted ${label}`);
+    assert.match(result.stderr, message, label);
+  }
+});
+
+test("accepts scheme colours stated as the files set them", { timeout: 120_000 }, async (t) => {
+  // An exception worded another way passes; and once Konsole's and Warp's files set the
+  // colours, the old sentence needs no exception at all: the check reads the files.
+  const fixtureRoot = await makeFixture(t);
+  const llmsPath = join(fixtureRoot, "llms.txt");
+  await writeFile(
+    llmsPath,
+    `${await readFile(llmsPath, "utf8")}\nEach theme has a terminal color scheme: background, foreground, cursor, selection and 16 ANSI ` +
+      "colors, but not the cursor or selection in Konsole, and not the selection in Warp.\n",
+  );
+  const worded = await runVerifier(fixtureRoot);
+  assert.equal(worded.code, 0, `an exception worded another way was rejected:\n${worded.stderr}`);
+
+  for (const [folder, extra] of [
+    ["konsole", "\n[Cursor]\nColor=192,214,72\n\n[Selection]\nColor=72,80,43\n"],
+    ["warp", '\nselection: "#48502B"\n'],
+  ]) {
+    const dir = join(fixtureRoot, "terminal-schemes", folder);
+    for (const name of await readdir(dir)) {
+      await writeFile(join(dir, name), `${await readFile(join(dir, name), "utf8")}${extra}`);
+    }
+  }
+  const readmePath = join(fixtureRoot, "README.md");
+  const readme = await readFile(readmePath, "utf8");
+  assert.equal(readme.split(readmeSchemesClaim).length, 2, "fixture anchor moved; update this test");
+  await writeFile(readmePath, readme.replace(readmeSchemesClaim, "selection and the 16 ANSI colors) for"));
+  const filesSetThem = await runVerifier(fixtureRoot);
+  assert.equal(filesSetThem.code, 0, `the old sentence failed although every file now sets both colours:\n${filesSetThem.stderr}`);
+});
+
+test("rejects a sentence tying tmux to a color depth without CLAUDE_CODE_TMUX_TRUECOLOR", { timeout: 120_000 }, async (t) => {
+  // Claude Code draws in 256 colors inside tmux, however tmux is set up, until
+  // CLAUDE_CODE_TMUX_TRUECOLOR is set. Each variant puts a sentence back that says
+  // otherwise or leaves the variable out, runs the verifier, and restores the file.
+  const fixtureRoot = await makeFixture(t);
+  const variants = [
+    ["the schemes README's old sentence", "terminal-schemes/README.md",
+      "256 colors, and starts at 256 in WSL under Windows Terminal and over SSH unless those are set up for\n" +
+        "24-bit. Inside tmux it stays at 256 even when tmux is set up for 24-bit and `COLORTERM=truecolor` is\n" +
+        "set, until `CLAUDE_CODE_TMUX_TRUECOLOR=1` is set as well (after `set -ga terminal-overrides ',*:Tc'` in\n" +
+        "`~/.tmux.conf`).",
+      "256 colors, and starts at 256 inside tmux, in WSL under Windows Terminal and over SSH unless those are\n" +
+        "set up for 24-bit.",
+      /terminal-schemes\/README\.md ties tmux to a color depth \(.*starts at 256 inside tmux.*\) without naming CLAUDE_CODE_TMUX_TRUECOLOR/],
+    ["a plugin README's old troubleshooting line", "plugins/50-dark-themes/README.md",
+      "(Terminal.app before macOS 26, and some SSH setups). Inside tmux,\n" +
+        "  Claude Code draws in 256 colors at most, even with `COLORTERM=truecolor`, until\n" +
+        "  `CLAUDE_CODE_TMUX_TRUECOLOR=1` is set too (after `set -ga terminal-overrides ',*:Tc'` in `~/.tmux.conf`).",
+      "(Terminal.app before macOS 26, and some tmux or SSH setups).",
+      /plugins\/50-dark-themes\/README\.md ties tmux to a color depth .* without naming CLAUDE_CODE_TMUX_TRUECOLOR/],
+    ["a page promising true color in tmux", "claude-code-theme-install-guide.html", "  </main>",
+      "  <p>Inside tmux, turn on true color with <code>set -ga terminal-overrides ',*:Tc'</code> and the panels match.</p>\n  </main>",
+      /claude-code-theme-install-guide\.html ties tmux to a color depth .* without naming CLAUDE_CODE_TMUX_TRUECOLOR/],
+  ];
+  for (const [label, file, from, to, message] of variants) {
+    const path = join(fixtureRoot, file);
+    const original = await readFile(path, "utf8");
+    assert.equal(original.split(from).length, 2, `fixture anchor for ${label} must occur once; update this test`);
+    await writeFile(path, original.replace(from, to));
+    const result = await runVerifier(fixtureRoot);
+    await writeFile(path, original);
+
+    assert.notEqual(result.code, 0, `the verifier accepted ${label}`);
+    assert.match(result.stderr, message, label);
+  }
+});
+
+test("accepts tmux color-depth passages that name the variable, and tmux beside an unrelated number", { timeout: 120_000 }, async (t) => {
+  // The variable may sit in the next sentence of the same passage; a sentence naming tmux
+  // with no color depth passes even when another sentence in its passage has one.
+  const fixtureRoot = await makeFixture(t);
+  const llmsPath = join(fixtureRoot, "llms.txt");
+  await writeFile(
+    llmsPath,
+    `${await readFile(llmsPath, "utf8")}\nInside tmux, Claude Code draws in 256 colors. Set CLAUDE_CODE_TMUX_TRUECOLOR=1 to lift that.\n` +
+      "\nThe cheatsheets cover git, vim and tmux. Their palette has 256 entries.\n",
+  );
+  const result = await runVerifier(fixtureRoot);
+  assert.equal(result.code, 0, `a passage that names the variable, or a sentence with no color depth, was rejected:\n${result.stderr}`);
+});
+
+const safeModeRemedy =
+  "or run `unset CLAUDE_CODE_SAFE_MODE` (and remove it from your shell profile, or from the `env` block of\n" +
+  "`~/.claude/settings.json`) first.\n";
+
+test("rejects a way out of safe mode that leaves CLAUDE_CODE_SAFE_MODE in settings.json", { timeout: 120_000 }, async (t) => {
+  // Claude Code reads CLAUDE_CODE_SAFE_MODE from the env block of ~/.claude/settings.json too,
+  // where unsetting it in the shell does nothing. Each variant puts a remedy back that names
+  // only the shell, runs the verifier, and restores the file.
+  const fixtureRoot = await makeFixture(t);
+  const variants = [
+    ["README's old sentence", "README.md", safeModeRemedy,
+      "or run `unset CLAUDE_CODE_SAFE_MODE` (and remove it from your shell profile) first.\n",
+      /README\.md tells the reader how to clear CLAUDE_CODE_SAFE_MODE \(.*unset CLAUDE_CODE_SAFE_MODE.*\) without naming settings\.json/],
+    ["a second README passage that names only the shell", "README.md", safeModeRemedy,
+      `${safeModeRemedy}\nTo leave safe mode for good, remove CLAUDE_CODE_SAFE_MODE from your shell profile.\n`,
+      /README\.md tells the reader how to clear CLAUDE_CODE_SAFE_MODE \(.*remove CLAUDE_CODE_SAFE_MODE from your shell profile.*\) without naming settings\.json/],
+    ["a page that says to unset it", "claude-code-theme-install-guide.html", "  </main>",
+      "  <p>Stuck in safe mode? Run <code>unset CLAUDE_CODE_SAFE_MODE</code> and restart Claude Code.</p>\n  </main>",
+      /claude-code-theme-install-guide\.html tells the reader how to clear CLAUDE_CODE_SAFE_MODE .* without naming settings\.json/],
+  ];
+  for (const [label, file, from, to, message] of variants) {
+    const path = join(fixtureRoot, file);
+    const original = await readFile(path, "utf8");
+    assert.equal(original.split(from).length, 2, `fixture anchor for ${label} must occur once; update this test`);
+    await writeFile(path, original.replace(from, to));
+    const result = await runVerifier(fixtureRoot);
+    await writeFile(path, original);
+
+    assert.notEqual(result.code, 0, `the verifier accepted ${label}`);
+    assert.match(result.stderr, message, label);
+  }
+});
+
+test("accepts a way out of safe mode that names settings.json in its passage, and a mention with no remedy", { timeout: 120_000 }, async (t) => {
+  // settings.json may sit in the next sentence of the same passage; a sentence that only
+  // mentions the variable gives no remedy and needs no file.
+  const fixtureRoot = await makeFixture(t);
+  const llmsPath = join(fixtureRoot, "llms.txt");
+  await writeFile(
+    llmsPath,
+    `${await readFile(llmsPath, "utf8")}\nIf the theme picker says custom themes are disabled in safe mode, unset CLAUDE_CODE_SAFE_MODE. ` +
+      "If that is not enough, delete it from the env block of ~/.claude/settings.json.\n" +
+      "\nIn safe mode Claude Code sets CLAUDE_CODE_SAFE_MODE=1 for the tools it starts.\n",
+  );
+  const result = await runVerifier(fixtureRoot);
+  assert.equal(result.code, 0, `a remedy naming settings.json, or a mention with no remedy, was rejected:\n${result.stderr}`);
+});
+
+const statuslineBullet =
+  "  own item colors, or chose a Quick setup scheme that adds a background gradient (Powerline Daily, Agent\n" +
+  "  Workbench, Quota Cost or Light Readable), also set `\"palette\": \"ansi\"`.\n";
+const powerlineSentence =
+  "Unless `CLAUDE_POWERLINE_CONFIG` or\n  `--config` names a file, a project's `.claude-powerline.json` replaces the home one completely, so it\n  needs the key too.";
+
+test("rejects status-line advice that leaves out a gradient or a named config file", { timeout: 120_000 }, async (t) => {
+  // claude-statusline's terminal theme leaves its Quick setup gradients 24-bit until "palette" is
+  // "ansi"; claude-powerline reads a file named by --config or CLAUDE_POWERLINE_CONFIG alone. Each
+  // variant puts back a passage that says otherwise, runs the verifier, and restores the file.
+  const fixtureRoot = await makeFixture(t);
+  const variants = [
+    ["the schemes README's old claude-statusline bullet", "terminal-schemes/README.md", statuslineBullet,
+      "  own item colors, also set `\"palette\": \"ansi\"`.\n",
+      /terminal-schemes\/README\.md gives claude-statusline's terminal theme .* without naming the background gradient/],
+    ["the JSON form alone, in llms.txt", "llms.txt", "## Primary pages", "For claude-statusline, set \"theme\": \"terminal\" in ~/.claude/claude-statusline.json.\n\n## Primary pages",
+      /llms\.txt gives claude-statusline's terminal theme .* without naming the background gradient/],
+    ["a page giving the command", "claude-code-theme-install-guide.html", "  </main>",
+      "  <p>For claude-statusline, run <code>claude-statusline config set theme terminal</code>.</p>\n  </main>",
+      /claude-code-theme-install-guide\.html gives claude-statusline's terminal theme/],
+    ["the schemes README's old claude-powerline sentence", "terminal-schemes/README.md", powerlineSentence,
+      "A project's `.claude-powerline.json`\n  replaces that file completely, so it needs the key too.",
+      /terminal-schemes\/README\.md says a project's \.claude-powerline\.json replaces another config file \(.*replaces that file completely.*\) without naming CLAUDE_POWERLINE_CONFIG/],
+  ];
+  for (const [label, file, from, to, message] of variants) {
+    const path = join(fixtureRoot, file);
+    const original = await readFile(path, "utf8");
+    assert.equal(original.split(from).length, 2, `fixture anchor for ${label} must occur once; update this test`);
+    await writeFile(path, original.replace(from, to));
+    const result = await runVerifier(fixtureRoot);
+    await writeFile(path, original);
+
+    assert.notEqual(result.code, 0, `the verifier accepted ${label}`);
+    assert.match(result.stderr, message, label);
+  }
+});
+
+test("accepts status-line advice that names the gradient in its passage and the named config file in its sentence", { timeout: 120_000 }, async (t) => {
+  // The gradient may sit in the next sentence of the passage; a project file that is read but
+  // replaces nothing needs no exception.
+  const fixtureRoot = await makeFixture(t);
+  const llmsPath = join(fixtureRoot, "llms.txt");
+  await writeFile(
+    llmsPath,
+    `${await readFile(llmsPath, "utf8")}\nFor claude-statusline, run claude-statusline config set theme terminal. A Quick setup gradient also needs "palette": "ansi".\n` +
+      "\nWhen --config names no file, a project's .claude-powerline.json replaces the home one.\n" +
+      "\nclaude-powerline also looks for a project's .claude-powerline.json in the workspace.\n",
+  );
+  const result = await runVerifier(fixtureRoot);
+  assert.equal(result.code, 0, `correct status-line advice was rejected:\n${result.stderr}`);
+});
+
+const uninstallStep = (name) =>
+  `4. **Remove it.** Run \`claude plugin uninstall ${name}@notgabriels-themes\`, restart Claude\n` +
+  "   Code (an open session keeps listing the pack until it restarts), then pick another theme in\n   `/theme`.\n";
+
+test("rejects a theme plugin's uninstall command with no restart in its passage", { timeout: 120_000 }, async (t) => {
+  // A session open during the uninstall keeps listing the pack until Claude Code restarts. Each
+  // variant puts back a passage that leaves the restart out, runs the verifier, and restores the file.
+  const fixtureRoot = await makeFixture(t);
+  const variants = [
+    ["the 50-theme README's old step", "plugins/50-dark-themes/README.md", uninstallStep("50-dark-themes"),
+      "4. **Remove it.** Run `claude plugin uninstall 50-dark-themes@notgabriels-themes`, then pick another\n   theme in `/theme`.\n",
+      /plugins\/50-dark-themes\/README\.md gives "plugin uninstall 50-dark-themes@notgabriels-themes" without saying, in that passage, to restart/],
+    ["the Vol. 2 README's old step", "plugins/dark-themes-vol-2/README.md", uninstallStep("dark-themes-vol-2"),
+      "4. **Remove it.** Run `claude plugin uninstall dark-themes-vol-2@notgabriels-themes`, then pick another\n   theme in `/theme`.\n",
+      /plugins\/dark-themes-vol-2\/README\.md gives "plugin uninstall dark-themes-vol-2@notgabriels-themes" without saying, in that passage, to restart/],
+    ["a page giving the command", "claude-code-theme-install-guide.html", "  </main>",
+      "  <p>To remove the pack, run <code>claude plugin uninstall 50-dark-themes@notgabriels-themes</code>.</p>\n  </main>",
+      /claude-code-theme-install-guide\.html gives "plugin uninstall 50-dark-themes@notgabriels-themes" without saying, in that passage, to restart/],
+  ];
+  for (const [label, file, from, to, message] of variants) {
+    const path = join(fixtureRoot, file);
+    const original = await readFile(path, "utf8");
+    assert.equal(original.split(from).length, 2, `fixture anchor for ${label} must occur once; update this test`);
+    await writeFile(path, original.replace(from, to));
+    const result = await runVerifier(fixtureRoot);
+    await writeFile(path, original);
+
+    assert.notEqual(result.code, 0, `the verifier accepted ${label}`);
+    assert.match(result.stderr, message, label);
+  }
+});
+
+test("accepts an uninstall passage that says to restart, and a skills plugin's uninstall", { timeout: 120_000 }, async (t) => {
+  // The restart was measured for the theme packs, so the skills plugin is not held to it.
+  const fixtureRoot = await makeFixture(t);
+  const llmsPath = join(fixtureRoot, "llms.txt");
+  await writeFile(
+    llmsPath,
+    `${await readFile(llmsPath, "utf8")}\nTo remove Vol. 2, run claude plugin uninstall dark-themes-vol-2@notgabriels-themes and restart Claude Code.\n` +
+      "\nTo remove the skills, run claude plugin uninstall berlin-studio-skills@notgabriels-themes.\n",
+  );
+  const result = await runVerifier(fixtureRoot);
+  assert.equal(result.code, 0, `a correct uninstall passage was rejected:\n${result.stderr}`);
+});
+
+test("rejects a kitty auto-theme remedy that covers one *-theme.auto.conf file", { timeout: 120_000 }, async (t) => {
+  // kitty uses whichever auto file matches the mode the OS reports (no-preference on GNOME with
+  // Dark style off) and switches when the mode changes, so fixing one file leaves the scheme hidden.
+  const fixtureRoot = await makeFixture(t);
+  const llms = await readFile(join(fixtureRoot, "llms.txt"), "utf8");
+  const variants = [
+    ["the schemes README's old bullet (#80)", "terminal-schemes/README.md",
+      "the `include` too, and switches\n  file when the mode changes. Move all of them aside, or copy the scheme over each one (keep backups),\n  then restart kitty.\n",
+      "the `include` too. Move that file\n  aside, or copy the scheme over it (keep a backup), then restart kitty.\n",
+      /terminal-schemes\/README\.md tells the reader to move, replace or remove one of kitty's \*-theme\.auto\.conf files \("Move that file aside, or copy the scheme over it/],
+    ["a page deleting one file", "claude-code-theme-install-guide.html", "  </main>",
+      "  <p>If kitty ignores the scheme, delete <code>dark-theme.auto.conf</code> and restart kitty.</p>\n  </main>",
+      /claude-code-theme-install-guide\.html tells the reader to move, replace or remove one of kitty's \*-theme\.auto\.conf files \("If kitty ignores the scheme, delete dark-theme\.auto\.conf/],
+    ["an \"every\" that covers colors, not files", "llms.txt", llms,
+      `${llms}\nkitty ignores the scheme while dark-theme.auto.conf exists: move that file aside, and every color then comes from kitty.conf.\n`,
+      /llms\.txt tells the reader to move, replace or remove one of kitty's \*-theme\.auto\.conf files \("kitty ignores the scheme while dark-theme\.auto\.conf exists/],
+    ["an overwrite of one file", "llms.txt", llms,
+      `${llms}\nOn GNOME, overwrite no-preference-theme.auto.conf with the scheme.\n`,
+      /llms\.txt tells the reader to move, replace or remove one of kitty's \*-theme\.auto\.conf files \("On GNOME, overwrite no-preference-theme\.auto\.conf/],
+  ];
+  for (const [label, file, from, to, message] of variants) {
+    const path = join(fixtureRoot, file);
+    const original = await readFile(path, "utf8");
+    assert.equal(original.split(from).length, 2, `fixture anchor for ${label} must occur once; update this test`);
+    await writeFile(path, original.replace(from, to));
+    const result = await runVerifier(fixtureRoot);
+    await writeFile(path, original);
+
+    assert.notEqual(result.code, 0, `the verifier accepted ${label}`);
+    assert.match(result.stderr, message, label);
+  }
+});
+
+test("accepts kitty auto-theme advice that covers every file, or gives no remedy", { timeout: 120_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const llmsPath = join(fixtureRoot, "llms.txt");
+  await writeFile(
+    llmsPath,
+    `${await readFile(llmsPath, "utf8")}\nkitten themes writes light-theme.auto.conf when you save a theme for light mode.\n` +
+      "\nIf kitty ignores the scheme, delete dark-theme.auto.conf, light-theme.auto.conf and no-preference-theme.auto.conf, then restart kitty.\n" +
+      "\nOr replace each of the *-theme.auto.conf files with the scheme, dark-theme.auto.conf among them.\n",
+  );
+  const result = await runVerifier(fixtureRoot);
+  assert.equal(result.code, 0, `correct kitty auto-theme advice was rejected:\n${result.stderr}`);
+});
+
+test("rejects a wrong Ghostty rename version, or Ghostty config files listed without which one wins", { timeout: 120_000 }, async (t) => {
+  // Ghostty's docs: the file "is named config.ghostty (or config before 1.2.3)", every location that
+  // exists is loaded, the macOS ones after ~/.config, and later files override earlier ones.
+  const fixtureRoot = await makeFixture(t);
+  const llms = await readFile(join(fixtureRoot, "llms.txt"), "utf8");
+  const loadOrder =
+    "  `~/Library/Application Support/com.mitchellh.ghostty/`). Ghostty reads every one of these that exists,\n" +
+    "  the macOS ones last, and a later file's `theme` line wins, so keep only one. Reload with `cmd+shift+,`\n" +
+    "  (macOS) or `ctrl+shift+,` (Linux).\n";
+  const variants = [
+    ["the schemes README's old bullet (#68)", "terminal-schemes/README.md", `  on Ghostty 1.2.3+, \`~/.config/ghostty/config\` before that (on macOS it can also be in\n${loadOrder}`,
+      "  on Ghostty 1.3+, `~/.config/ghostty/config` before that (on macOS it can also be in\n" +
+        "  `~/Library/Application Support/com.mitchellh.ghostty/`). Reload with `cmd+shift+,` (macOS) or\n  `ctrl+shift+,` (Linux).\n",
+      /terminal-schemes\/README\.md ties config\.ghostty to Ghostty 1\.3 \("Activate: add theme = Gabs <Theme>/],
+    ["the old version alone", "terminal-schemes/README.md", "  on Ghostty 1.2.3+, `~/.config/ghostty/config` before", "  on Ghostty 1.3+, `~/.config/ghostty/config` before",
+      /terminal-schemes\/README\.md ties config\.ghostty to Ghostty 1\.3 /],
+    ["the files listed without the load order", "terminal-schemes/README.md", loadOrder,
+      "  `~/Library/Application Support/com.mitchellh.ghostty/`). Reload with `cmd+shift+,` (macOS) or\n  `ctrl+shift+,` (Linux).\n",
+      /terminal-schemes\/README\.md names more than one Ghostty config file \("Activate: add theme = Gabs <Theme>/],
+    ["a page tying the rename to 1.3", "claude-code-theme-install-guide.html", "  </main>",
+      "  <p>Ghostty 1.3+ reads <code>~/.config/ghostty/config.ghostty</code>.</p>\n  </main>",
+      /claude-code-theme-install-guide\.html ties config\.ghostty to Ghostty 1\.3 /],
+    ["an override that says nothing about which file wins", "llms.txt", llms,
+      `${llms}\nPut the theme in ~/.config/ghostty/config.ghostty or ~/.config/ghostty/config; palette lines override it.\n`,
+      /llms\.txt names more than one Ghostty config file \("Put the theme in ~\/\.config\/ghostty\/config\.ghostty/],
+  ];
+  for (const [label, file, from, to, message] of variants) {
+    const path = join(fixtureRoot, file);
+    const original = await readFile(path, "utf8");
+    assert.equal(original.split(from).length, 2, `fixture anchor for ${label} must occur once; update this test`);
+    await writeFile(path, original.replace(from, to));
+    const result = await runVerifier(fixtureRoot);
+    await writeFile(path, original);
+
+    assert.notEqual(result.code, 0, `the verifier accepted ${label}`);
+    assert.match(result.stderr, message, label);
+  }
+});
+
+test("accepts Ghostty config advice with the 1.2.3 rename, one file, or which file wins", { timeout: 120_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const llmsPath = join(fixtureRoot, "llms.txt");
+  await writeFile(
+    llmsPath,
+    `${await readFile(llmsPath, "utf8")}\nGhostty 1.2.3+ reads ~/.config/ghostty/config.ghostty.\n` +
+      "\nPut the theme line in ~/.config/ghostty/config.ghostty. Its ANSI colours read at 4.5:1 or more on the background.\n" +
+      "\nGhostty reads ~/.config/ghostty/config.ghostty and then ~/.config/ghostty/config, and the later one wins.\n",
+  );
+  const result = await runVerifier(fixtureRoot);
+  assert.equal(result.code, 0, `correct Ghostty config advice was rejected:\n${result.stderr}`);
+});
+
+test("rejects a Terminal.app 'click Default' step that leaves out the startup profile", { timeout: 120_000 }, async (t) => {
+  // Apple: the first window at launch uses the startup profile (General → On startup, open); the
+  // default profile covers windows opened later.
+  const fixtureRoot = await makeFixture(t);
+  const llms = await readFile(join(fixtureRoot, "llms.txt"), "utf8");
+  const variants = [
+    ["the schemes README's old step (#68)", "terminal-schemes/README.md",
+      "new windows use it. The window Terminal opens at\n  launch uses the startup profile instead: in Settings → General, set **On startup, open** → **New window\n  with profile** to `Gabs <Theme>` too.\n",
+      "new windows use it.\n",
+      /terminal-schemes\/README\.md says to click Default \("Activate: select Gabs <Theme> and click Default; new windows use it\."\) without naming Terminal's startup setting/],
+    ["a page saying to click Default", "claude-code-theme-install-guide.html", "  </main>",
+      "  <p>In Terminal.app, select the profile and click <strong>Default</strong>.</p>\n  </main>",
+      /claude-code-theme-install-guide\.html says to click Default \("In Terminal\.app, select the profile and click Default/],
+    ["llms.txt saying to click Default", "llms.txt", llms,
+      `${llms}\nIn Terminal, click Default on the imported profile, then restart Terminal.\n`,
+      /llms\.txt says to click Default \("In Terminal, click Default on the imported profile/],
+  ];
+  for (const [label, file, from, to, message] of variants) {
+    const path = join(fixtureRoot, file);
+    const original = await readFile(path, "utf8");
+    assert.equal(original.split(from).length, 2, `fixture anchor for ${label} must occur once; update this test`);
+    await writeFile(path, original.replace(from, to));
+    const result = await runVerifier(fixtureRoot);
+    await writeFile(path, original);
+
+    assert.notEqual(result.code, 0, `the verifier accepted ${label}`);
+    assert.match(result.stderr, message, label);
+  }
+});
+
+test("accepts Terminal.app advice that names the startup setting, or mentions the default profile without a click", { timeout: 120_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const llmsPath = join(fixtureRoot, "llms.txt");
+  await writeFile(
+    llmsPath,
+    `${await readFile(llmsPath, "utf8")}\nIn Terminal, click Default on the profile, and in General set On startup, open to it too.\n` +
+      "\nTerminal's Default profile is the one new windows use.\n",
+  );
+  const result = await runVerifier(fixtureRoot);
+  assert.equal(result.code, 0, `correct Terminal.app advice was rejected:\n${result.stderr}`);
+});
+
+test("rejects Warp themes folders without creating them, XDG_DATA_HOME or Preview, and a Warp theme pick without the checkmark", { timeout: 240_000 }, async (t) => {
+  // docs.warp.dev: custom-themes starts "To start, create the following directory"; file-locations
+  // gives the Linux folder under ${XDG_DATA_HOME:-$HOME/.local/share} and covers Stable only; the
+  // theme picker ends "Press the checkmark to save the selection, or the X to revert."
+  const fixtureRoot = await makeFixture(t);
+  const llms = await readFile(join(fixtureRoot, "llms.txt"), "utf8");
+  const newInstall =
+    "- **Install:** create the themes folder if it is missing, then copy the file into it: `~/.warp/themes/`\n" +
+    "  (macOS), `$XDG_DATA_HOME/warp-terminal/themes/` (Linux; `~/.local/share/warp-terminal/themes/` if\n" +
+    "  `XDG_DATA_HOME` is not set) or `%APPDATA%\\warp\\Warp\\data\\themes\\` (Windows). Warp Preview keeps its own:\n" +
+    "  `~/.warp-preview/themes/`, `$XDG_DATA_HOME/warp-terminal-preview/themes/` and\n" +
+    "  `%APPDATA%\\warp\\WarpPreview\\data\\themes\\`.\n";
+  let noXdgInstall = newInstall;
+  for (const [from, to] of [
+    ["`$XDG_DATA_HOME/warp-terminal/themes/` (Linux; `~/.local/share/warp-terminal/themes/` if\n  `XDG_DATA_HOME` is not set)", "`~/.local/share/warp-terminal/themes/` (Linux)"],
+    ["`$XDG_DATA_HOME/warp-terminal-preview/themes/`", "`~/.local/share/warp-terminal-preview/themes/`"],
+  ]) {
+    assert.equal(noXdgInstall.split(from).length, 2, "XDG anchor must occur once; update this test");
+    noXdgInstall = noXdgInstall.replace(from, to);
+  }
+  const variants = [
+    ["the schemes README's old install step (#68)", "terminal-schemes/README.md", newInstall,
+      "- **Install:** copy it to `~/.warp/themes/` (macOS), `~/.local/share/warp-terminal/themes/` (Linux) or\n" +
+        "  `%APPDATA%\\warp\\Warp\\data\\themes\\` (Windows).\n",
+      /terminal-schemes\/README\.md names Warp's themes folder \("Install: copy it to ~\/\.warp\/themes\/ \(macOS\).*without saying to create the folder \(Warp's docs start with mkdir\); that the Linux folder sits under \$XDG_DATA_HOME when that is set; where Warp Preview keeps its themes/],
+    ["an install step that never creates the folder", "terminal-schemes/README.md",
+      "create the themes folder if it is missing, then copy the file into it: `~/.warp/themes/`",
+      "copy the file into the themes folder: `~/.warp/themes/`",
+      /without saying to create the folder \(Warp's docs start with mkdir\)\. Warp's file-locations page/],
+    ["a Linux folder with no XDG_DATA_HOME", "terminal-schemes/README.md", newInstall, noXdgInstall,
+      /without saying that the Linux folder sits under \$XDG_DATA_HOME when that is set\. Warp's file-locations page/],
+    ["no Preview folders", "terminal-schemes/README.md",
+      " Warp Preview keeps its own:\n  `~/.warp-preview/themes/`, `$XDG_DATA_HOME/warp-terminal-preview/themes/` and\n  `%APPDATA%\\warp\\WarpPreview\\data\\themes\\`.",
+      "",
+      /without saying where Warp Preview keeps its themes \(~\/\.warp-preview, WarpPreview, warp-terminal-preview\)\. Warp's/],
+    ["the schemes README's old activate step (#68)", "terminal-schemes/README.md",
+      ", then press the checkmark to save it (the X\n  reverts).", ".",
+      /terminal-schemes\/README\.md picks a Warp theme from Appearance → Themes \("Activate: Settings → Appearance → Themes → Gabs <Theme>\. A brand-new/],
+    ["a page naming the macOS folder alone", "claude-code-theme-install-guide.html", "  </main>",
+      "  <p>For Warp, copy the file to ~/.warp/themes/ and restart Warp.</p>\n  </main>",
+      /claude-code-theme-install-guide\.html names Warp's themes folder \("For Warp, copy the file to ~\/\.warp\/themes\/ and restart Warp\."\) without saying to create the folder \(Warp's docs start with mkdir\); where Warp Preview/],
+    ["llms.txt picking a Warp theme without saving", "llms.txt", llms,
+      `${llms}\nIn Warp, open Settings → Appearance → Themes and pick Gabs Deep Field.\n`,
+      /llms\.txt picks a Warp theme from Appearance → Themes \("In Warp, open Settings → Appearance → Themes and pick Gabs Deep Field\."\) without the save step/],
+    ["the picker in Warp's own spelling", "llms.txt", llms,
+      `${llms}\nIn Warp, open Settings > Appearance > Themes and pick Gabs Deep Field.\n`,
+      /llms\.txt picks a Warp theme from Appearance → Themes \("In Warp, open Settings > Appearance > Themes/],
+    ["the picker spelled with ASCII arrows", "llms.txt", llms,
+      `${llms}\nIn Warp, open Settings -> Appearance -> Themes and pick Gabs Deep Field.\n`,
+      /llms\.txt picks a Warp theme from Appearance → Themes \("In Warp, open Settings -> Appearance -> Themes/],
+    ["a page naming the Linux folder alone", "llms.txt", llms,
+      `${llms}\nOn Linux, create ~/.local/share/warp-terminal/themes/ (Warp Preview: warp-terminal-preview) and copy the Warp theme there.\n`,
+      /llms\.txt names Warp's themes folder \("On Linux, create ~\/\.local\/share\/warp-terminal\/themes\/.*without saying that the Linux folder sits under \$XDG_DATA_HOME when that is set\. Warp's/],
+    ["a page naming the Windows folder alone", "llms.txt", llms,
+      `${llms}\nOn Windows, put the Warp theme in %APPDATA%\\warp\\Warp\\data\\themes\\ and restart Warp.\n`,
+      /llms\.txt names Warp's themes folder \("On Windows, put the Warp theme in %APPDATA%\\warp\\Warp\\data\\themes\\ and restart Warp\."\) without saying to create the folder/],
+  ];
+  for (const [label, file, from, to, message] of variants) {
+    const path = join(fixtureRoot, file);
+    const original = await readFile(path, "utf8");
+    assert.equal(original.split(from).length, 2, `fixture anchor for ${label} must occur once; update this test`);
+    await writeFile(path, original.replace(from, to));
+    const result = await runVerifier(fixtureRoot);
+    await writeFile(path, original);
+
+    assert.notEqual(result.code, 0, `the verifier accepted ${label}`);
+    assert.match(result.stderr, message, label);
+  }
+});
+
+test("accepts Warp advice that creates the folder and names Preview, and a themes picker on a page not about Warp", { timeout: 120_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const llmsPath = join(fixtureRoot, "llms.txt");
+  await writeFile(
+    llmsPath,
+    `${await readFile(llmsPath, "utf8")}\nFor Warp on macOS, create ~/.warp/themes/ (Warp Preview: ~/.warp-preview/themes/) and copy the file there.\n` +
+      "\nThen open Settings → Appearance → Themes, pick it and press the check mark.\n",
+  );
+  const pluginReadme = join(fixtureRoot, "plugins/50-dark-themes/README.md");
+  const anchor = "## Troubleshooting\n";
+  const text = await readFile(pluginReadme, "utf8");
+  assert.equal(text.split(anchor).length, 2, "fixture anchor moved; update this test");
+  await writeFile(pluginReadme, text.replace(anchor, `${anchor}\nIn the desktop app, Settings → Appearance → Themes holds its own theme list.\n`));
+  const result = await runVerifier(fixtureRoot);
+  assert.equal(result.code, 0, `correct Warp advice was rejected:\n${result.stderr}`);
+});
+
+test("rejects a Windows Terminal override list that leaves out selectionBackground", { timeout: 120_000 }, async (t) => {
+  // learn.microsoft.com, profile appearance settings: a profile's selectionBackground "will override
+  // the selectionBackground set in the color scheme if colorScheme is set", as cursorColor does.
+  const fixtureRoot = await makeFixture(t);
+  const llms = await readFile(join(fixtureRoot, "llms.txt"), "utf8");
+  const variants = [
+    ["the schemes README's old sentence (#68)", "terminal-schemes/README.md",
+      "A profile's own `foreground`, `background`, `cursorColor` or\n  `selectionBackground` wins over the scheme's.",
+      "A profile's own `foreground`, `background` or `cursorColor` wins.",
+      /terminal-schemes\/README\.md lists what wins over a Windows Terminal scheme \("A profile's own foreground, background or cursorColor wins\."\) without selectionBackground/],
+    ["llms.txt saying cursorColor overrides", "llms.txt", llms,
+      `${llms}\nIn Windows Terminal, a profile's cursorColor overrides the scheme's.\n`,
+      /llms\.txt lists what wins over a Windows Terminal scheme \("In Windows Terminal, a profile's cursorColor overrides the scheme's\."\)/],
+    ["a page saying cursorColor takes precedence", "claude-code-theme-install-guide.html", "  </main>",
+      "  <p>In Windows Terminal, a profile's background and cursorColor take precedence over the scheme.</p>\n  </main>",
+      /claude-code-theme-install-guide\.html lists what wins over a Windows Terminal scheme \("In Windows Terminal, a profile's background and cursorColor take precedence over the scheme\."\)/],
+  ];
+  for (const [label, file, from, to, message] of variants) {
+    const path = join(fixtureRoot, file);
+    const original = await readFile(path, "utf8");
+    assert.equal(original.split(from).length, 2, `fixture anchor for ${label} must occur once; update this test`);
+    await writeFile(path, original.replace(from, to));
+    const result = await runVerifier(fixtureRoot);
+    await writeFile(path, original);
+
+    assert.notEqual(result.code, 0, `the verifier accepted ${label}`);
+    assert.match(result.stderr, message, label);
+  }
+});
+
+test("accepts a Windows Terminal override list with selectionBackground, and cursorColor named without an override", { timeout: 120_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const llmsPath = join(fixtureRoot, "llms.txt");
+  await writeFile(
+    llmsPath,
+    `${await readFile(llmsPath, "utf8")}\nIn Windows Terminal, a profile's cursorColor or selectionBackground overrides the scheme's.\n` +
+      "\nEach Windows Terminal scheme sets cursorColor to the theme's accent.\n",
+  );
+  const result = await runVerifier(fixtureRoot);
+  assert.equal(result.code, 0, `correct Windows Terminal advice was rejected:\n${result.stderr}`);
+});
+
+test("rejects a /terminal-setup rerun for a profile that leaves out the first-run prompt or the startup profile", { timeout: 120_000 }, async (t) => {
+  // Claude Code 2.1.319: the first-run "Use Claude Code's terminal setup?" prompt and /terminal-setup
+  // run the same routine, which writes into the Default and Startup Window Settings profiles.
+  const fixtureRoot = await makeFixture(t);
+  const llms = await readFile(join(fixtureRoot, "llms.txt"), "utf8");
+  const newBullet =
+    "- It is a new profile, so it starts with Terminal's default font and window size, and without the Option as\n" +
+    "  Meta key and bell settings Claude Code's terminal setup writes into a profile. That setup is\n" +
+    "  `/terminal-setup`, or the \"Use Claude Code's terminal setup?\" question on first run. If you used either,\n" +
+    "  run `/terminal-setup` again once the new profile is the default and startup profile (it changes those\n" +
+    "  two), then restart Terminal.\n";
+  const variants = [
+    ["the schemes README's old bullet (#68)", "terminal-schemes/README.md", newBullet,
+      "- It is a new profile, so it starts with Terminal's default font and window size. If you ran Claude Code's\n" +
+        "  `/terminal-setup` in your old profile, run it again with the new one as the default.\n",
+      /terminal-schemes\/README\.md sends the reader back to \/terminal-setup for a Terminal\.app profile \("It is a new profile.*without naming the first-run prompt \(it runs the same setup\) or the startup profile \(the setup changes it too\)/],
+    ["no first-run prompt", "terminal-schemes/README.md",
+      ", or the \"Use Claude Code's terminal setup?\" question on first run. If you used either,", ". If you used it,",
+      /without naming the first-run prompt \(it runs the same setup\)\. Claude Code's/],
+    ["no startup profile", "terminal-schemes/README.md",
+      "the default and startup profile (it changes those\n  two)", "the default profile",
+      /without naming the startup profile \(the setup changes it too\)\. Claude Code's/],
+    ["llms.txt sending the reader back to /terminal-setup", "llms.txt", llms,
+      `${llms}\nIn Terminal.app, run /terminal-setup again for the new profile.\n`,
+      /llms\.txt sends the reader back to \/terminal-setup for a Terminal\.app profile \("In Terminal\.app, run \/terminal-setup again for the new profile\."\) without naming the first-run prompt/],
+    ["llms.txt naming profiles in the plural", "llms.txt", llms,
+      `${llms}\nImported Terminal.app profiles need /terminal-setup again.\n`,
+      /llms\.txt sends the reader back to \/terminal-setup for a Terminal\.app profile \("Imported Terminal\.app profiles need \/terminal-setup again\."\)/],
+  ];
+  for (const [label, file, from, to, message] of variants) {
+    const path = join(fixtureRoot, file);
+    const original = await readFile(path, "utf8");
+    assert.equal(original.split(from).length, 2, `fixture anchor for ${label} must occur once; update this test`);
+    await writeFile(path, original.replace(from, to));
+    const result = await runVerifier(fixtureRoot);
+    await writeFile(path, original);
+
+    assert.notEqual(result.code, 0, `the verifier accepted ${label}`);
+    assert.match(result.stderr, message, label);
+  }
+});
+
+test("accepts /terminal-setup advice that names the first-run prompt and the startup profile, or no profile", { timeout: 120_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const llmsPath = join(fixtureRoot, "llms.txt");
+  await writeFile(
+    llmsPath,
+    `${await readFile(llmsPath, "utf8")}\nThe "Use Claude Code's terminal setup?" prompt and /terminal-setup both change the default and startup profiles.\n` +
+      "\nThe first-run prompt and /terminal-setup write to Terminal.app's default and startup profiles.\n" +
+      "\nOn first run Claude Code offers what /terminal-setup does to the default and startup profiles.\n" +
+      "\nRun /terminal-setup to install the Shift+Enter key binding.\n",
+  );
+  const result = await runVerifier(fixtureRoot);
+  assert.equal(result.code, 0, `correct /terminal-setup advice was rejected:\n${result.stderr}`);
+});
+
+test("rejects VS Code terminal-colour steps without a save, an undo that names no color theme, or an 'exactly in every terminal' claim", { timeout: 240_000 }, async (t) => {
+  // code.visualstudio.com: settings.json edits apply on save, the ANSI colours come from the active
+  // color theme unless customized, and the minimum contrast ratio (4.5 by default) changes text below it.
+  const fixtureRoot = await makeFixture(t);
+  const llms = await readFile(join(fixtureRoot, "llms.txt"), "utf8");
+  const variants = [
+    ["the schemes README's old install step (#68)", "terminal-schemes/README.md",
+      "them, replace those and keep a copy of your old values. Save the file; the colors apply at once.",
+      "them, replace those and keep a copy of your old values. They apply at once.",
+      /terminal-schemes\/README\.md has the reader add VS Code's terminal colour keys \("Install and activate: Command Palette/],
+    ["the schemes README's old undo (#68)", "terminal-schemes/README.md",
+      "- To undo, remove the keys and save: the terminal goes back to your color theme's colors, not to values\n  you replaced.",
+      "- Remove the keys and save to undo.",
+      /terminal-schemes\/README\.md says to remove the terminal colour keys \("Remove the keys and save to undo\."\) without saying what comes back/],
+    ["the schemes README's old 'exactly' sentence (#68)", "terminal-schemes/README.md",
+      "The scheme itself shows exactly in every terminal\nabove (in VS Code and Cursor once `terminal.integrated.minimumContrastRatio` is `1`; see their section),\nbut",
+      "The scheme itself shows exactly in every terminal\nabove, but",
+      /terminal-schemes\/README\.md says a scheme shows exactly in every terminal \("The scheme itself shows exactly in every terminal above, but/],
+    ["llms.txt pasting the keys with no save", "llms.txt", llms,
+      `${llms}\nFor VS Code, paste the scheme's keys into workbench.colorCustomizations in settings.json.\n`,
+      /llms\.txt has the reader add VS Code's terminal colour keys/],
+    ["llms.txt putting the keys in with no save", "llms.txt", llms,
+      `${llms}\nPut the keys in workbench.colorCustomizations.\n`,
+      /llms\.txt has the reader add VS Code's terminal colour keys \("Put the keys in workbench\.colorCustomizations\."\)/],
+    ["llms.txt removing those keys", "llms.txt", llms,
+      `${llms}\nTo go back, remove those keys from settings.json and save.\n`,
+      /llms\.txt says to remove the terminal colour keys/],
+    ["llms.txt removing these keys", "llms.txt", llms,
+      `${llms}\nRemoving these keys undoes it.\n`,
+      /llms\.txt says to remove the terminal colour keys \("Removing these keys undoes it\."\)/],
+    ["a page promising exact colors in all terminals", "claude-code-theme-install-guide.html", "  </main>",
+      "  <p>The schemes show their exact colors in all the terminals listed.</p>\n  </main>",
+      /claude-code-theme-install-guide\.html says a scheme shows exactly in every terminal \("The schemes show their exact colors in all the terminals listed\."\)/],
+  ];
+  for (const [label, file, from, to, message] of variants) {
+    const path = join(fixtureRoot, file);
+    const original = await readFile(path, "utf8");
+    assert.equal(original.split(from).length, 2, `fixture anchor for ${label} must occur once; update this test`);
+    await writeFile(path, original.replace(from, to));
+    const result = await runVerifier(fixtureRoot);
+    await writeFile(path, original);
+
+    assert.notEqual(result.code, 0, `the verifier accepted ${label}`);
+    assert.match(result.stderr, message, label);
+  }
+});
+
+test("accepts VS Code steps with a save and a named color theme, and exact-color claims that name minimumContrastRatio", { timeout: 120_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const llmsPath = join(fixtureRoot, "llms.txt");
+  await writeFile(
+    llmsPath,
+    `${await readFile(llmsPath, "utf8")}\nFor VS Code, put the keys in workbench.colorCustomizations and keep saving settings.json as you go.\n` +
+      "\nRemoving these keys brings back the colour theme's terminal colors.\n" +
+      "\nThe scheme shows exactly in all terminals once VS Code's minimumContrastRatio is 1.\n" +
+      "\nVS Code reads workbench.colorCustomizations from settings.json.\n",
+  );
+  const result = await runVerifier(fixtureRoot);
+  assert.equal(result.code, 0, `correct VS Code advice was rejected:\n${result.stderr}`);
+});
+
+test("rejects Alacritty steps that copy into an uncreated themes folder or add to an alacritty.toml they never locate", { timeout: 240_000 }, async (t) => {
+  // alacritty.org/config-alacritty.html: "Alacritty doesn't create the config file for you, but it
+  // looks for one in ... $HOME/.config/alacritty/alacritty.toml", and on Windows %APPDATA%\alacritty\alacritty.toml.
+  const fixtureRoot = await makeFixture(t);
+  const llms = await readFile(join(fixtureRoot, "llms.txt"), "utf8");
+  const variants = [
+    ["the schemes README's old install step (#68)", "terminal-schemes/README.md",
+      "- **Install:** create the themes folder if it is missing, then copy the file into it:\n  `~/.config/alacritty/themes/` (Windows: `%APPDATA%\\alacritty\\themes\\`).",
+      "- **Install:** copy it to `~/.config/alacritty/themes/` (Windows: `%APPDATA%\\alacritty\\themes\\`).",
+      /terminal-schemes\/README\.md copies a scheme into Alacritty's themes folder \("Install: copy it to ~\/\.config\/alacritty\/themes\/ \(Windows: %APPDATA%\\alacritty\\themes\\\)\."\) without saying to create it/],
+    ["the schemes README's old activate step (#68)", "terminal-schemes/README.md",
+      "Alacritty doesn't create\n  that file: if you have none, make `~/.config/alacritty/alacritty.toml` (Windows:\n  `%APPDATA%\\alacritty\\alacritty.toml`). On 0.14+ the list lives under `[general]`:",
+      "On 0.14+ that list lives\n  under `[general]`:",
+      /terminal-schemes\/README\.md has the reader add to alacritty\.toml's import list \("Activate: add the file's path to the import list in alacritty\.toml\."\) without saying where that file lives \(~\/\.config\/alacritty\/alacritty\.toml\)\./],
+    ["llms.txt naming Windows without its path", "llms.txt", llms,
+      `${llms}\nOn Windows too, add the theme to the import list in alacritty.toml (~/.config/alacritty/alacritty.toml elsewhere).\n`,
+      /llms\.txt has the reader add to alacritty\.toml's import list .*without saying where that file lives \(%APPDATA%\\alacritty\\alacritty\.toml\)/],
+    ["llms.txt copying with no create", "llms.txt", llms,
+      `${llms}\nCopying the theme to ~/.config/alacritty/themes/ is enough.\n`,
+      /llms\.txt copies a scheme into Alacritty's themes folder \("Copying the theme to ~\/\.config\/alacritty\/themes\/ is enough\."\)/],
+    ["llms.txt with the Windows themes folder", "llms.txt", llms,
+      `${llms}\nCopy the theme to %APPDATA%\\alacritty\\themes\\ on Windows.\n`,
+      /llms\.txt copies a scheme into Alacritty's themes folder \("Copy the theme to %APPDATA%\\alacritty\\themes\\ on Windows\."\)/],
+  ];
+  for (const [label, file, from, to, message] of variants) {
+    const path = join(fixtureRoot, file);
+    const original = await readFile(path, "utf8");
+    assert.equal(original.split(from).length, 2, `fixture anchor for ${label} must occur once; update this test`);
+    await writeFile(path, original.replace(from, to));
+    const result = await runVerifier(fixtureRoot);
+    await writeFile(path, original);
+
+    assert.notEqual(result.code, 0, `the verifier accepted ${label}`);
+    assert.match(result.stderr, message, label);
+  }
+});
+
+test("accepts Alacritty steps that create the folder and locate alacritty.toml, and mentions that instruct neither", { timeout: 120_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const llmsPath = join(fixtureRoot, "llms.txt");
+  await writeFile(
+    llmsPath,
+    `${await readFile(llmsPath, "utf8")}\nCreate ~/.config/alacritty/themes/ and copy the theme there.\n` +
+      "\nAdd the path to the import list in alacritty.toml (~/.config/alacritty/alacritty.toml).\n" +
+      "\nAlacritty's themes go in ~/.config/alacritty/themes/.\n" +
+      "\nA colors table in alacritty.toml wins over the import.\n",
+  );
+  const result = await runVerifier(fixtureRoot);
+  assert.equal(result.code, 0, `correct Alacritty advice was rejected:\n${result.stderr}`);
+});
+
+test("rejects a copy into a terminal's config folder that never says to create it", { timeout: 240_000 }, async (t) => {
+  // Run literally on an empty home, a copy into ~/.config/ghostty/themes/, ~/.config/kitty/themes/,
+  // ~/.config/wezterm/colors/ or ~/.local/share/konsole/ fails: the folder isn't there.
+  const fixtureRoot = await makeFixture(t);
+  const llms = await readFile(join(fixtureRoot, "llms.txt"), "utf8");
+  const readme = "terminal-schemes/README.md";
+  const variants = [
+    ["the schemes README's old Ghostty step (#68)", readme,
+      "- **Install:** create `~/.config/ghostty/themes/` if it is missing (on macOS too), then copy the file into it.",
+      "- **Install:** copy it to `~/.config/ghostty/themes/`, on macOS too.",
+      /terminal-schemes\/README\.md copies into ~\/\.config\/ghostty\/themes\/ \("Install: copy it to ~\/\.config\/ghostty\/themes\/, on macOS too\."\) without saying to create the folder/],
+    ["the schemes README's old kitty step (#68)", readme,
+      "- **Install:** create `~/.config/kitty/themes/` if it is missing, then copy the file into it.",
+      "- **Install:** copy it to `~/.config/kitty/themes/`.",
+      /terminal-schemes\/README\.md copies into ~\/\.config\/kitty\/themes\/ /],
+    ["the schemes README's old WezTerm step (#68)", readme,
+      "- **Install:** create the colors folder if it is missing, then copy the file into it:\n  `~/.config/wezterm/colors/` on Linux and macOS.",
+      "- **Install:** copy it to `~/.config/wezterm/colors/` on Linux and macOS.",
+      /terminal-schemes\/README\.md copies into ~\/\.config\/wezterm\/colors\/ /],
+    ["the schemes README's old Konsole step (#68)", readme,
+      "- **Install:** create the folder if it is missing, then copy the file into it:\n  `$XDG_DATA_HOME/konsole/`",
+      "- **Install:** copy it to `$XDG_DATA_HOME/konsole/`",
+      /terminal-schemes\/README\.md copies into \$XDG_DATA_HOME\/konsole\/ /],
+    ["llms.txt copying into an %APPDATA% folder", "llms.txt", llms,
+      `${llms}\nCopy the scheme to %APPDATA%\\sometool\\themes\\.\n`,
+      /llms\.txt copies into %APPDATA%\\sometool\\themes\\ /],
+    ["llms.txt copying into an $XDG folder", "llms.txt", llms,
+      `${llms}\nCopying it to $XDG_CONFIG_HOME/sometool/colors/ is all it takes.\n`,
+      /llms\.txt copies into \$XDG_CONFIG_HOME\/sometool\/colors\/ /],
+  ];
+  for (const [label, file, from, to, message] of variants) {
+    const path = join(fixtureRoot, file);
+    const original = await readFile(path, "utf8");
+    assert.equal(original.split(from).length, 2, `fixture anchor for ${label} must occur once; update this test`);
+    await writeFile(path, original.replace(from, to));
+    const result = await runVerifier(fixtureRoot);
+    await writeFile(path, original);
+
+    assert.notEqual(result.code, 0, `the verifier accepted ${label}`);
+    assert.match(result.stderr, message, label);
+  }
+});
+
+test("accepts copies that create the folder, copies into Claude Code's own folder, and paths that aren't folders", { timeout: 120_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const llmsPath = join(fixtureRoot, "llms.txt");
+  await writeFile(
+    llmsPath,
+    `${await readFile(llmsPath, "utf8")}\nRun mkdir -p ~/.config/sometool/themes/ and copy the file there.\n` +
+      "\nCopy it to ~/.config/sometool/themes/ after you create that folder.\n" +
+      "\nPress Ctrl+E to copy it into ~/.claude/themes/ for editing.\n" +
+      "\nCopy ~/.config/sometool/theme.toml somewhere safe first.\n" +
+      "\nThe schemes live in ~/.config/sometool/themes/.\n",
+  );
+  const result = await runVerifier(fixtureRoot);
+  assert.equal(result.code, 0, `correct copy steps were rejected:\n${result.stderr}`);
+});
+
+test("rejects a WezTerm colors folder given for every OS, or for Windows without color_scheme_dirs", { timeout: 240_000 }, async (t) => {
+  // WezTerm's appearance page: ~/.config/wezterm/colors on a POSIX system; on Windows the
+  // colors folder beside wezterm.exe, and any other folder only through color_scheme_dirs.
+  const fixtureRoot = await makeFixture(t);
+  const llms = await readFile(join(fixtureRoot, "llms.txt"), "utf8");
+  const readme = "terminal-schemes/README.md";
+  const current =
+    "- **Install:** create the colors folder if it is missing, then copy the file into it:\n" +
+    "  `~/.config/wezterm/colors/` on Linux and macOS. On Windows, WezTerm looks for schemes in a `colors`\n" +
+    "  folder next to `wezterm.exe`; to keep them in `%USERPROFILE%\\.config\\wezterm\\colors\\` instead, add\n" +
+    "  `config.color_scheme_dirs = { wezterm.home_dir .. '/.config/wezterm/colors' }` to `wezterm.lua` before\n" +
+    "  `return config` (or `color_scheme_dirs = { wezterm.home_dir .. '/.config/wezterm/colors' },` inside a\n" +
+    "  returned table), with `local wezterm = require 'wezterm'` at the top of the file if it is not there.";
+  const variants = [
+    ["the schemes README's old WezTerm folder (#68)", readme, current,
+      "- **Install:** create the colors folder if it is missing, then copy the file into it:\n" +
+        "  `~/.config/wezterm/colors/` on every OS (Windows: `%USERPROFILE%\\.config\\wezterm\\colors\\`), or\n" +
+        "  `$XDG_CONFIG_HOME/wezterm/colors/` if that is set.",
+      /terminal-schemes\/README\.md puts a WezTerm scheme in its colors folder on "every OS"/],
+    ["a Windows folder with no color_scheme_dirs", readme, current,
+      "- **Install:** create the colors folder if it is missing, then copy the file into it:\n" +
+        "  `~/.config/wezterm/colors/` on Linux and macOS (Windows: `%USERPROFILE%\\.config\\wezterm\\colors\\`).",
+      /terminal-schemes\/README\.md gives a Windows folder for WezTerm schemes /],
+    ["llms.txt giving the folder for all platforms", "llms.txt", llms,
+      `${llms}\nCreate ~/.config/wezterm/colors/ on all platforms and copy the scheme there.\n`,
+      /llms\.txt puts a WezTerm scheme in its colors folder on "all platforms"/],
+    ["llms.txt giving only a backslashed %APPDATA% folder", "llms.txt", llms,
+      `${llms}\nCreate %APPDATA%\\wezterm\\colors\\ and copy the scheme into it.\n`,
+      /llms\.txt gives a Windows folder for WezTerm schemes /],
+  ];
+  for (const [label, file, from, to, message] of variants) {
+    const path = join(fixtureRoot, file);
+    const original = await readFile(path, "utf8");
+    assert.equal(original.split(from).length, 2, `fixture anchor for ${label} must occur once; update this test`);
+    await writeFile(path, original.replace(from, to));
+    const result = await runVerifier(fixtureRoot);
+    await writeFile(path, original);
+
+    assert.notEqual(result.code, 0, `the verifier accepted ${label}`);
+    assert.match(result.stderr, message, label);
+  }
+});
+
+test("accepts a WezTerm colors folder for Linux and macOS, and a Windows one beside wezterm.exe or in color_scheme_dirs", { timeout: 120_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const llmsPath = join(fixtureRoot, "llms.txt");
+  await writeFile(
+    llmsPath,
+    `${await readFile(llmsPath, "utf8")}\nCreate ~/.config/wezterm/colors/ on Linux and macOS and copy the scheme there.\n` +
+      "\nOn Windows, create the colors folder beside wezterm.exe and copy the scheme there; ~/.config/wezterm/colors/ is for Linux and macOS.\n" +
+      "\nOn Windows, create %USERPROFILE%\\.config\\wezterm\\colors\\, copy the scheme there and name that folder in color_scheme_dirs.\n" +
+      "\nWezTerm itself runs on every OS.\n",
+  );
+  const result = await runVerifier(fixtureRoot);
+  assert.equal(result.code, 0, `correct WezTerm folder advice was rejected:\n${result.stderr}`);
+});
+
+test("rejects a WezTerm option set before return config without the file that defines config, or without telling a reader to create it", { timeout: 300_000 }, async (t) => {
+  // WezTerm's Configuration page: "Create a file named .wezterm.lua in your home directory", and
+  // each fragment is local wezterm = require 'wezterm' / local config = {} / ... / return config.
+  const fixtureRoot = await makeFixture(t);
+  const llms = await readFile(join(fixtureRoot, "llms.txt"), "utf8");
+  const impressum = await readFile(join(fixtureRoot, "impressum.html"), "utf8");
+  const readme = "terminal-schemes/README.md";
+  const current =
+    "inside a returned table. With no config file yet,\n" +
+    "  create `~/.wezterm.lua` (Windows: `%USERPROFILE%\\.wezterm.lua`) holding:\n" +
+    "\n" +
+    "  ```lua\n" +
+    "  local wezterm = require 'wezterm'\n" +
+    "  local config = {}\n" +
+    "  config.color_scheme = 'Gabs Deep Field'\n" +
+    "  return config\n" +
+    "  ```\n" +
+    "\n" +
+    "  WezTerm reloads the file it loaded when that file changes; after creating a new one, restart WezTerm.\n";
+  const variants = [
+    ["the schemes README's old WezTerm step (#68)", readme, current,
+      "inside a returned table. It reloads by itself.\n",
+      /terminal-schemes\/README\.md says to set a WezTerm option before return config \(".*"\) without the line that defines config/],
+    ["the whole file with no step to create it", readme, current,
+      current.replace(
+        "With no config file yet,\n  create `~/.wezterm.lua` (Windows: `%USERPROFILE%\\.wezterm.lua`) holding:",
+        "A whole file looks like this:",
+      ),
+      /terminal-schemes\/README\.md says to set a WezTerm option before return config \(".*"\) without telling a reader with no config file to create one/],
+    ["llms.txt with the assignment alone", "llms.txt", llms,
+      `${llms}\nAdd config.color_scheme = 'Gabs Deep Field' to wezterm.lua before return config.\n`,
+      /llms\.txt says to set a WezTerm option before return config \(".*"\) without the line that defines config/],
+    ["llms.txt with the file shown but never created", "llms.txt", llms,
+      `${llms}\nIn wezterm.lua, after local config = {}, set config.color_scheme = 'Gabs Deep Field' before return config.\n`,
+      /llms\.txt says to set a WezTerm option before return config \(".*"\) without telling a reader with no config file to create one/],
+    ["llms.txt creating the file under another heading", "llms.txt", llms,
+      `${llms}\nCreate ~/.wezterm.lua with local config = {} and return config.\n` +
+        "\n## WezTerm\n\nIn wezterm.lua, after local config = {}, set config.color_scheme = 'Gabs Deep Field' before return config.\n",
+      /llms\.txt says to set a WezTerm option before return config \(".*"\) without telling a reader with no config file to create one/],
+    ["a page with the assignment alone", "impressum.html", impressum,
+      impressum.replace("  </main>", "  <p>Set config.color_scheme = 'Gabs Deep Field' in wezterm.lua before return config.</p>\n  </main>"),
+      /impressum\.html says to set a WezTerm option before return config \(".*"\) without the line that defines config/],
+  ];
+  for (const [label, file, from, to, message] of variants) {
+    const path = join(fixtureRoot, file);
+    const original = await readFile(path, "utf8");
+    assert.equal(original.split(from).length, 2, `fixture anchor for ${label} must occur once; update this test`);
+    await writeFile(path, original.replace(from, to));
+    const result = await runVerifier(fixtureRoot);
+    await writeFile(path, original);
+
+    assert.notEqual(result.code, 0, `the verifier accepted ${label}`);
+    assert.match(result.stderr, message, label);
+  }
+});
+
+test("accepts a WezTerm option set before return config with the whole file and a step to create it", { timeout: 120_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const llmsPath = join(fixtureRoot, "llms.txt");
+  await writeFile(
+    llmsPath,
+    `${await readFile(llmsPath, "utf8")}\n## WezTerm, builder form\n\n` +
+      "Create ~/.config/wezterm/wezterm.lua if you have none, holding local wezterm = require 'wezterm' and " +
+      "local config = wezterm.config_builder(); set config.color_scheme = 'Gabs Deep Field' before return config.\n" +
+      "\n## WezTerm, path on the next line\n\nWith no config yet, create\n~/.wezterm.lua with local config = {} and set config.color_scheme before return config.\n" +
+      "\n## WezTerm, no step\n\nWezTerm reads ~/.wezterm.lua and returns its config.\n",
+  );
+  const result = await runVerifier(fixtureRoot);
+  assert.equal(result.code, 0, `a complete WezTerm config step was rejected:\n${result.stderr}`);
+});
+
+test("rejects an Alacritty missing import called silent without naming 0.14", { timeout: 240_000 }, async (t) => {
+  // Alacritty's 0.14.0 changelog lists "Config emitting errors for nonexistent import paths" under
+  // Fixed, so up to 0.13.2 a missing import was skipped with an error.
+  const fixtureRoot = await makeFixture(t);
+  const llms = await readFile(join(fixtureRoot, "llms.txt"), "utf8");
+  const impressum = await readFile(join(fixtureRoot, "impressum.html"), "utf8");
+  const readme = "terminal-schemes/README.md";
+  const current = "Alacritty skips a\n  missing import, with no error from 0.14 on (0.13 reports one).";
+  const variants = [
+    ["the schemes README's old sentence (#68)", readme, current,
+      "Alacritty skips a\n  missing import silently.",
+      /terminal-schemes\/README\.md says Alacritty skips a missing import without an error \(".*"\) without naming 0\.14/],
+    ["llms.txt on a nonexistent import with no error", "llms.txt", llms,
+      `${llms}\nAlacritty ignores a nonexistent import without an error.\n`,
+      /llms\.txt says Alacritty skips a missing import without an error /],
+    ["llms.txt naming 0.14 only in another sentence", "llms.txt", llms,
+      `${llms}\nAlacritty moved import under [general] in 0.14. It skips a missing import silently.\n`,
+      /llms\.txt says Alacritty skips a missing import without an error /],
+    ["a page on missing imports in the plural", "impressum.html", impressum,
+      impressum.replace("  </main>", "  <p>Alacritty skips missing imports silently.</p>\n  </main>"),
+      /impressum\.html says Alacritty skips a missing import without an error /],
+  ];
+  for (const [label, file, from, to, message] of variants) {
+    const path = join(fixtureRoot, file);
+    const original = await readFile(path, "utf8");
+    assert.equal(original.split(from).length, 2, `fixture anchor for ${label} must occur once; update this test`);
+    await writeFile(path, original.replace(from, to));
+    const result = await runVerifier(fixtureRoot);
+    await writeFile(path, original);
+
+    assert.notEqual(result.code, 0, `the verifier accepted ${label}`);
+    assert.match(result.stderr, message, label);
+  }
+});
+
+test("accepts an Alacritty missing import scoped to 0.14, or described without calling it silent", { timeout: 120_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const llmsPath = join(fixtureRoot, "llms.txt");
+  await writeFile(
+    llmsPath,
+    `${await readFile(llmsPath, "utf8")}\nAlacritty skips a missing import; since 0.14 it shows no error.\n` +
+      "\nAlacritty skips missing imports, so check the path if the colors do not change.\n" +
+      "\nIn some other tool, a missing import is skipped silently.\n",
+  );
+  const result = await runVerifier(fixtureRoot);
+  assert.equal(result.code, 0, `correct Alacritty import wording was rejected:\n${result.stderr}`);
+});
+
+test("rejects a folder under ~/.local/share given without XDG_DATA_HOME", { timeout: 300_000 }, async (t) => {
+  // The XDG Base Directory spec: user data lives in $XDG_DATA_HOME, whose default is
+  // $HOME/.local/share; once it is set, ~/.local/share is not searched.
+  const fixtureRoot = await makeFixture(t);
+  const llms = await readFile(join(fixtureRoot, "llms.txt"), "utf8");
+  const impressum = await readFile(join(fixtureRoot, "impressum.html"), "utf8");
+  const readme = "terminal-schemes/README.md";
+  const current =
+    "copy the file into it:\n  `$XDG_DATA_HOME/konsole/` (`~/.local/share/konsole/` if `XDG_DATA_HOME` is not set; Flatpak:\n";
+  const variants = [
+    ["the schemes README's old Konsole folder (#68)", readme, current,
+      "copy the file into it: `~/.local/share/konsole/`\n  (Flatpak:\n",
+      /terminal-schemes\/README\.md names a folder under ~\/\.local\/share \("~\/\.local\/share\/konsole\/"\) without XDG_DATA_HOME/],
+    ["llms.txt copying into a ~/.local/share folder", "llms.txt", llms,
+      `${llms}\nCreate ~/.local/share/konsole/ and copy the scheme into it.\n`,
+      /llms\.txt names a folder under ~\/\.local\/share \("~\/\.local\/share\/konsole\/"\) without XDG_DATA_HOME/],
+    ["llms.txt naming ${HOME}/.local/share", "llms.txt", llms,
+      `${llms}\nCreate \${HOME}/.local/share/sometool/ and copy the scheme into it.\n`,
+      /llms\.txt names a folder under ~\/\.local\/share \("\$\{HOME\}\/\.local\/share\/sometool\/"\) without XDG_DATA_HOME/],
+    ["llms.txt naming ~/.local/share with no subfolder", "llms.txt", llms,
+      `${llms}\nThe schemes go somewhere under ~/.local/share.\n`,
+      /llms\.txt names a folder under ~\/\.local\/share \("~\/\.local\/share\."\) without XDG_DATA_HOME|llms\.txt names a folder under ~\/\.local\/share \("~\/\.local\/share"\) without XDG_DATA_HOME/],
+    ["a page naming $HOME/.local/share", "impressum.html", impressum,
+      impressum.replace("  </main>", "  <p>Put it in $HOME/.local/share/sometool/themes/ and restart.</p>\n  </main>"),
+      /impressum\.html names a folder under ~\/\.local\/share \("\$HOME\/\.local\/share\/sometool\/themes\/"\) without XDG_DATA_HOME/],
+  ];
+  for (const [label, file, from, to, message] of variants) {
+    const path = join(fixtureRoot, file);
+    const original = await readFile(path, "utf8");
+    assert.equal(original.split(from).length, 2, `fixture anchor for ${label} must occur once; update this test`);
+    await writeFile(path, original.replace(from, to));
+    const result = await runVerifier(fixtureRoot);
+    await writeFile(path, original);
+
+    assert.notEqual(result.code, 0, `the verifier accepted ${label}`);
+    assert.match(result.stderr, message, label);
+  }
+});
+
+test("accepts a ~/.local/share folder given with XDG_DATA_HOME, and other folders", { timeout: 120_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const llmsPath = join(fixtureRoot, "llms.txt");
+  await writeFile(
+    llmsPath,
+    `${await readFile(llmsPath, "utf8")}\nCreate $XDG_DATA_HOME/konsole/ (~/.local/share/konsole/ if it is not set) and copy the scheme into it.\n` +
+      "\nCreate ~/.local/share/konsole/ and copy the scheme into it, or that folder under XDG_DATA_HOME when you set it.\n" +
+      "\nProfiles stay in ~/.config/konsolerc, and state in ~/.local/state/konsole/.\n",
+  );
+  const result = await runVerifier(fixtureRoot);
+  assert.equal(result.code, 0, `correct XDG wording was rejected:\n${result.stderr}`);
+});
+
+test("rejects a page that still offers the withdrawn free Gumroad download", { timeout: 90_000 }, async (t) => {
+  // The install guide's FAQ has its own guard (from #61); this one covers every
+  // other public page, so plant the offer where only it looks.
+  const fixtureRoot = await makeFixture(t);
+  const readmePath = join(fixtureRoot, "README.md");
+  const text = await readFile(readmePath, "utf8");
+  const anchor = "The plugin route above is the recommended install.";
+  assert.ok(text.includes(anchor), "fixture anchor moved; update this test");
+  await writeFile(
+    readmePath,
+    text.replace(anchor, `The Gumroad ZIP can be downloaded for zero by choosing the free price. ${anchor}`),
+  );
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted the withdrawn Gumroad route");
+  assert.match(result.stderr, /README\.md still offers the withdrawn free Gumroad download/);
+});
+
+test("rejects a Vol. 2 previews.json entry that no packaged theme uses", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const previewsPath = join(fixtureRoot, "plugins", "dark-themes-vol-2", "previews.json");
+  const previews = JSON.parse(await readFile(previewsPath, "utf8"));
+  await writeFile(previewsPath, `${JSON.stringify({ ...previews, Ghost: "#000000" }, null, 2)}\n`);
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a stale preview entry for a theme that does not exist");
+  assert.match(result.stderr, /previews\.json has a preview colour for Ghost, which the pack does not ship/);
+});
+
+test("rejects a plugin install command given without the marketplace it needs", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const llms = join(fixtureRoot, "llms.txt");
+  const text = await readFile(llms, "utf8");
+  const marketplace = "claude plugin marketplace add notgabriels-sys/claude-code-50-dark-themes\n";
+  assert.ok(text.includes(marketplace), "fixture anchor moved; update this test");
+  await writeFile(llms, text.replace(marketplace, ""));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted an install line that fails on a fresh machine");
+  assert.match(result.stderr, /llms\.txt:\d+ installs 50-dark-themes@notgabriels-themes before the marketplace is added/);
+});
+
+test("rejects docs that say CI runs on every push when it runs only on main", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const readme = join(fixtureRoot, "README.md");
+  const text = await readFile(readme, "utf8");
+  const sentence = "payment links on every pull request and every push to main.";
+  assert.ok(text.includes(sentence), "fixture anchor moved; update this test");
+  await writeFile(readme, text.replace(sentence, "payment links on every push."));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a CI claim the workflow's push filter contradicts");
+  assert.match(result.stderr, /README\.md says CI runs on "every push"/);
+});
+
+// `permission` and `planMode` are held to the 3:1 non-text floor, but Claude
+// Code draws text in them. README states how many themes keep that text below
+// AA and the lowest ratio; both must match what verify-contrast.mjs computes.
+// The anchors come from today's values and tolerate any rewrap of README.
+const lowestIndicator = indicatorTextBelowAA[0];
+const spaced = (text) => new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/ /g, "\\s+"));
+// Anchored on "keep": README has other "<n> of the <total> themes" sentences
+// (the terminal schemes' "Every one of the 62 themes"), and only this one is the claim.
+const indicatorCount = new RegExp(`\\b([a-z]+|\\d+)(\\s+)of(\\s+)the(\\s+)${themeTotal}(\\s+)themes(\\s+)keep\\b`, "i");
+const lowestClaim = spaced(`${lowestIndicator.ratio.toFixed(2)}:1 in ${lowestIndicator.name}`);
+
+async function editReadmeClaim(fixtureRoot, pattern, replacement) {
+  const readme = join(fixtureRoot, "README.md");
+  const text = await readFile(readme, "utf8");
+  assert.match(text, pattern, "fixture anchor moved; update this test");
+  await writeFile(readme, text.replace(pattern, replacement));
+}
+
+// Gives each named theme new permission and planMode colours, in every file
+// that carries it: a root theme and its plugin copy, or a Vol. 2 theme.
+async function setIndicatorColours(fixtureRoot, colours) {
+  for (const [name, colour] of Object.entries(colours)) {
+    const file = `${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.json`;
+    const vol2 = `plugins/dark-themes-vol-2/themes/${file}`;
+    const paths = (await readdir(fixtureRoot)).includes(file) ? [file, `plugins/50-dark-themes/themes/${file}`] : [vol2];
+    for (const path of paths) {
+      const target = join(fixtureRoot, path);
+      const theme = JSON.parse(await readFile(target, "utf8"));
+      assert.equal(theme.name, name, `${path} is not ${name}; update this test`);
+      theme.overrides.permission = colour;
+      theme.overrides.planMode = colour;
+      await writeFile(target, `${JSON.stringify(theme, null, 2)}\n`);
+    }
+  }
+}
+
+// Each theme's own `claude` accent, which the verifier holds at AA.
+async function accentsFor(fixtureRoot, names) {
+  const colours = {};
+  for (const name of names) {
+    const file = `${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.json`;
+    const path = (await readdir(fixtureRoot)).includes(file) ? file : `plugins/dark-themes-vol-2/themes/${file}`;
+    colours[name] = JSON.parse(await readFile(join(fixtureRoot, path), "utf8")).overrides.claude;
+  }
+  return colours;
+}
+
+test("rejects a README count of below-AA permission and planMode text that the palettes contradict", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const wrong = indicatorTextBelowAA.length + 1;
+  await editReadmeClaim(fixtureRoot, indicatorCount, `${wrong}$2of$3the$4${themeTotal}$5themes$6keep`);
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a wrong count of themes below AA");
+  assert.match(
+    result.stderr,
+    new RegExp(`README\\.md must say that ${indicatorTextBelowAA.length} of the ${themeTotal} themes keep \`permission\`/\`planMode\` text below AA; it says "${wrong} of the ${themeTotal} themes"`),
+  );
+});
+
+test("rejects a README lowest permission and planMode ratio that the palettes contradict", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  await editReadmeClaim(fixtureRoot, lowestClaim, `${(lowestIndicator.ratio + 0.12).toFixed(2)}:1 in ${lowestIndicator.name}`);
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a wrong lowest ratio");
+  assert.ok(result.stderr.includes(`must give the lowest \`permission\`/\`planMode\` ratio: ${lowestIndicator.ratio.toFixed(2)}:1 in ${lowestIndicator.name}`), result.stderr);
+});
+
+test("rejects a README that names the wrong theme for the lowest permission and planMode ratio", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const other = lowestIndicator.name === "Graphite" ? "Ink" : "Graphite";
+  await editReadmeClaim(fixtureRoot, lowestClaim, `${lowestIndicator.ratio.toFixed(2)}:1 in ${other}`);
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted the wrong theme for the lowest ratio");
+  assert.ok(result.stderr.includes(`must give the lowest \`permission\`/\`planMode\` ratio: ${lowestIndicator.ratio.toFixed(2)}:1 in ${lowestIndicator.name}`), result.stderr);
+});
+
+test("holds the README sentence to the palettes when a theme's permission colour changes", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  // The lowest theme takes its own accent; README still states the old count.
+  await setIndicatorColours(fixtureRoot, await accentsFor(fixtureRoot, [lowestIndicator.name]));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier kept a below-AA count the palettes no longer support");
+  const expected = indicatorTextBelowAA.length - 1
+    ? `README.md must say that ${indicatorTextBelowAA.length - 1} of the ${themeTotal} themes keep`
+    : "README.md says some `permission`/`planMode` text is below AA";
+  assert.ok(result.stderr.includes(expected), result.stderr);
+});
+
+test("rejects a README floor paragraph that no longer names permission and planMode", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  await editReadmeClaim(fixtureRoot, /\s`permission`\s+and\s+`planMode`\s+are\s+held[\s\S]*?(?=\s`subtle`\s+is\s+not\s+checked)/, "");
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a floor paragraph silent about permission and planMode");
+  assert.match(result.stderr, /contrast-floor paragraph must say that `permission` and `planMode` are held to the non-text floor/);
+});
+
+test("accepts another README paragraph that names permission, planMode and the non-text floor", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  await editReadmeClaim(
+    fixtureRoot,
+    /- `permission`, `planMode`: second accent where the theme has one/,
+    "- `permission`, `planMode`: second accent where the theme has one, held to the non-text floor",
+  );
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.equal(result.code, 0, `a correct README was rejected:\n${result.stderr}`);
+});
+
+test("rejects a stale below-AA sentence once every theme holds permission and planMode at AA", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  await setIndicatorColours(fixtureRoot, await accentsFor(fixtureRoot, indicatorTextBelowAA.map((row) => row.name)));
+  await editReadmeClaim(fixtureRoot, /below(\s+)AA,(\s+)down/, "below$14.5:1,$2down");
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier kept a below-AA sentence no theme supports");
+  assert.match(result.stderr, /README\.md says some `permission`\/`planMode` text is below AA, but every theme now holds it at 4\.5:1/);
+});
+
+// The terminal app owns its background. Telling the reader to set it is fine;
+// saying a theme, plugin or skill sets it is not.
+test("rejects a storefront card that says a skill sets the terminal background", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const page = join(fixtureRoot, "index.html");
+  const html = await readFile(page, "utf8");
+  const card = "gives you the terminal background to set";
+  assert.ok(html.includes(card), "fixture anchor moved; update this test");
+  await writeFile(page, html.replace(card, "sets your terminal background"));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a card promising what only the terminal app can do");
+  assert.match(result.stderr, /index\.html claims a tool "sets your terminal background"/);
+});
+
+test("rejects a README that says the plugin changes the terminal background", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const readme = join(fixtureRoot, "README.md");
+  const text = await readFile(readme, "utf8");
+  const anchor = "The plugin keeps the pack together";
+  assert.ok(text.includes(anchor), "fixture anchor moved; update this test");
+  await writeFile(readme, text.replace(anchor, "The plugin changes the terminal background and keeps the pack together"));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a README promising what only the terminal app can do");
+  assert.match(result.stderr, /README\.md claims a tool "changes the terminal background"/);
+});
+
 async function readManifestVersion(fixtureRoot, plugin) {
   const manifest = JSON.parse(
     await readFile(join(fixtureRoot, "plugins", plugin, ".claude-plugin", "plugin.json"), "utf8"),
@@ -2275,6 +4278,39 @@ test("rejects an install guide whose FAQ answer names neither Gumroad nor the fr
 
   assert.notEqual(result.code, 0, "the verifier accepted a FAQ answer that never says where the free zip is");
   assert.match(result.stderr, /The install guide's FAQ answer must name the free zip at /);
+});
+
+test("rejects a repository that lets a checkout turn the generated pages CRLF", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  await rm(join(fixtureRoot, ".gitattributes"), { force: true });
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a checkout config under which every generated page reads as stale");
+  assert.match(result.stderr, /\.gitattributes must keep text files LF in every checkout/);
+});
+
+test("rejects a .gitattributes whose last catch-all rule drops eol=lf", { timeout: 90_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  await writeFile(join(fixtureRoot, ".gitattributes"), "* text=auto eol=lf\n*.png binary\n* text=auto\n");
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "the verifier accepted a later catch-all rule that lets checkouts use CRLF again");
+  assert.match(result.stderr, /\.gitattributes must keep text files LF in every checkout/);
+});
+
+test("accepts a storefront an editor saved with CRLF line endings", { timeout: 90_000 }, async (t) => {
+  // index.html is edited by hand; Git stores it LF whatever the editor wrote,
+  // so the quick-picks check compares lines, not line endings.
+  const fixtureRoot = await makeFixture(t);
+  const fixturePage = join(fixtureRoot, "index.html");
+  const page = await readFile(fixturePage, "utf8");
+  await writeFile(fixturePage, page.replace(/\r?\n/g, "\r\n"));
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.equal(result.code, 0, `a CRLF save of a correct storefront failed:\n${result.stderr}`);
 });
 
 test("rejects an empty directory in a plugin, the shape a git submodule takes in CI", { timeout: 90_000 }, async (t) => {

@@ -11,8 +11,9 @@ non-text floor for borders and indicators. The themes are free and MIT licensed.
 /plugin install 50-dark-themes@notgabriels-themes
 ```
 
-Run `/theme` and select any theme from the pack. Plugin themes are read-only; press `Ctrl+E` on one
-to copy it into `~/.claude/themes/` for editing.
+Then restart Claude Code: plugin themes load when it starts, so the session you installed from
+won't list them. Run `/theme` and select any theme from the pack. Plugin themes are read-only; press
+`Ctrl+E` on one to copy it into `~/.claude/themes/` for editing.
 
 Set your terminal's background to the theme's terminal background, the hex printed on its gallery
 card and its page, so the colors read as they were measured.
@@ -35,17 +36,21 @@ Source and manual installation: https://github.com/notgabriels-sys/claude-code-5
 2. **Make it your own.** Plugin themes are read-only. Press `Ctrl+E` on one in `/theme` to copy it
    into `~/.claude/themes/`, then edit the copy's colors.
 3. **Match your terminal.** Set your terminal's background to the theme's background color, listed
-   on each theme's page, so panels and text look as designed. Step-by-step for each terminal:
-   https://gabs-utilities.com/claude-code-theme-install-guide.html
-4. **Remove it.** Run `claude plugin uninstall 50-dark-themes@notgabriels-themes`, then pick another
-   theme in `/theme`.
+   on each theme's page, so panels and text look as designed. Step-by-step for each terminal, with a
+   matching color scheme:
+   https://github.com/notgabriels-sys/claude-code-50-dark-themes/tree/main/terminal-schemes
+4. **Remove it.** Run `claude plugin uninstall 50-dark-themes@notgabriels-themes`, restart Claude
+   Code (an open session keeps listing the pack until it restarts), then pick another theme in
+   `/theme`.
 
 ## Troubleshooting
 
 - **The themes aren't in `/theme`.** Custom themes need Claude Code v2.1.118 or later
   (`claude --version`, then `claude update`). Restart Claude Code after installing the plugin.
 - **Colors look washed out or gray.** Your terminal background doesn't match the theme, or the
-  terminal isn't showing 24-bit color (Terminal.app before macOS 26, and some tmux or SSH setups).
+  terminal isn't showing 24-bit color (Terminal.app before macOS 26, and some SSH setups). Inside tmux,
+  Claude Code draws in 256 colors at most, even with `COLORTERM=truecolor`, until
+  `CLAUDE_CODE_TMUX_TRUECOLOR=1` is set too (after `set -ga terminal-overrides ',*:Tc'` in `~/.tmux.conf`).
 - **"Auto (match terminal)" doesn't pick these themes.** Expected: Auto only switches between
   Claude Code's built-in light and dark themes. Pick a custom theme in `/theme` and it stays selected.
 
