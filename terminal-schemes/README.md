@@ -76,7 +76,7 @@ server.
   ignores `[general] import`. If the file already has a `[general]` table, put the `import` line under
   that header; a second `[general]` header makes the whole file invalid. On Windows, use the full path
   with forward slashes (`C:/Users/<you>/AppData/Roaming/alacritty/themes/...`): Alacritty skips a
-  missing import silently.
+  missing import, with no error from 0.14 on (0.13 reports one).
   It reloads by itself; a `[colors.*]` table in `alacritty.toml` wins over the import.
 
 ## WezTerm (macOS, Linux, Windows)

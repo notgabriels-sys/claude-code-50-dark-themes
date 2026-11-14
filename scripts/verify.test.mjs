@@ -3663,6 +3663,54 @@ test("accepts a WezTerm option set before return config with the whole file and 
   assert.equal(result.code, 0, `a complete WezTerm config step was rejected:\n${result.stderr}`);
 });
 
+test("rejects an Alacritty missing import called silent without naming 0.14", { timeout: 240_000 }, async (t) => {
+  // Alacritty's 0.14.0 changelog lists "Config emitting errors for nonexistent import paths" under
+  // Fixed, so up to 0.13.2 a missing import was skipped with an error.
+  const fixtureRoot = await makeFixture(t);
+  const llms = await readFile(join(fixtureRoot, "llms.txt"), "utf8");
+  const impressum = await readFile(join(fixtureRoot, "impressum.html"), "utf8");
+  const readme = "terminal-schemes/README.md";
+  const current = "Alacritty skips a\n  missing import, with no error from 0.14 on (0.13 reports one).";
+  const variants = [
+    ["the schemes README's old sentence (#68)", readme, current,
+      "Alacritty skips a\n  missing import silently.",
+      /terminal-schemes\/README\.md says Alacritty skips a missing import without an error \(".*"\) without naming 0\.14/],
+    ["llms.txt on a nonexistent import with no error", "llms.txt", llms,
+      `${llms}\nAlacritty ignores a nonexistent import without an error.\n`,
+      /llms\.txt says Alacritty skips a missing import without an error /],
+    ["llms.txt naming 0.14 only in another sentence", "llms.txt", llms,
+      `${llms}\nAlacritty moved import under [general] in 0.14. It skips a missing import silently.\n`,
+      /llms\.txt says Alacritty skips a missing import without an error /],
+    ["a page on missing imports in the plural", "impressum.html", impressum,
+      impressum.replace("  </main>", "  <p>Alacritty skips missing imports silently.</p>\n  </main>"),
+      /impressum\.html says Alacritty skips a missing import without an error /],
+  ];
+  for (const [label, file, from, to, message] of variants) {
+    const path = join(fixtureRoot, file);
+    const original = await readFile(path, "utf8");
+    assert.equal(original.split(from).length, 2, `fixture anchor for ${label} must occur once; update this test`);
+    await writeFile(path, original.replace(from, to));
+    const result = await runVerifier(fixtureRoot);
+    await writeFile(path, original);
+
+    assert.notEqual(result.code, 0, `the verifier accepted ${label}`);
+    assert.match(result.stderr, message, label);
+  }
+});
+
+test("accepts an Alacritty missing import scoped to 0.14, or described without calling it silent", { timeout: 120_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const llmsPath = join(fixtureRoot, "llms.txt");
+  await writeFile(
+    llmsPath,
+    `${await readFile(llmsPath, "utf8")}\nAlacritty skips a missing import; since 0.14 it shows no error.\n` +
+      "\nAlacritty skips missing imports, so check the path if the colors do not change.\n" +
+      "\nIn some other tool, a missing import is skipped silently.\n",
+  );
+  const result = await runVerifier(fixtureRoot);
+  assert.equal(result.code, 0, `correct Alacritty import wording was rejected:\n${result.stderr}`);
+});
+
 test("rejects a page that still offers the withdrawn free Gumroad download", { timeout: 90_000 }, async (t) => {
   // The install guide's FAQ has its own guard (from #61); this one covers every
   // other public page, so plant the offer where only it looks.

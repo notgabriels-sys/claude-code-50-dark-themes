@@ -3035,6 +3035,29 @@ for (const file of [...repositoryFiles.filter((path) => path.endsWith(".html")),
   }
 }
 
+// When Alacritty says nothing about a missing import. Its config pages for 0.13.2, 0.14.0 and
+// today, read live on 2026-11-14, all say "Imports are loaded in order, skipping all missing
+// files"; the 0.14.0 changelog lists "Config emitting errors for nonexistent import paths" under
+// Fixed, and no 0.13 changelog does. So up to 0.13.2 a missing import was skipped with an error,
+// and only from 0.14 silently. The schemes README, which also gives the 0.13 steps, said
+// "Alacritty skips a missing import silently". A sentence in an Alacritty passage that calls a
+// missing or nonexistent import silent, or skipped with no error, must name 0.14.
+for (const file of [...repositoryFiles.filter((path) => path.endsWith(".html")), ...repositoryReadmes, "llms.txt"]) {
+  for (const block of readableBlocks(file, await readFile(fileUrl(file), "utf8"))) {
+    if (!/alacritty/i.test(block)) continue;
+    for (const sentence of sentencesOf(block)) {
+      if (!/\b(?:missing|nonexistent|non-existent)\s+imports?\b/i.test(sentence)) continue;
+      if (!/\bsilent(?:ly)?\b|\b(?:no|without\s+(?:an?|any))\s+(?:error|message|warning)s?\b/i.test(sentence)) continue;
+      if (!/\b0\.14\b/.test(sentence)) {
+        fail(
+          `${file} says Alacritty skips a missing import without an error ("${sentence.slice(0, 160)}") without naming 0.14. ` +
+            "Up to 0.13.2 Alacritty reported an error for a nonexistent import path; its 0.14.0 changelog lists that as fixed.",
+        );
+      }
+    }
+  }
+}
+
 // The install guide's manual fallback is a procedure people follow verbatim on
 // a page that search can land them on directly. It used to open with
 // `cp *.json ~/.claude/themes/` and never say where the files come from — the
