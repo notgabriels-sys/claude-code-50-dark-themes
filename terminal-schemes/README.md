@@ -140,8 +140,9 @@ server.
 ## Konsole (KDE)
 
 - **File:** `konsole/Gabs <Theme>.colorscheme`
-- **Install:** create the folder if it is missing, then copy the file into it: `~/.local/share/konsole/`
-  (Flatpak: `~/.var/app/org.kde.konsole/data/konsole/`).
+- **Install:** create the folder if it is missing, then copy the file into it:
+  `$XDG_DATA_HOME/konsole/` (`~/.local/share/konsole/` if `XDG_DATA_HOME` is not set; Flatpak:
+  `~/.var/app/org.kde.konsole/data/konsole/`).
 - **Activate:** Settings → Edit Current Profile… → Appearance → `Gabs <Theme>` → OK. If the built-in
   profile can't be edited, create a new profile, pick the scheme there and make it the default.
 - In Konsole the cursor color belongs to the profile: set it under Appearance → Cursor if you want the

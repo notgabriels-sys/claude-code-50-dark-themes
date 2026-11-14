@@ -3058,6 +3058,27 @@ for (const file of [...repositoryFiles.filter((path) => path.endsWith(".html")),
   }
 }
 
+// Where an XDG application keeps a user's data. The XDG Base Directory spec, read live on
+// 2026-11-14: "$XDG_DATA_HOME defines the base directory relative to which user-specific data files
+// should be stored. If $XDG_DATA_HOME is either not set or empty, a default equal to
+// $HOME/.local/share should be used", and $XDG_DATA_DIRS, searched "in addition to the
+// $XDG_DATA_HOME base directory", defaults to "/usr/local/share/:/usr/share/". So for a reader who
+// sets XDG_DATA_HOME, ~/.local/share is not searched at all. Konsole's Handbook saves profiles "in
+// $XDG_DATA_HOME/konsole", and the schemes README gave only ~/.local/share/konsole/; Warp's step had
+// the same gap (its own check is item 50's). Every terminal is covered here: a passage that names a
+// folder under ~/.local/share must name XDG_DATA_HOME.
+for (const file of [...repositoryFiles.filter((path) => path.endsWith(".html")), ...repositoryReadmes, "llms.txt"]) {
+  for (const block of readableBlocks(file, await readFile(fileUrl(file), "utf8"))) {
+    const folder = block.match(/(?:~|\$HOME|\$\{HOME\})\/\.local\/share\b[^\s`'"()]*/);
+    if (folder && !/\bXDG_DATA_HOME\b/.test(block)) {
+      fail(
+        `${file} names a folder under ~/.local/share ("${folder[0]}") without XDG_DATA_HOME ("${block.slice(0, 140)}"). ` +
+          "User data lives in $XDG_DATA_HOME, and ~/.local/share is only its default: once XDG_DATA_HOME is set, ~/.local/share is not searched.",
+      );
+    }
+  }
+}
+
 // The install guide's manual fallback is a procedure people follow verbatim on
 // a page that search can land them on directly. It used to open with
 // `cp *.json ~/.claude/themes/` and never say where the files come from — the

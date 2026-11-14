@@ -3497,9 +3497,9 @@ test("rejects a copy into a terminal's config folder that never says to create i
       "- **Install:** copy it to `~/.config/wezterm/colors/` on Linux and macOS.",
       /terminal-schemes\/README\.md copies into ~\/\.config\/wezterm\/colors\/ /],
     ["the schemes README's old Konsole step (#68)", readme,
-      "- **Install:** create the folder if it is missing, then copy the file into it: `~/.local/share/konsole/`\n  (Flatpak:",
-      "- **Install:** copy it to `~/.local/share/konsole/` (Flatpak:",
-      /terminal-schemes\/README\.md copies into ~\/\.local\/share\/konsole\/ /],
+      "- **Install:** create the folder if it is missing, then copy the file into it:\n  `$XDG_DATA_HOME/konsole/`",
+      "- **Install:** copy it to `$XDG_DATA_HOME/konsole/`",
+      /terminal-schemes\/README\.md copies into \$XDG_DATA_HOME\/konsole\/ /],
     ["llms.txt copying into an %APPDATA% folder", "llms.txt", llms,
       `${llms}\nCopy the scheme to %APPDATA%\\sometool\\themes\\.\n`,
       /llms\.txt copies into %APPDATA%\\sometool\\themes\\ /],
@@ -3709,6 +3709,58 @@ test("accepts an Alacritty missing import scoped to 0.14, or described without c
   );
   const result = await runVerifier(fixtureRoot);
   assert.equal(result.code, 0, `correct Alacritty import wording was rejected:\n${result.stderr}`);
+});
+
+test("rejects a folder under ~/.local/share given without XDG_DATA_HOME", { timeout: 300_000 }, async (t) => {
+  // The XDG Base Directory spec: user data lives in $XDG_DATA_HOME, whose default is
+  // $HOME/.local/share; once it is set, ~/.local/share is not searched.
+  const fixtureRoot = await makeFixture(t);
+  const llms = await readFile(join(fixtureRoot, "llms.txt"), "utf8");
+  const impressum = await readFile(join(fixtureRoot, "impressum.html"), "utf8");
+  const readme = "terminal-schemes/README.md";
+  const current =
+    "copy the file into it:\n  `$XDG_DATA_HOME/konsole/` (`~/.local/share/konsole/` if `XDG_DATA_HOME` is not set; Flatpak:\n";
+  const variants = [
+    ["the schemes README's old Konsole folder (#68)", readme, current,
+      "copy the file into it: `~/.local/share/konsole/`\n  (Flatpak:\n",
+      /terminal-schemes\/README\.md names a folder under ~\/\.local\/share \("~\/\.local\/share\/konsole\/"\) without XDG_DATA_HOME/],
+    ["llms.txt copying into a ~/.local/share folder", "llms.txt", llms,
+      `${llms}\nCreate ~/.local/share/konsole/ and copy the scheme into it.\n`,
+      /llms\.txt names a folder under ~\/\.local\/share \("~\/\.local\/share\/konsole\/"\) without XDG_DATA_HOME/],
+    ["llms.txt naming ${HOME}/.local/share", "llms.txt", llms,
+      `${llms}\nCreate \${HOME}/.local/share/sometool/ and copy the scheme into it.\n`,
+      /llms\.txt names a folder under ~\/\.local\/share \("\$\{HOME\}\/\.local\/share\/sometool\/"\) without XDG_DATA_HOME/],
+    ["llms.txt naming ~/.local/share with no subfolder", "llms.txt", llms,
+      `${llms}\nThe schemes go somewhere under ~/.local/share.\n`,
+      /llms\.txt names a folder under ~\/\.local\/share \("~\/\.local\/share\."\) without XDG_DATA_HOME|llms\.txt names a folder under ~\/\.local\/share \("~\/\.local\/share"\) without XDG_DATA_HOME/],
+    ["a page naming $HOME/.local/share", "impressum.html", impressum,
+      impressum.replace("  </main>", "  <p>Put it in $HOME/.local/share/sometool/themes/ and restart.</p>\n  </main>"),
+      /impressum\.html names a folder under ~\/\.local\/share \("\$HOME\/\.local\/share\/sometool\/themes\/"\) without XDG_DATA_HOME/],
+  ];
+  for (const [label, file, from, to, message] of variants) {
+    const path = join(fixtureRoot, file);
+    const original = await readFile(path, "utf8");
+    assert.equal(original.split(from).length, 2, `fixture anchor for ${label} must occur once; update this test`);
+    await writeFile(path, original.replace(from, to));
+    const result = await runVerifier(fixtureRoot);
+    await writeFile(path, original);
+
+    assert.notEqual(result.code, 0, `the verifier accepted ${label}`);
+    assert.match(result.stderr, message, label);
+  }
+});
+
+test("accepts a ~/.local/share folder given with XDG_DATA_HOME, and other folders", { timeout: 120_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const llmsPath = join(fixtureRoot, "llms.txt");
+  await writeFile(
+    llmsPath,
+    `${await readFile(llmsPath, "utf8")}\nCreate $XDG_DATA_HOME/konsole/ (~/.local/share/konsole/ if it is not set) and copy the scheme into it.\n` +
+      "\nCreate ~/.local/share/konsole/ and copy the scheme into it, or that folder under XDG_DATA_HOME when you set it.\n" +
+      "\nProfiles stay in ~/.config/konsolerc, and state in ~/.local/state/konsole/.\n",
+  );
+  const result = await runVerifier(fixtureRoot);
+  assert.equal(result.code, 0, `correct XDG wording was rejected:\n${result.stderr}`);
 });
 
 test("rejects a page that still offers the withdrawn free Gumroad download", { timeout: 90_000 }, async (t) => {
