@@ -3004,6 +3004,37 @@ for (const file of [...repositoryFiles.filter((path) => path.endsWith(".html")),
   }
 }
 
+// What a WezTerm config needs around one option. Its Configuration page, read live on
+// 2026-11-13, opens "Create a file named .wezterm.lua in your home directory", says "The script
+// is expected to return a configuration table", and writes each fragment as
+// "local wezterm = require 'wezterm' / local config = {} / config.color_scheme = 'Batman' /
+// return config". The schemes README said only to set config.color_scheme = 'Gabs <Theme>'
+// "before return config" in wezterm.lua. A reader with no config file has no such line to put it
+// before, and a file holding only the assignment indexes a config that was never defined, which
+// Lua raises as an error. A section that says to put a WezTerm option before return config must
+// show the line that defines config and tell a reader with no file to create one.
+for (const file of [...repositoryFiles.filter((path) => path.endsWith(".html")), ...repositoryReadmes, "llms.txt"]) {
+  const source = await readFile(fileUrl(file), "utf8");
+  const sections = file.endsWith(".html") ? [readableBlocks(file, source).join("\n")] : source.split(/^(?=#{1,6}[ \t])/m);
+  for (const section of sections) {
+    const before = section.match(/\bbefore\s+`?return\s+config\b/i);
+    if (!before) continue;
+    const excerpt = section.slice(Math.max(0, before.index - 120), before.index + before[0].length).replace(/\s+/g, " ").trim();
+    if (!/\blocal\s+config\s*=/.test(section)) {
+      fail(
+        `${file} says to set a WezTerm option before return config ("${excerpt}") without the line that defines config. ` +
+          "Show the whole file, as WezTerm's Configuration page does: local wezterm = require 'wezterm', local config = {}, the option, return config.",
+      );
+    }
+    if (!/\bcreate\b[\s\S]{0,80}?wezterm\.lua\b/i.test(section)) {
+      fail(
+        `${file} says to set a WezTerm option before return config ("${excerpt}") without telling a reader with no config file to create one. ` +
+          "WezTerm's Quick Start begins: create a file named .wezterm.lua in your home directory.",
+      );
+    }
+  }
+}
+
 // The install guide's manual fallback is a procedure people follow verbatim on
 // a page that search can land them on directly. It used to open with
 // `cp *.json ~/.claude/themes/` and never say where the files come from — the

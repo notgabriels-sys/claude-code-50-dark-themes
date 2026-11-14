@@ -3592,6 +3592,77 @@ test("accepts a WezTerm colors folder for Linux and macOS, and a Windows one bes
   assert.equal(result.code, 0, `correct WezTerm folder advice was rejected:\n${result.stderr}`);
 });
 
+test("rejects a WezTerm option set before return config without the file that defines config, or without telling a reader to create it", { timeout: 300_000 }, async (t) => {
+  // WezTerm's Configuration page: "Create a file named .wezterm.lua in your home directory", and
+  // each fragment is local wezterm = require 'wezterm' / local config = {} / ... / return config.
+  const fixtureRoot = await makeFixture(t);
+  const llms = await readFile(join(fixtureRoot, "llms.txt"), "utf8");
+  const impressum = await readFile(join(fixtureRoot, "impressum.html"), "utf8");
+  const readme = "terminal-schemes/README.md";
+  const current =
+    "inside a returned table. With no config file yet,\n" +
+    "  create `~/.wezterm.lua` (Windows: `%USERPROFILE%\\.wezterm.lua`) holding:\n" +
+    "\n" +
+    "  ```lua\n" +
+    "  local wezterm = require 'wezterm'\n" +
+    "  local config = {}\n" +
+    "  config.color_scheme = 'Gabs Deep Field'\n" +
+    "  return config\n" +
+    "  ```\n" +
+    "\n" +
+    "  WezTerm reloads the file it loaded when that file changes; after creating a new one, restart WezTerm.\n";
+  const variants = [
+    ["the schemes README's old WezTerm step (#68)", readme, current,
+      "inside a returned table. It reloads by itself.\n",
+      /terminal-schemes\/README\.md says to set a WezTerm option before return config \(".*"\) without the line that defines config/],
+    ["the whole file with no step to create it", readme, current,
+      current.replace(
+        "With no config file yet,\n  create `~/.wezterm.lua` (Windows: `%USERPROFILE%\\.wezterm.lua`) holding:",
+        "A whole file looks like this:",
+      ),
+      /terminal-schemes\/README\.md says to set a WezTerm option before return config \(".*"\) without telling a reader with no config file to create one/],
+    ["llms.txt with the assignment alone", "llms.txt", llms,
+      `${llms}\nAdd config.color_scheme = 'Gabs Deep Field' to wezterm.lua before return config.\n`,
+      /llms\.txt says to set a WezTerm option before return config \(".*"\) without the line that defines config/],
+    ["llms.txt with the file shown but never created", "llms.txt", llms,
+      `${llms}\nIn wezterm.lua, after local config = {}, set config.color_scheme = 'Gabs Deep Field' before return config.\n`,
+      /llms\.txt says to set a WezTerm option before return config \(".*"\) without telling a reader with no config file to create one/],
+    ["llms.txt creating the file under another heading", "llms.txt", llms,
+      `${llms}\nCreate ~/.wezterm.lua with local config = {} and return config.\n` +
+        "\n## WezTerm\n\nIn wezterm.lua, after local config = {}, set config.color_scheme = 'Gabs Deep Field' before return config.\n",
+      /llms\.txt says to set a WezTerm option before return config \(".*"\) without telling a reader with no config file to create one/],
+    ["a page with the assignment alone", "impressum.html", impressum,
+      impressum.replace("  </main>", "  <p>Set config.color_scheme = 'Gabs Deep Field' in wezterm.lua before return config.</p>\n  </main>"),
+      /impressum\.html says to set a WezTerm option before return config \(".*"\) without the line that defines config/],
+  ];
+  for (const [label, file, from, to, message] of variants) {
+    const path = join(fixtureRoot, file);
+    const original = await readFile(path, "utf8");
+    assert.equal(original.split(from).length, 2, `fixture anchor for ${label} must occur once; update this test`);
+    await writeFile(path, original.replace(from, to));
+    const result = await runVerifier(fixtureRoot);
+    await writeFile(path, original);
+
+    assert.notEqual(result.code, 0, `the verifier accepted ${label}`);
+    assert.match(result.stderr, message, label);
+  }
+});
+
+test("accepts a WezTerm option set before return config with the whole file and a step to create it", { timeout: 120_000 }, async (t) => {
+  const fixtureRoot = await makeFixture(t);
+  const llmsPath = join(fixtureRoot, "llms.txt");
+  await writeFile(
+    llmsPath,
+    `${await readFile(llmsPath, "utf8")}\n## WezTerm, builder form\n\n` +
+      "Create ~/.config/wezterm/wezterm.lua if you have none, holding local wezterm = require 'wezterm' and " +
+      "local config = wezterm.config_builder(); set config.color_scheme = 'Gabs Deep Field' before return config.\n" +
+      "\n## WezTerm, path on the next line\n\nWith no config yet, create\n~/.wezterm.lua with local config = {} and set config.color_scheme before return config.\n" +
+      "\n## WezTerm, no step\n\nWezTerm reads ~/.wezterm.lua and returns its config.\n",
+  );
+  const result = await runVerifier(fixtureRoot);
+  assert.equal(result.code, 0, `a complete WezTerm config step was rejected:\n${result.stderr}`);
+});
+
 test("rejects a page that still offers the withdrawn free Gumroad download", { timeout: 90_000 }, async (t) => {
   // The install guide's FAQ has its own guard (from #61); this one covers every
   // other public page, so plant the offer where only it looks.

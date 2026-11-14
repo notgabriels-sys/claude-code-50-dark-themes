@@ -89,7 +89,17 @@ server.
   `return config` (or `color_scheme_dirs = { wezterm.home_dir .. '/.config/wezterm/colors' },` inside a
   returned table), with `local wezterm = require 'wezterm'` at the top of the file if it is not there.
 - **Activate:** in `wezterm.lua` (or `~/.wezterm.lua`), set `config.color_scheme = 'Gabs <Theme>'` before
-  `return config`, or `color_scheme = 'Gabs <Theme>',` inside a returned table. It reloads by itself.
+  `return config`, or `color_scheme = 'Gabs <Theme>',` inside a returned table. With no config file yet,
+  create `~/.wezterm.lua` (Windows: `%USERPROFILE%\.wezterm.lua`) holding:
+
+  ```lua
+  local wezterm = require 'wezterm'
+  local config = {}
+  config.color_scheme = 'Gabs Deep Field'
+  return config
+  ```
+
+  WezTerm reloads the file it loaded when that file changes; after creating a new one, restart WezTerm.
   A `colors = {...}` table in the config overrides any scheme.
 
 ## Windows Terminal (Windows)
