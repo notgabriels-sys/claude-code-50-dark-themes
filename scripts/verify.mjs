@@ -3181,13 +3181,19 @@ const reviewedInlineScripts = new Map([
   ["semantic-terminal-colors.html", ["sha256-y2IRHedCw+eW1rSiNN5ItkoqruQasjSZqLoVAZZfzWg=", "sha256-y0m2bisvFZR0rgHhVlo6G4IE4cMPtZp8YtBH5iFgLtY="]],
 ]);
 // Every page under theme/ is rendered by scripts/build-theme-pages.mjs (main's
-// #59) and runs one script, the same on each: its copy button, which writes a
-// button's data-copy text to the clipboard and changes the button's label for
-// 1.4 s. It reads nothing else, and loads and navigates nowhere. Read
-// 2026-10-19 when #59 was merged here; one entry holds for every generated
-// page the builder renders, so a change to that script is still one deliberate
-// edit, and a page it does not render gets no reviewed script.
-const reviewedThemePageScripts = ["sha256-a45E5Riw8az2PUDhD9sCmfIbb20+7UZqWfjQXdb0TmU="];
+// #59) and runs the same scripts on each. Its copy button writes a button's
+// data-copy text to the clipboard and changes the button's label for 1.4 s; it
+// reads nothing else, and loads and navigates nowhere (read 2026-10-19, when
+// #59 was merged here). Since 2026-11-15 the pages wear assets/site.css and run
+// the install guide's two switch scripts too, byte for byte, so the boot and
+// the switches are the guide's reviewed hashes above. One entry holds for every
+// generated page the builder renders, so a change to any of the three is still
+// one deliberate edit, and a page it does not render gets no reviewed script.
+const reviewedThemePageScripts = [
+  "sha256-y2IRHedCw+eW1rSiNN5ItkoqruQasjSZqLoVAZZfzWg=",
+  "sha256-y0m2bisvFZR0rgHhVlo6G4IE4cMPtZp8YtBH5iFgLtY=",
+  "sha256-a45E5Riw8az2PUDhD9sCmfIbb20+7UZqWfjQXdb0TmU=",
+];
 const reviewedScriptsFor = (page) =>
   reviewedInlineScripts.get(page) ?? (themePages.has(page) ? reviewedThemePageScripts : []);
 const POLICY_REST = "worker-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'";
@@ -4123,7 +4129,10 @@ const pageFonts = (await Promise.all(htmlFiles.map(async (path) => siteStyle.pag
 for (const problem of siteStyle.fontProblems(siteCss, siteFontFiles, pageFonts)) fail(problem);
 const siteFonts = siteStyle.fontFaces(siteCss).flatMap(({ urls }) => urls);
 const siteTokens = siteStyle.sharedTokens(siteCss);
-for (const path of siteStyle.SITE_PAGES) {
+// The theme pages the builder renders wear the base too (since 2026-11-15), and are read here
+// from disk like the root pages, after the freshness check above has held them to the builder.
+const themeSitePages = [...themePages.keys()].filter((path) => path.endsWith(".html"));
+for (const path of [...siteStyle.SITE_PAGES, ...themeSitePages]) {
   for (const problem of siteStyle.pageProblems(await readFile(new URL(path, root), "utf8"), path, siteFonts, siteTokens)) fail(problem);
 }
 

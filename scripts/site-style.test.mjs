@@ -374,7 +374,7 @@ test("pages: the storefront on disk wears the base, and each part of it is requi
   // Text takes the shared text tokens outside a specimen or a theme preview, so a colour cannot hide in a token of the page's own.
   bad(check(swap(swap(page, "    --radius:10px;\n", "    --radius:10px;\n    --note:#c7b8ff;\n"), "  .finder-empty{margin:0;padding:18px 0 26px;color:var(--mute);", "  .finder-empty{margin:0;padding:18px 0 26px;color:var(--note);")), /\.finder-empty \{ color: var\(--note\) \}: outside a specimen or a theme preview/, "a literal in a token of the page's own");
   bad(check(swap(page, "  .finder-empty{margin:0;padding:18px 0 26px;color:var(--mute);", "  .finder-empty{margin:0;padding:18px 0 26px;color:var(--fg);")), /\.finder-empty \{ color: var\(--fg\) \}: outside a specimen or a theme preview/, "a theme preview's colour outside it");
-  assert.deepEqual(THEME_PREVIEWS, [".theme-monolith", ".pick", ".card"]);
+  assert.deepEqual(THEME_PREVIEWS, [".theme-monolith", ".pick", ".card", ".swatch"]);
   // Inside a specimen or a theme preview, text takes its own colours, never a literal.
   bad(check(swap(page, ".card .term .hint{margin-top:8px;font-size:10.5px;color:var(--mut)}", ".card .term .hint{margin-top:8px;font-size:10.5px;color:#2A2933}")), /\.card \.term \.hint \{ color: #2A2933 \}: inside a specimen or a theme preview, text takes .* not a literal/, "a literal in a theme card");
   bad(check(withStyle(page, "  .card .term .hint{color:var(--mut,#2A2933)}")), /inside a specimen or a theme preview, text takes/, "a literal behind a fallback");
@@ -473,6 +473,25 @@ test("pages: the install guide and the article wear the base, and their command 
     bad(check(swap(html, ".specimen .syntax-scope{", ".syntax-scope{")), /outside a specimen or a theme preview, text takes --ink, --mute, --faint or --accent/, `${path} with the coding palette on the page`);
     bad(check(swap(html, ".specimen.code-panel{background:var(--terminal-surface)}", ".code-panel{background:var(--terminal-surface)}")), /--terminal-surface is neither/, `${path} with the terminal surface on the page`);
   }
+});
+
+test("pages: every theme page wears the base, its swatches show a theme's colour and hold no text", async () => {
+  const paths = ["theme/graphite/index.html", "theme/index.html"];
+  for (const path of paths) {
+    const html = await readFile(new URL(path, root), "utf8");
+    const check = (source) => pageProblems(source, path, fontFiles, tokens);
+    const name = path.replace(/[./]/g, "\\$&");
+    assert.deepEqual(check(html), [], `${path} as it is`);
+    bad(check(swap(html, '<link rel="stylesheet" href="/assets/site.css">\n', "")), new RegExp(`${name} does not link assets/site\\.css`), `${path} off the base`);
+    bad(check(swap(html, '<div class="lights" aria-hidden="true"><span class="l1"></span><span class="l2"></span><span class="l3"></span></div>\n', "")), new RegExp(`${name} does not carry the ambient lights`), `${path} without its lights`);
+    bad(check(swap(html, '<button class="motion-switch" id="motionSwitch" type="button" hidden>Pause motion</button>', "")), new RegExp(`${name} does not carry the motion switch`), `${path} without its pause`);
+    // A swatch's own colour is a preview's surface; the same colour on a plain element is not.
+    bad(check(swap(html, "background:var(--c)}", "background:var(--c)}\n  .hexv{background:var(--c)}")), /\.hexv \{ background: var\(--c\) \}: outside a specimen or a theme preview/, `${path} with a theme's colour on the page`);
+    bad(check(swap(html, '<main id="main-content">\n', '<main id="main-content">\n<span class="swatch" style="--c:#000">A</span>\n')), new RegExp(`${name} <span class="swatch"> is a swatch \\(\\.swatch\\), one of a theme's colours shown alone, and holds text \\("A"\\)`), `${path} with text in a swatch`);
+  }
+  const graphite = await readFile(new URL(paths[0], root), "utf8");
+  // The command panels stay specimens: their prompt takes the coding palette, not page text.
+  bad(pageProblems(swap(graphite, ".cmd .prompt{color:var(--syntax-dark-grey)}", ".cmd .prompt{color:var(--faint)}"), paths[0], fontFiles, tokens), /\.cmd \.prompt \{ color: var\(--faint\) \}: inside a specimen or a theme preview/, "a page token in a command panel");
 });
 
 test("fonts: each face loads a file that is there, each file is used, and each family carries the OFL", async () => {
@@ -692,5 +711,7 @@ test("previews: text inside a specimen or a theme preview takes the colours that
   for (const rule of [".card .x{color:var(--sh)}", ".pick .x{color:var(--a)}", ".theme-monolith .x{color:var(--stage-mut)}", ".cmd .x{color:var(--syntax-light-blue)}", ".specimen .x{color:var(--ink)}", ".card .cmd .x{color:var(--syntax-blue)}", ".card .x{color:currentcolor}"]) {
     assert.ok(!check(rule).some((problem) => /inside a specimen or a theme preview/.test(problem)), `${rule} takes its root's own colour`);
   }
-  assert.deepEqual(Object.keys(OWN_TEXT).sort(), [".cmd", ".specimen", ...[".theme-monolith", ".pick", ".card"]].sort(), "every specimen and preview has its own colours");
+  assert.deepEqual(Object.keys(OWN_TEXT).sort(), [".cmd", ".specimen", ...[".theme-monolith", ".pick", ".card", ".swatch"]].sort(), "every specimen and preview has its own colours");
+  // A swatch is a colour shown alone: no text colour is its own.
+  for (const name of ["--fg", "--c", "--ink"]) refused(`.swatch .x{color:var(${name})}`, name);
 });

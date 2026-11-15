@@ -2,7 +2,16 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="script-src 'sha256-a45E5Riw8az2PUDhD9sCmfIbb20+7UZqWfjQXdb0TmU='; worker-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="script-src 'sha256-y2IRHedCw+eW1rSiNN5ItkoqruQasjSZqLoVAZZfzWg=' 'sha256-y0m2bisvFZR0rgHhVlo6G4IE4cMPtZp8YtBH5iFgLtY=' 'sha256-a45E5Riw8az2PUDhD9sCmfIbb20+7UZqWfjQXdb0TmU='; worker-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<script>
+(function () {
+  try {
+    var theme = localStorage.getItem("familiars-theme");
+    if (theme === "light" || theme === "dark") document.documentElement.setAttribute("data-theme", theme);
+    if (localStorage.getItem("familiars-motion") === "paused") document.documentElement.setAttribute("data-motion", "paused");
+  } catch (e) {}
+})();
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Lichen — dark theme for Claude Code</title>
 <meta name="description" content="Lichen: a free dark theme for Claude Code with a green #AFC49A accent on a #20241E terminal. Palette roles, measured contrast and the one-line install.">
@@ -77,24 +86,31 @@
   ]
 }
 </script>
+<link rel="stylesheet" href="/assets/site.css">
 <style>
-  :root{--ground:#0d0e0f;--ground-2:#131416;--hair:#292b2f;--ink:#e9eaec;--mute:#a0a3aa;--faint:#858991;--accent:#c9cfd6;--accent-dim:#5f646c;--radius:10px;
-    --mono:ui-monospace,"SF Mono",SFMono-Regular,"JetBrains Mono","Menlo",Consolas,monospace;
-    --display:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif}
+  /* Fonts, tokens, both themes, the ambient lights, the theme switch and the motion pause come
+     from assets/site.css, linked above; this is the theme pages' own layout on top of it. The
+     command panels (.cmd) stay dark in either theme, and the specimen card, the swatches and
+     the index dots show each theme in its own colours. */
+  :root{--radius:10px;--syntax-dark-grey:#858a93}
   *{box-sizing:border-box}
   html{-webkit-text-size-adjust:100%}
-  body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--mono);line-height:1.55;-webkit-font-smoothing:antialiased;padding:0 clamp(18px,4vw,48px) 72px}
-  .wrap{max-width:1080px;margin:0 auto}
-  .skip-link{position:fixed;left:12px;top:12px;z-index:100;color:var(--ground);background:var(--ink);border-radius:6px;padding:8px 12px;font-size:12px;font-weight:700;text-decoration:none;transform:translateY(calc(-100% - 16px));transition:transform .15s ease}
+  body{margin:0;font-family:var(--mono);line-height:1.55;-webkit-font-smoothing:antialiased;padding:0 clamp(18px,4vw,48px) 112px}
+  /* The script shows the switches by clearing hidden; no display rule may outrank it. */
+  [hidden]{display:none!important}
+  .wrap{position:relative;z-index:1;max-width:1080px;margin:0 auto}
+  .skip-link{position:fixed;left:12px;top:12px;z-index:100;color:var(--ground);background:var(--ink);border-radius:6px;padding:8px 12px;font-size:12px;font-weight:700;text-decoration:none;transform:translateY(calc(-100% - 16px))}
   .skip-link:focus{transform:translateY(0);outline:2px solid var(--accent);outline-offset:2px}
   a{color:var(--ink);text-underline-offset:3px}
   a:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
   .jumpnav{min-height:42px;display:flex;align-items:center;justify-content:space-between;gap:24px;margin:22px 0 clamp(40px,6vw,72px);padding-bottom:14px;border-bottom:1px solid var(--hair)}
   .site-mark{color:var(--ink);font-size:10px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;text-decoration:none}
   .jumpnav-links{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px 24px}
-  .jumpnav-links a{min-height:44px;display:inline-flex;align-items:center;color:var(--faint);font-size:11px;text-decoration:none}
-  .jumpnav-links a:hover{color:var(--ink)}
-  .kicker{color:var(--faint);letter-spacing:.28em;text-transform:uppercase;font-size:10px;margin:0 0 18px;display:flex;align-items:center;gap:10px}
+  .jumpnav-links{align-items:center}
+  .jumpnav-links a,.motion-switch{min-height:44px;display:inline-flex;align-items:center;color:var(--faint);font-size:11px;text-decoration:none}
+  .jumpnav-links a:hover,.motion-switch:hover{color:var(--ink)}
+  .motion-switch{font-family:inherit;padding:0;border:0;background:transparent;cursor:pointer}
+  .kicker{color:var(--accent);letter-spacing:.28em;text-transform:uppercase;font-size:10px;margin:0 0 18px;display:flex;align-items:center;gap:10px}
   .kicker::before{content:"";width:30px;height:1px;background:var(--accent-dim)}
   h1{font-family:var(--display);font-size:clamp(40px,6.5vw,76px);line-height:.95;letter-spacing:-.05em;font-weight:520;margin:0}
   .lede{color:var(--mute);max-width:60ch;margin:22px 0 0;font-size:clamp(13px,1.4vw,15px);line-height:1.75}
@@ -107,21 +123,23 @@
   .card{--a:var(--accent);border:1px solid color-mix(in srgb,var(--a) 22%,transparent);border-radius:var(--radius);background:var(--bg,#111);overflow:hidden;display:flex;flex-direction:column}
   .card .titlebar{display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid color-mix(in srgb,var(--a) 14%,transparent)}
   .card .dots{display:flex;gap:5px}
-  .card .dots i{width:9px;height:9px;border-radius:50%;display:block;opacity:.7}
+  .card .dots i{width:9px;height:9px;border-radius:50%;display:block;opacity:.7;background:var(--a)}
+  .card .dots i+i{background:var(--mut);opacity:.4}
+  .card .dots i+i+i{opacity:.25}
   .card .tname{margin:0 0 0 4px;font-size:12px;font-weight:600;letter-spacing:.02em;color:var(--fg)}
   .card .hex{margin-left:auto;font-size:10.5px;color:var(--sh);letter-spacing:.04em}
-  .term{padding:13px 14px 15px;font-size:12px;line-height:1.75;flex:1}
-  .term .row{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .term .acc{color:var(--a)}.term .sh{color:var(--sh)}.term .fg{color:var(--fg)}.term .mut{color:var(--mut)}
-  .prompt-box{margin-top:10px;display:flex;align-items:center;gap:8px;border:1px solid color-mix(in srgb,var(--a) 45%,transparent);border-radius:8px;padding:7px 10px;min-height:44px}
-  .prompt-box .gt{color:var(--a);font-weight:700}
-  .prompt-box .txt{color:var(--fg);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .caret{width:7px;height:15px;background:var(--a);display:inline-block;margin-left:1px;vertical-align:-3px;opacity:.8}
-  .term .hint{margin-top:8px;font-size:10.5px;color:var(--mut)}
-  .usermsg{margin-top:10px;padding:8px 10px;border-radius:6px;background:var(--um);color:var(--fg);font-size:12px}
+  .card .term{padding:13px 14px 15px;font-size:12px;line-height:1.75;flex:1}
+  .card .term .row{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .card .acc{color:var(--a)}.card .sh{color:var(--sh)}.card .fg{color:var(--fg)}.card .mut{color:var(--mut)}
+  .card .prompt-box{margin-top:10px;display:flex;align-items:center;gap:8px;border:1px solid color-mix(in srgb,var(--a) 45%,transparent);border-radius:8px;padding:7px 10px;min-height:44px}
+  .card .prompt-box .gt{color:var(--a);font-weight:700}
+  .card .prompt-box .txt{color:var(--fg);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .card .caret{width:7px;height:15px;background:var(--a);display:inline-block;margin-left:1px;vertical-align:-3px;opacity:.8}
+  .card .hint{margin-top:8px;font-size:10.5px;color:var(--mut)}
+  .card .usermsg{margin-top:10px;padding:8px 10px;border-radius:6px;background:var(--um);color:var(--fg);font-size:12px}
   .cmd{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px;margin:0 0 8px;padding:10px 12px;border:1px solid var(--hair);border-radius:8px;background:var(--ground-2);font-size:12.5px}
   .cmd>span{min-width:0;overflow:auto;white-space:nowrap;padding-bottom:3px}
-  .cmd .prompt{color:var(--faint)}
+  .cmd .prompt{color:var(--syntax-dark-grey)}
   .copy{flex:none;min-height:34px;padding:0 10px;border:1px solid var(--accent-dim);border-radius:6px;background:transparent;color:var(--ink);font:inherit;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer}
   .copy:hover{border-color:var(--accent)}
   .copy:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
@@ -130,7 +148,7 @@
   th,td{padding:9px 10px;border-top:1px solid var(--hair);text-align:left;vertical-align:top}
   th{color:var(--faint);font-weight:600;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase}
   td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
-  .sw{display:inline-block;width:14px;height:14px;border-radius:4px;vertical-align:-2px;margin-right:8px;border:1px solid var(--hair)}
+  .swatch{display:inline-block;width:14px;height:14px;border-radius:4px;vertical-align:-2px;margin-right:8px;border:1px solid var(--hair);background:var(--c)}
   .ok{color:var(--mute)}
   .table-wrap{overflow:auto}
   .neighbours{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px;margin-top:clamp(40px,6vw,64px);padding-top:18px;border-top:1px solid var(--hair);font-size:12px}
@@ -141,12 +159,19 @@
   .index-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:4px 24px;margin:0 0 8px}
   .index-grid a{display:flex;align-items:center;gap:10px;min-height:44px;padding:4px 0;color:var(--ink);text-decoration:none;border-top:1px solid var(--hair);font-size:13px}
   .index-grid a:hover{color:var(--accent)}
-  .index-grid .dot{width:12px;height:12px;border-radius:50%;flex:none}
+  .index-grid .swatch{width:12px;height:12px;border-radius:50%;flex:none;margin:0;border:0;vertical-align:0}
+  /* Nothing moves until the script has set data-motion, so without JavaScript, where the pause
+     control cannot work, the page stays still; site.css drifts the lights on every page. */
+  @media (prefers-reduced-motion: no-preference){
+    :root:not([data-motion]) .lights span{animation:none}
+    :root:not([data-motion="paused"]) .skip-link{transition:transform .15s ease}
+  }
   .index-grid .hexv{margin-left:auto;color:var(--faint);font-size:11px}
 </style>
 </head>
 <body>
 <a class="skip-link" href="#main-content">Skip to content</a>
+<div class="lights" aria-hidden="true"><span class="l1"></span><span class="l2"></span><span class="l3"></span></div>
 <div class="wrap">
   <nav class="jumpnav" aria-label="Site">
     <a class="site-mark" href="/">Gabs Utilities</a>
@@ -154,8 +179,16 @@
       <a href="/theme/">All themes</a>
       <a href="/#themes">Gallery</a>
       <a href="/claude-code-theme-install-guide.html">Install guide</a>
+      <button class="motion-switch" id="motionSwitch" type="button" hidden>Pause motion</button>
     </span>
   </nav>
+  <button class="theme-switch" id="themeSwitch" type="button" hidden>
+    <span class="theme-switch-knob" aria-hidden="true">
+      <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+      <svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5Z"/></svg>
+    </span>
+    <span id="themeSwitchLabel">Light mode</span>
+  </button>
   <main id="main-content">
     <div class="hero">
       <div>
@@ -167,7 +200,7 @@
       </div>
       <article class="card" aria-label="Lichen theme specimen" style="--bg:#20241E;--a:#AFC49A;--sh:#D8E2CE;--fg:#EAECE9;--mut:#A3AD9F;--um:#2A2F27">
         <div class="titlebar">
-          <div class="dots"><i style="background:#AFC49A"></i><i style="background:#A3AD9F;opacity:.4"></i><i style="background:#A3AD9F;opacity:.25"></i></div>
+          <div class="dots"><i></i><i></i><i></i></div>
           <p class="tname">Lichen</p>
           <span class="hex">#AFC49A</span>
         </div>
@@ -209,19 +242,19 @@
         <table>
           <thead><tr><th scope="col">Colour</th><th scope="col">Token</th><th scope="col">Role</th></tr></thead>
           <tbody>
-          <tr><td><span class="sw" style="background:#AFC49A"></span><code>#AFC49A</code></td><td><code>claude</code></td><td>Claude's mark and accent</td></tr>
-          <tr><td><span class="sw" style="background:#D8E2CE"></span><code>#D8E2CE</code></td><td><code>claudeShimmer</code></td><td>Accent highlight while Claude works</td></tr>
-          <tr><td><span class="sw" style="background:#EAECE9"></span><code>#EAECE9</code></td><td><code>text</code></td><td>Primary text</td></tr>
-          <tr><td><span class="sw" style="background:#A3AD9F"></span><code>#A3AD9F</code></td><td><code>inactive</code></td><td>Secondary text</td></tr>
-          <tr><td><span class="sw" style="background:#32372F"></span><code>#32372F</code></td><td><code>subtle</code></td><td>Decorative hairlines (reserved, carries no meaning)</td></tr>
-          <tr><td><span class="sw" style="background:#AFC49A"></span><code>#AFC49A</code></td><td><code>suggestion</code></td><td>Autocomplete suggestions</td></tr>
-          <tr><td><span class="sw" style="background:#CEDBC1"></span><code>#CEDBC1</code></td><td><code>permission</code></td><td>Permission prompt border and indicator</td></tr>
-          <tr><td><span class="sw" style="background:#AFC49A"></span><code>#AFC49A</code></td><td><code>promptBorder</code></td><td>Input prompt border</td></tr>
-          <tr><td><span class="sw" style="background:#D8E2CE"></span><code>#D8E2CE</code></td><td><code>promptBorderShimmer</code></td><td>Prompt border highlight</td></tr>
-          <tr><td><span class="sw" style="background:#CEDBC1"></span><code>#CEDBC1</code></td><td><code>planMode</code></td><td>Plan mode indicator</td></tr>
-          <tr><td><span class="sw" style="background:#2A2F27"></span><code>#2A2F27</code></td><td><code>userMessageBackground</code></td><td>Surface behind your messages</td></tr>
-          <tr><td><span class="sw" style="background:#343A30"></span><code>#343A30</code></td><td><code>userMessageBackgroundHover</code></td><td>That surface, hovered</td></tr>
-          <tr><td><span class="sw" style="background:#AFC49A"></span><code>#AFC49A</code></td><td><code>rate_limit_fill</code></td><td>Usage meter fill</td></tr>
+          <tr><td><span class="swatch" style="--c:#AFC49A"></span><code>#AFC49A</code></td><td><code>claude</code></td><td>Claude's mark and accent</td></tr>
+          <tr><td><span class="swatch" style="--c:#D8E2CE"></span><code>#D8E2CE</code></td><td><code>claudeShimmer</code></td><td>Accent highlight while Claude works</td></tr>
+          <tr><td><span class="swatch" style="--c:#EAECE9"></span><code>#EAECE9</code></td><td><code>text</code></td><td>Primary text</td></tr>
+          <tr><td><span class="swatch" style="--c:#A3AD9F"></span><code>#A3AD9F</code></td><td><code>inactive</code></td><td>Secondary text</td></tr>
+          <tr><td><span class="swatch" style="--c:#32372F"></span><code>#32372F</code></td><td><code>subtle</code></td><td>Decorative hairlines (reserved, carries no meaning)</td></tr>
+          <tr><td><span class="swatch" style="--c:#AFC49A"></span><code>#AFC49A</code></td><td><code>suggestion</code></td><td>Autocomplete suggestions</td></tr>
+          <tr><td><span class="swatch" style="--c:#CEDBC1"></span><code>#CEDBC1</code></td><td><code>permission</code></td><td>Permission prompt border and indicator</td></tr>
+          <tr><td><span class="swatch" style="--c:#AFC49A"></span><code>#AFC49A</code></td><td><code>promptBorder</code></td><td>Input prompt border</td></tr>
+          <tr><td><span class="swatch" style="--c:#D8E2CE"></span><code>#D8E2CE</code></td><td><code>promptBorderShimmer</code></td><td>Prompt border highlight</td></tr>
+          <tr><td><span class="swatch" style="--c:#CEDBC1"></span><code>#CEDBC1</code></td><td><code>planMode</code></td><td>Plan mode indicator</td></tr>
+          <tr><td><span class="swatch" style="--c:#2A2F27"></span><code>#2A2F27</code></td><td><code>userMessageBackground</code></td><td>Surface behind your messages</td></tr>
+          <tr><td><span class="swatch" style="--c:#343A30"></span><code>#343A30</code></td><td><code>userMessageBackgroundHover</code></td><td>That surface, hovered</td></tr>
+          <tr><td><span class="swatch" style="--c:#AFC49A"></span><code>#AFC49A</code></td><td><code>rate_limit_fill</code></td><td>Usage meter fill</td></tr>
           </tbody>
         </table>
       </div>
@@ -266,6 +299,66 @@
     <span><a href="/impressum.html">Impressum</a></span>
   </footer>
 </div>
+<script>
+(function () {
+  var root = document.documentElement;
+  var mq = window.matchMedia ? window.matchMedia("(prefers-color-scheme: light)") : null;
+  var themeButton = document.getElementById("themeSwitch");
+  function effective() {
+    var t = root.getAttribute("data-theme");
+    if (t) return t;
+    return mq && mq.matches ? "light" : "dark";
+  }
+  function paint() {
+    var e = effective();
+    root.setAttribute("data-eff", e);
+    document.getElementById("themeSwitchLabel").textContent = e === "dark" ? "Light mode" : "Dark mode";
+  }
+  paint();
+  if (mq && mq.addEventListener) mq.addEventListener("change", paint);
+  themeButton.addEventListener("click", function () {
+    var next = effective() === "dark" ? "light" : "dark";
+    root.setAttribute("data-theme", next);
+    paint();
+    try { localStorage.setItem("familiars-theme", next); } catch (e) {}
+  });
+  themeButton.hidden = false;
+
+  // The background lights drift only while motion is allowed and not paused.
+  var allowsMotion = window.matchMedia("(prefers-reduced-motion: no-preference)");
+  var motionButton = document.getElementById("motionSwitch");
+  var userPaused = root.getAttribute("data-motion") === "paused";
+  function syncMotion() {
+    var running = !userPaused && allowsMotion.matches && !document.hidden;
+    root.setAttribute("data-motion", running ? "running" : "paused");
+    motionButton.textContent = userPaused ? "Play motion" : "Pause motion";
+    motionButton.hidden = !allowsMotion.matches;
+  }
+  motionButton.addEventListener("click", function () {
+    userPaused = !userPaused;
+    try { localStorage.setItem("familiars-motion", userPaused ? "paused" : "running"); } catch (e) {}
+    syncMotion();
+  });
+  if (allowsMotion.addEventListener) allowsMotion.addEventListener("change", syncMotion);
+  document.addEventListener("visibilitychange", syncMotion);
+  syncMotion();
+
+  // Clear keyboard focus from the floating switch without moving a pointer click.
+  var keyboard = false;
+  window.addEventListener("keydown", function (ev) { if (ev.key === "Tab") keyboard = true; });
+  window.addEventListener("pointerdown", function () { keyboard = false; });
+  document.addEventListener("focusin", function (ev) {
+    if (!keyboard || ev.target === themeButton) return;
+    var target = ev.target;
+    requestAnimationFrame(function () {
+      var r = target.getBoundingClientRect(), b = themeButton.getBoundingClientRect();
+      if (r.right > b.left - 8 && r.left < b.right + 8 && r.bottom > b.top - 12 && r.top < b.bottom + 8) {
+        window.scrollBy(0, r.bottom - b.top + 16);
+      }
+    });
+  });
+})();
+</script>
 <script>
 document.querySelectorAll("[data-copy]").forEach((button) => {
   button.addEventListener("click", async () => {
