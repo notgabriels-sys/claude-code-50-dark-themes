@@ -917,6 +917,22 @@ the control beside it and the real tree stay green (rule 5). The full suite was
 run at the exact tree of the commit that carries this; its message states the
 count.
 
+**(merged 2026-11-15) Main's #71 and #81, the theme-gallery mod and the selector
+guard.** #71 adds a fourth marketplace plugin, `plugins/theme-gallery`: a
+`/themes` pane that lists the 62 free themes in their own colours, with a hooks
+module that reads two settings and never changes a theme. It comes with
+`scripts/build-gallery-data.mjs` (which writes the pane's `themes.ts` from the
+theme files) and `scripts/build-gallery-icon.mjs`, and it extends `verify` to
+the fourth plugin: manifest, version, LICENSE and icon, the icon's colours held
+to free-theme colours, and `themes.ts` held to the theme files. `.ts` and `.tsx`
+are inert served types. #81 makes the site-style guard parse every selector in
+a list, since a browser drops the whole list when one selector fails. Merged
+into #74 with no conflict after 7f7433c, and `verify` was green on the merge as
+auto-merged. Nothing in #74's guards needed adapting: the new plugin's files sit
+under `plugins/`, which robots.txt blocks by directory, and #71 lists each in
+`expectedPackageFiles`. The full suite was run at the exact tree of the commit
+that carries this paragraph; its message states the count.
+
 **(added 2026-10-30) What the sitemap, `llms.txt` and robots.txt say the site
 holds is read against the pages.** WP10. `verify` compared the sitemap only
 with the builder that writes it, and read neither `llms.txt`'s links nor
