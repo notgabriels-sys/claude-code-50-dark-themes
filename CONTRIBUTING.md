@@ -196,6 +196,13 @@ In CI each failing test, and the message `verify` stops on, is also posted as an
 check run (`scripts/github-annotations.mjs`), so a red pull request names its failure on the
 Checks tab without opening the job log.
 
+CI also asks GitHub to render each README at the commit under test and fails unless every
+theme-page link the source writes comes back as a link to that page
+(`scripts/check-readme-render.mjs`). `verify` reads the same READMEs offline and is stricter; this
+step is the renderer's own answer. Run it locally with the GitHub CLI signed in:
+`GITHUB_REPOSITORY=<owner>/<repo> node scripts/check-readme-render.mjs <commit>`, for a commit
+that is on GitHub.
+
 The command checks:
 
 - exactly 50 root-level theme files, plus every packaged Vol. 2 theme;
