@@ -1054,6 +1054,25 @@ sits in `reviewedInlineScripts`, which the merge carried, and WP10 reads none
 of the script. The full suite was run at the exact tree of the commit that
 carries this paragraph; its message states the count.
 
+**(merged 2026-11-15) Main's #98, the live site read back after every
+deploy.** `main` moved from 5571d83 to 9995581 with #98: a workflow
+(`.github/workflows/live-check.yml`) that, on every push to `main` and once
+GitHub Pages has deployed that commit, fetches every address in `sitemap.xml`
+plus `sitemap.xml`, `robots.txt`, `llms.txt` and `assets/site.css` from the
+site, each with a query naming the commit, and fails unless each body is byte
+for byte the committed file (`scripts/check-live-site.mjs`, with its test; a
+stale page is read again before it counts, and one that still differs is
+named with its first differing line); `waitForPages` in the IndexNow script
+takes its message's consequence as a parameter. Merged into #74 as 3407cc5
+with no conflict; `verify` was green on the merge, and nothing in #74's
+guards needed adapting: the workflow and the script sit where Pages serves
+no page (`.github/` is not served, `scripts/` is blocked by directory), and
+the files it reads back are the ones WP10 holds to the pages. The workflow
+names its actions by tag, which WP13's pin rule will hold to a commit when
+that branch lands. The suite is now fifteen test files. The full suite was
+run at the exact tree of the commit that carries this paragraph; its message
+states the count.
+
 **(added 2026-10-30) What the sitemap, `llms.txt` and robots.txt say the site
 holds is read against the pages.** WP10. `verify` compared the sitemap only
 with the builder that writes it, and read neither `llms.txt`'s links nor
