@@ -954,6 +954,17 @@ steps between them fail on the page-dates check, which runs before the
 sitemap's. Nothing else in #74's guards needed adapting. The full suite was run at the exact tree of the commit that
 carries this paragraph; its message states the count.
 
+**(merged 2026-11-15) Main's #90, the theme pages on the shared stylesheet.**
+`main` moved from 5801ae7 to 6778368 with #90: the theme pages and their index
+rendered onto `assets/site.css` by `scripts/build-theme-pages.mjs`, with the
+site-style guard and `verify` extended to them. Merged into #74 as a92b1b2 with
+one conflict, in `scripts/build-theme-pages.test.mjs`, where both sides
+appended tests at the end of the file (this branch's sitemap rows, main's
+page-template tests); both kept. The merged builder renders the pages and the
+sitemap byte for byte as committed, so nothing was regenerated, and nothing in
+#74's guards needed adapting. The full suite was run at the exact tree of the
+commit that carries this paragraph; its message states the count.
+
 **(added 2026-10-30) What the sitemap, `llms.txt` and robots.txt say the site
 holds is read against the pages.** WP10. `verify` compared the sitemap only
 with the builder that writes it, and read neither `llms.txt`'s links nor
