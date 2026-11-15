@@ -982,6 +982,10 @@ const crossOrigin = (url) => {
     return true;
   }
 };
+// A call that hands a selector to the browser, with the selector written as a string, and the
+// pseudo-classes older engines do not parse there.
+const SELECTOR_CALL = /\.(matches|closest|querySelector|querySelectorAll|webkitMatchesSelector)\(\s*(["'`])((?:(?!\2)[^\\])*)\2/g;
+const NEWER_PSEUDO = /:(focus-visible|has|is|where)(?![\w-])/g;
 // Keys a script binds to the literal key: the literal itself, or a const/let/var holding it.
 const keyNames = (script, key) => [`"${key}"`, `'${key}'`, ...[...script.matchAll(new RegExp(`\\b(?:const|let|var)\\s+([A-Za-z_$][\\w$]*)\\s*=\\s*["']${key}["']`, "g"))].map(([, name]) => name)];
 const escape = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -1048,6 +1052,19 @@ export function pageProblems(source, path, fontFiles = [], tokens = []) {
   const allowed = bound(scripts, `matchMedia\\(\\s*["']\\(\\s*prefers-reduced-motion\\s*:\\s*no-preference\\s*\\)["']\\s*\\)`).map((name) => `!\\s*${escape(name)}\\.matches`);
   if (!stores(scripts, MOTION_KEY) || !/data-motion/.test(scripts) || !shows(scripts, "motionSwitch", ["false", ...allowed].join("|"))) {
     problems.push(`${path}'s script does not work the motion switch under the key "${MOTION_KEY}" (reading it with getItem, saving it with setItem, setting data-motion on the root, and showing the switch, never hiding it again, whenever prefers-reduced-motion: no-preference matches).`);
+  }
+  // A selector the browser does not know makes matches(), closest() and querySelector() throw a
+  // SyntaxError, which stops the handler that called it: :focus-visible and :has() before Safari
+  // 15.4, :is() and :where() before Safari 14. A script that asks with one tests it first, binding
+  // CSS.supports("selector(:name)") and calling only behind that name with &&.
+  for (const call of scripts.matchAll(SELECTOR_CALL)) {
+    for (const [, pseudo] of call[3].matchAll(NEWER_PSEUDO)) {
+      const guards = bound(scripts, `CSS\\.supports\\(\\s*["']selector\\(\\s*:${pseudo}\\b`);
+      const statement = scripts.slice(0, call.index).split(/[;{}\n]/).at(-1);
+      if (!guards.some((name) => new RegExp(`(^|[^\\w$.])${escape(name)}\\s*&&`).test(statement))) {
+        problems.push(`${path}'s script calls ${call[1]}("${call[3]}"), which throws a SyntaxError in a browser that does not know :${pseudo} (Safari before ${pseudo === "is" || pseudo === "where" ? "14" : "15.4"}) and stops the handler; bind const name = CSS.supports("selector(:${pseudo})") and call it only as name && ….`);
+      }
+    }
   }
   if (/fonts\.(googleapis|gstatic)\.com/i.test(source)) problems.push(`${path} fetches a font from Google; the site serves its own fonts from assets/fonts, with no third-party request.`);
   for (const link of opened("link")) {

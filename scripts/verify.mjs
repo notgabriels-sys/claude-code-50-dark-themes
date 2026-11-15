@@ -3164,7 +3164,7 @@ const reviewedInlineScripts = new Map([
   // motion setting also marking the hero .risen so its entrance plays once; a scrollBy that moves keyboard focus clear of the
   // floating switch, never a tap's or a click's; and the pointer light, which sets --mx and --my
   // on the .lit surfaces. It loads, fetches and navigates nothing.
-  ["index.html", ["sha256-NIZ5jxPqHe76C4AEHPJCjXNeTRDJC4LsWQG/g6melI4=", "sha256-yQjCaHNN9EhMHqdGIwFELVT3c7GPz7YUCbH1jKu7ogE="]],
+  ["index.html", ["sha256-NIZ5jxPqHe76C4AEHPJCjXNeTRDJC4LsWQG/g6melI4=", "sha256-K4e4VtCupyeStVvL8Qgx9LHWZ+ocw3+VN/kKh0z+Gt4="]],
   // Familiars (read 2026-11-06): a head bootstrap applies the saved theme and
   // motion choice before paint. The body script handles theme, kind filters
   // and their status, the clipboard, pointer lights, and one cancellable eye
