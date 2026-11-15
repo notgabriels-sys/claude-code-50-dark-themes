@@ -6,7 +6,7 @@ import { join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 
-import { CONTRAST_PAIRS, PALETTE, SITE_PAGES, STYLESHEET, THEME_PREVIEWS, colourLiterals, contrast, fontFaces, fontProblems, motionProblems, pageFontFiles, pageProblems, parseCss, selectorProblem, sharedTokens, stylesheetProblems, themesOf } from "./site-style.mjs";
+import { CONTRAST_PAIRS, PALETTE, SITE_PAGES, STYLESHEET, THEME_PREVIEWS, colourLiterals, contrast, fontFaces, fontProblems, motionProblems, pageFontFaces, pageFontFiles, OWN_TEXT, pageProblems, parseCss, selectorProblem, sharedTokens, stylesheetProblems, themesOf } from "./site-style.mjs";
 
 const root = new URL("../", import.meta.url);
 const projectRoot = fileURLToPath(root);
@@ -106,6 +106,42 @@ test("the stylesheet on disk passes, both of its themes resolve, and every contr
   assert.equal(dark.get("--mute"), PALETTE.dark.muted);
   assert.equal(light.get("--accent"), PALETTE.light.accent);
   assert.ok(CONTRAST_PAIRS.length >= 20, "text tokens on every surface, chips, the primary pill and the two marks");
+});
+
+test("contrast: muted text on a selected chip's violet wash has the text floor too", () => {
+  for (const text of ["ink", "mute", "faint", "accent"]) {
+    for (const surface of ["ground", "ground-2", "raise"]) {
+      assert.ok(CONTRAST_PAIRS.some(([front, back, floor]) => front === text && back === `accent-soft over ${surface}` && floor === 4.5), `--${text} on a chip over --${surface}`);
+    }
+  }
+  // A thicker dark wash, 0.22: --ink and --accent still clear 4.5:1 on it, --mute and --faint do not.
+  const dark = "rgba(168, 152, 255, 0.16);";
+  assert.equal(css.split(dark).length, 3, "the dark wash is written twice, by default and by choice");
+  const thick = stylesheetProblems(css.split(dark).join("rgba(168, 152, 255, 0.22);")).filter((problem) => problem.includes("accent-soft"));
+  assert.ok(thick.length > 0);
+  for (const problem of thick) assert.match(problem, /dark theme: --(mute|faint) #9C99AA on --accent-soft over (ground|ground-2|raise) #[0-9A-F]{6} is [34]\.\d\d:1, below the 4\.5:1 floor for text on a selected chip/);
+  assert.ok(thick.some((problem) => problem.includes("--faint")) && thick.some((problem) => problem.includes("over raise")), "each muted token, and the raised surface, are read");
+});
+
+test("scripts: a selector older browsers cannot parse is asked for only behind CSS.supports", async () => {
+  const fontFiles = fontFaces(css).flatMap(({ urls }) => urls);
+  const tokens = sharedTokens(css);
+  const check = (html) => pageProblems(html, "index.html", fontFiles, tokens);
+  assert.deepEqual(check(page), [], "the storefront tests :focus-visible before it asks for it");
+  const call = '!(focusVisibleKnown && event.target.matches(":focus-visible"))';
+  const bind = 'const focusVisibleKnown = CSS.supports("selector(:focus-visible)");';
+  const add = (line) => swap(page, bind, `${bind}\n  ${line}`);
+  bad(check(swap(page, call, '!event.target.matches(":focus-visible")')), /index\.html's script calls matches\(":focus-visible"\), which throws a SyntaxError in a browser that does not know :focus-visible \(Safari before 15\.4\)/, "the storefront's call unguarded");
+  bad(check(swap(page, bind, 'const focusVisibleKnown = CSS.supports("selector(:hover)");')), /calls matches\(":focus-visible"\)/, "a guard that tests another selector");
+  bad(check(swap(page, call, '!(focusVisibleKnown || event.target.matches(":focus-visible"))')), /calls matches\(":focus-visible"\)/, "a guard joined with || instead of &&");
+  bad(check(swap(page, call, '!(notfocusVisibleKnown && event.target.matches(":focus-visible"))')), /calls matches\(":focus-visible"\)/, "another name that only ends like the guard");
+  bad(check(add('document.body.closest(".card:has(.cmd)");')), /calls closest\("\.card:has\(\.cmd\)"\), which throws a SyntaxError in a browser that does not know :has \(Safari before 15\.4\)/, "a :has() in closest()");
+  bad(check(add("document.querySelectorAll(':is(h2, h3)');")), /calls querySelectorAll\(":is\(h2, h3\)"\), which throws a SyntaxError in a browser that does not know :is \(Safari before 14\)/, "an :is() in single quotes");
+  bad(check(add("document.querySelector(`:where(.pick)`);")), /does not know :where/, "a :where() in a template string");
+  bad(check(add('if (focusVisibleKnown && document.body) document.body.focus();\n  document.body.matches(":focus-visible");')), /calls matches\(":focus-visible"\)/, "a guard that covers an earlier statement, not this one");
+  // Selectors every supported browser parses are asked for freely, and so is a guarded call.
+  assert.deepEqual(check(add('document.querySelector(".card:hover, a:focus, :focus-within");')), []);
+  assert.deepEqual(check(add('const hasKnown = CSS.supports("selector(:has(a))");\n  if (hasKnown && document.body) document.body.closest(":has(.cmd)");')), [], "a :has() behind its own guard");
 });
 
 test("palette: a colour the design base does not name fails, however it is written", () => {
@@ -276,7 +312,7 @@ test("pause: a loop holds its frame; what would hold a half-finished frame or st
 });
 
 test("pages: the storefront on disk wears the base, and each part of it is required", () => {
-  assert.deepEqual(SITE_PAGES, ["index.html"]);
+  assert.deepEqual(SITE_PAGES, ["index.html", "familiars.html", "claude-code-theme-install-guide.html", "semantic-terminal-colors.html"]);
   assert.deepEqual(pageProblems(page, "index.html", fontFiles, tokens), []);
   const check = (html) => pageProblems(html, "index.html", fontFiles, tokens);
   bad(check(swap(page, '<link rel="stylesheet" href="assets/site.css">\n', "")), /index\.html does not link assets\/site\.css/, "no stylesheet");
@@ -412,11 +448,39 @@ test("pages: the storefront on disk wears the base, and each part of it is requi
   bad(check(swap(page, '<p class="lede">', '<p class="lede" style="background:#16161C">')), /has a style attribute that sets background/, "a surface in a style attribute");
 });
 
+test("pages: the Familiars page wears the base too, and a mark, which may be dimmed, holds no text", async () => {
+  const familiars = await readFile(new URL("familiars.html", root), "utf8");
+  assert.deepEqual(pageProblems(familiars, "familiars.html", fontFiles, tokens), []);
+  const check = (html) => pageProblems(html, "familiars.html", fontFiles, tokens);
+  bad(check(swap(familiars, '<link rel="stylesheet" href="assets/site.css">\n', "")), /familiars\.html does not link assets\/site\.css/, "the Familiars page off the base");
+  // The hero's beam and rings are blurred and dimmed: text inside one would be too.
+  bad(check(swap(familiars, '<div class="beam"></div>', '<div class="beam">Wick</div>')), /familiars\.html <div class="beam"> is a mark \(\.beam\), which may be dimmed or blurred, and holds text \("Wick"\)/, "text in a mark");
+  bad(check(swap(familiars, '<div class="ring r2"></div>', '<div class="ring r2"><div></div>Wick</div>')), /<div class="ring r2"> is a mark \(\.ring\).*\("Wick"\)/, "text after a nested element of the same name");
+  bad(pageProblems(swap(page, '<span class="l3"></span></div>', '<span class="l3">glow</span></div>'), "index.html", fontFiles, tokens), /index\.html <div class="lights"> is a mark \(\.lights\).*\("glow"\)/, "text in the lights");
+  assert.deepEqual(check(swap(familiars, '<div class="beam"></div>', '<div class="beam"><!-- one turn -> 9s --> </div>')), [], "a comment, even one holding >, and whitespace are not text");
+  assert.deepEqual(check(swap(familiars, '<div class="beam"></div>', '<div class="beam"></div>Wick')), [], "text after the mark's end tag is outside it");
+});
+
+test("pages: the install guide and the article wear the base, and their command specimens keep the coding palette", async () => {
+  for (const path of ["claude-code-theme-install-guide.html", "semantic-terminal-colors.html"]) {
+    const html = await readFile(new URL(path, root), "utf8");
+    const check = (source) => pageProblems(source, path, fontFiles, tokens);
+    const name = path.replace(/[.]/g, "\\.");
+    assert.deepEqual(check(html), [], `${path} as it is`);
+    bad(check(swap(html, '<link rel="stylesheet" href="assets/site.css">\n', "")), new RegExp(`${name} does not link assets/site\\.css`), `${path} off the base`);
+    bad(check(swap(html, '<button class="motion-switch" id="motionSwitch" type="button" hidden>Pause motion</button>', "")), new RegExp(`${name} does not carry the motion switch`), `${path} without its pause`);
+    // The coding palette is a specimen's own: the same rule outside one reads as page text.
+    bad(check(swap(html, ".specimen .syntax-scope{", ".syntax-scope{")), /outside a specimen or a theme preview, text takes --ink, --mute, --faint or --accent/, `${path} with the coding palette on the page`);
+    bad(check(swap(html, ".specimen.code-panel{background:var(--terminal-surface)}", ".code-panel{background:var(--terminal-surface)}")), /--terminal-surface is neither/, `${path} with the terminal surface on the page`);
+  }
+});
+
 test("fonts: each face loads a file that is there, each file is used, and each family carries the OFL", async () => {
   const files = await fontDirectory();
-  // The Familiars page still loads its own faces (main's #65 and its follow-ups); those files count as used.
+  // The Familiars page loads its faces from the stylesheet since it moved onto the base, so no page
+  // loads a font file of its own and every file in assets/fonts is the stylesheet's.
   const familiarsFonts = pageFontFiles(await readFile(new URL("familiars.html", root), "utf8"), "familiars.html");
-  assert.ok(familiarsFonts.length > 0);
+  assert.deepEqual(familiarsFonts, []);
   assert.deepEqual(fontProblems(css, files, familiarsFonts), []);
   const plex = ["Regular", "Medium"].flatMap((weight) => ["Latin1", "Latin2", "Latin3", "Pi"].map((script) => `assets/fonts/IBMPlexMono-${weight}-${script}.woff2`));
   assert.deepEqual(fontFiles, ["assets/fonts/FamiljenGrotesk-VF.woff2", ...plex]);
@@ -445,6 +509,27 @@ test("fonts: each face loads a file that is there, each file is used, and each f
   );
   assert.equal(fontFaces('@font-face{font-family:"A";font-family:"B";src:url("b.woff2")}')[0].family, "B", "the family the browser takes, the last");
   assert.deepEqual(pageFontFiles(`<!-- ${ownFaces} -->`, "familiars.html"), [], "a face in a comment loads nothing");
+});
+
+test("fonts: a page's own @font-face is held as the stylesheet's: a file in assets/fonts that is there, and its family's OFL", async () => {
+  const files = await fontDirectory();
+  // The real page has none of its own any more (it is on the base); the faces below are written for it.
+  const familiars = pageFontFaces(await readFile(new URL("familiars.html", root), "utf8"), "familiars.html");
+  assert.deepEqual(familiars, []);
+  assert.deepEqual(fontProblems(css, files, familiars), [], "the real page passes");
+  const page = (face) => pageFontFaces(`<style>${face}</style>`, "familiars.html");
+  const spare = { ...files, "Spare.woff2": true };
+  // A licensed family loading a file that is there passes, and its file counts as used.
+  assert.deepEqual(fontProblems(css, spare, [...familiars, ...page('@font-face{font-family:"IBM Plex Mono";src:url(assets/fonts/Spare.woff2) format("woff2")}')]), []);
+  bad(fontProblems(css, files, [...familiars, ...page('@font-face{font-family:"IBM Plex Mono";src:url(assets/fonts/Gone.woff2) format("woff2")}')]), /familiars\.html @font-face for "IBM Plex Mono" loads assets\/fonts\/Gone\.woff2, which is not a file in assets\/fonts/, "a page face whose file is not there");
+  bad(fontProblems(css, files, [...familiars, ...page('@font-face{font-family:"IBM Plex Mono";src:url(assets/other/ibm-plex-mono-latin-400-normal.woff2) format("woff2")}')]), /familiars\.html @font-face for "IBM Plex Mono" loads assets\/other\/ibm-plex-mono-latin-400-normal\.woff2, which is not a file in assets\/fonts/, "a page face outside assets/fonts, named as a file that is there");
+  bad(fontProblems(css, spare, [...familiars, ...page('@font-face{font-family:"Probe Sans";src:url(assets/fonts/Spare.woff2) format("woff2")}')]), /assets\/fonts\/OFL-ProbeSans\.txt is missing or is not the SIL Open Font License; "Probe Sans" \(familiars\.html\)/, "a page family with no licence");
+  bad(fontProblems(css, files, [...familiars, ...page('@font-face{font-family:"IBM Plex Mono";src:local("IBM Plex Mono")}')]), /familiars\.html @font-face for "IBM Plex Mono" loads no file/, "a page face that loads no file");
+  // Another host is reported once, by the page's own check, not again here.
+  assert.deepEqual(fontProblems(css, files, [...familiars, ...page('@font-face{font-family:"IBM Plex Mono";src:url(https://example.com/p.woff2) format("woff2")}')]), [], "another host is pageProblems' to report");
+  // A family missing its licence on the stylesheet and on a page is reported once.
+  const twice = fontProblems(css, Object.fromEntries(Object.entries(files).filter(([key]) => key !== "OFL-IBMPlexMono.txt")), familiars);
+  assert.equal(twice.filter((problem) => problem.includes("OFL-IBMPlexMono.txt")).length, 1, "one licence, one message");
 });
 
 // --- the verifier on the real files -----------------------------------------------------------
@@ -552,4 +637,60 @@ test("selectors: one selector the browser cannot parse drops its whole list, so 
   for (const [selector, pattern] of [["a:hover(", /no closing \)/], ["a::befor", /not a pseudo-element/], ["a > > b", /two combinators in a row/], ["a:nth-of-type(odd of .x)", /only :nth-child\(\) and :nth-last-child\(\) take/], ["[a=b c]", /attribute selector/], ["a:", /colon with no pseudo/], [":not(::before)", /pseudo-element, which :not\(\), :is\(\), :where\(\) and :has\(\) never take/], [":is(.a, ::after)", /never take/], ["li:nth-child(2n of ::marker)", /never take/]]) {
     assert.match(selectorProblem(selector) ?? "", pattern, `${selector} does not parse`);
   }
+});
+
+test("colour words: read in every property but those that hold names, and a background clipped to text by the shorthand", () => {
+  // A property that takes a colour and no list names: text-emphasis paints its marks in it.
+  bad(stylesheetProblems(`${css}\n.x { text-emphasis: dot red; }\n`), /\.x \{ text-emphasis \}: red is a named colour/, "a named colour in text-emphasis");
+  bad(stylesheetProblems(`${css}\n.x { -webkit-text-emphasis: dot Canvas; }\n`), /\.x \{ -webkit-text-emphasis \}: Canvas is a system colour/, "a system colour in the prefixed spelling");
+  bad(stylesheetProblems(`${css}\n.x { mask-border: linear-gradient(navy, transparent); }\n`), /navy is a named colour/, "a property added to CSS after these rules were written");
+  // Where a word names a thing, it is a name.
+  for (const declaration of ["font-family: Black, sans-serif", "animation-name: red", "grid-area: red", "counter-reset: orange", "list-style-type: disc", "view-transition-name: tan", "will-change: transform", "transition-property: color"]) {
+    assert.ok(!colourLiterals(declaration.split(": ")[1], declaration.split(": ")[0]).length, `${declaration} names no colour`);
+  }
+  assert.ok(!colourLiterals("red", "Animation-Name").length, "a name property in capitals is still one, as the browser reads it");
+  // The background shorthand clips to text as background-clip does.
+  bad(stylesheetProblems(`${css}\n.x { background: linear-gradient(90deg, var(--ink), var(--accent)) text; }\n`), /\.x \{ background: linear-gradient\(90deg, var\(--ink\), var\(--accent\)\) text \} paints text with something other than its colour/, "a gradient clipped to the text by the shorthand");
+  bad(stylesheetProblems(`${css}\n.x { background: var(--accent) TEXT; }\n`), /paints text with something other than its colour/, "in capitals");
+  assert.ok(!stylesheetProblems(`${css}\n.x { background: var(--text, var(--surface)) url("text.png") padding-box; }\n`).some((problem) => /paints text/.test(problem)), "a token, a file or a box named text is no clip");
+});
+
+test("keyframes: an animation whose frames dim text runs once and ends at full strength", () => {
+  const inBlock = (rules) => `${css}\n@media (prefers-reduced-motion: no-preference) { ${rules} }\n`;
+  const fade = "@keyframes fade { 50% { opacity: .2; } }";
+  bad(stylesheetProblems(inBlock(`${PAUSE_GATE} .x { animation: fade 2s ease infinite; } ${fade}`)), /\.x \{ animation: fade 2s ease infinite \} runs fade, whose frames dim what they run on, without end/, "a loop that dims text");
+  bad(stylesheetProblems(inBlock(`${PAUSE_GATE} .x { animation: fade 2s ease 3; } ${fade}`)), /runs fade, whose frames dim what they run on, 3 times/, "a count above one");
+  bad(stylesheetProblems(inBlock(`${PAUSE_GATE} .x { animation-name: Fade; animation-duration: 2s; animation-iteration-count: infinite; } ${fade}`)), /\{ animation-name: Fade \} runs fade, .* without end/, "the longhands, the name in capitals");
+  bad(stylesheetProblems(inBlock(`${PAUSE_GATE} .x { animation: dimout .5s ease forwards; } @keyframes dimout { to { opacity: .3; } }`)), /ends dimout on a frame that dims/, "a last frame that dims");
+  bad(stylesheetProblems(inBlock(`${PAUSE_GATE} .x { animation: blurin .5s ease reverse; } @keyframes blurin { from { filter: blur(4px); } }`)), /ends blurin on a frame that dims/, "reversed, the first frame is the last");
+  bad(stylesheetProblems(inBlock(`${PAUSE_GATE} .x { animation: drift-a 9s ease infinite, fade 2s ease infinite; } ${fade}`)), /runs fade, whose frames dim/, "the second layer of a list");
+  // Run once and ending at the element's own value, an entrance stays readable.
+  assert.deepEqual(stylesheetProblems(inBlock(`${PAUSE_GATE} .x { animation: rise .5s ease both; } @keyframes rise { from { opacity: .3; } to { opacity: 1; } }`)), [], "an entrance to full strength");
+  assert.deepEqual(stylesheetProblems(inBlock(`${PAUSE_GATE} .x { animation: blurin .5s ease; } @keyframes blurin { from { filter: blur(4px); } }`)), [], "a last frame left to the element");
+  // On a mark, frames may dim as the mark's own opacity may.
+  assert.deepEqual(stylesheetProblems(inBlock(`${PAUSE_GATE} .x::after { animation: fade 2s ease infinite; } ${fade}`)), [], "a pulse on a ::after");
+  // The same holds in a page's own style block.
+  bad(pageProblems(withStyle(page, "  .card h3{animation:blink 1s steps(2) infinite}\n  @keyframes blink{50%{opacity:0}}"), "index.html", fontFiles, tokens), /index\.html \.card h3 \{ animation: blink 1s steps\(2\) infinite \} runs blink, whose frames dim/, "a blinking heading on the page");
+  // Frames that move but do not dim are not this rule's.
+  assert.deepEqual(stylesheetProblems(inBlock(`${PAUSE_GATE} .x { animation: drift-a 9s ease infinite; }`)), [], "a drift that never dims");
+});
+
+test("previews: text inside a specimen or a theme preview takes the colours that root sets for itself", () => {
+  const check = (rule) => pageProblems(withStyle(page, `  ${rule}`), "index.html", fontFiles, tokens);
+  const refused = (rule, name) => bad(check(rule), new RegExp(`${rule.split("{")[0].trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")} \\{ color: var\\(${name}\\) \\}: inside a specimen or a theme preview, text takes the colours that root sets for itself .*${name} is not one of them`), rule);
+  // A shared token is held against the page's ground, not the preview's.
+  refused(".card .x{color:var(--accent)}", "--accent");
+  refused(".card .x{color:var(--ground)}", "--ground");
+  refused(".pick .x{color:var(--mute)}", "--mute");
+  // Another root's colours, and a name this root never sets.
+  refused(".cmd .x{color:var(--fg)}", "--fg");
+  refused(".theme-monolith .x{color:var(--a)}", "--a");
+  refused(".pick .x{color:var(--sh)}", "--sh");
+  refused(".card .cmd .x{color:var(--fg)}", "--fg");
+  refused(".card .x, .theme-monolith .y{color:var(--fg)}", "--fg");
+  // Each root's own.
+  for (const rule of [".card .x{color:var(--sh)}", ".pick .x{color:var(--a)}", ".theme-monolith .x{color:var(--stage-mut)}", ".cmd .x{color:var(--syntax-light-blue)}", ".specimen .x{color:var(--ink)}", ".card .cmd .x{color:var(--syntax-blue)}", ".card .x{color:currentcolor}"]) {
+    assert.ok(!check(rule).some((problem) => /inside a specimen or a theme preview/.test(problem)), `${rule} takes its root's own colour`);
+  }
+  assert.deepEqual(Object.keys(OWN_TEXT).sort(), [".cmd", ".specimen", ...[".theme-monolith", ".pick", ".card"]].sort(), "every specimen and preview has its own colours");
 });

@@ -411,8 +411,14 @@ test("the verifier holds each page's dateModified to the day it last changed out
   const fixtureRoot = await makeFixture(t);
   const path = "claude-code-theme-install-guide.html";
   const guide = await readFile(join(fixtureRoot, path), "utf8");
-  const { published, modified } = statedDates(guide);
+  const { published, modified: stated } = statedDates(guide);
+  // The scenario dates the page a day after it was published, not the day it states: on the day
+  // the page itself last changed, the later days the scenario moves its stamp to are still in the
+  // future, which the verifier refuses for a reason of its own.
+  const modified = dayAfter(published);
   const update = `· updated <time datetime="${modified}">${longDate(modified)}</time>`;
+  await editOnce(fixtureRoot, path, `"dateModified": "${stated}"`, `"dateModified": "${modified}"`);
+  await editOnce(fixtureRoot, path, `· updated <time datetime="${stated}">${longDate(stated)}</time>`, update);
   // The copy has no .git, so the verifier passes with a notice instead of a verdict.
   const notice = (reason) => new RegExp(`^${escape(path)}: dateModified ${modified} not held to git history \\(${escape(reason)}\\)\\.$`, "m");
   const unheld = await runVerifier(fixtureRoot);

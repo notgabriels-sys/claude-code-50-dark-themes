@@ -19,7 +19,8 @@
 //    shared coding palette's and is held by scripts/verify-contrast.mjs, which reads the first
 //    --ink on the page, so the page gives it that one value.
 // 3. Contrast, in each theme, with WCAG 2.x's formula: every text token on every surface at
-//    4.5:1, the floor for normal text, including over the violet wash of a selected chip; the
+//    4.5:1, the floor for normal text, and every text token, muted ones too, over the violet
+//    wash of a selected chip or a hovered button on every surface at the same floor; the
 //    page colour on an ink fill (the primary pill's label) at 4.5:1; and the two marks that are
 //    never text (the ember point, and the sun or moon on the switch's violet knob) at 3:1, the
 //    floor for graphical objects. Ember is held to the lower floor because it is never text:
@@ -62,8 +63,9 @@
 //    browser ends it.
 // 6. Fonts. Every @font-face in the stylesheet points at a file in assets/fonts, every font file
 //    there is loaded by an @font-face (the stylesheet's, or one in a page's own <style> that has
-//    not moved onto the base yet), and every family in the stylesheet ships with its SIL Open Font
-//    License, which both fonts are under.
+//    not moved onto the base yet), and every family, the stylesheet's or a page's, ships with its
+//    SIL Open Font License, which both fonts are under. A page's own @font-face is held the same
+//    way: it loads a file, and that file is in assets/fonts and there.
 // 7. Requests. Those font files are the only requests the stylesheet makes: no @import, no url(),
 //    image-set() or src() outside an @font-face's src, every entry of a src read as url("…")
 //    with format() or tech(), or local(), each descriptor written once, and no backslash, which
@@ -84,7 +86,7 @@
 import { htmlTags } from "./html-tags.mjs";
 
 export const STYLESHEET = "assets/site.css";
-export const SITE_PAGES = ["index.html"];
+export const SITE_PAGES = ["index.html", "familiars.html", "claude-code-theme-install-guide.html", "semantic-terminal-colors.html"];
 export const THEME_KEY = "familiars-theme";
 export const MOTION_KEY = "familiars-motion";
 // The page's theme previews: a theme shown in its own colours on its own ground (the hero's
@@ -103,7 +105,9 @@ const TEXT_TOKENS = ["ink", "mute", "faint", "accent"];
 const SURFACES = ["ground", "ground-2", "raise"];
 export const CONTRAST_PAIRS = [
   ...TEXT_TOKENS.flatMap((text) => SURFACES.map((surface) => [text, surface, 4.5, "text"])),
-  ...["ink", "accent"].flatMap((text) => ["ground", "ground-2"].map((surface) => [text, `accent-soft over ${surface}`, 4.5, "text on a selected chip or a hovered button"])),
+  // Every text token, the muted ones included, on the violet wash of a selected chip or a hovered
+  // button, over every surface a chip can sit on: a chip's count or hint in --mute is text too.
+  ...TEXT_TOKENS.flatMap((text) => SURFACES.map((surface) => [text, `accent-soft over ${surface}`, 4.5, "text on a selected chip or a hovered button"])),
   ["ground", "ink", 4.5, "the primary pill's label on its ink fill"],
   ...SURFACES.map((surface) => ["ember", surface, 3, "the ember point, never text"]),
   ["ground", "accent", 3, "the switch's sun or moon on its violet knob"],
@@ -129,7 +133,10 @@ const NAMED_COLOURS = new Set(
 );
 // CSS Color 4 system colours, which the browser picks, not the palette.
 const SYSTEM_COLOURS = new Set("accentcolor accentcolortext activetext buttonborder buttonface buttontext canvas canvastext field fieldtext graytext highlight highlighttext linktext mark marktext selecteditem selecteditemtext visitedtext".split(" "));
-const COLOUR_PROPERTY = /^(--|color$|background|border|outline|box-shadow$|text-shadow$|text-decoration|caret-color$|accent-color$|fill$|stroke$|column-rule|(backdrop-)?filter$|-webkit-text-|scrollbar-color$|.*-color$)/;
+// Properties whose values name things, not colours: a word there that spells a colour (an animation
+// called "red", a font called "Black") is a name. Every other property is read for colour words,
+// so a property that takes a colour and is listed nowhere (text-emphasis, say) is read too.
+const NAME_PROPERTY = /^(font(-family)?|animation(-name)?|transition(-property)?|will-change|counter-(reset|increment|set)|grid(-area|-template(-areas)?|-(row|column)(-start|-end)?)?|list-style(-type)?|container(-name)?|view-transition-name|anchor-name|position-anchor|content|quotes|font-feature-settings|font-variation-settings)$/;
 const unprefixed = (property) => property.replace(/^-(webkit|moz|ms|o)-/, "");
 
 // --- parsing ------------------------------------------------------------------------------------
@@ -503,7 +510,7 @@ export function colourLiterals(value, property = "color") {
       found.push({ text: "color-mix(…)", problem: "mixes a literal colour, which paints a colour the palette does not name; color-mix() takes tokens, so the mix follows the theme" });
     }
   }
-  if (COLOUR_PROPERTY.test(property) || COLOUR_PROPERTY.test(unprefixed(property))) {
+  if (!NAME_PROPERTY.test(property.toLowerCase()) && !NAME_PROPERTY.test(unprefixed(property.toLowerCase()))) {
     // A var() fallback still paints: only the var( --name part is set aside.
     const words = bare.replace(/var\(\s*--[\w-]+\s*,?/gi, "").replace(/#[0-9a-f]+\b/gi, "").match(/[a-z]+(?:-[a-z]+)*/gi) ?? [];
     for (const word of words) {
@@ -661,7 +668,7 @@ export function stylesheetProblems(css) {
       }
     }
   }
-  problems.push(...emberTextProblems(rules, STYLESHEET), ...paintProblems(rules, STYLESHEET), ...dimProblems(rules, STYLESHEET));
+  problems.push(...emberTextProblems(rules, STYLESHEET), ...paintProblems(rules, STYLESHEET), ...dimProblems(rules, STYLESHEET), ...keyframeDimProblems(rules, STYLESHEET));
   for (const rule of rules) {
     for (const { property, value } of rule.declarations) {
       if (!["color", "-webkit-text-fill-color"].includes(property) || /var\(\s*--ember\s*[,)]/i.test(value)) continue;
@@ -686,11 +693,13 @@ export function stylesheetProblems(css) {
 const TEXT_VALUE = /^(var\(\s*--(ink|mute|faint|accent)\s*\)|currentcolor|inherit)$/i;
 const onFill = (rule) => rule.declarations.some(({ property, value }) => ["background", "background-color"].includes(property) && /^var\(\s*--(ink|accent)\s*\)$/i.test(value.trim()));
 const heldText = (rule, value) => TEXT_VALUE.test(value.trim()) || (/^var\(\s*--ground\s*\)$/i.test(value.trim()) && onFill(rule));
+// The bare words of a value: strings, url()s and var() names set aside, so var(--text) is no "text".
+const valueWords = (value) => (value.replace(/"[^"]*"|'[^']*'/g, "").replace(/url\([^)]*\)/gi, "").replace(/var\(\s*--[\w-]+/gi, "").match(/[a-z]+(?:-[a-z]+)*/gi) ?? []).map((word) => word.toLowerCase());
 export function paintProblems(rules, label) {
   const problems = [];
   for (const rule of rules) {
     for (const { property, value } of rule.declarations) {
-      if (property === "all" || (/^(-webkit-)?background-clip$/.test(property) && /\btext\b/i.test(value)) || property.startsWith("-webkit-text-stroke")) {
+      if (property === "all" || (/^(-webkit-)?background(-clip)?$/.test(property) && valueWords(value).includes("text")) || property.startsWith("-webkit-text-stroke")) {
         problems.push(`${label} ${rule.selector} { ${property}: ${value} } paints text with something other than its colour; text takes its colour from the text tokens alone.`);
       }
     }
@@ -702,8 +711,10 @@ export function paintProblems(rules, label) {
 // What dims or recolours the element it is set on, text included: opacity below 1, a filter or a
 // backdrop filter, a blend mode. Set only on marks that hold no text: a ::before or ::after, an
 // image, or an element inside one of MARKS (the lights, a theme card's dots, its caret, the
-// directory badge, which is an image). An animation's frames are not read here.
-export const MARKS = [".lights", ".dots", ".caret", ".directory-badge"];
+// directory badge, which is an image, and the Familiars hero's beam, rings and line-drawn
+// familiar). A mark holds no text, which pageProblems checks in the markup. An animation's
+// frames are read by keyframeDimProblems.
+export const MARKS = [".lights", ".dots", ".caret", ".directory-badge", ".beam", ".ring", ".familiar"];
 const dims = (property, value) =>
   (property === "opacity" && !/^(1(\.0*)?|100%)$/.test(value.trim())) ||
   (/^(-webkit-)?(backdrop-)?filter$/.test(property) && !/^none$/i.test(value.trim())) ||
@@ -717,6 +728,52 @@ export function dimProblems(rules, label) {
         .filter(({ property, value }) => dims(property, value))
         .map(({ property, value }) => `${label} ${rule.selector} { ${property}: ${value} } dims or recolours what it is set on, which may be text held at full strength; set it only on a ::before or ::after, an image or a mark (${MARKS.join(", ")}).`),
     );
+}
+
+// An animation's frames dim what it runs on as an opacity or a filter set on the element would. On
+// text, one that dims may run once and must end at full strength: an entrance from 30% to 100% is
+// read once and stays readable, while a loop dims the text again and again, and a last frame that
+// dims leaves it dimmed (with forwards or both) or snaps it back. The last frame played is "to" or
+// 100%, or "from" or 0% when the direction reverses; a frame the keyframes leave out is the
+// element's own value, which the rules above already read. Keyframes are looked up in the same
+// sheet; a page using the shared stylesheet's keyframes is not joined to them, and an iteration
+// count or direction set in another rule is not read here.
+const keyframeName = (entry) => entry.match(/^@(?:-webkit-)?keyframes(.+)$/)?.[1];
+const frameOffsets = (selector) => splitTop(selector, ",").map((part) => {
+  const text = part.trim().toLowerCase();
+  return text === "from" ? 0 : text === "to" ? 100 : Number.parseFloat(text);
+});
+export function keyframeDimProblems(rules, label) {
+  const frames = new Map();
+  for (const rule of rules) {
+    const name = rule.context.map(keyframeName).find(Boolean);
+    if (!name) continue;
+    if (!frames.has(name)) frames.set(name, []);
+    frames.get(name).push({ offsets: frameOffsets(rule.selector), dims: rule.declarations.some(({ property, value }) => dims(property, value)) });
+  }
+  const problems = [];
+  for (const rule of rules) {
+    if (rule.context.some(keyframeName) || onMarks(rule)) continue;
+    const own = (property) => rule.declarations.filter((declaration) => declaration.property === property).at(-1)?.value;
+    for (const { property, value } of rule.declarations) {
+      if (property !== "animation" && property !== "animation-name") continue;
+      const layers = splitTop(value, ",");
+      layers.forEach((layer, index) => {
+        const words = layer.replace(/\([^()]*\)/g, " ").trim().split(/\s+/).map((word) => word.toLowerCase());
+        // Names are matched without case, as the parser keeps them: a name the browser would not join only adds a refusal.
+        const name = property === "animation-name" ? layer.trim().toLowerCase() : words.find((word) => frames.has(word));
+        const steps = frames.get(name);
+        if (!steps || !steps.some((step) => step.dims)) return;
+        const layerOf = (longhand) => (longhand ? splitTop(longhand, ",")[index % splitTop(longhand, ",").length]?.trim().toLowerCase() : undefined);
+        const count = layerOf(own("animation-iteration-count")) ?? (property === "animation" ? words.find((word) => word === "infinite" || /^\d*\.?\d+$/.test(word)) : undefined) ?? "1";
+        const direction = layerOf(own("animation-direction")) ?? (property === "animation" ? words.find((word) => ["normal", "reverse", "alternate", "alternate-reverse"].includes(word)) : undefined) ?? "normal";
+        const end = direction === "reverse" || direction === "alternate-reverse" ? 0 : 100;
+        if (count !== "1") problems.push(`${label} ${rule.selector} { ${property}: ${value} } runs ${name}, whose frames dim what they run on, ${count === "infinite" ? "without end" : `${count} times`}; text dimmed again and again is not held at full strength. Run it once, or set it only on a ::before or ::after, an image or a mark (${MARKS.join(", ")}).`);
+        else if (steps.some((step) => step.dims && step.offsets.includes(end))) problems.push(`${label} ${rule.selector} { ${property}: ${value} } ends ${name} on a frame that dims what it runs on; text must end at full strength. End on the element's own value, or set it only on a ::before or ::after, an image or a mark (${MARKS.join(", ")}).`);
+      });
+    }
+  }
+  return problems;
 }
 
 export function emberTextProblems(rules, label) {
@@ -889,6 +946,29 @@ const inside = (rule, roots) => pathsOf(rule).every((selector) => {
   const steps = specimenPath(selector).trim().split(/\s*([>+~ ])\s*/);
   return steps.some((compound, at) => at % 2 === 0 && roots.test(compound) && (at === steps.length - 1 || /[> ]/.test(steps[at + 1])));
 });
+// The colours text may take inside each specimen and theme preview: the ones that root sets for
+// itself (a card's and a pick's in their style attribute, the hero stage's in its rule, a
+// specimen's ink and the coding palette): the theme's own colours, drawn on that root's own ground.
+// A shared token there (--accent, --ground) has its contrast held against the page's ground, not
+// the preview's, and a name the root never sets falls back to the inherited text colour.
+// The innermost root a selector sits in decides, so a specimen inside a card takes the specimen's.
+export const OWN_TEXT = {
+  ".cmd": /^--(ink|syntax-[a-z-]+)$/,
+  ".specimen": /^--(ink|syntax-[a-z-]+)$/,
+  ".card": /^--(fg|mut|a|sh)$/,
+  ".pick": /^--(fg|mut|a)$/,
+  ".theme-monolith": /^--stage-(fg|mut|a|sh)$/,
+};
+const innermostRoot = (selector) => {
+  const steps = specimenPath(selector).trim().split(/\s*([>+~ ])\s*/);
+  let found;
+  steps.forEach((compound, at) => {
+    if (at % 2 !== 0 || !(at === steps.length - 1 || /[> ]/.test(steps[at + 1]))) return;
+    for (const root of Object.keys(OWN_TEXT)) if (ROOTS([root]).test(compound)) found = root;
+  });
+  return found;
+};
+const ownText = (rule, name) => pathsOf(rule).every((selector) => OWN_TEXT[innermostRoot(selector)]?.test(name));
 // Tokens a page may re-declare inside a specimen, and what holds them instead.
 const SPECIMEN_OWN = new Set(["--ink"]);
 const NOT_TEXT = ["ground-2", "raise", "hair", "accent-soft", "accent-dim", "ember-soft"];
@@ -904,6 +984,10 @@ const crossOrigin = (url) => {
     return true;
   }
 };
+// A call that hands a selector to the browser, with the selector written as a string, and the
+// pseudo-classes older engines do not parse there.
+const SELECTOR_CALL = /\.(matches|closest|querySelector|querySelectorAll|webkitMatchesSelector)\(\s*(["'`])((?:(?!\2)[^\\])*)\2/g;
+const NEWER_PSEUDO = /:(focus-visible|has|is|where)(?![\w-])/g;
 // Keys a script binds to the literal key: the literal itself, or a const/let/var holding it.
 const keyNames = (script, key) => [`"${key}"`, `'${key}'`, ...[...script.matchAll(new RegExp(`\\b(?:const|let|var)\\s+([A-Za-z_$][\\w$]*)\\s*=\\s*["']${key}["']`, "g"))].map(([, name]) => name)];
 const escape = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -950,6 +1034,23 @@ export function pageProblems(source, path, fontFiles = [], tokens = []) {
   if (!lit) {
     problems.push(`${path} does not carry the ambient lights: <div class="lights" aria-hidden="true"> holding spans of class l1, l2 and l3.`);
   }
+  // A mark may be dimmed, blurred or blended (MARKS), so it holds no text: from its start tag to
+  // the end tag that closes it, every character outside a tag is whitespace.
+  elements.forEach((element, at) => {
+    if (element.closing || element.selfClosing) return;
+    const mark = MARKS.find((selector) => classesOf(element).includes(selector.slice(1)));
+    if (!mark) return;
+    let depth = 0;
+    const end = elements.findIndex((other, after) => {
+      if (after <= at || other.name !== element.name) return false;
+      if (!other.closing && !other.selfClosing) depth++;
+      else if (other.closing && depth-- === 0) return true;
+      return false;
+    });
+    const inside = source.slice(element.end, end < 0 ? source.length : elements[end].start);
+    const text = decode(inside.replace(/<!--[\s\S]*?-->/g, "").replace(/<[^>]*>/g, " ")).trim();
+    if (text) problems.push(`${path} <${element.name} class="${element.attributes.get("class")}"> is a mark (${mark}), which may be dimmed or blurred, and holds text ("${text.slice(0, 40)}"); text stays at full strength, so keep it out of a mark.`);
+  });
   const button = (id, name) => {
     const tag = opened("button").find((candidate) => candidate.attributes.get("id") === id);
     return tag && (!name || (tag.attributes.get("class") ?? "").split(/\s+/).includes(name)) && tag.attributes.get("type") === "button" && tag.attributes.has("hidden");
@@ -970,6 +1071,19 @@ export function pageProblems(source, path, fontFiles = [], tokens = []) {
   const allowed = bound(scripts, `matchMedia\\(\\s*["']\\(\\s*prefers-reduced-motion\\s*:\\s*no-preference\\s*\\)["']\\s*\\)`).map((name) => `!\\s*${escape(name)}\\.matches`);
   if (!stores(scripts, MOTION_KEY) || !/data-motion/.test(scripts) || !shows(scripts, "motionSwitch", ["false", ...allowed].join("|"))) {
     problems.push(`${path}'s script does not work the motion switch under the key "${MOTION_KEY}" (reading it with getItem, saving it with setItem, setting data-motion on the root, and showing the switch, never hiding it again, whenever prefers-reduced-motion: no-preference matches).`);
+  }
+  // A selector the browser does not know makes matches(), closest() and querySelector() throw a
+  // SyntaxError, which stops the handler that called it: :focus-visible and :has() before Safari
+  // 15.4, :is() and :where() before Safari 14. A script that asks with one tests it first, binding
+  // CSS.supports("selector(:name)") and calling only behind that name with &&.
+  for (const call of scripts.matchAll(SELECTOR_CALL)) {
+    for (const [, pseudo] of call[3].matchAll(NEWER_PSEUDO)) {
+      const guards = bound(scripts, `CSS\\.supports\\(\\s*["']selector\\(\\s*:${pseudo}\\b`);
+      const statement = scripts.slice(0, call.index).split(/[;{}\n]/).at(-1);
+      if (!guards.some((name) => new RegExp(`(^|[^\\w$.])${escape(name)}\\s*&&`).test(statement))) {
+        problems.push(`${path}'s script calls ${call[1]}("${call[3]}"), which throws a SyntaxError in a browser that does not know :${pseudo} (Safari before ${pseudo === "is" || pseudo === "where" ? "14" : "15.4"}) and stops the handler; bind const name = CSS.supports("selector(:${pseudo})") and call it only as name && ….`);
+      }
+    }
   }
   if (/fonts\.(googleapis|gstatic)\.com/i.test(source)) problems.push(`${path} fetches a font from Google; the site serves its own fonts from assets/fonts, with no third-party request.`);
   for (const link of opened("link")) {
@@ -1038,13 +1152,15 @@ export function pageProblems(source, path, fontFiles = [], tokens = []) {
       const surface = NOT_TEXT.find((token) => new RegExp(`var\\(\\s*--${token}\\s*[,)]`, "i").test(value));
       if (surface) problems.push(`${path} ${rule.selector} { ${property}: ${value} }: --${surface} is a surface, line or wash, never text; its contrast is not held. Colour text with --ink, --mute, --faint or --accent.`);
       else if (inside(rule, SPECIMENS_OR_PREVIEWS)) {
-        if (!/^(var\(\s*--[\w-]+\s*\)|currentcolor|inherit)$/i.test(value.trim())) problems.push(`${path} ${rule.selector} { ${property}: ${value} }: inside a specimen or a theme preview, text takes the specimen's or the preview's own colours, var(--…) with no fallback, not a literal.`);
+        const name = value.trim().match(/^var\(\s*(--[\w-]+)\s*\)$/i)?.[1];
+        if (!name && !/^(currentcolor|inherit)$/i.test(value.trim())) problems.push(`${path} ${rule.selector} { ${property}: ${value} }: inside a specimen or a theme preview, text takes the specimen's or the preview's own colours, var(--…) with no fallback, not a literal.`);
+        else if (name && !ownText(rule, name)) problems.push(`${path} ${rule.selector} { ${property}: ${value} }: inside a specimen or a theme preview, text takes the colours that root sets for itself (${pathsOf(rule).map((selector) => `${innermostRoot(selector)}: ${OWN_TEXT[innermostRoot(selector)]?.source ?? "none"}`).join("; ")}), the theme's own colours on its own ground; ${name} is not one of them.`);
       } else if (!heldText(rule, value) && !/var\(\s*--ember\s*[,)]/i.test(value)) {
         problems.push(`${path} ${rule.selector} { ${property}: ${value} }: outside a specimen or a theme preview, text takes --ink, --mute, --faint or --accent (or --ground on an ink or violet fill), the tokens whose contrast ${STYLESHEET} holds in both themes; a literal colour, the coding palette or a token of the page's own would not follow the light theme. Inside a specimen (.cmd, .specimen) or a theme preview (${THEME_PREVIEWS.join(", ")}) it takes the specimen's colours.`);
       }
     }
   }
-  problems.push(...emberTextProblems(rules, path), ...paintProblems(rules, path), ...dimProblems(rules, path));
+  problems.push(...emberTextProblems(rules, path), ...paintProblems(rules, path), ...dimProblems(rules, path), ...keyframeDimProblems(rules, path));
   problems.push(...motionProblems(rules, path));
   return problems;
 }
@@ -1082,26 +1198,39 @@ export function fontFaces(css, base = STYLESHEET) {
 
 // The files a page's own <style> loads with @font-face, as paths from the repository root.
 export function pageFontFiles(html, path) {
-  return styleElements(html).flatMap(({ text }) => fontFaces(text, path).flatMap(({ urls }) => urls));
+  return pageFontFaces(html, path).flatMap(({ urls }) => urls);
+}
+
+// A page's own @font-face rules, each with the page it sits on, so fontProblems can hold them to
+// what it holds the stylesheet's to: a file in assets/fonts that is there, and the family's OFL.
+export function pageFontFaces(html, path) {
+  return styleElements(html).flatMap(({ text }) => fontFaces(text, path).map((face) => ({ ...face, path })));
 }
 
 // `files` maps each file name in assets/fonts to its text (licences) or to true (fonts);
-// `pageFonts` lists the files the pages' own @font-face rules load (pageFontFiles).
+// `pageFonts` lists the pages' own @font-face rules (pageFontFaces), each held as the
+// stylesheet's are: it loads a file, the file is in assets/fonts and there, and the family's
+// licence ships beside it. (A list of paths, pageFontFiles, still counts the files as used.)
 export function fontProblems(css, files, pageFonts = []) {
   const problems = [];
-  const faces = fontFaces(css);
-  const used = new Set([...faces.flatMap(({ urls }) => urls), ...pageFonts]);
-  for (const { family, urls, raw, unread } of faces) {
-    if (!urls.length) problems.push(`${STYLESHEET} @font-face for "${family}" loads no file.`);
-    for (const entry of unread) problems.push(`${STYLESHEET} @font-face for "${family}" has a src entry these rules cannot read, ${entry}; write each as url("…") with format("…"), or local("…").`);
+  const faces = fontFaces(css).map((face) => ({ ...face, path: STYLESHEET }));
+  const pageFaces = pageFonts.filter((face) => typeof face === "object");
+  const used = new Set([...faces, ...pageFaces].flatMap(({ urls }) => urls).concat(pageFonts.filter((face) => typeof face === "string")));
+  const licensed = new Set();
+  for (const { family, urls, raw, unread, path } of [...faces, ...pageFaces]) {
+    if (!urls.length) problems.push(`${path} @font-face for "${family}" loads no file.`);
+    if (path === STYLESHEET) for (const entry of unread) problems.push(`${STYLESHEET} @font-face for "${family}" has a src entry these rules cannot read, ${entry}; write each as url("…") with format("…"), or local("…").`);
     for (const [index, url] of urls.entries()) {
-      if (crossOrigin(raw[index])) problems.push(`${STYLESHEET} @font-face for "${family}" loads ${raw[index]} from another host; the site serves its own fonts from assets/fonts.`);
-      else if (!url.startsWith("assets/fonts/") || !(url.slice("assets/fonts/".length) in files)) problems.push(`${STYLESHEET} @font-face for "${family}" loads ${url}, which is not a file in assets/fonts.`);
+      if (crossOrigin(raw[index])) {
+        if (path === STYLESHEET) problems.push(`${STYLESHEET} @font-face for "${family}" loads ${raw[index]} from another host; the site serves its own fonts from assets/fonts.`);
+      } else if (!url.startsWith("assets/fonts/") || !(url.slice("assets/fonts/".length) in files)) problems.push(`${path} @font-face for "${family}" loads ${url}, which is not a file in assets/fonts.`);
     }
     const licence = `OFL-${family.replace(/\s+/g, "")}.txt`;
+    if (licensed.has(licence)) continue;
+    licensed.add(licence);
     const text = files[licence];
     if (typeof text !== "string" || !/SIL OPEN FONT LICENSE/i.test(text)) {
-      problems.push(`assets/fonts/${licence} is missing or is not the SIL Open Font License; "${family}" is served under the OFL, which travels with the font.`);
+      problems.push(`assets/fonts/${licence} is missing or is not the SIL Open Font License; "${family}" (${path}) is served under the OFL, which travels with the font.`);
     }
   }
   for (const name of Object.keys(files)) {

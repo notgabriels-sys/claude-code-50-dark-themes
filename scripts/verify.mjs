@@ -2736,7 +2736,7 @@ const familiarsNumberWords = ["zero", "one", "two", "three", "four", "five", "si
   "ten", "eleven", "twelve"];
 const familiarsCountClaim = familiarsHtml.match(/<h2>(\w+) familiars, each with its sigil\.<\/h2>/);
 if (!familiarsCountClaim) fail("Familiars: the catalogue heading that states the count is missing.");
-const familiarsCards = (familiarsHtml.match(/<article class="card"/g) ?? []).length;
+const familiarsCards = (familiarsHtml.match(/<article class="creature lit"/g) ?? []).length;
 const familiarsStated = familiarsNumberWords.indexOf(familiarsCountClaim[1].toLowerCase());
 if (familiarsStated !== familiarsCards) {
   fail(`Familiars: the heading says ${familiarsCountClaim[1]} familiars but the page shows ${familiarsCards} cards.`);
@@ -3164,14 +3164,21 @@ const reviewedInlineScripts = new Map([
   // motion setting also marking the hero .risen so its entrance plays once; a scrollBy that moves keyboard focus clear of the
   // floating switch, never a tap's or a click's; and the pointer light, which sets --mx and --my
   // on the .lit surfaces. It loads, fetches and navigates nothing.
-  ["index.html", ["sha256-NIZ5jxPqHe76C4AEHPJCjXNeTRDJC4LsWQG/g6melI4=", "sha256-yQjCaHNN9EhMHqdGIwFELVT3c7GPz7YUCbH1jKu7ogE="]],
+  ["index.html", ["sha256-NIZ5jxPqHe76C4AEHPJCjXNeTRDJC4LsWQG/g6melI4=", "sha256-K4e4VtCupyeStVvL8Qgx9LHWZ+ocw3+VN/kKh0z+Gt4="]],
   // Familiars (read 2026-11-06): a head bootstrap applies the saved theme and
   // motion choice before paint. The body script handles theme, kind filters
   // and their status, the clipboard, pointer lights, and one cancellable eye
   // frame/blink loop. Pause, live reduced-motion changes and tab visibility
   // stop motion; only keyboard focus is scrolled clear of the floating switch.
   // Neither script loads, fetches, navigates or writes markup.
-  ["familiars.html", ["sha256-y2IRHedCw+eW1rSiNN5ItkoqruQasjSZqLoVAZZfzWg=", "sha256-Wsx2v03yhjdW+TTSi6o+74nMiMNliuWLPnFCf1bllaA="]],
+  ["familiars.html", ["sha256-y2IRHedCw+eW1rSiNN5ItkoqruQasjSZqLoVAZZfzWg=", "sha256-nJH4UipXNiMgkX4silgRq/05e32yB0ttc0wapgd++FY="]],
+  // The install guide and the semantic-colors article (read 2026-11-15, when they moved onto
+  // assets/site.css): the same head bootstrap as the Familiars page, and one body script, the
+  // same on both, that works the light/dark switch and the motion switch, each saving its choice
+  // under familiars-theme and familiars-motion and writing only its own label's text, and
+  // scrolls keyboard focus clear of the floating switch. It loads, fetches and navigates nothing.
+  ["claude-code-theme-install-guide.html", ["sha256-y2IRHedCw+eW1rSiNN5ItkoqruQasjSZqLoVAZZfzWg=", "sha256-y0m2bisvFZR0rgHhVlo6G4IE4cMPtZp8YtBH5iFgLtY="]],
+  ["semantic-terminal-colors.html", ["sha256-y2IRHedCw+eW1rSiNN5ItkoqruQasjSZqLoVAZZfzWg=", "sha256-y0m2bisvFZR0rgHhVlo6G4IE4cMPtZp8YtBH5iFgLtY="]],
 ]);
 // Every page under theme/ is rendered by scripts/build-theme-pages.mjs (main's
 // #59) and runs one script, the same on each: its copy button, which writes a
@@ -4878,7 +4885,7 @@ const siteFontFiles = Object.fromEntries(
     (await readdir(new URL("assets/fonts/", root))).map(async (name) => [name, name.endsWith(".txt") ? await readFile(new URL(`assets/fonts/${name}`, root), "utf8") : true]),
   ),
 );
-const pageFonts = (await Promise.all(htmlFiles.map(async (path) => siteStyle.pageFontFiles(await readFile(new URL(path, root), "utf8"), path)))).flat();
+const pageFonts = (await Promise.all(htmlFiles.map(async (path) => siteStyle.pageFontFaces(await readFile(new URL(path, root), "utf8"), path)))).flat();
 for (const problem of siteStyle.fontProblems(siteCss, siteFontFiles, pageFonts)) fail(problem);
 const siteFonts = siteStyle.fontFaces(siteCss).flatMap(({ urls }) => urls);
 const siteTokens = siteStyle.sharedTokens(siteCss);

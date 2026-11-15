@@ -4486,3 +4486,12 @@ for (const [defect, edits, message] of [
     }
   });
 }
+
+test("rejects a page's own @font-face whose file is not in assets/fonts", { timeout: 90_000 }, async (t) => {
+  const anchor = '<style>\n';
+  const fixtureRoot = await editPage(t, "familiars.html", anchor,
+    `${anchor}@font-face{font-family:"Familjen Grotesk";font-style:italic;font-weight:400;font-display:swap;src:url("assets/fonts/Gone.woff2") format("woff2")}\n`);
+  const result = await runVerifier(fixtureRoot);
+  assert.notEqual(result.code, 0, "a page face whose file is not there passed");
+  assert.match(result.stderr, /familiars\.html @font-face for "Familjen Grotesk" loads assets\/fonts\/Gone\.woff2, which is not a file in assets\/fonts/);
+});
