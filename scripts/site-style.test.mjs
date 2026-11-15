@@ -312,7 +312,7 @@ test("pause: a loop holds its frame; what would hold a half-finished frame or st
 });
 
 test("pages: the storefront on disk wears the base, and each part of it is required", () => {
-  assert.deepEqual(SITE_PAGES, ["index.html", "familiars.html"]);
+  assert.deepEqual(SITE_PAGES, ["index.html", "familiars.html", "claude-code-theme-install-guide.html", "semantic-terminal-colors.html"]);
   assert.deepEqual(pageProblems(page, "index.html", fontFiles, tokens), []);
   const check = (html) => pageProblems(html, "index.html", fontFiles, tokens);
   bad(check(swap(page, '<link rel="stylesheet" href="assets/site.css">\n', "")), /index\.html does not link assets\/site\.css/, "no stylesheet");
@@ -459,6 +459,20 @@ test("pages: the Familiars page wears the base too, and a mark, which may be dim
   bad(pageProblems(swap(page, '<span class="l3"></span></div>', '<span class="l3">glow</span></div>'), "index.html", fontFiles, tokens), /index\.html <div class="lights"> is a mark \(\.lights\).*\("glow"\)/, "text in the lights");
   assert.deepEqual(check(swap(familiars, '<div class="beam"></div>', '<div class="beam"><!-- one turn -> 9s --> </div>')), [], "a comment, even one holding >, and whitespace are not text");
   assert.deepEqual(check(swap(familiars, '<div class="beam"></div>', '<div class="beam"></div>Wick')), [], "text after the mark's end tag is outside it");
+});
+
+test("pages: the install guide and the article wear the base, and their command specimens keep the coding palette", async () => {
+  for (const path of ["claude-code-theme-install-guide.html", "semantic-terminal-colors.html"]) {
+    const html = await readFile(new URL(path, root), "utf8");
+    const check = (source) => pageProblems(source, path, fontFiles, tokens);
+    const name = path.replace(/[.]/g, "\\.");
+    assert.deepEqual(check(html), [], `${path} as it is`);
+    bad(check(swap(html, '<link rel="stylesheet" href="assets/site.css">\n', "")), new RegExp(`${name} does not link assets/site\\.css`), `${path} off the base`);
+    bad(check(swap(html, '<button class="motion-switch" id="motionSwitch" type="button" hidden>Pause motion</button>', "")), new RegExp(`${name} does not carry the motion switch`), `${path} without its pause`);
+    // The coding palette is a specimen's own: the same rule outside one reads as page text.
+    bad(check(swap(html, ".specimen .syntax-scope{", ".syntax-scope{")), /outside a specimen or a theme preview, text takes --ink, --mute, --faint or --accent/, `${path} with the coding palette on the page`);
+    bad(check(swap(html, ".specimen.code-panel{background:var(--terminal-surface)}", ".code-panel{background:var(--terminal-surface)}")), /--terminal-surface is neither/, `${path} with the terminal surface on the page`);
+  }
 });
 
 test("fonts: each face loads a file that is there, each file is used, and each family carries the OFL", async () => {
