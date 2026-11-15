@@ -933,6 +933,27 @@ under `plugins/`, which robots.txt blocks by directory, and #71 lists each in
 `expectedPackageFiles`. The full suite was run at the exact tree of the commit
 that carries this paragraph; its message states the count.
 
+**(merged 2026-11-15) Main's #82 to #89, the site-style passes.** Eight pull
+requests moved `main` from f18fe61 to 5801ae7 the same day: the shared
+stylesheet's colours, keyframes, previews, font faces, chip wash and
+focus-visible rules, and the Familiars page, the install guide and the
+semantic-colors article moved onto `assets/site.css`, their scripts reviewed in
+`reviewedInlineScripts`. Merged into #74 as 3b38964 with one conflict, in
+`scripts/verify.test.mjs`, where both sides appended tests at the end of the
+file (this branch's `llms.txt` and robots tests, main's page `@font-face`
+test); both kept. One thing followed: #89 moved the install guide's and the
+article's `dateModified` to 2026-11-15, and this branch's sitemap carries a
+`<lastmod>` read from those dates, so `verify` refused the merge as a stale
+sitemap until `scripts/build-theme-pages.mjs` was run again (two `<lastmod>`
+values changed, nothing else). The page-dates guard read the merge's second
+side, as the 2026-10-30 fix below says it does. Main's #87 also made the
+page-dates scenario move the install guide's stamp before the verifier's first
+run, which here leaves the sitemap stale, so that fixture now rebuilds the
+sitemap after the first move as it already did after the later one; the red
+steps between them fail on the page-dates check, which runs before the
+sitemap's. Nothing else in #74's guards needed adapting. The full suite was run at the exact tree of the commit that
+carries this paragraph; its message states the count.
+
 **(added 2026-10-30) What the sitemap, `llms.txt` and robots.txt say the site
 holds is read against the pages.** WP10. `verify` compared the sitemap only
 with the builder that writes it, and read neither `llms.txt`'s links nor
