@@ -4924,6 +4924,25 @@ for (const path of siteStyle.SHARE_CARDS) {
   for (const problem of siteStyle.pageProblems(await readFile(new URL(path, root), "utf8"), path, siteFonts, siteTokens, { card: true })) fail(problem);
 }
 
+// Every served page names the address Pages serves it at, in its canonical link, its og:url
+// and its JSON-LD, and each theme page's breadcrumb ends at itself under its theme file's name
+// (since 2026-11-15). Both expectations come from outside the theme-page builder: the address
+// from CNAME and the file's path, the name from the theme file. See scripts/page-addresses.mjs.
+const pageAddresses = await import("./page-addresses.mjs");
+for (const page of linkedPages) {
+  const markup = await readPage(page);
+  const blocks = ldJsonBlocks(page, markup).map((block) => block.value);
+  for (const problem of pageAddresses.addressProblems(page, markup, blocks, siteUrl)) fail(problem);
+}
+for (const [themesRoot, themeFiles] of [[root, files], [vol2ThemesRoot, vol2Files]]) {
+  for (const file of themeFiles) {
+    const { name } = JSON.parse(await readFile(fileUrl(file, themesRoot), "utf8"));
+    const page = `theme/${file.replace(/\.json$/, "")}/index.html`;
+    const blocks = ldJsonBlocks(page, await readFile(fileUrl(page), "utf8")).map((block) => block.value);
+    for (const problem of pageAddresses.breadcrumbProblems(page, blocks, siteUrl, name)) fail(problem);
+  }
+}
+
 console.log(
   `Verified ${files.length} themes, ${pluginFiles.length} plugin themes, ${vol2Files.length} Vol. 2 themes, ` +
     `${galleryThemes.length} gallery cards, ${galleryDataThemes.length} /themes gallery entries, ` +
