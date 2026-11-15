@@ -4071,3 +4071,12 @@ test("rejects a Vol. 2 preview colour written twice for one theme", { timeout: 9
   assert.notEqual(result.code, 0, "a preview row written twice passed");
   assert.match(result.stderr, /previews\.json writes a preview colour for Afterglow twice/);
 });
+
+test("rejects a page's own @font-face whose file is not in assets/fonts", { timeout: 90_000 }, async (t) => {
+  const anchor = '@font-face{font-family:"Familjen Grotesk";font-style:normal;font-weight:400;font-display:swap;src:url(assets/fonts/familjen-grotesk-latin-ext-400-normal.woff2)';
+  const fixtureRoot = await editPage(t, "familiars.html", anchor,
+    `@font-face{font-family:"Familjen Grotesk";font-style:italic;font-weight:400;font-display:swap;src:url(assets/fonts/Gone.woff2) format("woff2")}\n${anchor}`);
+  const result = await runVerifier(fixtureRoot);
+  assert.notEqual(result.code, 0, "a page face whose file is not there passed");
+  assert.match(result.stderr, /familiars\.html @font-face for "Familjen Grotesk" loads assets\/fonts\/Gone\.woff2, which is not a file in assets\/fonts/);
+});

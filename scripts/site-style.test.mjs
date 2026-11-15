@@ -6,7 +6,7 @@ import { join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 
-import { CONTRAST_PAIRS, PALETTE, SITE_PAGES, STYLESHEET, THEME_PREVIEWS, colourLiterals, contrast, fontFaces, fontProblems, motionProblems, pageFontFiles, OWN_TEXT, pageProblems, parseCss, selectorProblem, sharedTokens, stylesheetProblems, themesOf } from "./site-style.mjs";
+import { CONTRAST_PAIRS, PALETTE, SITE_PAGES, STYLESHEET, THEME_PREVIEWS, colourLiterals, contrast, fontFaces, fontProblems, motionProblems, pageFontFaces, pageFontFiles, OWN_TEXT, pageProblems, parseCss, selectorProblem, sharedTokens, stylesheetProblems, themesOf } from "./site-style.mjs";
 
 const root = new URL("../", import.meta.url);
 const projectRoot = fileURLToPath(root);
@@ -445,6 +445,26 @@ test("fonts: each face loads a file that is there, each file is used, and each f
   );
   assert.equal(fontFaces('@font-face{font-family:"A";font-family:"B";src:url("b.woff2")}')[0].family, "B", "the family the browser takes, the last");
   assert.deepEqual(pageFontFiles(`<!-- ${ownFaces} -->`, "familiars.html"), [], "a face in a comment loads nothing");
+});
+
+test("fonts: a page's own @font-face is held as the stylesheet's: a file in assets/fonts that is there, and its family's OFL", async () => {
+  const files = await fontDirectory();
+  const familiars = pageFontFaces(await readFile(new URL("familiars.html", root), "utf8"), "familiars.html");
+  assert.ok(familiars.length > 0 && familiars.every(({ path }) => path === "familiars.html"));
+  assert.deepEqual(fontProblems(css, files, familiars), [], "the real page's faces pass");
+  const page = (face) => pageFontFaces(`<style>${face}</style>`, "familiars.html");
+  const spare = { ...files, "Spare.woff2": true };
+  // A licensed family loading a file that is there passes, and its file counts as used.
+  assert.deepEqual(fontProblems(css, spare, [...familiars, ...page('@font-face{font-family:"IBM Plex Mono";src:url(assets/fonts/Spare.woff2) format("woff2")}')]), []);
+  bad(fontProblems(css, files, [...familiars, ...page('@font-face{font-family:"IBM Plex Mono";src:url(assets/fonts/Gone.woff2) format("woff2")}')]), /familiars\.html @font-face for "IBM Plex Mono" loads assets\/fonts\/Gone\.woff2, which is not a file in assets\/fonts/, "a page face whose file is not there");
+  bad(fontProblems(css, files, [...familiars, ...page('@font-face{font-family:"IBM Plex Mono";src:url(assets/other/ibm-plex-mono-latin-400-normal.woff2) format("woff2")}')]), /familiars\.html @font-face for "IBM Plex Mono" loads assets\/other\/ibm-plex-mono-latin-400-normal\.woff2, which is not a file in assets\/fonts/, "a page face outside assets/fonts, named as a file that is there");
+  bad(fontProblems(css, spare, [...familiars, ...page('@font-face{font-family:"Probe Sans";src:url(assets/fonts/Spare.woff2) format("woff2")}')]), /assets\/fonts\/OFL-ProbeSans\.txt is missing or is not the SIL Open Font License; "Probe Sans" \(familiars\.html\)/, "a page family with no licence");
+  bad(fontProblems(css, files, [...familiars, ...page('@font-face{font-family:"IBM Plex Mono";src:local("IBM Plex Mono")}')]), /familiars\.html @font-face for "IBM Plex Mono" loads no file/, "a page face that loads no file");
+  // Another host is reported once, by the page's own check, not again here.
+  assert.deepEqual(fontProblems(css, files, [...familiars, ...page('@font-face{font-family:"IBM Plex Mono";src:url(https://example.com/p.woff2) format("woff2")}')]), [], "another host is pageProblems' to report");
+  // A family missing its licence on the stylesheet and on a page is reported once.
+  const twice = fontProblems(css, Object.fromEntries(Object.entries(files).filter(([key]) => key !== "OFL-IBMPlexMono.txt")), familiars);
+  assert.equal(twice.filter((problem) => problem.includes("OFL-IBMPlexMono.txt")).length, 1, "one licence, one message");
 });
 
 // --- the verifier on the real files -----------------------------------------------------------
