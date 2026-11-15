@@ -123,6 +123,27 @@ test("contrast: muted text on a selected chip's violet wash has the text floor t
   assert.ok(thick.some((problem) => problem.includes("--faint")) && thick.some((problem) => problem.includes("over raise")), "each muted token, and the raised surface, are read");
 });
 
+test("scripts: a selector older browsers cannot parse is asked for only behind CSS.supports", async () => {
+  const fontFiles = fontFaces(css).flatMap(({ urls }) => urls);
+  const tokens = sharedTokens(css);
+  const check = (html) => pageProblems(html, "index.html", fontFiles, tokens);
+  assert.deepEqual(check(page), [], "the storefront tests :focus-visible before it asks for it");
+  const call = '!(focusVisibleKnown && event.target.matches(":focus-visible"))';
+  const bind = 'const focusVisibleKnown = CSS.supports("selector(:focus-visible)");';
+  const add = (line) => swap(page, bind, `${bind}\n  ${line}`);
+  bad(check(swap(page, call, '!event.target.matches(":focus-visible")')), /index\.html's script calls matches\(":focus-visible"\), which throws a SyntaxError in a browser that does not know :focus-visible \(Safari before 15\.4\)/, "the storefront's call unguarded");
+  bad(check(swap(page, bind, 'const focusVisibleKnown = CSS.supports("selector(:hover)");')), /calls matches\(":focus-visible"\)/, "a guard that tests another selector");
+  bad(check(swap(page, call, '!(focusVisibleKnown || event.target.matches(":focus-visible"))')), /calls matches\(":focus-visible"\)/, "a guard joined with || instead of &&");
+  bad(check(swap(page, call, '!(notfocusVisibleKnown && event.target.matches(":focus-visible"))')), /calls matches\(":focus-visible"\)/, "another name that only ends like the guard");
+  bad(check(add('document.body.closest(".card:has(.cmd)");')), /calls closest\("\.card:has\(\.cmd\)"\), which throws a SyntaxError in a browser that does not know :has \(Safari before 15\.4\)/, "a :has() in closest()");
+  bad(check(add("document.querySelectorAll(':is(h2, h3)');")), /calls querySelectorAll\(":is\(h2, h3\)"\), which throws a SyntaxError in a browser that does not know :is \(Safari before 14\)/, "an :is() in single quotes");
+  bad(check(add("document.querySelector(`:where(.pick)`);")), /does not know :where/, "a :where() in a template string");
+  bad(check(add('if (focusVisibleKnown && document.body) document.body.focus();\n  document.body.matches(":focus-visible");')), /calls matches\(":focus-visible"\)/, "a guard that covers an earlier statement, not this one");
+  // Selectors every supported browser parses are asked for freely, and so is a guarded call.
+  assert.deepEqual(check(add('document.querySelector(".card:hover, a:focus, :focus-within");')), []);
+  assert.deepEqual(check(add('const hasKnown = CSS.supports("selector(:has(a))");\n  if (hasKnown && document.body) document.body.closest(":has(.cmd)");')), [], "a :has() behind its own guard");
+});
+
 test("palette: a colour the design base does not name fails, however it is written", () => {
   bad(stylesheetProblems(swap(css, "--ink: #EDEBF3;         /* text */", "--ink: #EDEDED;         /* text */")), /--ink }: #EDEDED is #EDEDED, which is not in the house palette/, "a near-white of its own");
   const softAnchor = "rgba(168, 152, 255, 0.16);\n  --accent-dim: color-mix(in srgb, var(--accent) 42%, var(--hair));\n  --ember: #FFB46B;       /* the one warm point */";
