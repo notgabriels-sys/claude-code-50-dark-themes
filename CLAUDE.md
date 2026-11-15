@@ -946,9 +946,11 @@ article's `dateModified` to 2026-11-15, and this branch's sitemap carries a
 `<lastmod>` read from those dates, so `verify` refused the merge as a stale
 sitemap until `scripts/build-theme-pages.mjs` was run again (two `<lastmod>`
 values changed, nothing else). The page-dates guard read the merge's second
-side, as the 2026-10-30 fix below says it does. Main's #87 also made the
-page-dates scenario move the install guide's stamp before the verifier's first
-run, which here leaves the sitemap stale, so that fixture now rebuilds the
+side, as the 2026-10-30 fix below says it does. Main's #89 (e28c56f) also made
+the page-dates scenario move the install guide's stamp before the verifier's
+first run (corrected 2026-11-15: this said #87, whose a08d939 touched only the
+storefront's focus styles and the site-style guard; 47c3d70's message carries
+the same error), which here leaves the sitemap stale, so that fixture now rebuilds the
 sitemap after the first move as it already did after the later one; the red
 steps between them fail on the page-dates check, which runs before the
 sitemap's. Nothing else in #74's guards needed adapting. The full suite was run at the exact tree of the commit that
