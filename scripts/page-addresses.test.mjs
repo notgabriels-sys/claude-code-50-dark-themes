@@ -41,6 +41,8 @@ test("page addresses: another page's address, or this one spelled another way, i
   const howTo = { "@context": "https://schema.org", "@type": "HowTo", url: SITE };
   assert.match(addressProblems("guide.html", head("https://gabs-utilities.com/guide.html"), [howTo], SITE).join("\n"), /HowTo node gives url "https:\/\/gabs-utilities\.com\/"/);
   // A thing the page is about, not the page itself, keeps its own address.
+  // An equivalent spelling is the same address; a page node that names no address states nothing wrong.
+  assert.deepEqual(addressProblems("index.html", head("https://gabs-utilities.com", "HTTPS://Gabs-Utilities.com/"), [{ "@type": "WebPage", name: "x" }], SITE), []);
   const plugin = { "@context": "https://schema.org", "@type": "SoftwareApplication", "@id": `${SITE}#plugin`, url: SITE };
   assert.deepEqual(addressProblems("theme/acid/index.html", head(page("acid")), [plugin], SITE), []);
 });

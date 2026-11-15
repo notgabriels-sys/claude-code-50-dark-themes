@@ -23,6 +23,17 @@ export function servedAddress(path, site) {
   return new URL(directory ?? path, base).href;
 }
 
+// An address as a browser or crawler resolves it: absolute, and written any equivalent way
+// ("https://gabs-utilities.com" is "https://gabs-utilities.com/"). A relative one resolves
+// against wherever it is read from, so it names no one address and never matches.
+const absolute = (value) => {
+  try {
+    return new URL(String(value)).href;
+  } catch {
+    return null;
+  }
+};
+
 const relTokens = (value) => String(value).toLowerCase().split(/[\t\n\f\r ]+/).filter(Boolean);
 
 // The page's own address as each place states it, read as the browser's tokenizer reads tags.
@@ -59,24 +70,24 @@ export function addressProblems(path, markup, jsonLd, site) {
       problems.push(`${path} has no ${label}. Every indexed page names its own address, ${served}, so a search engine and a share preview both land on it.`);
     }
     for (const value of found) {
-      if (value !== served) {
+      if (absolute(value) !== served) {
         problems.push(
           `${path} gives its ${label} as ${JSON.stringify(value)}, but GitHub Pages serves it at ${served} ` +
-            `(the domain in CNAME and the file's own path). Write that address exactly.`,
+            `(the domain in CNAME and the file's own path). Write that address, in full.`,
         );
       }
     }
   }
   for (const node of pageNodes) {
     for (const key of ["@id", "url"]) {
-      if (node[key] !== served) {
+      if (key in node && absolute(node[key]) !== served) {
         problems.push(`${path}'s ${typesOf(node).join("/")} node gives ${key} ${JSON.stringify(node[key])}; the page is served at ${served}.`);
       }
     }
   }
   // An article or a how-to is the page's own content, so its url, where it gives one, is the page.
   for (const node of jsonLd.flatMap(nodesOf).filter((node) => typesOf(node).some((type) => CONTENT_TYPES.has(type)))) {
-    if ("url" in node && node.url !== served) {
+    if ("url" in node && absolute(node.url) !== served) {
       problems.push(`${path}'s ${typesOf(node).join("/")} node gives url ${JSON.stringify(node.url)}; the page is served at ${served}.`);
     }
   }

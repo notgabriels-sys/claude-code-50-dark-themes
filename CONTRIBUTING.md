@@ -206,7 +206,7 @@ After every push to `main`, once GitHub Pages has deployed it, `.github/workflow
 sends every address in `sitemap.xml` to IndexNow with the site's key
 (`scripts/submit-indexnow.mjs`); the key file at the root must keep its name and content.
 
-Every served page names the address GitHub Pages serves it at, written exactly, in its canonical
+Every served page names the address GitHub Pages serves it at, in full, in its canonical
 link, its `og:url` and the page node of its JSON-LD, and each theme page's breadcrumb runs from the
 site to the theme index to itself under its theme file's name (`scripts/page-addresses.mjs`). A
 page asking not to be indexed, or a screenshot asset under `assets/`, may state no address, but
