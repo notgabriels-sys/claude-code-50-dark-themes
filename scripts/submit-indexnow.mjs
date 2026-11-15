@@ -43,18 +43,18 @@ export function keyFileProblem(text, key = INDEXNOW_KEY) {
   return null;
 }
 
-// Waits for the Pages run of a commit. getRuns(commit) returns that commit's workflow runs
+// Waits for the Pages run of a commit (scripts/check-live-site.mjs waits the same way). getRuns(commit) returns that commit's workflow runs
 // ({ name, status, conclusion }); sleep is injected so the tests do not wait.
-export async function waitForPages(commit, getRuns, { attempts = 40, sleep = (ms) => new Promise((done) => setTimeout(done, ms)), interval = 15000 } = {}) {
+export async function waitForPages(commit, getRuns, { attempts = 40, sleep = (ms) => new Promise((done) => setTimeout(done, ms)), interval = 15000, consequence = "nothing was sent to IndexNow" } = {}) {
   for (let attempt = 0; attempt < attempts; attempt += 1) {
     const run = (await getRuns(commit)).find((candidate) => candidate.name === PAGES_WORKFLOW);
     if (run?.status === "completed") {
       if (run.conclusion === "success") return;
-      throw new Error(`The Pages deploy of ${commit.slice(0, 12)} ended "${run.conclusion}"; nothing was sent to IndexNow.`);
+      throw new Error(`The Pages deploy of ${commit.slice(0, 12)} ended "${run.conclusion}"; ${consequence}.`);
     }
     await sleep(interval);
   }
-  throw new Error(`The Pages deploy of ${commit.slice(0, 12)} did not finish in time; nothing was sent to IndexNow.`);
+  throw new Error(`The Pages deploy of ${commit.slice(0, 12)} did not finish in time; ${consequence}.`);
 }
 
 // IndexNow answers 200 (received) or 202 (received, key check pending); anything else is a failure.
