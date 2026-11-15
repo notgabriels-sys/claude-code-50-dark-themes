@@ -569,3 +569,23 @@ test("colour words: read in every property but those that hold names, and a back
   bad(stylesheetProblems(`${css}\n.x { background: var(--accent) TEXT; }\n`), /paints text with something other than its colour/, "in capitals");
   assert.ok(!stylesheetProblems(`${css}\n.x { background: var(--text, var(--surface)) url("text.png") padding-box; }\n`).some((problem) => /paints text/.test(problem)), "a token, a file or a box named text is no clip");
 });
+
+test("keyframes: an animation whose frames dim text runs once and ends at full strength", () => {
+  const inBlock = (rules) => `${css}\n@media (prefers-reduced-motion: no-preference) { ${rules} }\n`;
+  const fade = "@keyframes fade { 50% { opacity: .2; } }";
+  bad(stylesheetProblems(inBlock(`${PAUSE_GATE} .x { animation: fade 2s ease infinite; } ${fade}`)), /\.x \{ animation: fade 2s ease infinite \} runs fade, whose frames dim what they run on, without end/, "a loop that dims text");
+  bad(stylesheetProblems(inBlock(`${PAUSE_GATE} .x { animation: fade 2s ease 3; } ${fade}`)), /runs fade, whose frames dim what they run on, 3 times/, "a count above one");
+  bad(stylesheetProblems(inBlock(`${PAUSE_GATE} .x { animation-name: Fade; animation-duration: 2s; animation-iteration-count: infinite; } ${fade}`)), /\{ animation-name: Fade \} runs fade, .* without end/, "the longhands, the name in capitals");
+  bad(stylesheetProblems(inBlock(`${PAUSE_GATE} .x { animation: dimout .5s ease forwards; } @keyframes dimout { to { opacity: .3; } }`)), /ends dimout on a frame that dims/, "a last frame that dims");
+  bad(stylesheetProblems(inBlock(`${PAUSE_GATE} .x { animation: blurin .5s ease reverse; } @keyframes blurin { from { filter: blur(4px); } }`)), /ends blurin on a frame that dims/, "reversed, the first frame is the last");
+  bad(stylesheetProblems(inBlock(`${PAUSE_GATE} .x { animation: drift-a 9s ease infinite, fade 2s ease infinite; } ${fade}`)), /runs fade, whose frames dim/, "the second layer of a list");
+  // Run once and ending at the element's own value, an entrance stays readable.
+  assert.deepEqual(stylesheetProblems(inBlock(`${PAUSE_GATE} .x { animation: rise .5s ease both; } @keyframes rise { from { opacity: .3; } to { opacity: 1; } }`)), [], "an entrance to full strength");
+  assert.deepEqual(stylesheetProblems(inBlock(`${PAUSE_GATE} .x { animation: blurin .5s ease; } @keyframes blurin { from { filter: blur(4px); } }`)), [], "a last frame left to the element");
+  // On a mark, frames may dim as the mark's own opacity may.
+  assert.deepEqual(stylesheetProblems(inBlock(`${PAUSE_GATE} .x::after { animation: fade 2s ease infinite; } ${fade}`)), [], "a pulse on a ::after");
+  // The same holds in a page's own style block.
+  bad(pageProblems(withStyle(page, "  .card h3{animation:blink 1s steps(2) infinite}\n  @keyframes blink{50%{opacity:0}}"), "index.html", fontFiles, tokens), /index\.html \.card h3 \{ animation: blink 1s steps\(2\) infinite \} runs blink, whose frames dim/, "a blinking heading on the page");
+  // Frames that move but do not dim are not this rule's.
+  assert.deepEqual(stylesheetProblems(inBlock(`${PAUSE_GATE} .x { animation: drift-a 9s ease infinite; }`)), [], "a drift that never dims");
+});
