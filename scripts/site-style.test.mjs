@@ -6,7 +6,7 @@ import { join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 
-import { CONTRAST_PAIRS, PALETTE, SITE_PAGES, STYLESHEET, THEME_PREVIEWS, colourLiterals, contrast, fontFaces, fontProblems, motionProblems, pageFontFiles, pageProblems, parseCss, selectorProblem, sharedTokens, stylesheetProblems, themesOf } from "./site-style.mjs";
+import { CONTRAST_PAIRS, PALETTE, SITE_PAGES, STYLESHEET, THEME_PREVIEWS, colourLiterals, contrast, fontFaces, fontProblems, motionProblems, pageFontFiles, OWN_TEXT, pageProblems, parseCss, selectorProblem, sharedTokens, stylesheetProblems, themesOf } from "./site-style.mjs";
 
 const root = new URL("../", import.meta.url);
 const projectRoot = fileURLToPath(root);
@@ -588,4 +588,24 @@ test("keyframes: an animation whose frames dim text runs once and ends at full s
   bad(pageProblems(withStyle(page, "  .card h3{animation:blink 1s steps(2) infinite}\n  @keyframes blink{50%{opacity:0}}"), "index.html", fontFiles, tokens), /index\.html \.card h3 \{ animation: blink 1s steps\(2\) infinite \} runs blink, whose frames dim/, "a blinking heading on the page");
   // Frames that move but do not dim are not this rule's.
   assert.deepEqual(stylesheetProblems(inBlock(`${PAUSE_GATE} .x { animation: drift-a 9s ease infinite; }`)), [], "a drift that never dims");
+});
+
+test("previews: text inside a specimen or a theme preview takes the colours that root sets for itself", () => {
+  const check = (rule) => pageProblems(withStyle(page, `  ${rule}`), "index.html", fontFiles, tokens);
+  const refused = (rule, name) => bad(check(rule), new RegExp(`${rule.split("{")[0].trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")} \\{ color: var\\(${name}\\) \\}: inside a specimen or a theme preview, text takes the colours that root sets for itself .*${name} is not one of them`), rule);
+  // A shared token is held against the page's ground, not the preview's.
+  refused(".card .x{color:var(--accent)}", "--accent");
+  refused(".card .x{color:var(--ground)}", "--ground");
+  refused(".pick .x{color:var(--mute)}", "--mute");
+  // Another root's colours, and a name this root never sets.
+  refused(".cmd .x{color:var(--fg)}", "--fg");
+  refused(".theme-monolith .x{color:var(--a)}", "--a");
+  refused(".pick .x{color:var(--sh)}", "--sh");
+  refused(".card .cmd .x{color:var(--fg)}", "--fg");
+  refused(".card .x, .theme-monolith .y{color:var(--fg)}", "--fg");
+  // Each root's own.
+  for (const rule of [".card .x{color:var(--sh)}", ".pick .x{color:var(--a)}", ".theme-monolith .x{color:var(--stage-mut)}", ".cmd .x{color:var(--syntax-light-blue)}", ".specimen .x{color:var(--ink)}", ".card .cmd .x{color:var(--syntax-blue)}", ".card .x{color:currentcolor}"]) {
+    assert.ok(!check(rule).some((problem) => /inside a specimen or a theme preview/.test(problem)), `${rule} takes its root's own colour`);
+  }
+  assert.deepEqual(Object.keys(OWN_TEXT).sort(), [".cmd", ".specimen", ...[".theme-monolith", ".pick", ".card"]].sort(), "every specimen and preview has its own colours");
 });
