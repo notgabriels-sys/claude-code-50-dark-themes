@@ -312,7 +312,7 @@ test("pause: a loop holds its frame; what would hold a half-finished frame or st
 });
 
 test("pages: the storefront on disk wears the base, and each part of it is required", () => {
-  assert.deepEqual(SITE_PAGES, ["index.html"]);
+  assert.deepEqual(SITE_PAGES, ["index.html", "familiars.html"]);
   assert.deepEqual(pageProblems(page, "index.html", fontFiles, tokens), []);
   const check = (html) => pageProblems(html, "index.html", fontFiles, tokens);
   bad(check(swap(page, '<link rel="stylesheet" href="assets/site.css">\n', "")), /index\.html does not link assets\/site\.css/, "no stylesheet");
@@ -448,11 +448,25 @@ test("pages: the storefront on disk wears the base, and each part of it is requi
   bad(check(swap(page, '<p class="lede">', '<p class="lede" style="background:#16161C">')), /has a style attribute that sets background/, "a surface in a style attribute");
 });
 
+test("pages: the Familiars page wears the base too, and a mark, which may be dimmed, holds no text", async () => {
+  const familiars = await readFile(new URL("familiars.html", root), "utf8");
+  assert.deepEqual(pageProblems(familiars, "familiars.html", fontFiles, tokens), []);
+  const check = (html) => pageProblems(html, "familiars.html", fontFiles, tokens);
+  bad(check(swap(familiars, '<link rel="stylesheet" href="assets/site.css">\n', "")), /familiars\.html does not link assets\/site\.css/, "the Familiars page off the base");
+  // The hero's beam and rings are blurred and dimmed: text inside one would be too.
+  bad(check(swap(familiars, '<div class="beam"></div>', '<div class="beam">Wick</div>')), /familiars\.html <div class="beam"> is a mark \(\.beam\), which may be dimmed or blurred, and holds text \("Wick"\)/, "text in a mark");
+  bad(check(swap(familiars, '<div class="ring r2"></div>', '<div class="ring r2"><div></div>Wick</div>')), /<div class="ring r2"> is a mark \(\.ring\).*\("Wick"\)/, "text after a nested element of the same name");
+  bad(pageProblems(swap(page, '<span class="l3"></span></div>', '<span class="l3">glow</span></div>'), "index.html", fontFiles, tokens), /index\.html <div class="lights"> is a mark \(\.lights\).*\("glow"\)/, "text in the lights");
+  assert.deepEqual(check(swap(familiars, '<div class="beam"></div>', '<div class="beam"><!-- one turn -> 9s --> </div>')), [], "a comment, even one holding >, and whitespace are not text");
+  assert.deepEqual(check(swap(familiars, '<div class="beam"></div>', '<div class="beam"></div>Wick')), [], "text after the mark's end tag is outside it");
+});
+
 test("fonts: each face loads a file that is there, each file is used, and each family carries the OFL", async () => {
   const files = await fontDirectory();
-  // The Familiars page still loads its own faces (main's #65 and its follow-ups); those files count as used.
+  // The Familiars page loads its faces from the stylesheet since it moved onto the base, so no page
+  // loads a font file of its own and every file in assets/fonts is the stylesheet's.
   const familiarsFonts = pageFontFiles(await readFile(new URL("familiars.html", root), "utf8"), "familiars.html");
-  assert.ok(familiarsFonts.length > 0);
+  assert.deepEqual(familiarsFonts, []);
   assert.deepEqual(fontProblems(css, files, familiarsFonts), []);
   const plex = ["Regular", "Medium"].flatMap((weight) => ["Latin1", "Latin2", "Latin3", "Pi"].map((script) => `assets/fonts/IBMPlexMono-${weight}-${script}.woff2`));
   assert.deepEqual(fontFiles, ["assets/fonts/FamiljenGrotesk-VF.woff2", ...plex]);
@@ -485,9 +499,10 @@ test("fonts: each face loads a file that is there, each file is used, and each f
 
 test("fonts: a page's own @font-face is held as the stylesheet's: a file in assets/fonts that is there, and its family's OFL", async () => {
   const files = await fontDirectory();
+  // The real page has none of its own any more (it is on the base); the faces below are written for it.
   const familiars = pageFontFaces(await readFile(new URL("familiars.html", root), "utf8"), "familiars.html");
-  assert.ok(familiars.length > 0 && familiars.every(({ path }) => path === "familiars.html"));
-  assert.deepEqual(fontProblems(css, files, familiars), [], "the real page's faces pass");
+  assert.deepEqual(familiars, []);
+  assert.deepEqual(fontProblems(css, files, familiars), [], "the real page passes");
   const page = (face) => pageFontFaces(`<style>${face}</style>`, "familiars.html");
   const spare = { ...files, "Spare.woff2": true };
   // A licensed family loading a file that is there passes, and its file counts as used.

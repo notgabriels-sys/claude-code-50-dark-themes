@@ -16,6 +16,9 @@ await mkdir(output, { recursive: true });
 const browser = await chromium.launch({ headless: true });
 const results = [];
 let failures = 0;
+// A familiar's card: <article class="creature lit"> since the page moved onto assets/site.css,
+// <article class="card"> in the historical baseline; both carry data-kind.
+const CARD = "article[data-kind]";
 
 // Instrument native scheduling without replacing the app's behavior. The
 // counters catch an eye loop or blink timer left alive after pausing motion.
@@ -68,9 +71,9 @@ async function open(context, url = candidateUrl) {
 }
 
 async function checkRequests(page) {
-  assert.equal(await page.locator(".card").count(), 7, "catalogue must contain seven cards");
+  assert.equal(await page.locator(CARD).count(), 7, "catalogue must contain seven cards");
   for (const name of ["Latch", "Loom", "Witness", "Ledger", "Echo", "Den"]) {
-    const card = page.locator(".card").filter({ has: page.getByRole("heading", { name, exact: true }) });
+    const card = page.locator(CARD).filter({ has: page.getByRole("heading", { name, exact: true }) });
     const request = card.getByRole("link", { name: `Request ${name}`, exact: true });
     assert.equal(await request.count(), 1, `${name} needs a named request link`);
     assert.ok(await request.isVisible(), `${name} request link must be visible`);
@@ -83,7 +86,7 @@ async function checkRequests(page) {
 }
 
 async function motionIsStopped(page) {
-  await page.locator(".card").first().hover();
+  await page.locator(CARD).first().hover();
   await page.mouse.move(30, 30);
   await page.waitForTimeout(180);
   const before = await page.evaluate(() => ({
@@ -91,13 +94,13 @@ async function motionIsStopped(page) {
     ...window.__motionStats(),
   }));
   await page.mouse.move(850, 600);
-  await page.locator(".card").first().hover();
+  await page.locator(CARD).first().hover();
   await page.waitForTimeout(180);
   const after = await page.evaluate(() => ({
     eye: [document.getElementById("eye").getAttribute("x"), document.getElementById("eye").getAttribute("y")],
     ...window.__motionStats(),
     running: document.getAnimations().filter((animation) => animation.playState === "running").length,
-    hoverTransform: getComputedStyle(document.querySelector(".card:hover") ?? document.querySelector(".card")).transform,
+    hoverTransform: getComputedStyle(document.querySelector("article[data-kind]:hover") ?? document.querySelector("article[data-kind]")).transform,
   }));
   assert.deepEqual(after.eye, before.eye, "eye must rest when motion is disabled");
   assert.equal(after.callbacks, before.callbacks, "paused eye must not keep requesting frames");
@@ -156,7 +159,7 @@ try {
       const button = page.getByRole("button", { name: label, exact: true });
       await button.click();
       assert.equal(await button.getAttribute("aria-pressed"), "true");
-      assert.equal(await page.locator(".card:visible").count(), count, `${label} filter count`);
+      assert.equal(await page.locator(`${CARD}:visible`).count(), count, `${label} filter count`);
       assert.match(await page.locator("#catalogue-status").textContent(), new RegExp(`\\b${count}\\b`));
       assert.equal(await page.locator('.filters [aria-pressed="true"]').count(), 1);
     }
@@ -197,7 +200,7 @@ try {
       }
       return labels.map((label) => {
         const foreground = luminance(getComputedStyle(label).color);
-        const background = luminance(getComputedStyle(label.closest(".card")).backgroundColor);
+        const background = luminance(getComputedStyle(label.closest("article[data-kind]")).backgroundColor);
         return (Math.max(foreground, background) + 0.05) / (Math.min(foreground, background) + 0.05);
       });
     });
@@ -213,7 +216,7 @@ try {
     await page.getByRole("button", { name: "Pause motion", exact: true }).click();
     assert.equal(await page.locator("html").getAttribute("data-motion"), "paused");
     await page.getByRole("button", { name: "Skills", exact: true }).click();
-    assert.equal(await page.locator(".card:visible").count(), 5);
+    assert.equal(await page.locator(`${CARD}:visible`).count(), 5);
   });
 
   await check("clipboard writes the address and rejects with a useful fallback", async (context) => {
@@ -252,7 +255,7 @@ try {
     }
     await page.emulateMedia({ reducedMotion: "reduce" });
     await page.waitForTimeout(100);
-    assert.ok(!(await page.locator("#motion").isVisible()), "OS reduced motion must hide the play control");
+    assert.ok(!(await page.locator("#motionSwitch").isVisible()), "OS reduced motion must hide the play control");
     await motionIsStopped(page);
     await page.emulateMedia({ reducedMotion: "no-preference" });
     await page.waitForTimeout(100);
@@ -263,18 +266,18 @@ try {
   await check("OS reduced motion starts with a stationary page", async (context) => {
     await context.addInitScript(observePage);
     const page = await open(context);
-    assert.ok(!(await page.locator("#motion").isVisible()));
+    assert.ok(!(await page.locator("#motionSwitch").isVisible()));
     await motionIsStopped(page);
   }, { reducedMotion: "reduce" });
 
   await check("JavaScript disabled preserves requests and hides inactive controls", async (context) => {
     const page = await open(context);
     await checkRequests(page);
-    assert.equal(await page.locator(".card:visible").count(), 7);
-    for (const selector of [".filters", "#theme", "#copy", "#motion"]) {
+    assert.equal(await page.locator(`${CARD}:visible`).count(), 7);
+    for (const selector of [".filters", "#themeSwitch", "#copy", "#motionSwitch"]) {
       assert.ok(!(await page.locator(selector).isVisible()), `${selector} should not offer an inactive control`);
     }
-    assert.equal(await page.locator(".card:visible").count(), 7);
+    assert.equal(await page.locator(`${CARD}:visible`).count(), 7);
     assert.equal(await page.evaluate(() => document.getAnimations().filter((animation) => animation.playState === "running").length), 0);
   }, { javaScriptEnabled: false });
 
@@ -305,7 +308,7 @@ try {
         await page.keyboard.press("Tab");
         await page.waitForTimeout(35);
         const covered = await page.evaluate(() => {
-          const active = document.activeElement, theme = document.getElementById("theme");
+          const active = document.activeElement, theme = document.getElementById("themeSwitch");
           if (!active || active === document.body || active === theme || !theme || theme.hidden) return null;
           const a = active.getBoundingClientRect(), b = theme.getBoundingClientRect();
           if (a.top < -0.5 || a.bottom > innerHeight + 0.5 || a.left < -0.5 || a.right > innerWidth + 0.5) {

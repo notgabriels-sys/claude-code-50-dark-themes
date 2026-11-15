@@ -2736,7 +2736,7 @@ const familiarsNumberWords = ["zero", "one", "two", "three", "four", "five", "si
   "ten", "eleven", "twelve"];
 const familiarsCountClaim = familiarsHtml.match(/<h2>(\w+) familiars, each with its sigil\.<\/h2>/);
 if (!familiarsCountClaim) fail("Familiars: the catalogue heading that states the count is missing.");
-const familiarsCards = (familiarsHtml.match(/<article class="card"/g) ?? []).length;
+const familiarsCards = (familiarsHtml.match(/<article class="creature lit"/g) ?? []).length;
 const familiarsStated = familiarsNumberWords.indexOf(familiarsCountClaim[1].toLowerCase());
 if (familiarsStated !== familiarsCards) {
   fail(`Familiars: the heading says ${familiarsCountClaim[1]} familiars but the page shows ${familiarsCards} cards.`);
@@ -3171,7 +3171,7 @@ const reviewedInlineScripts = new Map([
   // frame/blink loop. Pause, live reduced-motion changes and tab visibility
   // stop motion; only keyboard focus is scrolled clear of the floating switch.
   // Neither script loads, fetches, navigates or writes markup.
-  ["familiars.html", ["sha256-y2IRHedCw+eW1rSiNN5ItkoqruQasjSZqLoVAZZfzWg=", "sha256-Wsx2v03yhjdW+TTSi6o+74nMiMNliuWLPnFCf1bllaA="]],
+  ["familiars.html", ["sha256-y2IRHedCw+eW1rSiNN5ItkoqruQasjSZqLoVAZZfzWg=", "sha256-nJH4UipXNiMgkX4silgRq/05e32yB0ttc0wapgd++FY="]],
 ]);
 // Every page under theme/ is rendered by scripts/build-theme-pages.mjs (main's
 // #59) and runs one script, the same on each: its copy button, which writes a

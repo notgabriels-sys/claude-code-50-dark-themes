@@ -86,7 +86,7 @@
 import { htmlTags } from "./html-tags.mjs";
 
 export const STYLESHEET = "assets/site.css";
-export const SITE_PAGES = ["index.html"];
+export const SITE_PAGES = ["index.html", "familiars.html"];
 export const THEME_KEY = "familiars-theme";
 export const MOTION_KEY = "familiars-motion";
 // The page's theme previews: a theme shown in its own colours on its own ground (the hero's
@@ -711,8 +711,10 @@ export function paintProblems(rules, label) {
 // What dims or recolours the element it is set on, text included: opacity below 1, a filter or a
 // backdrop filter, a blend mode. Set only on marks that hold no text: a ::before or ::after, an
 // image, or an element inside one of MARKS (the lights, a theme card's dots, its caret, the
-// directory badge, which is an image). An animation's frames are read by keyframeDimProblems.
-export const MARKS = [".lights", ".dots", ".caret", ".directory-badge"];
+// directory badge, which is an image, and the Familiars hero's beam, rings and line-drawn
+// familiar). A mark holds no text, which pageProblems checks in the markup. An animation's
+// frames are read by keyframeDimProblems.
+export const MARKS = [".lights", ".dots", ".caret", ".directory-badge", ".beam", ".ring", ".familiar"];
 const dims = (property, value) =>
   (property === "opacity" && !/^(1(\.0*)?|100%)$/.test(value.trim())) ||
   (/^(-webkit-)?(backdrop-)?filter$/.test(property) && !/^none$/i.test(value.trim())) ||
@@ -1032,6 +1034,23 @@ export function pageProblems(source, path, fontFiles = [], tokens = []) {
   if (!lit) {
     problems.push(`${path} does not carry the ambient lights: <div class="lights" aria-hidden="true"> holding spans of class l1, l2 and l3.`);
   }
+  // A mark may be dimmed, blurred or blended (MARKS), so it holds no text: from its start tag to
+  // the end tag that closes it, every character outside a tag is whitespace.
+  elements.forEach((element, at) => {
+    if (element.closing || element.selfClosing) return;
+    const mark = MARKS.find((selector) => classesOf(element).includes(selector.slice(1)));
+    if (!mark) return;
+    let depth = 0;
+    const end = elements.findIndex((other, after) => {
+      if (after <= at || other.name !== element.name) return false;
+      if (!other.closing && !other.selfClosing) depth++;
+      else if (other.closing && depth-- === 0) return true;
+      return false;
+    });
+    const inside = source.slice(element.end, end < 0 ? source.length : elements[end].start);
+    const text = decode(inside.replace(/<!--[\s\S]*?-->/g, "").replace(/<[^>]*>/g, " ")).trim();
+    if (text) problems.push(`${path} <${element.name} class="${element.attributes.get("class")}"> is a mark (${mark}), which may be dimmed or blurred, and holds text ("${text.slice(0, 40)}"); text stays at full strength, so keep it out of a mark.`);
+  });
   const button = (id, name) => {
     const tag = opened("button").find((candidate) => candidate.attributes.get("id") === id);
     return tag && (!name || (tag.attributes.get("class") ?? "").split(/\s+/).includes(name)) && tag.attributes.get("type") === "button" && tag.attributes.has("hidden");
