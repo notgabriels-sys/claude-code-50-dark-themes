@@ -129,7 +129,10 @@ const NAMED_COLOURS = new Set(
 );
 // CSS Color 4 system colours, which the browser picks, not the palette.
 const SYSTEM_COLOURS = new Set("accentcolor accentcolortext activetext buttonborder buttonface buttontext canvas canvastext field fieldtext graytext highlight highlighttext linktext mark marktext selecteditem selecteditemtext visitedtext".split(" "));
-const COLOUR_PROPERTY = /^(--|color$|background|border|outline|box-shadow$|text-shadow$|text-decoration|caret-color$|accent-color$|fill$|stroke$|column-rule|(backdrop-)?filter$|-webkit-text-|scrollbar-color$|.*-color$)/;
+// Properties whose values name things, not colours: a word there that spells a colour (an animation
+// called "red", a font called "Black") is a name. Every other property is read for colour words,
+// so a property that takes a colour and is listed nowhere (text-emphasis, say) is read too.
+const NAME_PROPERTY = /^(font(-family)?|animation(-name)?|transition(-property)?|will-change|counter-(reset|increment|set)|grid(-area|-template(-areas)?|-(row|column)(-start|-end)?)?|list-style(-type)?|container(-name)?|view-transition-name|anchor-name|position-anchor|content|quotes|font-feature-settings|font-variation-settings)$/;
 const unprefixed = (property) => property.replace(/^-(webkit|moz|ms|o)-/, "");
 
 // --- parsing ------------------------------------------------------------------------------------
@@ -503,7 +506,7 @@ export function colourLiterals(value, property = "color") {
       found.push({ text: "color-mix(…)", problem: "mixes a literal colour, which paints a colour the palette does not name; color-mix() takes tokens, so the mix follows the theme" });
     }
   }
-  if (COLOUR_PROPERTY.test(property) || COLOUR_PROPERTY.test(unprefixed(property))) {
+  if (!NAME_PROPERTY.test(property.toLowerCase()) && !NAME_PROPERTY.test(unprefixed(property.toLowerCase()))) {
     // A var() fallback still paints: only the var( --name part is set aside.
     const words = bare.replace(/var\(\s*--[\w-]+\s*,?/gi, "").replace(/#[0-9a-f]+\b/gi, "").match(/[a-z]+(?:-[a-z]+)*/gi) ?? [];
     for (const word of words) {
@@ -686,11 +689,13 @@ export function stylesheetProblems(css) {
 const TEXT_VALUE = /^(var\(\s*--(ink|mute|faint|accent)\s*\)|currentcolor|inherit)$/i;
 const onFill = (rule) => rule.declarations.some(({ property, value }) => ["background", "background-color"].includes(property) && /^var\(\s*--(ink|accent)\s*\)$/i.test(value.trim()));
 const heldText = (rule, value) => TEXT_VALUE.test(value.trim()) || (/^var\(\s*--ground\s*\)$/i.test(value.trim()) && onFill(rule));
+// The bare words of a value: strings, url()s and var() names set aside, so var(--text) is no "text".
+const valueWords = (value) => (value.replace(/"[^"]*"|'[^']*'/g, "").replace(/url\([^)]*\)/gi, "").replace(/var\(\s*--[\w-]+/gi, "").match(/[a-z]+(?:-[a-z]+)*/gi) ?? []).map((word) => word.toLowerCase());
 export function paintProblems(rules, label) {
   const problems = [];
   for (const rule of rules) {
     for (const { property, value } of rule.declarations) {
-      if (property === "all" || (/^(-webkit-)?background-clip$/.test(property) && /\btext\b/i.test(value)) || property.startsWith("-webkit-text-stroke")) {
+      if (property === "all" || (/^(-webkit-)?background(-clip)?$/.test(property) && valueWords(value).includes("text")) || property.startsWith("-webkit-text-stroke")) {
         problems.push(`${label} ${rule.selector} { ${property}: ${value} } paints text with something other than its colour; text takes its colour from the text tokens alone.`);
       }
     }

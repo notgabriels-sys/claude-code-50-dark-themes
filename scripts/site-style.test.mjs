@@ -553,3 +553,19 @@ test("selectors: one selector the browser cannot parse drops its whole list, so 
     assert.match(selectorProblem(selector) ?? "", pattern, `${selector} does not parse`);
   }
 });
+
+test("colour words: read in every property but those that hold names, and a background clipped to text by the shorthand", () => {
+  // A property that takes a colour and no list names: text-emphasis paints its marks in it.
+  bad(stylesheetProblems(`${css}\n.x { text-emphasis: dot red; }\n`), /\.x \{ text-emphasis \}: red is a named colour/, "a named colour in text-emphasis");
+  bad(stylesheetProblems(`${css}\n.x { -webkit-text-emphasis: dot Canvas; }\n`), /\.x \{ -webkit-text-emphasis \}: Canvas is a system colour/, "a system colour in the prefixed spelling");
+  bad(stylesheetProblems(`${css}\n.x { mask-border: linear-gradient(navy, transparent); }\n`), /navy is a named colour/, "a property added to CSS after these rules were written");
+  // Where a word names a thing, it is a name.
+  for (const declaration of ["font-family: Black, sans-serif", "animation-name: red", "grid-area: red", "counter-reset: orange", "list-style-type: disc", "view-transition-name: tan", "will-change: transform", "transition-property: color"]) {
+    assert.ok(!colourLiterals(declaration.split(": ")[1], declaration.split(": ")[0]).length, `${declaration} names no colour`);
+  }
+  assert.ok(!colourLiterals("red", "Animation-Name").length, "a name property in capitals is still one, as the browser reads it");
+  // The background shorthand clips to text as background-clip does.
+  bad(stylesheetProblems(`${css}\n.x { background: linear-gradient(90deg, var(--ink), var(--accent)) text; }\n`), /\.x \{ background: linear-gradient\(90deg, var\(--ink\), var\(--accent\)\) text \} paints text with something other than its colour/, "a gradient clipped to the text by the shorthand");
+  bad(stylesheetProblems(`${css}\n.x { background: var(--accent) TEXT; }\n`), /paints text with something other than its colour/, "in capitals");
+  assert.ok(!stylesheetProblems(`${css}\n.x { background: var(--text, var(--surface)) url("text.png") padding-box; }\n`).some((problem) => /paints text/.test(problem)), "a token, a file or a box named text is no clip");
+});
