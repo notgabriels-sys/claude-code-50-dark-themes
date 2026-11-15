@@ -183,6 +183,8 @@ Each name opens the theme's own page: a specimen, the install commands, its pale
 
 ## The 12 Vol. 2 themes
 
+Each name opens the theme's own page, laid out as above: a specimen, the commands that install the Vol. 2 plugin, its palette and the measured contrast.
+
 <!-- theme-links:vol2:start -->
 
 [Afterglow](https://gabs-utilities.com/theme/afterglow/) · [Aurora Borealis](https://gabs-utilities.com/theme/aurora-borealis/) ·
