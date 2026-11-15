@@ -419,6 +419,10 @@ test("the verifier holds each page's dateModified to the day it last changed out
   const update = `· updated <time datetime="${modified}">${longDate(modified)}</time>`;
   await editOnce(fixtureRoot, path, `"dateModified": "${stated}"`, `"dateModified": "${modified}"`);
   await editOnce(fixtureRoot, path, `· updated <time datetime="${stated}">${longDate(stated)}</time>`, update);
+  // The sitemap's <lastmod> for the page is its dateModified, so the moved stamp rebuilds it before
+  // the first run; the page-dates check runs before the sitemap's, so the red steps below still
+  // fail for their own reason without a rebuild.
+  execFileSync(process.execPath, ["scripts/build-theme-pages.mjs"], { cwd: fixtureRoot, stdio: "ignore" });
   // The copy has no .git, so the verifier passes with a notice instead of a verdict.
   const notice = (reason) => new RegExp(`^${escape(path)}: dateModified ${modified} not held to git history \\(${escape(reason)}\\)\\.$`, "m");
   const unheld = await runVerifier(fixtureRoot);
@@ -448,6 +452,8 @@ test("the verifier holds each page's dateModified to the day it last changed out
   // A change to the page's text on that day makes the same stamp true.
   await editOnce(fixtureRoot, path, "</footer>", "<p>One more sentence.</p></footer>");
   repo.run(["commit", "-q", "--no-verify", "-a", "-m", "content"], `${later}T13:00:00Z`);
+  // The sitemap's <lastmod> for the page is its dateModified, so a moved stamp rebuilds it.
+  execFileSync(process.execPath, ["scripts/build-theme-pages.mjs"], { cwd: fixtureRoot, stdio: "ignore" });
   await expectGreen(fixtureRoot);
   // And a stamp left behind by that change is red the other way.
   await editOnce(fixtureRoot, path, `"dateModified": "${later}"`, `"dateModified": "${published}"`);
