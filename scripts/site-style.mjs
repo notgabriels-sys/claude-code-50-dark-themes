@@ -87,6 +87,10 @@ import { htmlTags } from "./html-tags.mjs";
 
 export const STYLESHEET = "assets/site.css";
 export const SITE_PAGES = ["index.html", "familiars.html", "claude-code-theme-install-guide.html", "semantic-terminal-colors.html"];
+// The share card: a still page drawn at 1280 x 720 and rendered to preview.png. It wears the
+// base like SITE_PAGES but runs no script, so it carries no switches: it is pinned dark
+// (data-theme="dark" on the root) and keeps the lights still (pageProblems, { card: true }).
+export const SHARE_CARDS = ["assets/social-preview.html"];
 export const THEME_KEY = "familiars-theme";
 export const MOTION_KEY = "familiars-motion";
 // The page's theme previews: a theme shown in its own colours on its own ground (the hero's
@@ -1012,7 +1016,7 @@ const STYLE_ATTRIBUTE = /^--[\w-]+$/;
 
 // `fontFiles` is what the stylesheet's @font-face rules load, as paths from the repository root;
 // `tokens` is the stylesheet's own tokens (sharedTokens), which a page does not re-declare.
-export function pageProblems(source, path, fontFiles = [], tokens = []) {
+export function pageProblems(source, path, fontFiles = [], tokens = [], { card = false } = {}) {
   const problems = [];
   const elements = elementsOf(source);
   const opened = (name) => elements.filter((element) => element.name === name && !element.closing);
@@ -1063,21 +1067,28 @@ export function pageProblems(source, path, fontFiles = [], tokens = []) {
     const tag = opened("button").find((candidate) => candidate.attributes.get("id") === id);
     return tag && (!name || (tag.attributes.get("class") ?? "").split(/\s+/).includes(name)) && tag.attributes.get("type") === "button" && tag.attributes.has("hidden");
   };
-  if (!button("themeSwitch", "theme-switch")) {
+  if (card) {
+    const root = opened("html")[0];
+    if (root?.attributes.get("data-theme") !== "dark") problems.push(`${path} is a share card, rendered to an image, and does not pin the dark theme (<html data-theme="dark">), so a light system would draw it light.`);
+    if (opened("script").some((script) => !/application\/ld\+json/i.test(script.attributes.get("type") ?? ""))) problems.push(`${path} is a share card and runs a script; a card is still, so it runs none and carries no switches.`);
+    const still = /:root:not\(\[data-motion\]\)\s+\.lights\s+span\s*\{\s*animation\s*:\s*none\s*;?\s*\}/;
+    if (!opened("style").some(({ text }) => still.test(stripComments(text)))) problems.push(`${path} is a share card and does not hold its lights still (:root:not([data-motion]) .lights span { animation: none; }); with no script to set data-motion, site.css would drift them.`);
+  }
+  if (!card && !button("themeSwitch", "theme-switch")) {
     problems.push(`${path} does not carry the theme switch as <button class="theme-switch" id="themeSwitch" type="button" hidden>; it stays hidden until the page's script can work it.`);
   }
-  if (!button("motionSwitch")) {
+  if (!card && !button("motionSwitch")) {
     problems.push(`${path} does not carry the motion switch as <button id="motionSwitch" type="button" hidden>; the looping motion needs a control that pauses it (WCAG 2.2.2), shown by the script while motion is allowed.`);
   }
   const scripts = opened("script")
     .filter((script) => !script.attributes.has("src") && !/application\/ld\+json/i.test(script.attributes.get("type") ?? ""))
     .map(({ text }) => text.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "").replace(/;\s*\/\/[^\n]*/g, ";"))
     .join("\n");
-  if (!stores(scripts, THEME_KEY) || !shows(scripts, "themeSwitch", "false")) {
+  if (!card && (!stores(scripts, THEME_KEY) || !shows(scripts, "themeSwitch", "false"))) {
     problems.push(`${path}'s script does not work the theme switch under the key "${THEME_KEY}" (reading it with getItem, saving it with setItem, and unhiding the switch), the key the Familiars page keeps the choice under, so a choice made on one page would not hold on the other.`);
   }
   const allowed = bound(scripts, `matchMedia\\(\\s*["']\\(\\s*prefers-reduced-motion\\s*:\\s*no-preference\\s*\\)["']\\s*\\)`).map((name) => `!\\s*${escape(name)}\\.matches`);
-  if (!stores(scripts, MOTION_KEY) || !/data-motion/.test(scripts) || !shows(scripts, "motionSwitch", ["false", ...allowed].join("|"))) {
+  if (!card && (!stores(scripts, MOTION_KEY) || !/data-motion/.test(scripts) || !shows(scripts, "motionSwitch", ["false", ...allowed].join("|")))) {
     problems.push(`${path}'s script does not work the motion switch under the key "${MOTION_KEY}" (reading it with getItem, saving it with setItem, setting data-motion on the root, and showing the switch, never hiding it again, whenever prefers-reduced-motion: no-preference matches).`);
   }
   // A selector the browser does not know makes matches(), closest() and querySelector() throw a

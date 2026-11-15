@@ -494,6 +494,20 @@ test("pages: every theme page wears the base, its swatches show a theme's colour
   bad(pageProblems(swap(graphite, ".cmd .prompt{color:var(--syntax-dark-grey)}", ".cmd .prompt{color:var(--faint)}"), paths[0], fontFiles, tokens), /\.cmd \.prompt \{ color: var\(--faint\) \}: inside a specimen or a theme preview/, "a page token in a command panel");
 });
 
+test("pages: the share card wears the base as a still page, pinned dark, with no script and no switches", async () => {
+  const path = "assets/social-preview.html";
+  const html = await readFile(new URL(path, root), "utf8");
+  const check = (source) => pageProblems(source, path, fontFiles, tokens, { card: true });
+  assert.deepEqual(check(html), [], "the card as it is");
+  // As an ordinary page it lacks the switches, which a still card does not carry.
+  bad(pageProblems(html, path, fontFiles, tokens), /does not carry the theme switch/, "the card read as an interactive page");
+  bad(check(swap(html, '<link rel="stylesheet" href="site.css">\n', "")), /assets\/social-preview\.html does not link assets\/site\.css/, "the card off the base");
+  bad(check(swap(html, '<html lang="en" data-theme="dark">', '<html lang="en">')), /is a share card, rendered to an image, and does not pin the dark theme/, "the card unpinned");
+  bad(check(swap(html, "</main>\n", "</main>\n<script>document.title = 1;</script>\n")), /is a share card and runs a script/, "a script on the card");
+  bad(check(swap(html, ":root:not([data-motion]) .lights span { animation: none; }", "")), /is a share card and does not hold its lights still/, "drifting lights on the card");
+  bad(check(swap(html, ".specimen .prompt{", ".prompt{")), /outside a specimen or a theme preview, text takes --ink, --mute, --faint or --accent/, "the coding palette outside the specimen");
+});
+
 test("fonts: each face loads a file that is there, each file is used, and each family carries the OFL", async () => {
   const files = await fontDirectory();
   // The Familiars page loads its faces from the stylesheet since it moved onto the base, so no page

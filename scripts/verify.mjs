@@ -2657,8 +2657,25 @@ const ldJsonBlocks = (page, markup) =>
 // owns the sitemap for that reason). These run before the guards every served
 // page meets, so a page the builder does not render is reported as that first.
 // ---------------------------------------------------------------------------
-const { buildThemePages } = await import("./build-theme-pages.mjs");
+const { buildThemePages, loadThemes } = await import("./build-theme-pages.mjs");
 const themePages = await buildThemePages(root);
+// The share card's strip is the accent of every theme, which every page's share image
+// description says it is ("a strip of the pack's accent colors"). It is read here against the
+// theme files, in the theme index's order, so a retuned, added or removed theme turns the card
+// stale until it is redrawn (and preview.png rendered again with scripts/render-share-card.mjs).
+{
+  const strip = socialCard.match(/<div class="strip"[^>]*>([\s\S]*?)<\/div>/);
+  const drawn = strip ? [...strip[1].matchAll(/<i class="swatch" style="--c:([^"]*)"><\/i>/g)].map(([, hex]) => hex) : [];
+  const leftover = strip ? strip[1].replace(/<i class="swatch" style="--c:[^"]*"><\/i>/g, "").trim() : "";
+  const accents = (await loadThemes(root)).map((theme) => theme.overrides.claude);
+  if (!strip || leftover || drawn.join() !== accents.join()) {
+    fail(
+      "assets/social-preview.html's strip is not the accent of every theme in order (" +
+        `${drawn.length} drawn, ${accents.length} themes${leftover ? ", and other markup in the strip" : ""}). ` +
+        "Redraw it from the theme files and render preview.png again (node scripts/render-share-card.mjs).",
+    );
+  }
+}
 // The builder also writes sitemap.xml; that file is compared at the end, after
 // the sitemap's own document checks, so a malformed sitemap is reported as
 // malformed and only a well-formed but stale one as stale.
@@ -2761,6 +2778,7 @@ if (!familiarsOgAlt || !familiarsXAlt || familiarsOgAlt[1] !== familiarsXAlt[1])
   fail("Familiars: og:image:alt and twitter:image:alt must both exist and say the same thing.");
 }
 await verifyPng("assets/familiars-share.png", { label: "Familiars share image", width: 1280, height: 720 });
+await verifyPng("preview.png", { label: "Share image", width: 1280, height: 720 });
 if (!/<a href="familiars\.html">[^<]+<\/a>/.test(html)) {
   fail("The storefront must link the Familiars page (familiars.html).");
 }
@@ -4134,6 +4152,10 @@ const siteTokens = siteStyle.sharedTokens(siteCss);
 const themeSitePages = [...themePages.keys()].filter((path) => path.endsWith(".html"));
 for (const path of [...siteStyle.SITE_PAGES, ...themeSitePages]) {
   for (const problem of siteStyle.pageProblems(await readFile(new URL(path, root), "utf8"), path, siteFonts, siteTokens)) fail(problem);
+}
+// The share card wears the base too (since 2026-11-15), as a still page: pinned dark, no script.
+for (const path of siteStyle.SHARE_CARDS) {
+  for (const problem of siteStyle.pageProblems(await readFile(new URL(path, root), "utf8"), path, siteFonts, siteTokens, { card: true })) fail(problem);
 }
 
 console.log(

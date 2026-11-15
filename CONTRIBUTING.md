@@ -163,9 +163,13 @@ Vol. 2 themes" are fine); reword it rather than the check. A step badge ("04"), 
 a hex colour and "one theme pack" are not counts. A role-aware count is the total unless "per theme"
 or "for each theme" follows it.
 
-The share card is rendered from `assets/social-preview.html`, not screenshotted from the site. Edit
-that source, then regenerate `preview.png` at 1280×720 — the declared `og:image:width` and
-`og:image:height` depend on the size.
+The share card is rendered from `assets/social-preview.html`, not screenshotted from the site. It
+wears `assets/site.css`, pinned dark, and runs no script; its strip is the accent of every theme,
+in the theme index's order, and `verify` fails when a theme changes until the strip is redrawn.
+Edit that source, then run `node scripts/render-share-card.mjs` (it needs Playwright) to
+regenerate `preview.png` at 1280×720 — the declared `og:image:width` and `og:image:height` depend
+on the size. CI cannot check that the image was rendered from the card, so render it in the same
+change.
 
 Every public page shipping an `og:image` must state `og:image:alt`, a `twitter:image` must state a
 `twitter:image:alt` that agrees with it, and pages sharing one image must describe it identically.
