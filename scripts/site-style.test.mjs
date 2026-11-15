@@ -342,10 +342,10 @@ test("pages: the storefront on disk wears the base, and each part of it is requi
   bad(check(swap(page, '<link rel="stylesheet" href="assets/site.css">', '<link rel="stylesheet" href="assets/site.css">\n<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk">')), /fetches a font from Google/, "a third-party font");
   bad(check(swap(page, 'href="assets/fonts/FamiljenGrotesk-VF.woff2"', 'href="assets/fonts/Other.woff2"')), /preloads the font assets\/fonts\/Other\.woff2, which no @font-face/, "a preload for nothing");
   bad(check(swap(page, 'type="font/woff2" crossorigin>', 'type="font/woff2">')), /without crossorigin/, "a preload fetched twice");
-  bad(check(swap(page, "    .theme-monolith{animation:monolith-float 5s ease-in-out infinite}\n", "").replace("  @media (prefers-reduced-motion:no-preference){\n", "  .theme-monolith{animation:monolith-float 5s ease-in-out infinite}\n  @media (prefers-reduced-motion:no-preference){\n")), /index\.html \.theme-monolith \{ animation: monolith-float 5s ease-in-out infinite \} runs whatever/, "the page's own animation outside the block");
+  bad(check(swap(page, '    :root[data-motion="running"] .theme-monolith{animation:monolith-float 5s ease-in-out infinite}\n', "").replace("  @media (prefers-reduced-motion:no-preference){\n", "  .theme-monolith{animation:monolith-float 5s ease-in-out infinite}\n  @media (prefers-reduced-motion:no-preference){\n")), /index\.html \.theme-monolith \{ animation: monolith-float 5s ease-in-out infinite \} runs whatever/, "the page's own animation outside the block");
   bad(check(swap(page, "  .syntax-version{color:var(--accent)}", "  .syntax-version{color:var(--ember)}")), /index\.html \.syntax-version \{ color: var\(--ember\) \}: ember is a point, never text/, "ember as the page's text");
   // A loop the reduce block turns off for the same selector runs only when motion is allowed, and the pause holds it.
-  assert.deepEqual(check(withStyle(page, "  .card.flash{animation:deep-link-pulse 2.4s ease-out infinite}\n  @media (prefers-reduced-motion:reduce){.card.flash{animation:none}}")), []);
+  assert.deepEqual(check(withStyle(page, '  :root[data-motion="running"] .card.flash{animation:deep-link-pulse 2.4s ease-out infinite}\n  @media (prefers-reduced-motion:reduce){:root[data-motion="running"] .card.flash{animation:none}}')), []);
   // The same loop written after the reduce block outranks it, and runs.
   bad(check(withStyle(page, "  @media (prefers-reduced-motion:reduce){.card.flash{animation:none}}\n  .card.flash{animation:deep-link-pulse 2.4s ease-out infinite}")), /\.card\.flash \{ animation: deep-link-pulse 2\.4s ease-out infinite \} runs whatever/, "a pulse after the rule that turns it off");
   // The page's own one-off entrance, under the pause, held the hero's opening lines at 30%.
@@ -492,6 +492,19 @@ test("pages: every theme page wears the base, its swatches show a theme's colour
   const graphite = await readFile(new URL(paths[0], root), "utf8");
   // The command panels stay specimens: their prompt takes the coding palette, not page text.
   bad(pageProblems(swap(graphite, ".cmd .prompt{color:var(--syntax-dark-grey)}", ".cmd .prompt{color:var(--faint)}"), paths[0], fontFiles, tokens), /\.cmd \.prompt \{ color: var\(--faint\) \}: inside a specimen or a theme preview/, "a page token in a command panel");
+});
+
+test("pages: nothing loops until the script that shows the pause control has run", async () => {
+  // Without the script the motion switch stays hidden (WCAG 2.2.2), so a page's own loops run only
+  // under :root[data-motion="running"], the script sets it, and the stylesheet's lights hold still.
+  const path = "index.html";
+  const html = await readFile(new URL(path, root), "utf8");
+  const check = (source) => pageProblems(source, path, fontFiles, tokens);
+  assert.deepEqual(check(html), [], "the storefront as it is");
+  bad(check(swap(html, ":root:not([data-motion]) .lights span{animation:none}\n", "")), /index\.html does not hold its lights still until its script runs/, "lights drifting before the script");
+  bad(check(swap(html, ':root[data-motion="running"] .theme-monolith{', ".theme-monolith{")), /index\.html \.theme-monolith loops outside :root\[data-motion="running"\]/, "a loop with no gate");
+  bad(check(swap(html, ':root[data-motion="running"] .hero-layout::before{', ':root:not([data-motion="paused"]) .hero-layout::before{')), /\.hero-layout::before loops outside :root\[data-motion="running"\]/, "a loop under the pause gate, which matches with no script");
+  bad(check(swap(html, 'allowsMotion.matches && !userPaused ? "running" : "paused"', '"paused"')), /index\.html's script never sets data-motion="running"/, "a script that never lets the loops run");
 });
 
 test("pages: the share card wears the base as a still page, pinned dark, with no script and no switches", async () => {
