@@ -118,8 +118,8 @@ export function ratioText(ratio) {
   return `${(Math.floor(ratio * 100) / 100).toFixed(2)}:1`;
 }
 
-// Same classification the gallery's finder uses.
-function familyOf(hex) {
+// Same classification the gallery's finder uses; the /themes gallery mod groups by it too.
+export function familyOf(hex) {
   const [r, g, b] = hex.match(/[a-f\d]{2}/gi).map((value) => parseInt(value, 16) / 255);
   const max = Math.max(r, g, b);
   const min = Math.min(r, g, b);
