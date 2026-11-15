@@ -965,6 +965,15 @@ sitemap byte for byte as committed, so nothing was regenerated, and nothing in
 #74's guards needed adapting. The full suite was run at the exact tree of the
 commit that carries this paragraph; its message states the count.
 
+**(merged 2026-11-15) Main's #91, the share card on the shared stylesheet.**
+`main` moved from 6778368 to 427e607 with #91: `assets/social-preview.html`
+rendered on `assets/site.css`, `preview.png` drawn again by
+`scripts/render-share-card.mjs`, with the site-style guard and `verify`
+extended to the card. Merged into #74 as 0d9c7ac with no conflict; the builder
+output is unchanged and nothing in #74's guards needed adapting. The full suite
+was run at the exact tree of the commit that carries this paragraph; its
+message states the count.
+
 **(added 2026-10-30) What the sitemap, `llms.txt` and robots.txt say the site
 holds is read against the pages.** WP10. `verify` compared the sitemap only
 with the builder that writes it, and read neither `llms.txt`'s links nor
