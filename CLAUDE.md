@@ -999,6 +999,21 @@ adapting: the script sits under `scripts/`, and the step runs only in CI. The
 suite is now twelve test files. The full suite was run at the exact tree of the
 commit that carries this paragraph; its message states the count.
 
+**(merged 2026-11-15) Main's #94, IndexNow after every deploy.** `main` moved
+from 57f47e4 to 1230448 with #94: a workflow (`.github/workflows/indexnow.yml`)
+that, on every push to `main` and once GitHub Pages has deployed it, sends
+every address in `sitemap.xml` to IndexNow with the site's key
+(`scripts/submit-indexnow.mjs`, with its test; the key is public by design and
+its file sits at the root, which the script checks against its constant before
+sending). Merged into #74 as fa810c5 with no conflict; `verify` was green on
+the merge, and nothing in #74's guards needed adapting: the key file is a
+served `.txt`, an inert type, listed in no sitemap and blocked by no robots
+rule, and WP10's sitemap is what the workflow sends. The workflow names its
+actions by tag, which WP13's pin rule will hold to a commit when that branch
+lands. The suite is now thirteen test files. The full suite was run at the
+exact tree of the commit that carries this paragraph; its message states the
+count.
+
 **(added 2026-10-30) What the sitemap, `llms.txt` and robots.txt say the site
 holds is read against the pages.** WP10. `verify` compared the sitemap only
 with the builder that writes it, and read neither `llms.txt`'s links nor
