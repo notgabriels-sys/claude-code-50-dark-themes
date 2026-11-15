@@ -291,6 +291,36 @@ test("rejects a share card that drops its check-count claim entirely", { timeout
   assert.match(result.stderr, /states no role-aware check count; the claim guard would be inert/);
 });
 
+test("rejects a share card whose strip is not every theme's accent in order", { timeout: 120_000 }, async (t) => {
+  // The strip is what every page's share-image description calls "the pack's accent colors";
+  // it is read against the theme files, so a changed, dropped or reordered swatch fails.
+  const fixtureRoot = await makeFixture(t);
+  const fixtureCard = join(fixtureRoot, "assets/social-preview.html");
+  const card = await readFile(fixtureCard, "utf8");
+  const first = '<i class="swatch" style="--c:#C0D648"></i>';
+  assert.equal(card.split(first).length, 2, "the first swatch appears once");
+  for (const [edit, label] of [
+    [card.replace(first, '<i class="swatch" style="--c:#C0D649"></i>'), "a retuned swatch"],
+    [card.replace(first, ""), "a dropped swatch"],
+    [card.replace(first, `${first}<b>extra</b>`), "other markup in the strip"],
+  ]) {
+    await writeFile(fixtureCard, edit);
+    const result = await runVerifier(fixtureRoot);
+    assert.notEqual(result.code, 0, `the verifier accepted ${label}`);
+    assert.match(result.stderr, /assets\/social-preview\.html's strip is not the accent of every theme in order/, label);
+  }
+  // The card is held to the site style as a still page, and the image it renders to is a 1280 x 720 PNG.
+  await writeFile(fixtureCard, card.replace('<html lang="en" data-theme="dark">', '<html lang="en">'));
+  let result = await runVerifier(fixtureRoot);
+  assert.notEqual(result.code, 0, "the verifier accepted an unpinned card");
+  assert.match(result.stderr, /assets\/social-preview\.html is a share card, rendered to an image, and does not pin the dark theme/);
+  await writeFile(fixtureCard, card);
+  await rm(join(fixtureRoot, "preview.png"));
+  result = await runVerifier(fixtureRoot);
+  assert.notEqual(result.code, 0, "the verifier accepted a missing share image");
+  assert.match(result.stderr, /Share image is missing: preview\.png/);
+});
+
 test("rejects two pages describing the same share image differently", { timeout: 90_000 }, async (t) => {
   const fixtureRoot = await makeFixture(t);
   const fixturePage = join(fixtureRoot, "semantic-terminal-colors.html");
