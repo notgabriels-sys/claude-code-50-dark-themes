@@ -1040,6 +1040,20 @@ reads `README.md`, refuses nothing in the sentence, and nothing in #74's
 guards needed adapting. The full suite was run at the exact tree of the
 commit that carries this paragraph; its message states the count.
 
+**(merged 2026-11-15) Main's #97, the storefront's loops gated on its
+script.** `main` moved from e5eaf81 to 5571d83 with #97: with scripting off
+the storefront's motion switch stays hidden, yet its four looping animations
+and the stylesheet's drifting lights ran with nothing to pause them (WCAG
+2.2.2). Its script now sets `data-motion` to "running" while motion is allowed
+and not paused, the loops run only under that attribute, the lights hold
+still until it is set, and `scripts/site-style.mjs` holds every page to the
+same gate; the gallery script's reviewed hash and the page's policy moved
+with the edit. Merged into #74 as 8aeb8ef with no conflict; `verify` was
+green on the merge, and nothing in #74's guards needed adapting: the new hash
+sits in `reviewedInlineScripts`, which the merge carried, and WP10 reads none
+of the script. The full suite was run at the exact tree of the commit that
+carries this paragraph; its message states the count.
+
 **(added 2026-10-30) What the sitemap, `llms.txt` and robots.txt say the site
 holds is read against the pages.** WP10. `verify` compared the sitemap only
 with the builder that writes it, and read neither `llms.txt`'s links nor
