@@ -1,0 +1,31 @@
+name: Read the live site back
+
+# On every push to main, once GitHub Pages has deployed that commit, fetch every address in
+# sitemap.xml and the root text files from the site and fail unless each is the committed file
+# (scripts/check-live-site.mjs). A failure here blocks nothing already merged; it means the
+# site does not serve what main holds.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: live-check
+  cancel-in-progress: true
+
+jobs:
+  read-back:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Compare the deployed site with the commit
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/check-live-site.mjs --after-pages "$GITHUB_SHA"
