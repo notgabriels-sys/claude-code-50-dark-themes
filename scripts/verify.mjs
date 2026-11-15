@@ -494,6 +494,44 @@ if (JSON.stringify(galleryHooks) !== JSON.stringify({ modules: ["./register.tsx"
 for (const file of ["README.md", "LICENSE"]) {
   if (!(await stat(new URL(file, galleryRoot)).then(() => true, () => false))) fail(`plugins/theme-gallery/${file} is missing.`);
 }
+// The gallery answers /themes only while /themes is its own. Read back
+// 2026-11-15 with Claude Code 2.1.325: a themes.md in ~/.claude/commands or in
+// a project's .claude/commands, or another plugin's mod that registered
+// /themes first, makes the engine refuse the gallery's registration ("/themes"
+// refused: it is the user's /themes), while a command.run hook on
+// { command: 'themes' } still sees that /themes run, and the gallery, which
+// answered it without next(e), opened in that command's place. A plugin's own
+// commands/themes.md takes nothing: Claude Code lists it as /<plugin>:themes.
+// The mod's own test drives the refusal, and only `claude plugin test` runs
+// it, which CI cannot, so these lines of the module are held here: the flag is
+// set only once the registration resolves, and the one command.run hook
+// passes the run on first while the flag is unset.
+const galleryModule = (await readFile(new URL("hooks/register.tsx", galleryRoot), "utf8")).replace(/\r\n/g, "\n");
+const galleryContracts = [
+  [
+    /await \$\.command\.register\(\{\n\s*name: 'themes',\n[^}]*\}\)\n\s*ownsThemes = true\n\s*\} catch \{/,
+    "the flag is set only once /themes is registered",
+  ],
+  [
+    /on\('command\.run', \{ command: 'themes' \}, async \(\$, e, next\) => \{\n\s*if \(!ownsThemes\) return next\(e\)\n/,
+    "the /themes hook passes on a run it does not own",
+  ],
+];
+const brokenGalleryContracts = galleryContracts
+  .filter(([pattern]) => !pattern.test(galleryModule))
+  .map(([, label]) => label);
+const galleryFlagSets = galleryModule.match(/\bownsThemes = true\b/g)?.length ?? 0;
+if (galleryFlagSets !== 1) brokenGalleryContracts.push(`ownsThemes is set true exactly once (found ${galleryFlagSets})`);
+const galleryRunHooks = galleryModule.match(/\bon\(\s*['"`]command\.run['"`]/g)?.length ?? 0;
+if (galleryRunHooks !== 1) brokenGalleryContracts.push(`the module has one command.run hook (found ${galleryRunHooks})`);
+if (brokenGalleryContracts.length) {
+  fail(
+    `plugins/theme-gallery/hooks/register.tsx breaks the gallery's /themes contract: ${brokenGalleryContracts.join("; ")}. ` +
+      "When Claude Code refuses /themes to the gallery (the person's own /themes, or another mod's registered first), " +
+      "its command.run hook must pass the run on with next(e), so that /themes still runs; the mod's test " +
+      '"a /themes refused to the gallery runs as its owner wrote it" drives it (claude plugin test plugins/theme-gallery).',
+  );
+}
 // The listing's Documentation and homepage links go to the mod's own README,
 // never the repository root, whose README is the storefront.
 const galleryHome = `${REPOSITORY_URL}/tree/main/plugins/theme-gallery`;
@@ -5431,7 +5469,9 @@ await themePageFreshness("sitemap.xml", themePages.get("sitemap.xml"));
 // bumped version installed at once. Nothing has slipped through yet: each theme
 // pack's payload last changed in the commit that set its version, and
 // berlin-studio-skills has never been on the default branch, so 1.0.0 is what
-// it first ships; nor has theme-gallery, which first ships 0.1.0. Each
+// it first ships. theme-gallery reached the default branch at 0.1.0 (main's
+// #71, 2026-11-15), so its next payload, the pass-through of a /themes it does
+// not own, ships as 0.1.1. Each
 // package's payload, the directory Claude Code loads themes, skills or the
 // gallery's hooks module from, is held to the digest recorded beside the
 // version that ships it, so a changed payload fails until its version moves.
@@ -5450,8 +5490,8 @@ const releasedPackages = [
   // hooks/ holds themes.ts, which build-gallery-data.mjs writes from the theme
   // files, so a changed free theme moves this digest too.
   {
-    name: "theme-gallery", payload: "hooks", version: "0.1.0",
-    sha256: "131fcc6df1281b23d336822e3868065a01d2cf7783400d950ad3ca1e213d4e85",
+    name: "theme-gallery", payload: "hooks", version: "0.1.1",
+    sha256: "6da305d47f451613f4792c59383d5d54a7596ec600b83a0c5a3ff04a3cfd4ff6",
   },
   {
     name: "berlin-studio-skills", payload: "skills", version: "1.0.0",

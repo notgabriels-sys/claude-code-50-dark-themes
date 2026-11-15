@@ -86,6 +86,33 @@ test('/themes opens the gallery as a focused pane and prints nothing', async ($,
   expect(opened[0]).toMatchObject({ id: 'theme-gallery', focus: true, closeOnEscape: true })
 })
 
+// Claude Code refuses /themes to the gallery when the person has a /themes of
+// their own (a themes.md in ~/.claude/commands or in the project's
+// .claude/commands) or another plugin's mod registered the name first, and a
+// command.run hook on { command: 'themes' } still sees that /themes run. Read
+// back with Claude Code 2.1.325, whose refusal reads '"/themes" refused: it is
+// the user's /themes'. The gallery then passes the run on, so the other
+// /themes runs as its owner wrote it and no pane opens.
+test('a /themes refused to the gallery runs as its owner wrote it', async ($, on) => {
+  settings = {}
+  const opened: unknown[] = []
+  on('settings.read', () => ({ value: settings }))
+  on('command.register', () => {
+    throw new Error(`theme-gallery: $.command.register: "/themes" refused: it is the user's /themes`)
+  })
+  on('ui.open', (_, e) => {
+    opened.push(e)
+    return { value: { isPlaced: true } }
+  })
+  on('session.start', () => ({ cwd: '/work' }))
+  on('command.run', () => ({ text: "the person's own /themes" }))
+
+  await $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/work' })
+  const result = await $.command.run(RUN)
+  expect(result.text).toBe("the person's own /themes")
+  expect(opened).toHaveLength(0)
+})
+
 test('/themes says why where no pane can be shown', async ($, on) => {
   settings = {}
   on('settings.read', () => ({ value: settings }))

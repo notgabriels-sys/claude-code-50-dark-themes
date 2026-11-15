@@ -115,8 +115,8 @@ To switch themes, run `/theme`, move to the theme's name and press Enter.
 
 - **`/themes` is not a command.** Work through these:
   - Run `claude plugin list` to check that `theme-gallery@notgabriels-themes` is installed and
-    enabled. In a terminal session, `/plugin` shows a dim `mods active` line under its tabs, which
-    names `theme-gallery` once the mod has loaded.
+    enabled. In a terminal session, `/plugin` shows a dim line under its tabs that names the mods
+    loaded, `mod active · theme-gallery` when the gallery is the only one.
   - If you installed it from a shell while a session was open, run `/reload-plugins` in that
     session, or restart Claude Code.
   - Check the version. In a terminal, run `claude --version`, then `claude update`. The desktop
@@ -129,8 +129,11 @@ To switch themes, run `/theme`, move to the theme's name and press Enter.
   - To see whether mods can load at all, run `claude plugin test` in your shell from a directory
     that holds no mod. To see why Claude Code refused the mod, start it with `claude --debug` and
     look in the debug log for a line that starts with `hooks module`.
-  - If another plugin already provides `/themes`, the gallery leaves that command alone and can't
-    be opened. Disable the other plugin to use the gallery.
+  - If you have a `/themes` command of your own, a `themes.md` in `~/.claude/commands` or in the
+    project's `.claude/commands`, Claude Code keeps yours: it runs, and the gallery can't be opened.
+    Rename yours to use the gallery. The same holds when another plugin's mod registered `/themes`
+    first; disable that plugin to use the gallery. Another plugin's `themes` command file doesn't
+    get in the way: Claude Code lists it as `/<plugin>:themes`.
 - **The pane says no pane can be shown.** A headless run (`claude -p`) has nowhere to draw a pane.
   Run `/themes` in an interactive session.
 - **The swatches look washed out or wrong.** Your terminal isn't showing 24-bit color. This

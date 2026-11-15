@@ -871,6 +871,36 @@ does." The document is up to 89 px wider than the window at 1280 px, on `main`
 too, from the drifting halo; the body clips it and the page does not scroll. The
 merged page's payment links and prices are main's, byte for byte.
 
+**(fixed 2026-11-15) The gallery passes on a `/themes` it does not own.**
+Main's #71 shipped the Dark Themes Gallery mod at 0.1.0, and its README said
+that when another plugin already provides `/themes` the gallery "leaves that
+command alone and can't be opened". Run against Claude Code 2.1.325 in a
+throwaway home, neither half held. A plugin's own `commands/themes.md` takes
+nothing: Claude Code lists it as `/<plugin>:themes`, and `/themes` opens the
+gallery. A `themes.md` in `~/.claude/commands` or in a project's
+`.claude/commands`, or another plugin's mod that registered `/themes` first,
+does make the engine refuse the gallery's registration ("`/themes` refused: it
+is the user's /themes"), but a `command.run` hook on `{ command: 'themes' }`
+still sees that command run, and the gallery, which answered without
+`next(e)`, opened in its place: the person's own command never ran. The mod
+now sets a flag only once its registration resolves and passes any other
+`/themes` on, so that command runs; read back the same way, headless and
+interactive, with a user command, with a project command, and with another mod
+on either side of it. Its own test drives the refusal (`claude plugin test
+plugins/theme-gallery`, 15 of 15; on 0.1.0 the new test fails with the
+gallery's empty answer). CI has no Claude Code to run that test, so `verify`
+holds the module's lines instead, as the storefront contracts hold the page's
+template: the flag set only after the registration resolves and set true once,
+one `command.run` hook, and that hook passing the run on first while the flag
+is unset. Seen green on 0.1.0 without the check (rule 1), red with it (all
+three failures named), and green on the fix; the payload changed and 0.1.0 is
+on the default branch, so the fix ships as 0.1.1. Mutation-tested (rule 5),
+five branches each gutted alone, run against the five new tests and the real
+tree, not the whole suite: each turns exactly its own test red, and the real
+tree stays green. The README's conflict bullet now says which `/themes` blocks
+the gallery, and its `/plugin` line reads as 2.1.325 prints it: `mod active ·
+theme-gallery` alone, `mods active · ` and the names with more than one.
+
 **(added 2026-10-20) The cards print the terminal background.** The footer, the
 install guide (its text and its HowTo structured data) and `README.md` told
 readers to set the terminal to the surface hex shown in the gallery, and no

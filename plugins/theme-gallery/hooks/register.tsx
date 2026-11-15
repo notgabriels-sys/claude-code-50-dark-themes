@@ -115,6 +115,10 @@ function filterOf(stored: unknown): FamilyFilter {
 }
 
 export const register: Register = on => {
+  // Whether this session's /themes is the gallery's. A reload runs register
+  // and session.start again, so this is set afresh each time.
+  let ownsThemes = false
+
   on('session.start', async ($, e, next) => {
     try {
       await $.command.register({
@@ -122,16 +126,27 @@ export const register: Register = on => {
         description: 'Browse the 62 free dark themes with color swatches',
         immediate: true,
       })
+      ownsThemes = true
     } catch {
-      // The name is taken in this session, for example by another plugin's
-      // /themes: the gallery stays unreachable rather than taking that
-      // command's place. The README's troubleshooting section says so.
+      // The name is taken in this session: the person has a /themes of their
+      // own (a themes.md in ~/.claude/commands or in the project's
+      // .claude/commands), or another plugin's mod registered it first. A
+      // plugin's own commands/themes.md does not take it: Claude Code lists
+      // that one as /<plugin>:themes. The README's troubleshooting section
+      // says so.
+      ownsThemes = false
     }
 
     return next(e)
   })
 
-  on('command.run', { command: 'themes' }, async $ => {
+  // The hook below sees every /themes run, the gallery's or not. When the
+  // name is someone else's, it passes the run on, so their /themes runs as
+  // if the gallery were not installed, and the gallery stays unreachable
+  // rather than taking that command's place.
+  on('command.run', { command: 'themes' }, async ($, e, next) => {
+    if (!ownsThemes) return next(e)
+
     const opened = await $.ui.open({
       id: PANE,
       title: 'Theme gallery',

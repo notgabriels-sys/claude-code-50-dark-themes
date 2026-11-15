@@ -4373,6 +4373,68 @@ test("rejects a gallery icon drawn in a colour no free theme uses", { timeout: 9
   assert.match(result.stderr, /logo\.png may only use free theme colours: #FF00FF covers 16384 pixels/);
 });
 
+// Read back 2026-11-15 with Claude Code 2.1.325: the person's own /themes, or
+// another mod's registered first, makes the engine refuse the gallery's, and
+// the gallery's command.run hook still saw that /themes run and opened in its
+// place. Each edit below is one way back to that.
+async function galleryModuleFixture(t, edit) {
+  const fixtureRoot = await makeFixture(t);
+  const modulePath = join(fixtureRoot, "plugins", "theme-gallery", "hooks", "register.tsx");
+  await writeFile(modulePath, edit(await readFile(modulePath, "utf8")));
+  return runVerifier(fixtureRoot);
+}
+
+function replaceOnce(text, from, to) {
+  assert.equal(text.split(from).length - 1, 1, `the gallery module should hold ${JSON.stringify(from)} exactly once`);
+  return text.replace(from, to);
+}
+
+test("rejects a gallery /themes hook that answers a run it does not own", { timeout: 90_000 }, async (t) => {
+  const result = await galleryModuleFixture(t, (module) => replaceOnce(module, "    if (!ownsThemes) return next(e)\n", ""));
+
+  assert.notEqual(result.code, 0, "the verifier accepted a gallery that answers every /themes run");
+  assert.match(result.stderr, /breaks the gallery's \/themes contract: the \/themes hook passes on a run it does not own\./);
+});
+
+test("rejects a gallery that counts /themes as its own before the engine agrees", { timeout: 90_000 }, async (t) => {
+  const result = await galleryModuleFixture(t, (module) =>
+    replaceOnce(
+      replaceOnce(module, "      ownsThemes = true\n", ""),
+      "    try {\n      await $.command.register({",
+      "    ownsThemes = true\n    try {\n      await $.command.register({",
+    ),
+  );
+
+  assert.notEqual(result.code, 0, "the verifier accepted a gallery that sets its flag whether or not /themes is registered");
+  assert.match(result.stderr, /breaks the gallery's \/themes contract: the flag is set only once \/themes is registered\./);
+});
+
+test("rejects a gallery whose flag starts out true", { timeout: 90_000 }, async (t) => {
+  const result = await galleryModuleFixture(t, (module) => replaceOnce(module, "let ownsThemes = false", "let ownsThemes = true"));
+
+  assert.notEqual(result.code, 0, "the verifier accepted a gallery that owns /themes before registering it");
+  assert.match(result.stderr, /breaks the gallery's \/themes contract: ownsThemes is set true exactly once \(found 2\)\./);
+});
+
+test("rejects a second command.run hook in the gallery", { timeout: 90_000 }, async (t) => {
+  const result = await galleryModuleFixture(t, (module) =>
+    replaceOnce(
+      module,
+      "export const register: Register = on => {\n",
+      "export const register: Register = on => {\n  on(\"command.run\", { command: 'themes' }, async () => ({ text: 'gallery' }))\n",
+    ),
+  );
+
+  assert.notEqual(result.code, 0, "the verifier accepted a second hook that answers /themes");
+  assert.match(result.stderr, /breaks the gallery's \/themes contract: the module has one command\.run hook \(found 2\)\./);
+});
+
+test("accepts a CRLF save of the gallery module", { timeout: 90_000 }, async (t) => {
+  const result = await galleryModuleFixture(t, (module) => module.replace(/\r?\n/g, "\r\n"));
+
+  assert.equal(result.code, 0, `a CRLF save of the gallery module failed:\n${result.stderr}`);
+});
+
 test("rejects a gallery documentation link that points at the storefront README", { timeout: 90_000 }, async (t) => {
   const fixtureRoot = await makeFixture(t);
   const manifestPath = join(fixtureRoot, "plugins", "theme-gallery", ".claude-plugin", "plugin.json");
