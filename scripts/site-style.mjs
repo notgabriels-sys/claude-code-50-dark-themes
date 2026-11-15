@@ -140,8 +140,8 @@ const skipString = (text, start) => {
   while (index < text.length && text[index] !== quote) index += text[index] === "\\" ? 2 : 1;
   return index + 1;
 };
-// The index of the "}" that closes the "{" at `open`, or the end of the text.
-const closing = (text, open) => {
+// The index of the "}" that closes the "{" at `open` (or of whichever pair is given), or the end of the text.
+const closing = (text, open, pair = "{}") => {
   let depth = 0;
   for (let index = open; index < text.length; ) {
     const character = text[index];
@@ -149,8 +149,8 @@ const closing = (text, open) => {
       index = skipString(text, index);
       continue;
     }
-    if (character === "{") depth += 1;
-    if (character === "}" && --depth === 0) return index;
+    if (character === pair[0]) depth += 1;
+    if (character === pair[1] && --depth === 0) return index;
     index += 1;
   }
   return text.length;
@@ -264,10 +264,124 @@ function stripComments(text) {
   return out;
 }
 
+// Selectors the browser accepts. A selector list with one selector the browser cannot parse is
+// dropped whole, so a rule these rules read as applied (the pause, a reduced-motion off-rule) would
+// not apply at all. Every selector is read here with the selector grammar the pages use: type,
+// universal, class, id and attribute selectors, the combinators, the pseudo-classes and
+// pseudo-elements below, and :not(), :is(), :where(), :has() and the nth- functions with their
+// arguments. A vendor pseudo (::-webkit-…) is unknown to every other engine, so it is allowed
+// only alone, never in a list it would drop for them.
+const PSEUDO_CLASSES = new Set(["active", "any-link", "checked", "default", "defined", "disabled", "empty", "enabled", "first-child", "first-of-type", "focus", "focus-visible", "focus-within", "hover", "indeterminate", "invalid", "last-child", "last-of-type", "link", "only-child", "only-of-type", "optional", "placeholder-shown", "read-only", "read-write", "required", "root", "target", "valid", "visited"]);
+const SELECTOR_FUNCTIONS = new Set(["not", "is", "where", "has"]);
+const NTH_FUNCTIONS = new Set(["nth-child", "nth-last-child", "nth-of-type", "nth-last-of-type"]);
+const PSEUDO_ELEMENTS = new Set(["after", "backdrop", "before", "file-selector-button", "first-letter", "first-line", "marker", "placeholder", "selection"]);
+// The four pseudo-elements CSS 2 wrote with one colon, which browsers still accept that way.
+const LEGACY_ELEMENTS = new Set(["after", "before", "first-letter", "first-line"]);
+const IDENT = /^-?[A-Za-z_][\w-]*/;
+const NTH = /^\s*(?:odd|even|[+-]?\d+|[+-]?\d*n(?:\s*[+-]\s*\d+)?)\s*$/i;
+
+// Why a selector fails to parse, or null. `relative` allows a leading combinator (inside :has()), and
+// `nested` marks an argument of :not(), :is(), :where() or :has(), which takes no pseudo-element.
+export function selectorProblem(selector, relative = false, nested = false) {
+  let rest = selector.trim();
+  if (!rest) return "is empty";
+  let compounds = 0;
+  let expectCompound = true;
+  let vendor = false;
+  let sawElement = false;
+  if (relative && /^[>+~]/.test(rest)) rest = rest.slice(1).trimStart();
+  while (rest) {
+    if (!expectCompound) {
+      const combinator = rest.match(/^\s*([>+~])\s*|^\s+/);
+      if (!combinator) return `has ${JSON.stringify(rest[0])} where a combinator or the end belongs`;
+      rest = rest.slice(combinator[0].length);
+      if (!rest) return combinator[1] ? `ends with the combinator ${combinator[1]}` : null;
+      expectCompound = true;
+      continue;
+    }
+    let simple = 0;
+    let element = false;
+    const type = rest.match(/^(?:\*|-?[A-Za-z_][\w-]*)/);
+    if (type) {
+      rest = rest.slice(type[0].length);
+      simple++;
+    }
+    for (;;) {
+      if (/^[\s>+~]|^$/.test(rest)) break;
+      if (element) return `has ${JSON.stringify(rest.match(/^[^\s>+~]+/)[0])} after a pseudo-element, which ends its compound`;
+      const head = rest[0];
+      if (head === "." || head === "#") {
+        const name = rest.slice(1).match(IDENT);
+        if (!name) return `has a ${head} with no name after it`;
+        rest = rest.slice(1 + name[0].length);
+      } else if (head === "[") {
+        const attribute = rest.match(/^\[\s*-?[A-Za-z_][\w-]*\s*(?:([~|^$*]?=)\s*(?:"[^"]*"|'[^']*'|-?[A-Za-z_][\w-]*)\s*(?:[is]\s*)?)?\]/);
+        if (!attribute) return `has an attribute selector the browser cannot read, ${rest.match(/^\[[^\]]*\]?/)[0]}`;
+        rest = rest.slice(attribute[0].length);
+      } else if (head === ":") {
+        const doubled = rest.startsWith("::");
+        const name = rest.slice(doubled ? 2 : 1).match(/^-?[A-Za-z_][\w-]*/);
+        if (!name) return "has a colon with no pseudo-class or pseudo-element after it";
+        const lower = name[0].toLowerCase();
+        rest = rest.slice((doubled ? 2 : 1) + name[0].length);
+        if (lower.startsWith("-")) {
+          vendor = true;
+          if (doubled) element = sawElement = true;
+        } else if (rest.startsWith("(")) {
+          const end = closing(rest, 0, "()");
+          if (end >= rest.length) return `has :${name[0]}( with no closing )`;
+          const inside = rest.slice(1, end);
+          rest = rest.slice(end + 1);
+          if (doubled) return `has ::${name[0]}(), which is not a pseudo-element the pages use`;
+          if (SELECTOR_FUNCTIONS.has(lower)) {
+            for (const part of splitTop(inside, ",")) {
+              const problem = selectorProblem(part, lower === "has", true);
+              if (problem) return `has :${name[0]}(${inside}), whose ${JSON.stringify(part.trim())} ${problem}`;
+            }
+          } else if (NTH_FUNCTIONS.has(lower)) {
+            const [step, ...of] = inside.split(/\s+of\s+/i);
+            if (!NTH.test(step)) return `has :${name[0]}(${inside}), whose argument is not An+B, odd or even`;
+            if (of.length) {
+              if (!/^nth-(last-)?child$/.test(lower)) return `has :${name[0]}(… of …), which only :nth-child() and :nth-last-child() take`;
+              const problem = selectorProblem(of.join(" of "), false, true);
+              if (problem) return `has :${name[0]}(${inside}), whose selector ${problem}`;
+            }
+          } else return `has :${name[0]}(), which is not a pseudo-class the pages use`;
+        } else if (doubled) {
+          if (!PSEUDO_ELEMENTS.has(lower)) return `has ::${name[0]}, which is not a pseudo-element the pages use`;
+          element = sawElement = true;
+        } else if (LEGACY_ELEMENTS.has(lower)) element = sawElement = true;
+        else if (!PSEUDO_CLASSES.has(lower)) return `has :${name[0]}, which is not a pseudo-class the pages use`;
+      } else return `has ${JSON.stringify(head)} where a selector belongs`;
+      simple++;
+    }
+    if (!simple) return compounds ? `has two combinators in a row` : `starts with ${JSON.stringify(rest[0] ?? "")}`;
+    compounds++;
+    expectCompound = false;
+  }
+  if (nested && sawElement) return "has a pseudo-element, which :not(), :is(), :where() and :has() never take";
+  return vendor ? "vendor" : null;
+}
+
+// The problems of a rule's selector list, or none. A keyframe step and an at-rule are not selectors.
+export function selectorListProblems(rule, label) {
+  if (rule.selector.startsWith("@") || rule.stray || rule.nested || rule.context.some((entry) => /^@(-webkit-)?keyframes/.test(entry))) return [];
+  const parts = splitTop(rule.selector, ",");
+  const problems = [];
+  for (const part of parts) {
+    const problem = selectorProblem(part);
+    if (problem === "vendor") {
+      if (parts.length > 1) problems.push(`${label} ${rule.selector}: ${part.trim()} uses a vendor pseudo, which every other engine cannot parse, so in a list it drops the whole rule there; give it a rule of its own.`);
+    } else if (problem) problems.push(`${label} ${rule.selector}: ${JSON.stringify(part.trim())} ${problem}; the browser drops a selector list whole when one selector in it does not parse, so this rule would not apply at all.`);
+  }
+  return problems;
+}
+
 // A style rule nested in another, and an !important on a token, which this guard does not read.
 export function syntaxProblems(rules, label) {
   const problems = [];
   for (const rule of rules) {
+    problems.push(...selectorListProblems(rule, label));
     if (rule.nested) problems.push(`${label} ${rule.selector} nests rules inside a style rule; these rules read flat CSS, so write the nested rules out on their own.`);
     if (rule.stray) problems.push(`${label} has a ";" that ends no at-rule${rule.selector ? ` (after ${rule.selector})` : ""}; the browser reads it into the next rule's selector and drops that rule, which these rules would read as applied.`);
     for (const { property, important } of rule.declarations) {
