@@ -38,3 +38,9 @@ jobs:
             node scripts/github-annotations.mjs "verify failed" < "$RUNNER_TEMP/verify-stderr.txt"
           fi
           exit "$status"
+      # The READMEs' theme-page links, rendered by GitHub itself at this commit
+      # (scripts/check-readme-render.mjs): the ground truth behind verify's offline reader.
+      - name: README render
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/check-readme-render.mjs "$GITHUB_SHA"
