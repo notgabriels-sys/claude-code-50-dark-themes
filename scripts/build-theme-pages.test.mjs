@@ -275,3 +275,22 @@ for (const [defect, path, from, to, message] of [
     assert.match(rebuilt.stderr, message);
   });
 }
+
+test("the theme pages wear the site's base, and one rendered off it fails", { timeout: 120_000 }, async (t) => {
+  // verify holds every page the builder renders to the site style (scripts/site-style.mjs), as it
+  // holds the root pages; a builder that drops the shared stylesheet renders pages that are fresh
+  // but off the base, and only that check sees them.
+  const fixtureRoot = await makeFixture(t);
+  const builder = join(fixtureRoot, "scripts/build-theme-pages.mjs");
+  const source = await readFile(builder, "utf8");
+  const anchor = '<link rel="stylesheet" href="/assets/site.css">\n';
+  assert.equal(source.split(anchor).length, 2, "the stylesheet link appears once in the builder");
+  await writeFile(builder, source.replace(anchor, ""));
+  const rebuilt = await runScript(fixtureRoot, "scripts/build-theme-pages.mjs");
+  assert.equal(rebuilt.code, 0, rebuilt.stderr);
+
+  const result = await runVerifier(fixtureRoot);
+
+  assert.notEqual(result.code, 0, "a theme page off the site's base passed");
+  assert.match(result.stderr, /theme\/(?:[a-z0-9-]+\/)?index\.html does not link assets\/site\.css/);
+});

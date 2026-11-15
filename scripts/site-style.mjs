@@ -90,8 +90,14 @@ export const SITE_PAGES = ["index.html", "familiars.html", "claude-code-theme-in
 export const THEME_KEY = "familiars-theme";
 export const MOTION_KEY = "familiars-motion";
 // The page's theme previews: a theme shown in its own colours on its own ground (the hero's
-// specimen, a finder pick, a gallery card). Text inside one paints with the theme's colours.
-export const THEME_PREVIEWS = [".theme-monolith", ".pick", ".card"];
+// specimen, a finder pick, a gallery card, a colour swatch). Text inside one paints with the
+// theme's colours.
+export const THEME_PREVIEWS = [".theme-monolith", ".pick", ".card", ".swatch"];
+// A swatch is one of a theme's colours shown alone (a theme page's palette table, the theme
+// index's dots): it holds no text, so no text colour applies inside it (OWN_TEXT), and
+// pageProblems checks the markup holds none, since the page's own text on a theme's colour
+// would have no contrast anyone holds.
+export const SWATCHES = [".swatch"];
 
 // The design base's palette (/mnt/project-files/design/STYLE.md), by role.
 export const PALETTE = {
@@ -958,6 +964,7 @@ export const OWN_TEXT = {
   ".card": /^--(fg|mut|a|sh)$/,
   ".pick": /^--(fg|mut|a)$/,
   ".theme-monolith": /^--stage-(fg|mut|a|sh)$/,
+  ".swatch": /(?!)/,
 };
 const innermostRoot = (selector) => {
   const steps = specimenPath(selector).trim().split(/\s*([>+~ ])\s*/);
@@ -1038,7 +1045,7 @@ export function pageProblems(source, path, fontFiles = [], tokens = []) {
   // the end tag that closes it, every character outside a tag is whitespace.
   elements.forEach((element, at) => {
     if (element.closing || element.selfClosing) return;
-    const mark = MARKS.find((selector) => classesOf(element).includes(selector.slice(1)));
+    const mark = [...MARKS, ...SWATCHES].find((selector) => classesOf(element).includes(selector.slice(1)));
     if (!mark) return;
     let depth = 0;
     const end = elements.findIndex((other, after) => {
@@ -1049,7 +1056,8 @@ export function pageProblems(source, path, fontFiles = [], tokens = []) {
     });
     const inside = source.slice(element.end, end < 0 ? source.length : elements[end].start);
     const text = decode(inside.replace(/<!--[\s\S]*?-->/g, "").replace(/<[^>]*>/g, " ")).trim();
-    if (text) problems.push(`${path} <${element.name} class="${element.attributes.get("class")}"> is a mark (${mark}), which may be dimmed or blurred, and holds text ("${text.slice(0, 40)}"); text stays at full strength, so keep it out of a mark.`);
+    if (text && SWATCHES.includes(mark)) problems.push(`${path} <${element.name} class="${element.attributes.get("class")}"> is a swatch (${mark}), one of a theme's colours shown alone, and holds text ("${text.slice(0, 40)}"); nothing holds the contrast of text on it, so keep text beside a swatch, not in it.`);
+    else if (text) problems.push(`${path} <${element.name} class="${element.attributes.get("class")}"> is a mark (${mark}), which may be dimmed or blurred, and holds text ("${text.slice(0, 40)}"); text stays at full strength, so keep it out of a mark.`);
   });
   const button = (id, name) => {
     const tag = opened("button").find((candidate) => candidate.attributes.get("id") === id);
