@@ -974,6 +974,31 @@ output is unchanged and nothing in #74's guards needed adapting. The full suite
 was run at the exact tree of the commit that carries this paragraph; its
 message states the count.
 
+**(merged 2026-11-15) Main's #92, CI failure annotations.** `main` moved from
+427e607 to bf41202 with #92: the verify workflow now posts each failing test,
+and the message `verify` stops on, as an annotation on the check run, through
+`scripts/github-annotations.mjs` (a `node:test` reporter run beside `spec`, and
+a command that reads `verify`'s stderr), with six tests of its own and a
+CONTRIBUTING paragraph. Merged into #74 as 75dcd7c with no conflict; `verify`
+was green on the merge, and nothing in #74's guards needed adapting: the new
+script sits under `scripts/`, which robots.txt blocks by directory and which
+holds no served page. The full suite was run at the exact tree of the commit
+that carries this paragraph, which also records #93 below; its message states
+the count.
+
+**(merged 2026-11-15) Main's #93, the README render check.** `main` moved from
+bf41202 to 57f47e4 with #93: a CI step, README render, asks GitHub to render
+each README at the commit under test (`scripts/check-readme-render.mjs`, through
+the repository contents API with the html media type and the workflow's own
+token) and fails unless every theme-page link the source writes comes back as
+an anchor to that page with that text, and no other theme-page anchor appears;
+`verify`'s offline reader stays, and is the stricter of the two. It comes with
+its test and a CONTRIBUTING paragraph. Merged into #74 as 49435f2 with no
+conflict; `verify` was green on the merge, and nothing in #74's guards needed
+adapting: the script sits under `scripts/`, and the step runs only in CI. The
+suite is now twelve test files. The full suite was run at the exact tree of the
+commit that carries this paragraph; its message states the count.
+
 **(added 2026-10-30) What the sitemap, `llms.txt` and robots.txt say the site
 holds is read against the pages.** WP10. `verify` compared the sitemap only
 with the builder that writes it, and read neither `llms.txt`'s links nor
