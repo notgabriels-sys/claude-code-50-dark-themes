@@ -851,6 +851,26 @@ the page-dates tests and the real tree:
   the real tree red;
 - dropping the parting limit fails it at the made-and-unmade case alone.
 
+**(merged 2026-11-15) Main's #72, the storefront in the Familiars look.** #72
+moved the storefront onto a shared stylesheet, `assets/site.css`, with its fonts
+served from `assets/fonts/` under the OFL, and added `scripts/site-style.mjs`,
+whose page and stylesheet rules `verify` runs last, and `scripts/html-tags.mjs`,
+where `htmlTags` now lives. A `.css` file is still refused as above, with that one
+stylesheet as the exception; main's comment in `verify.mjs` says site-style reads
+every request it makes, its own font files only. Merged here, three hunks
+conflicted: the storefront's policy, its reviewed script hashes and a comment in
+`verify-contrast.mjs`. The storefront now runs two scripts, a head script that
+applies the saved theme and motion choice before paint, and the gallery. The
+merged gallery script is main's with exactly this branch's edits, compared line
+by line (the card's `/theme` button copies the bare command and names the theme;
+the finder's empty note names the family that holds the matches), so its hash
+moved and is reviewed in `reviewedInlineScripts`. Checked in Chromium at 1280 and
+390 px: 62 cards, no policy violation, the button copies `/theme`, and "acid"
+under Green reads "No green themes match that search; 1 in the warm family
+does." The document is up to 89 px wider than the window at 1280 px, on `main`
+too, from the drifting halo; the body clips it and the page does not scroll. The
+merged page's payment links and prices are main's, byte for byte.
+
 **(added 2026-10-20) The cards print the terminal background.** The footer, the
 install guide (its text and its HowTo structured data) and `README.md` told
 readers to set the terminal to the surface hex shown in the gallery, and no
