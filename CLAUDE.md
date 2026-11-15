@@ -1014,6 +1014,22 @@ lands. The suite is now thirteen test files. The full suite was run at the
 exact tree of the commit that carries this paragraph; its message states the
 count.
 
+**(merged 2026-11-15) Main's #95, every page's own address.** `main` moved
+from 1230448 to fa1ab63 with #95: `verify` now holds every served page's
+canonical link, `og:url` and JSON-LD page node to the address GitHub Pages
+serves it at, taken from `CNAME` and the file's own path rather than from
+the theme-page builder, and each theme page's breadcrumb to the site, the
+theme index and itself under its theme file's name
+(`scripts/page-addresses.mjs`, with its test and a CONTRIBUTING paragraph);
+a `noindex` page or a screenshot asset may state no address, but one it
+states is held the same way. Merged into #74 as 5b1c96e with no conflict;
+`verify` was green on the merge, and nothing in #74's guards needed
+adapting: WP10's sitemap check already reads each page's canonical link for
+the address it lists, and #95 holds that link to the served address from
+the other side, so the two agree by construction. The suite is now fourteen
+test files. The full suite was run at the exact tree of the commit that
+carries this paragraph; its message states the count.
+
 **(added 2026-10-30) What the sitemap, `llms.txt` and robots.txt say the site
 holds is read against the pages.** WP10. `verify` compared the sitemap only
 with the builder that writes it, and read neither `llms.txt`'s links nor
