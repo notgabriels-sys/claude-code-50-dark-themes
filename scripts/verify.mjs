@@ -3172,6 +3172,13 @@ const reviewedInlineScripts = new Map([
   // stop motion; only keyboard focus is scrolled clear of the floating switch.
   // Neither script loads, fetches, navigates or writes markup.
   ["familiars.html", ["sha256-y2IRHedCw+eW1rSiNN5ItkoqruQasjSZqLoVAZZfzWg=", "sha256-nJH4UipXNiMgkX4silgRq/05e32yB0ttc0wapgd++FY="]],
+  // The install guide and the semantic-colors article (read 2026-11-15, when they moved onto
+  // assets/site.css): the same head bootstrap as the Familiars page, and one body script, the
+  // same on both, that works the light/dark switch and the motion switch, each saving its choice
+  // under familiars-theme and familiars-motion and writing only its own label's text, and
+  // scrolls keyboard focus clear of the floating switch. It loads, fetches and navigates nothing.
+  ["claude-code-theme-install-guide.html", ["sha256-y2IRHedCw+eW1rSiNN5ItkoqruQasjSZqLoVAZZfzWg=", "sha256-y0m2bisvFZR0rgHhVlo6G4IE4cMPtZp8YtBH5iFgLtY="]],
+  ["semantic-terminal-colors.html", ["sha256-y2IRHedCw+eW1rSiNN5ItkoqruQasjSZqLoVAZZfzWg=", "sha256-y0m2bisvFZR0rgHhVlo6G4IE4cMPtZp8YtBH5iFgLtY="]],
 ]);
 // Every page under theme/ is rendered by scripts/build-theme-pages.mjs (main's
 // #59) and runs one script, the same on each: its copy button, which writes a

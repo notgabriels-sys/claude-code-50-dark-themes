@@ -86,7 +86,7 @@
 import { htmlTags } from "./html-tags.mjs";
 
 export const STYLESHEET = "assets/site.css";
-export const SITE_PAGES = ["index.html", "familiars.html"];
+export const SITE_PAGES = ["index.html", "familiars.html", "claude-code-theme-install-guide.html", "semantic-terminal-colors.html"];
 export const THEME_KEY = "familiars-theme";
 export const MOTION_KEY = "familiars-motion";
 // The page's theme previews: a theme shown in its own colours on its own ground (the hero's

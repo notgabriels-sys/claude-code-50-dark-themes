@@ -2,7 +2,16 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="script-src 'none'; worker-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="script-src 'sha256-y2IRHedCw+eW1rSiNN5ItkoqruQasjSZqLoVAZZfzWg=' 'sha256-y0m2bisvFZR0rgHhVlo6G4IE4cMPtZp8YtBH5iFgLtY='; worker-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<script>
+(function () {
+  try {
+    var theme = localStorage.getItem("familiars-theme");
+    if (theme === "light" || theme === "dark") document.documentElement.setAttribute("data-theme", theme);
+    if (localStorage.getItem("familiars-motion") === "paused") document.documentElement.setAttribute("data-motion", "paused");
+  } catch (e) {}
+})();
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Semantic terminal colors: lessons from 50 Claude Code themes</title>
 <meta name="description" content="Practical design notes from building 50 free Claude Code themes: preserve semantic status colors, tune contrast by role, and respect terminal background ownership.">
@@ -34,7 +43,7 @@
   "url": "https://gabs-utilities.com/semantic-terminal-colors.html",
   "image": "https://gabs-utilities.com/preview.png",
   "datePublished": "2026-08-24",
-  "dateModified": "2026-10-24",
+  "dateModified": "2026-11-15",
   "author": {
     "@type": "Organization",
     "name": "Gabs Utilities"
@@ -86,48 +95,61 @@
   ]
 }
 </script>
+<link rel="stylesheet" href="assets/site.css">
 <style>
+/* Fonts, tokens, the ambient lights, the theme switch and the motion pause come from
+   assets/site.css, linked above; this is the article's own layout on top of it. The coding
+   palette below and the three status colours colour the code and status specimens, which stay dark in either theme. */
 :root{
-  color-scheme:dark;
-  --bg:#0f1011;--panel:#17181a;--panel2:#1d1e20;--hair:#2e2f33;
-  --ink:#e9eaec;--muted:#a0a4ab;--faint:#858a93;--accent:#c9cfd6;
   --syntax-purple:#a98ce0;--syntax-light-purple:#c7b8ff;--syntax-grey-purple:#a8a0ba;
   --syntax-dark-blue:#7890bd;--syntax-blue:#8eaadf;--syntax-light-blue:#9ccce8;--syntax-dark-grey:#858a93;
   --terminal-surface:#0a0a0b;
   --green:#8fd6a3;--yellow:#e5c07b;--red:#e38b8b;
-  font-family:ui-monospace,"SF Mono",SFMono-Regular,"JetBrains Mono",Menlo,Consolas,monospace;
 }
-*{box-sizing:border-box}
-html{-webkit-text-size-adjust:100%}
-body{margin:0;background:radial-gradient(900px 560px at 50% -10%,#232529 0%,rgba(35,37,41,0) 64%),var(--bg);color:var(--ink);line-height:1.66}
-a{color:inherit}.wrap{max-width:1120px;margin:0 auto;padding:28px 20px 56px}
-header,footer{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;color:var(--muted);font-size:13px}
-header{margin-bottom:44px}.brand{font-size:12px;letter-spacing:.18em;text-transform:uppercase;text-decoration:none;color:var(--muted)}
-.nav{display:flex;gap:14px;flex-wrap:wrap}.nav a{text-decoration:none}.nav a:hover{color:var(--ink)}
-.hero,.panel,.callout,.code-panel,.table-wrap{border:1px solid var(--hair);background:linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.025));border-radius:22px;box-shadow:0 24px 80px rgba(0,0,0,.28)}
-.hero{padding:clamp(26px,5vw,48px);margin-bottom:18px}.eyebrow{font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--accent);margin:0 0 18px}
-h1{font-size:clamp(40px,7.3vw,78px);letter-spacing:-.065em;line-height:.94;margin:0 0 20px;max-width:14ch}
-.lead{font-size:clamp(18px,2vw,23px);color:#d8dadd;max-width:870px;margin:0 0 22px}
-.byline{font-size:13px;color:var(--faint)}.ctas{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}
-.button{display:inline-flex;text-decoration:none;border-radius:999px;padding:12px 16px;font-weight:760;background:var(--accent);color:#101112}
-.secondary{background:rgba(255,255,255,.035);border:1px solid var(--hair);color:var(--ink)}
-.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:18px 0}.panel{padding:18px}.panel b{display:block;margin-bottom:5px}.muted{color:var(--muted)}
-.article{max-width:860px;margin:34px auto 0}.section{margin-top:38px}.section h2{font-size:clamp(27px,4vw,38px);line-height:1.08;letter-spacing:-.045em;margin:0 0 14px}.section h3{font-size:21px;letter-spacing:-.025em;margin:24px 0 8px}
-.section p{color:var(--muted)}.section strong{color:var(--ink)}code{color:var(--syntax-light-blue);background:var(--terminal-surface);border:1px solid var(--hair);border-radius:5px;padding:1px 5px}pre code{border:0;padding:0}ul{padding-left:21px;color:var(--muted)}li{margin:7px 0}
-.callout{padding:22px;margin-top:28px;background:linear-gradient(180deg,rgba(201,207,214,.08),rgba(255,255,255,.025))}.callout p:last-child{margin-bottom:0}
-.code-panel{overflow:hidden;margin:18px 0}.code-head{display:flex;justify-content:space-between;gap:12px;padding:11px 15px;border-bottom:1px solid var(--hair);font-size:12px;color:var(--faint)}
-pre{margin:0;padding:18px;overflow:auto;white-space:pre;color:var(--ink);background:var(--terminal-surface);font:13px/1.65 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
-.key{color:var(--syntax-dark-blue)}.string{color:var(--syntax-grey-purple)}.comment{color:var(--syntax-dark-grey)}
-.syntax-command{color:var(--syntax-light-purple)}.syntax-keyword{color:var(--syntax-purple)}.syntax-subcommand,.syntax-value{color:var(--ink)}.syntax-scope{color:var(--syntax-grey-purple)}
-.table-wrap{overflow:auto;margin-top:16px}table{width:100%;border-collapse:collapse;min-width:620px}th,td{text-align:left;padding:13px 15px;border-bottom:1px solid var(--hair);vertical-align:top}th{font-size:12px;text-transform:uppercase;letter-spacing:.12em;color:var(--faint)}td{color:var(--muted)}td:first-child{color:var(--ink);font-weight:700}
-.states{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}.state{border:1px solid var(--hair);border-radius:999px;padding:6px 10px;font-size:12px}.success{color:var(--green)}.warning{color:var(--yellow)}.error{color:var(--red)}
+/* The specimens are samples of that palette, so their plain text is its own, as on the storefront. */
+.specimen{--ink:#e9eaec;}
+a{color:inherit}
+/* The script shows the switches by clearing hidden; no display rule may outrank it. */
+[hidden]{display:none!important}
+.wrap{position:relative;z-index:1;max-width:1120px;margin:0 auto;padding:28px 20px 112px}
+header,footer{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;color:var(--mute);font:500 12px/1.6 var(--mono);letter-spacing:.08em;text-transform:uppercase}
+header{margin-bottom:44px}.brand{letter-spacing:.18em;text-decoration:none;color:var(--ink)}
+.nav{display:flex;gap:16px;flex-wrap:wrap;align-items:center}.nav a{text-decoration:none}.nav a:hover{color:var(--ink)}
+.motion-switch{font:inherit;letter-spacing:inherit;text-transform:inherit;color:var(--mute);padding:8px 0;border:0;background:transparent;cursor:pointer}
+.motion-switch:hover{color:var(--ink)}
+.hero,.panel,.callout,.code-panel,.table-wrap{border:1px solid var(--hair);background:var(--ground-2);border-radius:var(--radius-panel)}
+.hero{padding:clamp(26px,5vw,48px);margin-bottom:18px}.eyebrow{font:500 12px/1.5 var(--mono);letter-spacing:.2em;text-transform:uppercase;color:var(--accent);margin:0 0 18px}
+h1,h2,h3{font-family:var(--display)}
+h1{font-size:clamp(40px,7.3vw,78px);font-weight:600;letter-spacing:-.04em;line-height:.96;margin:0 0 20px;max-width:14ch}
+.lead{font-size:clamp(18px,2vw,23px);color:var(--ink);max-width:870px;margin:0 0 22px}
+.byline{font:13px/1.6 var(--mono);color:var(--faint)}.ctas{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}
+.button{display:inline-flex;text-decoration:none;border-radius:999px;padding:12px 18px;font-weight:600;border:1px solid var(--accent);background:var(--accent);color:var(--ground)}
+.secondary{background:transparent;border-color:var(--hair);color:var(--ink)}.secondary:hover{border-color:var(--accent)}
+.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:18px 0}.panel{padding:18px;border-radius:var(--radius-card)}.panel b{display:block;margin-bottom:5px}.muted{color:var(--mute)}
+.article{max-width:860px;margin:34px auto 0}.section{margin-top:38px}.section h2{font-size:clamp(27px,4vw,38px);font-weight:600;line-height:1.08;letter-spacing:-.03em;margin:0 0 14px}.section h3{font-size:21px;font-weight:600;letter-spacing:-.02em;margin:24px 0 8px}
+.section p{color:var(--mute)}.section strong{color:var(--ink)}ul{padding-left:21px;color:var(--mute)}li{margin:7px 0}
+code{font-family:var(--mono);font-size:.9em;color:var(--ink);background:var(--raise);border:1px solid var(--hair);border-radius:5px;padding:1px 5px}
+.code-panel{overflow:hidden;margin:18px 0}.specimen.code-panel{background:var(--terminal-surface)}
+.specimen .code-head{display:flex;justify-content:space-between;gap:12px;padding:11px 15px;border-bottom:1px solid var(--hair);font:12px/1.6 var(--mono);color:var(--syntax-dark-grey)}
+.specimen pre{margin:0;padding:18px;overflow:auto;white-space:pre;color:var(--ink);background:var(--terminal-surface);font:13px/1.65 var(--mono)}
+.specimen .key{color:var(--syntax-dark-blue)}.specimen .string{color:var(--syntax-grey-purple)}.specimen .comment{color:var(--syntax-dark-grey)}
+.specimen .syntax-command{color:var(--syntax-light-purple)}.specimen .syntax-keyword{color:var(--syntax-purple)}.specimen .syntax-subcommand,.specimen .syntax-value{color:var(--ink)}.specimen .syntax-scope{color:var(--syntax-grey-purple)}
+.callout{padding:22px;margin-top:28px;border-color:var(--accent-dim)}.callout p:last-child{margin-bottom:0}
+.table-wrap{overflow:auto;margin-top:16px}table{width:100%;border-collapse:collapse;min-width:620px}th,td{text-align:left;padding:13px 15px;border-bottom:1px solid var(--hair);vertical-align:top}th{font:500 12px/1.5 var(--mono);text-transform:uppercase;letter-spacing:.12em;color:var(--faint)}td{color:var(--mute)}
+.states{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px;padding:14px;border:1px solid var(--hair);border-radius:var(--radius-card)}.specimen.states{background:var(--terminal-surface)}.specimen .state{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--hair);border-radius:999px;padding:6px 12px;font:12px/1.5 var(--mono);color:var(--ink)}.specimen .state::before{content:"";width:8px;height:8px;border-radius:50%;flex:none}.specimen .success::before{background:var(--green)}.specimen .warning::before{background:var(--yellow)}.specimen .error::before{background:var(--red)}
 .faq{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:16px}.faq .panel p{margin-bottom:0}
-.final{margin-top:42px;padding:26px}.final h2{margin-top:0}.final p{color:var(--muted)}
+.final{margin-top:42px;padding:26px}.final h2{margin-top:0}.final p{color:var(--mute)}
 footer{margin-top:42px;padding-top:22px;border-top:1px solid var(--hair)}
 @media(max-width:760px){.grid,.faq{grid-template-columns:1fr}h1{font-size:44px}.hero{padding:26px}.article{margin-top:26px}}
+@media (prefers-reduced-motion: no-preference) {
+  /* Nothing moves until the script has set data-motion, so without JavaScript, where the pause
+     control cannot work, the page stays still; site.css drifts the lights on every page. */
+  :root:not([data-motion]) .lights span { animation: none; }
+}
 </style>
 </head>
 <body>
+<div class="lights" aria-hidden="true"><span class="l1"></span><span class="l2"></span><span class="l3"></span></div>
 <div class="wrap">
   <header>
     <a class="brand" href="./">Gabs Utilities</a>
@@ -136,7 +158,15 @@ footer{margin-top:42px;padding-top:22px;border-top:1px solid var(--hair)}
       <a href="https://github.com/notgabriels-sys/claude-code-50-dark-themes">Source</a>
       <a href="claude-code-theme-install-guide.html">Install guide</a>
       <a href="impressum.html">Impressum</a>
+      <button class="motion-switch" id="motionSwitch" type="button" hidden>Pause motion</button>
     </nav>
+    <button class="theme-switch" id="themeSwitch" type="button" hidden>
+      <span class="theme-switch-knob" aria-hidden="true">
+        <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+        <svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5Z"/></svg>
+      </span>
+      <span id="themeSwitchLabel">Light mode</span>
+    </button>
   </header>
 
   <main>
@@ -145,7 +175,7 @@ footer{margin-top:42px;padding-top:22px;border-top:1px solid var(--hair)}
         <p class="eyebrow">Design notes / Claude Code themes</p>
         <h1>What 50 dark Claude Code themes taught me about semantic terminal colors.</h1>
         <p class="lead">A terminal theme is not just a palette. It is a mapping between color and meaning. Decorative accents can move; errors, warnings, success states and diffs still need to read instantly.</p>
-        <p class="byline">By Gabs Utilities · published <time datetime="2026-08-24">24 August 2026</time> · updated <time datetime="2026-10-24">24 October 2026</time> · Free to read</p>
+        <p class="byline">By Gabs Utilities · published <time datetime="2026-08-24">24 August 2026</time> · updated <time datetime="2026-11-15">15 November 2026</time> · Free to read</p>
         <div class="ctas">
           <a class="button" href="./">Browse all 50 themes</a>
           <a class="button secondary" href="https://github.com/notgabriels-sys/claude-code-50-dark-themes">Open the MIT source</a>
@@ -164,7 +194,7 @@ footer{margin-top:42px;padding-top:22px;border-top:1px solid var(--hair)}
           <h2>The useful constraint: do not theme away meaning.</h2>
           <p>When I started building the set, the obvious temptation was to make every interface color belong to each palette. That produces a neat screenshot, but it weakens the tool. If the same accent can mean an assistant label, a warning, a successful operation and a diff addition, color stops helping.</p>
           <p>The better rule was narrower: <strong>change identity and hierarchy, preserve operational meaning.</strong> The theme can own foreground text, secondary text, borders, prompts, permissions and raised surfaces. Claude Code's base dark preset can keep the status roles people already recognize.</p>
-          <div class="states" aria-label="Semantic status examples">
+          <div class="states specimen" aria-label="Semantic status examples">
             <span class="state success">success stays success</span>
             <span class="state warning">warning stays warning</span>
             <span class="state error">error stays error</span>
@@ -174,7 +204,7 @@ footer{margin-top:42px;padding-top:22px;border-top:1px solid var(--hair)}
         <section class="section">
           <h2>Graphite is a useful concrete example.</h2>
           <p>This focused fragment comes directly from the <a href="./#theme-graphite">Graphite theme</a>. It changes the identity, text hierarchy and surfaces, but it does not override <code>success</code>, <code>error</code>, <code>warning</code> or diff colors.</p>
-          <div class="code-panel" aria-label="Focused Graphite theme JSON example">
+          <div class="code-panel specimen" aria-label="Focused Graphite theme JSON example">
             <div class="code-head"><span>graphite.json · focused fragment</span><span>base: dark</span></div>
 <pre>{
   <span class="key">"name"</span>: <span class="string">"Graphite"</span>,
@@ -241,7 +271,7 @@ footer{margin-top:42px;padding-top:22px;border-top:1px solid var(--hair)}
         <section class="section" id="vol2">
           <h2>The system extended cleanly.</h2>
           <p>The same rules later produced a second free pack, Dark Themes Vol.&nbsp;2: twelve more palettes — Afterglow, Aurora Borealis, Basalt, Biolume, Cryosleep, Darkroom, Gaslight, Heliotrope, Magnetite, Monsoon, Neon Noir and Ozone. They leave the same status colors on the base preset and clear the same role-aware contrast floors, which is the useful test of whether a palette system is a system at all rather than one lucky set of colors.</p>
-          <div class="code-panel" aria-label="Dark Themes Vol. 2 install command">
+          <div class="code-panel specimen" aria-label="Dark Themes Vol. 2 install command">
             <div class="code-head"><span>Terminal</span><span>Same marketplace</span></div>
 <pre><span class="syntax-command">claude</span> <span class="syntax-keyword">plugin</span> <span class="syntax-subcommand">install</span> <span class="syntax-value">dark-themes-vol-2<span class="syntax-scope">@notgabriels-themes</span></span></pre>
           </div>
@@ -274,5 +304,65 @@ footer{margin-top:42px;padding-top:22px;border-top:1px solid var(--hair)}
     <span><a href="./">50 dark themes</a> · <a href="https://github.com/notgabriels-sys/claude-code-50-dark-themes">GitHub</a> · <a href="impressum.html">Impressum</a></span>
   </footer>
 </div>
+<script>
+(function () {
+  var root = document.documentElement;
+  var mq = window.matchMedia ? window.matchMedia("(prefers-color-scheme: light)") : null;
+  var themeButton = document.getElementById("themeSwitch");
+  function effective() {
+    var t = root.getAttribute("data-theme");
+    if (t) return t;
+    return mq && mq.matches ? "light" : "dark";
+  }
+  function paint() {
+    var e = effective();
+    root.setAttribute("data-eff", e);
+    document.getElementById("themeSwitchLabel").textContent = e === "dark" ? "Light mode" : "Dark mode";
+  }
+  paint();
+  if (mq && mq.addEventListener) mq.addEventListener("change", paint);
+  themeButton.addEventListener("click", function () {
+    var next = effective() === "dark" ? "light" : "dark";
+    root.setAttribute("data-theme", next);
+    paint();
+    try { localStorage.setItem("familiars-theme", next); } catch (e) {}
+  });
+  themeButton.hidden = false;
+
+  // The background lights drift only while motion is allowed and not paused.
+  var allowsMotion = window.matchMedia("(prefers-reduced-motion: no-preference)");
+  var motionButton = document.getElementById("motionSwitch");
+  var userPaused = root.getAttribute("data-motion") === "paused";
+  function syncMotion() {
+    var running = !userPaused && allowsMotion.matches && !document.hidden;
+    root.setAttribute("data-motion", running ? "running" : "paused");
+    motionButton.textContent = userPaused ? "Play motion" : "Pause motion";
+    motionButton.hidden = !allowsMotion.matches;
+  }
+  motionButton.addEventListener("click", function () {
+    userPaused = !userPaused;
+    try { localStorage.setItem("familiars-motion", userPaused ? "paused" : "running"); } catch (e) {}
+    syncMotion();
+  });
+  if (allowsMotion.addEventListener) allowsMotion.addEventListener("change", syncMotion);
+  document.addEventListener("visibilitychange", syncMotion);
+  syncMotion();
+
+  // Clear keyboard focus from the floating switch without moving a pointer click.
+  var keyboard = false;
+  window.addEventListener("keydown", function (ev) { if (ev.key === "Tab") keyboard = true; });
+  window.addEventListener("pointerdown", function () { keyboard = false; });
+  document.addEventListener("focusin", function (ev) {
+    if (!keyboard || ev.target === themeButton) return;
+    var target = ev.target;
+    requestAnimationFrame(function () {
+      var r = target.getBoundingClientRect(), b = themeButton.getBoundingClientRect();
+      if (r.right > b.left - 8 && r.left < b.right + 8 && r.bottom > b.top - 12 && r.top < b.bottom + 8) {
+        window.scrollBy(0, r.bottom - b.top + 16);
+      }
+    });
+  });
+})();
+</script>
 </body>
 </html>
