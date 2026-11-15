@@ -1,0 +1,30 @@
+name: Tell search engines through IndexNow
+
+# On every push to main, once GitHub Pages has deployed that commit, send every address in
+# sitemap.xml to IndexNow with the site's key (scripts/submit-indexnow.mjs). A failure here
+# blocks nothing; it means the engines were not told about this deploy.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: indexnow
+  cancel-in-progress: true
+
+jobs:
+  submit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Submit the sitemap after the Pages deploy
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/submit-indexnow.mjs --after-pages "$GITHUB_SHA"
