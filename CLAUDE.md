@@ -896,6 +896,27 @@ that browser check pass on the merge. The check ran locally on Playwright
 it runs on this branch's pull requests too. It pins its actions by tag, which
 WP13's pinned-actions rule will meet when that branch is rebased.
 
+**(merged 2026-11-15) Main's #72, the storefront in the Familiars look.** #72
+restyled `index.html` onto a shared stylesheet, `assets/site.css`, with the
+site's fonts served from `assets/fonts/` as WOFF2, and added
+`scripts/site-style.mjs` as the guard over that stylesheet and the pages on it
+(`scripts/html-tags.mjs` now holds the `htmlTags` reader both guards use).
+Merged into #74 with no conflict, and `verify` was green on the merge as
+auto-merged. One gap, found by reading the merge rather than trusting it: the
+WP10 robots reader read what a page's CSS can fetch from its `style` elements
+and attributes only, so the eight font files that `assets/site.css` alone names
+(the ninth is also preloaded by the page) were paths no rule was held away
+from. Reproduced green first (rule 1), in a scratch copy with
+`Disallow: /assets/fonts/IBMPlexMono-Medium-Pi`. The reader now follows every
+`link` whose `rel` holds `stylesheet` to a served file on this site and reads
+that file's addresses with the same CSS tokenizer, resolved against the
+stylesheet's own address, not the page's (`fonts/X.woff2` in `/assets/site.css`
+is `/assets/fonts/X.woff2`); the real stylesheet's relative paths pin that base.
+One test holds it, and with the branch gutted that test alone turns red while
+the control beside it and the real tree stay green (rule 5). The full suite was
+run at the exact tree of the commit that carries this; its message states the
+count.
+
 **(added 2026-10-30) What the sitemap, `llms.txt` and robots.txt say the site
 holds is read against the pages.** WP10. `verify` compared the sitemap only
 with the builder that writes it, and read neither `llms.txt`'s links nor
@@ -948,7 +969,9 @@ another host; and robots.txt reading `Allow: /`, with `Disallow: /` or a
   block a path the public pages or `llms.txt` use (or, since 2026-11-09, a
   note kept open for search), read percent-decoded and
   case-folded from every URL attribute, `srcset`, meta content, CSS `url()`
-  and `image-set()`, JSON-LD and absolute address; every served note is
+  and `image-set()`, JSON-LD and absolute address (and, since 2026-11-15, the
+  `url()`s of a stylesheet a page links, resolved against the stylesheet's own
+  address; see "Main's #72" below); every served note is
   blocked at each address Pages serves it at (raw `.md`, rendered `.html`,
   and the directory for a README or `index.md` with no `index.html`;
   corrected 2026-11-09: the addresses now come from a model of what Jekyll

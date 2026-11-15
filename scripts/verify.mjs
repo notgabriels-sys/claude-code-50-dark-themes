@@ -4552,6 +4552,23 @@ const PUBLIC_SOURCES = "the site's public pages, llms.txt or a note in crawlable
         const addresses = cssAddresses(tag.text, `${page}'s style element`);
         for (const address of addresses) addPublic(address, base, addresses.strings.has(address) ? `${page}'s style element` : undefined);
       }
+      // A stylesheet the page links fetches too, and its url()s resolve against the stylesheet's
+      // own address, not the page's. Main's #72 moved the storefront's fonts into assets/site.css,
+      // where eight of the nine font files are named nowhere a page's markup shows; a rule over one
+      // of them passed here with verify green (reproduced 2026-11-15).
+      if (tag.name === "link" && !tag.closing) {
+        const rel = decodeAttributeValue(tag.attributes.find((a) => a.name === "rel")?.value ?? "").toLowerCase().split(/[\t\n\f\r ]+/);
+        const href = tag.attributes.find((a) => a.name === "href")?.value;
+        if (rel.includes("stylesheet") && href !== undefined) {
+          const url = URL.parse(decodeAttributeValue(href).trim(), base);
+          const sheet = url && (url.host === cname || url.host === `www.${cname}`) ? decodedPath(url.pathname).slice(1) : undefined;
+          if (sheet !== undefined && servedFiles.includes(sheet)) {
+            const where = `${sheet}, the stylesheet ${page} links`;
+            const addresses = cssAddresses(await readFile(fileUrl(sheet), "utf8"), where);
+            for (const address of addresses) addPublic(address, `${siteUrl}${urlPath(sheet)}`, addresses.strings.has(address) ? where : undefined);
+          }
+        }
+      }
       if (tag.name === "script" && /^application\/ld\+json$/i.test(tag.attributes.find((a) => a.name === "type")?.value ?? "")) {
         let data;
         try {
