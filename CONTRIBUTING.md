@@ -206,6 +206,10 @@ that is on GitHub.
 After every push to `main`, once GitHub Pages has deployed it, `.github/workflows/indexnow.yml`
 sends every address in `sitemap.xml` to IndexNow with the site's key
 (`scripts/submit-indexnow.mjs`); the key file at the root must keep its name and content.
+The same deploy is read back by `.github/workflows/live-check.yml`: every address in
+`sitemap.xml`, plus `sitemap.xml`, `robots.txt`, `llms.txt` and `assets/site.css`, is fetched
+from the site with a query naming the commit and must be byte for byte the committed file
+(`scripts/check-live-site.mjs`); a page that differs is named with its first differing line.
 
 Every served page names the address GitHub Pages serves it at, in full, in its canonical
 link, its `og:url` and the page node of its JSON-LD, and each theme page's breadcrumb runs from the
