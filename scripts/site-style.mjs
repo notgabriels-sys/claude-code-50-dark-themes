@@ -48,7 +48,10 @@
 //    movement, smooth scrolling, a hover transform) is written under
 //    :root:not([data-motion="paused"]), so the pause removes it. Selectors are matched as the
 //    browser matches them: case kept, and the space that is a descendant combinator kept. No
-//    motion is !important but the pause, and a page carries no <marquee>.
+//    motion is !important but the pause, and a page carries no <marquee>. Without a page's
+//    script the switch stays hidden, so nothing may loop then: a page's own loops run only under
+//    :root[data-motion="running"], which its script sets, and the stylesheet's lights hold still
+//    until the script has set data-motion.
 // 5. The pages on the base link assets/site.css before their own <style>, and no other
 //    stylesheet, so the page's layout builds on the shared tokens; carry the ambient lights, the
 //    theme switch, wired to the key the Familiars page keeps the choice under, so one choice
@@ -136,6 +139,12 @@ const motionMedia = (entry, feature) => {
 };
 const motionAllowed = (rule) => rule.context.some((entry) => motionMedia(entry, "no-preference"));
 const PAUSED = ':root[data-motion="paused"]';
+// Set by a page's script while motion is allowed and not paused. Without the script nothing sets
+// data-motion and the motion switch stays hidden, so a loop that ran then could not be paused
+// (WCAG 2.2.2): a page's own loops run only under RUNNING, and the lights the stylesheet drifts
+// are held still (LIGHTS_STILL) until the script has set data-motion.
+const RUNNING = ':root[data-motion="running"]';
+const LIGHTS_STILL = /:root:not\(\[data-motion\]\)\s+\.lights\s+span\s*\{\s*animation\s*:\s*none\s*;?\s*\}/;
 
 // CSS Color 4 named colours.
 const NAMED_COLOURS = new Set(
@@ -1071,8 +1080,10 @@ export function pageProblems(source, path, fontFiles = [], tokens = [], { card =
     const root = opened("html")[0];
     if (root?.attributes.get("data-theme") !== "dark") problems.push(`${path} is a share card, rendered to an image, and does not pin the dark theme (<html data-theme="dark">), so a light system would draw it light.`);
     if (opened("script").some((script) => !/application\/ld\+json/i.test(script.attributes.get("type") ?? ""))) problems.push(`${path} is a share card and runs a script; a card is still, so it runs none and carries no switches.`);
-    const still = /:root:not\(\[data-motion\]\)\s+\.lights\s+span\s*\{\s*animation\s*:\s*none\s*;?\s*\}/;
-    if (!opened("style").some(({ text }) => still.test(stripComments(text)))) problems.push(`${path} is a share card and does not hold its lights still (:root:not([data-motion]) .lights span { animation: none; }); with no script to set data-motion, site.css would drift them.`);
+    if (!opened("style").some(({ text }) => LIGHTS_STILL.test(stripComments(text)))) problems.push(`${path} is a share card and does not hold its lights still (:root:not([data-motion]) .lights span { animation: none; }); with no script to set data-motion, site.css would drift them.`);
+  }
+  if (!card && !opened("style").some(({ text }) => LIGHTS_STILL.test(stripComments(text)))) {
+    problems.push(`${path} does not hold its lights still until its script runs (:root:not([data-motion]) .lights span { animation: none; }); without the script the motion switch stays hidden, so lights drifting then could not be paused (WCAG 2.2.2).`);
   }
   if (!card && !button("themeSwitch", "theme-switch")) {
     problems.push(`${path} does not carry the theme switch as <button class="theme-switch" id="themeSwitch" type="button" hidden>; it stays hidden until the page's script can work it.`);
@@ -1090,6 +1101,9 @@ export function pageProblems(source, path, fontFiles = [], tokens = [], { card =
   const allowed = bound(scripts, `matchMedia\\(\\s*["']\\(\\s*prefers-reduced-motion\\s*:\\s*no-preference\\s*\\)["']\\s*\\)`).map((name) => `!\\s*${escape(name)}\\.matches`);
   if (!card && (!stores(scripts, MOTION_KEY) || !/data-motion/.test(scripts) || !shows(scripts, "motionSwitch", ["false", ...allowed].join("|")))) {
     problems.push(`${path}'s script does not work the motion switch under the key "${MOTION_KEY}" (reading it with getItem, saving it with setItem, setting data-motion on the root, and showing the switch, never hiding it again, whenever prefers-reduced-motion: no-preference matches).`);
+  }
+  if (!card && !/setAttribute\(\s*["']data-motion["']\s*,[^;]*["']running["']/.test(scripts)) {
+    problems.push(`${path}'s script never sets data-motion="running" on the root; the page's loops run only under ${RUNNING}, which the script sets while motion is allowed and not paused, so without the script nothing loops where no switch could pause it.`);
   }
   // A selector the browser does not know makes matches(), closest() and querySelector() throw a
   // SyntaxError, which stops the handler that called it: :focus-visible and :has() before Safari
@@ -1181,6 +1195,13 @@ export function pageProblems(source, path, fontFiles = [], tokens = [], { card =
   }
   problems.push(...emberTextProblems(rules, path), ...paintProblems(rules, path), ...dimProblems(rules, path), ...keyframeDimProblems(rules, path));
   problems.push(...motionProblems(rules, path));
+  if (!card) {
+    for (const rule of rules) {
+      if (loops(rule) && !exactSelectorsOf(rule).every((selector) => selector.startsWith(RUNNING))) {
+        problems.push(`${path} ${rule.selector} loops outside ${RUNNING}; without the page's script the motion switch stays hidden, so a loop running then could not be paused (WCAG 2.2.2). Write it under ${RUNNING}, which the script sets while motion is allowed and not paused.`);
+      }
+    }
+  }
   return problems;
 }
 
