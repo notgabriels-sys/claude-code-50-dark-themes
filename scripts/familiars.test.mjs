@@ -69,7 +69,7 @@ test("rejects a Familiars page whose stated count drifts from its cards", { time
 test("rejects a Familiars page that drops a card but keeps the count", { timeout: 90_000 }, async (t) => {
   const fixtureRoot = await makeFixture(t);
   await editFile(fixtureRoot, "familiars.html", (html) =>
-    html.replace(/<article class="card" data-kind="theme">[\s\S]*?<\/article>/, ""),
+    html.replace(/<article class="creature lit" data-kind="theme">[\s\S]*?<\/article>/, ""),
   );
 
   const result = await runVerifier(fixtureRoot);
