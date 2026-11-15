@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="script-src 'sha256-NIZ5jxPqHe76C4AEHPJCjXNeTRDJC4LsWQG/g6melI4=' 'sha256-K4e4VtCupyeStVvL8Qgx9LHWZ+ocw3+VN/kKh0z+Gt4='; worker-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="script-src 'sha256-NIZ5jxPqHe76C4AEHPJCjXNeTRDJC4LsWQG/g6melI4=' 'sha256-TMd+kyTRki4KbabxshOnoDwtro42eRZOGoOldP7r62Q='; worker-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>50 Dark Themes for Claude Code</title>
 <meta name="description" content="Browse and install 50 hand-tuned dark themes for Claude Code as a native plugin, plus the free Vol. 2 expansion pack. Free, MIT licensed, and verified with 894 role-aware contrast comparisons.">
@@ -466,14 +466,17 @@ footer>span>a.in-text{display:inline;min-height:0;border-bottom:0;text-decoratio
   }
   :root[data-theme="light"] footer .directory-badge img{filter:grayscale(1);opacity:.7}
   /* Motion: the specimen floats, the beam and ring turn, the mark pulses, the opening rises.
-     Only when the visitor allows it. */
+     Only when the visitor allows it. Nothing loops until the script has set data-motion, so
+     without JavaScript, where the pause control stays hidden, nothing loops that it could not
+     pause (WCAG 2.2.2). */
   @media (prefers-reduced-motion:no-preference){
+    :root:not([data-motion]) .lights span{animation:none}
     :root:not([data-motion="paused"]){scroll-behavior:smooth}
     :root:not([data-motion="paused"]) .skip-link{transition:transform .15s ease}
-    .theme-monolith{animation:monolith-float 5s ease-in-out infinite}
-    .hero-layout::after{animation:stage-turn 9s linear infinite}
-    .hero-layout::before{animation:stage-turn 60s linear infinite reverse}
-    .monolith-mark::after{animation:mark-pulse 3s ease-out infinite}
+    :root[data-motion="running"] .theme-monolith{animation:monolith-float 5s ease-in-out infinite}
+    :root[data-motion="running"] .hero-layout::after{animation:stage-turn 9s linear infinite}
+    :root[data-motion="running"] .hero-layout::before{animation:stage-turn 60s linear infinite reverse}
+    :root[data-motion="running"] .monolith-mark::after{animation:mark-pulse 3s ease-out infinite}
     /* The opening lines rise in once; under the pause they would hold the first frame at 30%,
        so the pause removes the rise (and its delays, which the gated shorthand would outrank).
        The motion switch, or a change of the motion setting, marks the hero .risen, so the rise
@@ -1160,9 +1163,13 @@ vol2Btn.addEventListener("click", async () => {
   const allowsMotion = window.matchMedia("(prefers-reduced-motion: no-preference)");
   const motionSwitch = document.getElementById("motionSwitch");
   const hero = document.querySelector(".hero-layout");
+  // The loops run only while data-motion is "running", so without this script nothing loops
+  // where the control that pauses it would stay hidden.
+  let userPaused = root.getAttribute("data-motion") === "paused";
   const paintMotion = () => {
+    root.setAttribute("data-motion", allowsMotion.matches && !userPaused ? "running" : "paused");
     motionSwitch.hidden = !allowsMotion.matches;
-    motionSwitch.textContent = root.getAttribute("data-motion") === "paused" ? "Play motion" : "Pause motion";
+    motionSwitch.textContent = userPaused ? "Play motion" : "Pause motion";
   };
   paintMotion();
   allowsMotion.addEventListener("change", () => {
@@ -1173,10 +1180,8 @@ vol2Btn.addEventListener("click", async () => {
   motionSwitch.addEventListener("click", () => {
     // The opening lines rise in once per visit: un-pausing would otherwise run the rise again.
     hero.classList.add("risen");
-    const paused = root.getAttribute("data-motion") !== "paused";
-    if (paused) root.setAttribute("data-motion", "paused");
-    else root.removeAttribute("data-motion");
-    try{ localStorage.setItem(MOTION_KEY, paused ? "paused" : "running"); }
+    userPaused = !userPaused;
+    try{ localStorage.setItem(MOTION_KEY, userPaused ? "paused" : "running"); }
     catch{}
     paintMotion();
   });
