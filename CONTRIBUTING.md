@@ -192,6 +192,10 @@ that expects a green tree fails with it (after a colour change, 107 of 523 on 20
 `verify` names first. After a colour change it names the gallery script's new hash, and then the
 release the changed pack needs.
 
+In CI each failing test, and the message `verify` stops on, is also posted as an annotation on the
+check run (`scripts/github-annotations.mjs`), so a red pull request names its failure on the
+Checks tab without opening the job log.
+
 The command checks:
 
 - exactly 50 root-level theme files, plus every packaged Vol. 2 theme;

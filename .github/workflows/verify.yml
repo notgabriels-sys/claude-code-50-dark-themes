@@ -19,5 +19,22 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: node --test scripts/*.test.mjs
-      - run: node scripts/verify.mjs
+      # Each failing test, and the verifier's message, also becomes an annotation on the check
+      # run (scripts/github-annotations.mjs), which the checks API returns where logs are not read.
+      - name: Tests
+        run: >-
+          node --test
+          --test-reporter=spec --test-reporter-destination=stdout
+          --test-reporter=./scripts/github-annotations.mjs --test-reporter-destination=stdout
+          scripts/*.test.mjs
+      - name: Verifier
+        shell: bash
+        run: |
+          set +e
+          node scripts/verify.mjs 2> "$RUNNER_TEMP/verify-stderr.txt"
+          status=$?
+          cat "$RUNNER_TEMP/verify-stderr.txt" >&2
+          if [ "$status" -ne 0 ]; then
+            node scripts/github-annotations.mjs "verify failed" < "$RUNNER_TEMP/verify-stderr.txt"
+          fi
+          exit "$status"
