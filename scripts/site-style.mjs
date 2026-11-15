@@ -940,6 +940,29 @@ const inside = (rule, roots) => pathsOf(rule).every((selector) => {
   const steps = specimenPath(selector).trim().split(/\s*([>+~ ])\s*/);
   return steps.some((compound, at) => at % 2 === 0 && roots.test(compound) && (at === steps.length - 1 || /[> ]/.test(steps[at + 1])));
 });
+// The colours text may take inside each specimen and theme preview: the ones that root sets for
+// itself (a card's and a pick's in their style attribute, the hero stage's in its rule, a
+// specimen's ink and the coding palette): the theme's own colours, drawn on that root's own ground.
+// A shared token there (--accent, --ground) has its contrast held against the page's ground, not
+// the preview's, and a name the root never sets falls back to the inherited text colour.
+// The innermost root a selector sits in decides, so a specimen inside a card takes the specimen's.
+export const OWN_TEXT = {
+  ".cmd": /^--(ink|syntax-[a-z-]+)$/,
+  ".specimen": /^--(ink|syntax-[a-z-]+)$/,
+  ".card": /^--(fg|mut|a|sh)$/,
+  ".pick": /^--(fg|mut|a)$/,
+  ".theme-monolith": /^--stage-(fg|mut|a|sh)$/,
+};
+const innermostRoot = (selector) => {
+  const steps = specimenPath(selector).trim().split(/\s*([>+~ ])\s*/);
+  let found;
+  steps.forEach((compound, at) => {
+    if (at % 2 !== 0 || !(at === steps.length - 1 || /[> ]/.test(steps[at + 1]))) return;
+    for (const root of Object.keys(OWN_TEXT)) if (ROOTS([root]).test(compound)) found = root;
+  });
+  return found;
+};
+const ownText = (rule, name) => pathsOf(rule).every((selector) => OWN_TEXT[innermostRoot(selector)]?.test(name));
 // Tokens a page may re-declare inside a specimen, and what holds them instead.
 const SPECIMEN_OWN = new Set(["--ink"]);
 const NOT_TEXT = ["ground-2", "raise", "hair", "accent-soft", "accent-dim", "ember-soft"];
@@ -1089,7 +1112,9 @@ export function pageProblems(source, path, fontFiles = [], tokens = []) {
       const surface = NOT_TEXT.find((token) => new RegExp(`var\\(\\s*--${token}\\s*[,)]`, "i").test(value));
       if (surface) problems.push(`${path} ${rule.selector} { ${property}: ${value} }: --${surface} is a surface, line or wash, never text; its contrast is not held. Colour text with --ink, --mute, --faint or --accent.`);
       else if (inside(rule, SPECIMENS_OR_PREVIEWS)) {
-        if (!/^(var\(\s*--[\w-]+\s*\)|currentcolor|inherit)$/i.test(value.trim())) problems.push(`${path} ${rule.selector} { ${property}: ${value} }: inside a specimen or a theme preview, text takes the specimen's or the preview's own colours, var(--…) with no fallback, not a literal.`);
+        const name = value.trim().match(/^var\(\s*(--[\w-]+)\s*\)$/i)?.[1];
+        if (!name && !/^(currentcolor|inherit)$/i.test(value.trim())) problems.push(`${path} ${rule.selector} { ${property}: ${value} }: inside a specimen or a theme preview, text takes the specimen's or the preview's own colours, var(--…) with no fallback, not a literal.`);
+        else if (name && !ownText(rule, name)) problems.push(`${path} ${rule.selector} { ${property}: ${value} }: inside a specimen or a theme preview, text takes the colours that root sets for itself (${pathsOf(rule).map((selector) => `${innermostRoot(selector)}: ${OWN_TEXT[innermostRoot(selector)]?.source ?? "none"}`).join("; ")}), the theme's own colours on its own ground; ${name} is not one of them.`);
       } else if (!heldText(rule, value) && !/var\(\s*--ember\s*[,)]/i.test(value)) {
         problems.push(`${path} ${rule.selector} { ${property}: ${value} }: outside a specimen or a theme preview, text takes --ink, --mute, --faint or --accent (or --ground on an ink or violet fill), the tokens whose contrast ${STYLESHEET} holds in both themes; a literal colour, the coding palette or a token of the page's own would not follow the light theme. Inside a specimen (.cmd, .specimen) or a theme preview (${THEME_PREVIEWS.join(", ")}) it takes the specimen's colours.`);
       }
