@@ -35,7 +35,10 @@ install the 50; one more adds Vol. 2.
    /plugin install dark-themes-vol-2@notgabriels-themes
    ```
 
-Restart Claude Code, then run `/theme` and pick one.
+Restart Claude Code, then run `/theme` and pick one. If `/theme` says custom themes are disabled
+in safe mode, Claude Code was started with `--safe-mode` or `CLAUDE_CODE_SAFE_MODE` set, which
+turns off plugins and custom themes: restart without `--safe-mode`, or run
+`unset CLAUDE_CODE_SAFE_MODE` (and remove it from your shell profile) first.
 
 **→ Every theme, previewed: [gabs-utilities.com/theme/](https://gabs-utilities.com/theme/)** (a page for each of the 62, with a specimen in its own colors).
 
