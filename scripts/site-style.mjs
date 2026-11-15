@@ -664,7 +664,7 @@ export function stylesheetProblems(css) {
       }
     }
   }
-  problems.push(...emberTextProblems(rules, STYLESHEET), ...paintProblems(rules, STYLESHEET), ...dimProblems(rules, STYLESHEET));
+  problems.push(...emberTextProblems(rules, STYLESHEET), ...paintProblems(rules, STYLESHEET), ...dimProblems(rules, STYLESHEET), ...keyframeDimProblems(rules, STYLESHEET));
   for (const rule of rules) {
     for (const { property, value } of rule.declarations) {
       if (!["color", "-webkit-text-fill-color"].includes(property) || /var\(\s*--ember\s*[,)]/i.test(value)) continue;
@@ -707,7 +707,7 @@ export function paintProblems(rules, label) {
 // What dims or recolours the element it is set on, text included: opacity below 1, a filter or a
 // backdrop filter, a blend mode. Set only on marks that hold no text: a ::before or ::after, an
 // image, or an element inside one of MARKS (the lights, a theme card's dots, its caret, the
-// directory badge, which is an image). An animation's frames are not read here.
+// directory badge, which is an image). An animation's frames are read by keyframeDimProblems.
 export const MARKS = [".lights", ".dots", ".caret", ".directory-badge"];
 const dims = (property, value) =>
   (property === "opacity" && !/^(1(\.0*)?|100%)$/.test(value.trim())) ||
@@ -722,6 +722,52 @@ export function dimProblems(rules, label) {
         .filter(({ property, value }) => dims(property, value))
         .map(({ property, value }) => `${label} ${rule.selector} { ${property}: ${value} } dims or recolours what it is set on, which may be text held at full strength; set it only on a ::before or ::after, an image or a mark (${MARKS.join(", ")}).`),
     );
+}
+
+// An animation's frames dim what it runs on as an opacity or a filter set on the element would. On
+// text, one that dims may run once and must end at full strength: an entrance from 30% to 100% is
+// read once and stays readable, while a loop dims the text again and again, and a last frame that
+// dims leaves it dimmed (with forwards or both) or snaps it back. The last frame played is "to" or
+// 100%, or "from" or 0% when the direction reverses; a frame the keyframes leave out is the
+// element's own value, which the rules above already read. Keyframes are looked up in the same
+// sheet; a page using the shared stylesheet's keyframes is not joined to them, and an iteration
+// count or direction set in another rule is not read here.
+const keyframeName = (entry) => entry.match(/^@(?:-webkit-)?keyframes(.+)$/)?.[1];
+const frameOffsets = (selector) => splitTop(selector, ",").map((part) => {
+  const text = part.trim().toLowerCase();
+  return text === "from" ? 0 : text === "to" ? 100 : Number.parseFloat(text);
+});
+export function keyframeDimProblems(rules, label) {
+  const frames = new Map();
+  for (const rule of rules) {
+    const name = rule.context.map(keyframeName).find(Boolean);
+    if (!name) continue;
+    if (!frames.has(name)) frames.set(name, []);
+    frames.get(name).push({ offsets: frameOffsets(rule.selector), dims: rule.declarations.some(({ property, value }) => dims(property, value)) });
+  }
+  const problems = [];
+  for (const rule of rules) {
+    if (rule.context.some(keyframeName) || onMarks(rule)) continue;
+    const own = (property) => rule.declarations.filter((declaration) => declaration.property === property).at(-1)?.value;
+    for (const { property, value } of rule.declarations) {
+      if (property !== "animation" && property !== "animation-name") continue;
+      const layers = splitTop(value, ",");
+      layers.forEach((layer, index) => {
+        const words = layer.replace(/\([^()]*\)/g, " ").trim().split(/\s+/).map((word) => word.toLowerCase());
+        // Names are matched without case, as the parser keeps them: a name the browser would not join only adds a refusal.
+        const name = property === "animation-name" ? layer.trim().toLowerCase() : words.find((word) => frames.has(word));
+        const steps = frames.get(name);
+        if (!steps || !steps.some((step) => step.dims)) return;
+        const layerOf = (longhand) => (longhand ? splitTop(longhand, ",")[index % splitTop(longhand, ",").length]?.trim().toLowerCase() : undefined);
+        const count = layerOf(own("animation-iteration-count")) ?? (property === "animation" ? words.find((word) => word === "infinite" || /^\d*\.?\d+$/.test(word)) : undefined) ?? "1";
+        const direction = layerOf(own("animation-direction")) ?? (property === "animation" ? words.find((word) => ["normal", "reverse", "alternate", "alternate-reverse"].includes(word)) : undefined) ?? "normal";
+        const end = direction === "reverse" || direction === "alternate-reverse" ? 0 : 100;
+        if (count !== "1") problems.push(`${label} ${rule.selector} { ${property}: ${value} } runs ${name}, whose frames dim what they run on, ${count === "infinite" ? "without end" : `${count} times`}; text dimmed again and again is not held at full strength. Run it once, or set it only on a ::before or ::after, an image or a mark (${MARKS.join(", ")}).`);
+        else if (steps.some((step) => step.dims && step.offsets.includes(end))) problems.push(`${label} ${rule.selector} { ${property}: ${value} } ends ${name} on a frame that dims what it runs on; text must end at full strength. End on the element's own value, or set it only on a ::before or ::after, an image or a mark (${MARKS.join(", ")}).`);
+      });
+    }
+  }
+  return problems;
 }
 
 export function emberTextProblems(rules, label) {
@@ -1049,7 +1095,7 @@ export function pageProblems(source, path, fontFiles = [], tokens = []) {
       }
     }
   }
-  problems.push(...emberTextProblems(rules, path), ...paintProblems(rules, path), ...dimProblems(rules, path));
+  problems.push(...emberTextProblems(rules, path), ...paintProblems(rules, path), ...dimProblems(rules, path), ...keyframeDimProblems(rules, path));
   problems.push(...motionProblems(rules, path));
   return problems;
 }
