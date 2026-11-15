@@ -884,9 +884,10 @@ is the user's /themes"), but a `command.run` hook on `{ command: 'themes' }`
 still sees that command run, and the gallery, which answered without
 `next(e)`, opened in its place: the person's own command never ran. The mod
 now sets a flag only once its registration resolves and passes any other
-`/themes` on, so that command runs; read back the same way, headless and
-interactive, with a user command, with a project command, and with another mod
-on either side of it. Its own test drives the refusal (`claude plugin test
+`/themes` on, so that command runs; read back the same way, headless with a
+user command, with a project command and with another mod on either side of
+it, and interactive with a user command. Its own test drives the refusal
+(`claude plugin test
 plugins/theme-gallery`, 15 of 15; on 0.1.0 the new test fails with the
 gallery's empty answer). CI has no Claude Code to run that test, so `verify`
 holds the module's lines instead, as the storefront contracts hold the page's
