@@ -6,7 +6,7 @@ import { join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 
-import { CONTRAST_PAIRS, PALETTE, SITE_PAGES, STYLESHEET, THEME_PREVIEWS, colourLiterals, contrast, fontFaces, fontProblems, motionProblems, pageFontFiles, pageProblems, parseCss, sharedTokens, stylesheetProblems, themesOf } from "./site-style.mjs";
+import { CONTRAST_PAIRS, PALETTE, SITE_PAGES, STYLESHEET, THEME_PREVIEWS, colourLiterals, contrast, fontFaces, fontProblems, motionProblems, pageFontFiles, pageProblems, parseCss, selectorProblem, sharedTokens, stylesheetProblems, themesOf } from "./site-style.mjs";
 
 const root = new URL("../", import.meta.url);
 const projectRoot = fileURLToPath(root);
@@ -530,4 +530,26 @@ test("the verifier fails a colour off the palette, a light theme that splits, a 
   await expectRed(fixtureRoot, /assets\/fonts\/OFL-FamiljenGrotesk\.txt is missing or is not the SIL Open Font License/);
   await cp(join(projectRoot, "assets/fonts/OFL-FamiljenGrotesk.txt"), join(fixtureRoot, "assets/fonts/OFL-FamiljenGrotesk.txt"));
   await expectGreen(fixtureRoot);
+});
+
+test("selectors: one selector the browser cannot parse drops its whole list, so every selector must parse", () => {
+  // The pause rule's list: a selector the browser drops takes the pause with it.
+  const pause = ':root[data-motion="paused"] *::after { animation-play-state: paused !important; }';
+  bad(stylesheetProblems(swap(css, pause, pause.replace("*::after {", "*::after, :root[data-motion=\"paused\"] *:hovered {"))), /":root\[data-motion=\\"paused\\"\] \*:hovered" has :hovered, which is not a pseudo-class/, "an unknown pseudo-class in the pause's list");
+  bad(stylesheetProblems(swap(css, pause, pause.replace("*::after {", "*::after, *::-moz-selection {"))), /\*::-moz-selection uses a vendor pseudo, which every other engine cannot parse/, "a vendor pseudo in the pause's list");
+  // A reduce-block off-rule on the page: a broken selector leaves the motion running.
+  const check = (html) => pageProblems(html, "index.html", fontFiles, tokens);
+  bad(check(swap(page, ".card,.tool,.featured-product{transition:none}", ".card,.tool,.featured-product,.x:nth-child(2n+){transition:none}")), /index\.html .*"\.x:nth-child\(2n\+\)" has :nth-child\(2n\+\), whose argument is not An\+B/, "a broken An+B in a reduce-block list");
+  bad(check(swap(page, ".card,.tool,.featured-product{transition:none}", ".card,.tool,.featured-product,.card >{transition:none}")), /"\.card >" ends with the combinator >/, "a trailing combinator");
+  bad(check(swap(page, ".card,.tool,.featured-product{transition:none}", ".card,.tool,.featured-product,.card::before.x{transition:none}")), /after a pseudo-element, which ends its compound/, "a class after a pseudo-element");
+  bad(check(swap(page, ".card,.tool,.featured-product{transition:none}", ".card,.tool,.featured-product,:not(.a,){transition:none}")), /":not\(\.a,\)" has :not\(\.a,\)/, "an empty selector inside :not()");
+  // A vendor pseudo alone in its rule parses where it is known and is skipped elsewhere.
+  assert.deepEqual(stylesheetProblems(`${css}\nsummary::-webkit-details-marker { display: none; }\n`), [], "a vendor pseudo in a rule of its own");
+  // What the pages write parses.
+  for (const selector of [':root:not([data-theme="dark"])', ".a > .b + .c ~ .d", "li:nth-child(2n + 1 of .x)", "a:not(.b, [c='d' i])", ".a:has(> .b)", ".a::placeholder", "*", "#id.cls[attr]", ":is(.a, .b) :where(.c)", "p:first-child::first-line"]) {
+    assert.equal(selectorProblem(selector), null, `${selector} parses`);
+  }
+  for (const [selector, pattern] of [["a:hover(", /no closing \)/], ["a::befor", /not a pseudo-element/], ["a > > b", /two combinators in a row/], ["a:nth-of-type(odd of .x)", /only :nth-child\(\) and :nth-last-child\(\) take/], ["[a=b c]", /attribute selector/], ["a:", /colon with no pseudo/], [":not(::before)", /pseudo-element, which :not\(\), :is\(\), :where\(\) and :has\(\) never take/], [":is(.a, ::after)", /never take/], ["li:nth-child(2n of ::marker)", /never take/]]) {
+    assert.match(selectorProblem(selector) ?? "", pattern, `${selector} does not parse`);
+  }
 });
