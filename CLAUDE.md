@@ -649,7 +649,9 @@ the document checks pass, and a reader requiring double quotes fails it.
 against. Its inline script — the light/dark switch, the kind filter, a pointer
 light on each card, the copy button and the familiar's eye — loads, fetches and
 navigates nothing; it is reviewed in `reviewedInlineScripts` and the page
-carries its policy. It loaded Familjen Grotesk and IBM Plex Mono from Google's
+carries its policy. (Since main's #79, merged here 2026-11-06, the page runs two:
+a head script that applies the saved theme and motion choice before paint,
+and the body script; both are reviewed there and named in the policy.) It loaded Familjen Grotesk and IBM Plex Mono from Google's
 servers, which hands every visitor's address to Google before the page shows,
 and which the link guard refuses; the twelve WOFF2 files it asked for (latin
 and latin-ext, from the fontsource packages, SIL Open Font License 1.1, the
@@ -689,7 +691,11 @@ at 390 and 1280 px: all six font faces load from the site, no request leaves
 it, no policy violation or console error, and the filters, the theme switch,
 the copy button and the eye behave. The page scrolls up to 28 px sideways at
 390 px while its background drifts, on `main` too, before any of this; that
-is left to the page's owner. The harness lives in the scratchpad.
+is left to the page's owner. (Re-measured 2026-11-06 over 15 s of drift,
+sampled every 250 ms: the page before #79 still reaches 28 px at 390 px and
+19 px at 320 px; with #79, which keeps the drifting beam inside its stage,
+neither scrolls. #79's own Chromium check, run here against the merged tree,
+passes all 16 cases.) The harness lives in the scratchpad.
 Mutation-tested (rule 5), 14 branches each gutted alone: the element,
 attribute, value, namespace, `<!`, end-tag and self-closing rules and the
 `math` refusal each turn their own tests red (the element rule also the older
@@ -844,6 +850,57 @@ the page-dates tests and the real tree:
   leaving the line unsorted each fail the new test at the branch's day and turn
   the real tree red;
 - dropping the parting limit fails it at the made-and-unmade case alone.
+
+**(merged 2026-11-15) Main's #72, the storefront in the Familiars look.** #72
+moved the storefront onto a shared stylesheet, `assets/site.css`, with its fonts
+served from `assets/fonts/` under the OFL, and added `scripts/site-style.mjs`,
+whose page and stylesheet rules `verify` runs last, and `scripts/html-tags.mjs`,
+where `htmlTags` now lives. A `.css` file is still refused as above, with that one
+stylesheet as the exception; main's comment in `verify.mjs` says site-style reads
+every request it makes, its own font files only. Merged here, three hunks
+conflicted: the storefront's policy, its reviewed script hashes and a comment in
+`verify-contrast.mjs`. The storefront now runs two scripts, a head script that
+applies the saved theme and motion choice before paint, and the gallery. The
+merged gallery script is main's with exactly this branch's edits, compared line
+by line (the card's `/theme` button copies the bare command and names the theme;
+the finder's empty note names the family that holds the matches), so its hash
+moved and is reviewed in `reviewedInlineScripts`. Checked in Chromium at 1280 and
+390 px: 62 cards, no policy violation, the button copies `/theme`, and "acid"
+under Green reads "No green themes match that search; 1 in the warm family
+does." The document is up to 89 px wider than the window at 1280 px, on `main`
+too, from the drifting halo; the body clips it and the page does not scroll. The
+merged page's payment links and prices are main's, byte for byte.
+
+**(fixed 2026-11-15) The gallery passes on a `/themes` it does not own.**
+Main's #71 shipped the Dark Themes Gallery mod at 0.1.0, and its README said
+that when another plugin already provides `/themes` the gallery "leaves that
+command alone and can't be opened". Run against Claude Code 2.1.325 in a
+throwaway home, neither half held. A plugin's own `commands/themes.md` takes
+nothing: Claude Code lists it as `/<plugin>:themes`, and `/themes` opens the
+gallery. A `themes.md` in `~/.claude/commands` or in a project's
+`.claude/commands`, or another plugin's mod that registered `/themes` first,
+does make the engine refuse the gallery's registration ("`/themes` refused: it
+is the user's /themes"), but a `command.run` hook on `{ command: 'themes' }`
+still sees that command run, and the gallery, which answered without
+`next(e)`, opened in its place: the person's own command never ran. The mod
+now sets a flag only once its registration resolves and passes any other
+`/themes` on, so that command runs; read back the same way, headless with a
+user command, with a project command and with another mod on either side of
+it, and interactive with a user command. Its own test drives the refusal
+(`claude plugin test
+plugins/theme-gallery`, 15 of 15; on 0.1.0 the new test fails with the
+gallery's empty answer). CI has no Claude Code to run that test, so `verify`
+holds the module's lines instead, as the storefront contracts hold the page's
+template: the flag set only after the registration resolves and set true once,
+one `command.run` hook, and that hook passing the run on first while the flag
+is unset. Seen green on 0.1.0 without the check (rule 1), red with it (all
+three failures named), and green on the fix; the payload changed and 0.1.0 is
+on the default branch, so the fix ships as 0.1.1. Mutation-tested (rule 5),
+five branches each gutted alone, run against the five new tests and the real
+tree, not the whole suite: each turns exactly its own test red, and the real
+tree stays green. The README's conflict bullet now says which `/themes` blocks
+the gallery, and its `/plugin` line reads as 2.1.325 prints it: `mod active ·
+theme-gallery` alone, `mods active · ` and the names with more than one.
 
 **(added 2026-10-20) The cards print the terminal background.** The footer, the
 install guide (its text and its HowTo structured data) and `README.md` told

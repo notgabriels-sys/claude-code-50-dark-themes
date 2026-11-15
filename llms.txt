@@ -20,6 +20,9 @@ either free pack, or both:
     claude plugin install 50-dark-themes@notgabriels-themes
     claude plugin install dark-themes-vol-2@notgabriels-themes
 
+If Claude Code was open while you installed, restart it: plugin themes load
+when it starts.
+
 ## Machine-readable theme index
 
 Every theme in the free 50-theme plugin is listed, with its id, display name

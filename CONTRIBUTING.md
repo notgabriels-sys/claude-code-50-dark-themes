@@ -5,7 +5,8 @@ site/documentation change per pull request.
 
 ## Prerequisites
 
-- Claude Code v2.1.118 or later
+- Claude Code v2.1.118 or later to use the themes, and v2.1.143 or later to run
+  `claude plugin validate .` below: older validators reject the manifests' `displayName` key
 - Node.js 22 or later for the repository verifier
 
 ## Changing a theme
@@ -48,8 +49,16 @@ Rules:
   background, including on transparent terminals.
 - Keep primary text at 7:1, foreground accents and readable secondary text at 4.5:1,
   and functional borders or indicators at 3:1 against the matching gallery background.
-- Reserve `subtle` for non-essential decorative hairlines. Use `inactive` for readable secondary
-  text; do not place meaningful text or required control boundaries in `subtle`.
+- `permission` and `planMode` are checked at 3:1, but Claude Code also draws text in them ("⏸ plan
+  mode on", plan and dialog titles). README says how many themes keep that text below 4.5:1, out
+  of how many, and the lowest ratio with its theme. The verifier checks all four against the
+  palettes, so adding a theme always means updating that sentence (its total moves), and changing
+  a theme's `permission`/`planMode` colour or its recommended background can. Holding them at
+  4.5:1 instead would be a pack-wide decision.
+- `subtle` is not contrast-checked, and the pack keeps it very faint. Claude Code draws text in it
+  far more than borders — rejection notices ("User rejected Claude's plan:"), sandbox and settings
+  notices, usage statistics, key hints — so match the existing themes rather than tuning it per
+  theme: how faint it is is a pack-wide decision.
 - Do not invent new override keys. Claude Code silently discards unknown keys.
 - A changed theme reaches people who already have the pack only under a new version: Claude Code
   updates an installed plugin only when its version moves forward. `node scripts/verify.mjs` fails on a
@@ -85,8 +94,8 @@ Vol. 2 is the expansion pack, and the place for a new theme. It is a second plug
 marketplace, so it is not size-capped the way the flagship fifty are.
 
 A Vol. 2 theme is the same file, held to the same rules above — same override-key contract, same
-`dark` base, same six-digit hex colours, same contrast floors, same reserved `subtle`. What differs
-is where the pieces live:
+`dark` base, same six-digit hex colours, same contrast floors, same faint, unchecked `subtle`.
+What differs is where the pieces live:
 
 - The theme file goes in `plugins/dark-themes-vol-2/themes/`, and **only** there. Do not add it to
   the repository root; the root is the flagship fifty, and the verifier fails if that count moves.
@@ -95,8 +104,9 @@ is where the pieces live:
 - Add a matching row to the `VOL2_THEMES` array near the bottom of `index.html`, in the same
   `[name, claude, claudeShimmer, text, inactive, terminal]` shape as the flagship gallery. The
   verifier requires the array, the packaged themes and `previews.json` to agree exactly.
-- Display names must be unique across **both** packs. The two plugins can be installed together, so
-  a name used twice would be indistinguishable in `/theme`.
+- Display names must be unique across **both** packs. The two plugins can be installed together, and
+  `/theme` would then list two rows with the same name, told apart only by their small
+  "from <plugin>" label.
 - The `VOL2_THEMES` row is part of the page's inline script, so it changes the script's hash: replace
   the hash `verify` prints in `reviewedInlineScripts`, and paste the policy it prints into `index.html`
   (see "Updating the gallery" above).
@@ -105,11 +115,12 @@ is where the pieces live:
   `releasedPackages` in `scripts/verify.mjs`. Claude Code updates an installed plugin only when its
   version moves forward, so a theme added under the old version never reaches anyone who has the pack.
 - Update the numbers the public pages state, in the same change. A theme adds fourteen contrast
-  comparisons, so the role-aware check count moves, and the share card names each pack's size. Both
-  are CI-enforced — see "Numbers stated on public pages" below. Adding a theme and running
-  `node scripts/verify.mjs` without this step fails with a message naming the page, the count it
-  states and the count the verifier ran: `index.html claims <stated> role-aware checks; the verifier
-  runs <ran>.`
+  comparisons, so the role-aware check count moves; the share card names each pack's size; and
+  README's contrast paragraph says how many of all the themes keep `permission`/`planMode` text
+  below AA. All three are CI-enforced — see "Numbers stated on public pages" below. Adding a theme
+  and running `node scripts/verify.mjs` without this step fails with a message naming the page,
+  the count it states and the count the verifier ran: `index.html claims <stated> role-aware
+  checks; the verifier runs <ran>.`
 - The pack's size is also stated in words, and those move too. The description in
   `plugins/dark-themes-vol-2/.claude-plugin/plugin.json` opens with the count ("Twelve new …"), the
   marketplace entry must repeat it exactly, and the pages say "twelve new atmospheres", "twelve
@@ -146,6 +157,10 @@ counts. These are claims to a reader, so the verifier ties them to the computed 
 moves the number of contrast comparisons or the size of either pack, the stated numbers must be
 updated in the same change or CI fails. Removing the role-aware claim from the storefront or the share
 card fails too, so that guard cannot be silenced by deletion.
+
+README's contrast paragraph states how many of all the themes keep `permission`/`planMode` text
+below AA, and the lowest ratio with its theme. The verifier ties those to the computed values the
+same way, and removing the paragraph fails too.
 
 The files that state the packs' size to a reader are read for those counts: every page, and every
 note and text file Pages serves — `llms.txt`, every README, the promotion drafts, and every file of
@@ -241,6 +256,7 @@ The command checks:
 - valid 1280×720 PNG assets for the curated developer picks;
 - that stated check and theme counts on public pages, plugin descriptions and the READMEs match the
   computed values, in digits or in words;
+- that README's below-AA `permission`/`planMode` count and lowest ratio match the computed ones;
 - that share images carry alternative text, and that one image is described one way.
 - that every page under `theme/` is a fresh render of its theme file and `sitemap.xml` lists each one.
 

@@ -1,6 +1,6 @@
 {
   "name": "theme-gallery",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "displayName": "Dark Themes Gallery",
   "description": "A /themes pane listing the 62 free dark themes from 50 Dark Themes and Dark Themes Vol. 2 with color swatches, grouped by pack and filterable by accent family, marking the theme you have selected and noting which of the two packs your settings enable.",
   "author": {
