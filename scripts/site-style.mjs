@@ -19,7 +19,8 @@
 //    shared coding palette's and is held by scripts/verify-contrast.mjs, which reads the first
 //    --ink on the page, so the page gives it that one value.
 // 3. Contrast, in each theme, with WCAG 2.x's formula: every text token on every surface at
-//    4.5:1, the floor for normal text, including over the violet wash of a selected chip; the
+//    4.5:1, the floor for normal text, and every text token, muted ones too, over the violet
+//    wash of a selected chip or a hovered button on every surface at the same floor; the
 //    page colour on an ink fill (the primary pill's label) at 4.5:1; and the two marks that are
 //    never text (the ember point, and the sun or moon on the switch's violet knob) at 3:1, the
 //    floor for graphical objects. Ember is held to the lower floor because it is never text:
@@ -104,7 +105,9 @@ const TEXT_TOKENS = ["ink", "mute", "faint", "accent"];
 const SURFACES = ["ground", "ground-2", "raise"];
 export const CONTRAST_PAIRS = [
   ...TEXT_TOKENS.flatMap((text) => SURFACES.map((surface) => [text, surface, 4.5, "text"])),
-  ...["ink", "accent"].flatMap((text) => ["ground", "ground-2"].map((surface) => [text, `accent-soft over ${surface}`, 4.5, "text on a selected chip or a hovered button"])),
+  // Every text token, the muted ones included, on the violet wash of a selected chip or a hovered
+  // button, over every surface a chip can sit on: a chip's count or hint in --mute is text too.
+  ...TEXT_TOKENS.flatMap((text) => SURFACES.map((surface) => [text, `accent-soft over ${surface}`, 4.5, "text on a selected chip or a hovered button"])),
   ["ground", "ink", 4.5, "the primary pill's label on its ink fill"],
   ...SURFACES.map((surface) => ["ember", surface, 3, "the ember point, never text"]),
   ["ground", "accent", 3, "the switch's sun or moon on its violet knob"],

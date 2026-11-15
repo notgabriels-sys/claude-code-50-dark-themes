@@ -108,6 +108,21 @@ test("the stylesheet on disk passes, both of its themes resolve, and every contr
   assert.ok(CONTRAST_PAIRS.length >= 20, "text tokens on every surface, chips, the primary pill and the two marks");
 });
 
+test("contrast: muted text on a selected chip's violet wash has the text floor too", () => {
+  for (const text of ["ink", "mute", "faint", "accent"]) {
+    for (const surface of ["ground", "ground-2", "raise"]) {
+      assert.ok(CONTRAST_PAIRS.some(([front, back, floor]) => front === text && back === `accent-soft over ${surface}` && floor === 4.5), `--${text} on a chip over --${surface}`);
+    }
+  }
+  // A thicker dark wash, 0.22: --ink and --accent still clear 4.5:1 on it, --mute and --faint do not.
+  const dark = "rgba(168, 152, 255, 0.16);";
+  assert.equal(css.split(dark).length, 3, "the dark wash is written twice, by default and by choice");
+  const thick = stylesheetProblems(css.split(dark).join("rgba(168, 152, 255, 0.22);")).filter((problem) => problem.includes("accent-soft"));
+  assert.ok(thick.length > 0);
+  for (const problem of thick) assert.match(problem, /dark theme: --(mute|faint) #9C99AA on --accent-soft over (ground|ground-2|raise) #[0-9A-F]{6} is [34]\.\d\d:1, below the 4\.5:1 floor for text on a selected chip/);
+  assert.ok(thick.some((problem) => problem.includes("--faint")) && thick.some((problem) => problem.includes("over raise")), "each muted token, and the raised surface, are read");
+});
+
 test("palette: a colour the design base does not name fails, however it is written", () => {
   bad(stylesheetProblems(swap(css, "--ink: #EDEBF3;         /* text */", "--ink: #EDEDED;         /* text */")), /--ink }: #EDEDED is #EDEDED, which is not in the house palette/, "a near-white of its own");
   const softAnchor = "rgba(168, 152, 255, 0.16);\n  --accent-dim: color-mix(in srgb, var(--accent) 42%, var(--hair));\n  --ember: #FFB46B;       /* the one warm point */";
