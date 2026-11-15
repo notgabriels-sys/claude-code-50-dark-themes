@@ -203,6 +203,10 @@ step is the renderer's own answer. Run it locally with the GitHub CLI signed in:
 `GITHUB_REPOSITORY=<owner>/<repo> node scripts/check-readme-render.mjs <commit>`, for a commit
 that is on GitHub.
 
+After every push to `main`, once GitHub Pages has deployed it, `.github/workflows/indexnow.yml`
+sends every address in `sitemap.xml` to IndexNow with the site's key
+(`scripts/submit-indexnow.mjs`); the key file at the root must keep its name and content.
+
 The command checks:
 
 - exactly 50 root-level theme files, plus every packaged Vol. 2 theme;
