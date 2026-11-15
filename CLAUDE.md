@@ -1030,6 +1030,16 @@ the other side, so the two agree by construction. The suite is now fourteen
 test files. The full suite was run at the exact tree of the commit that
 carries this paragraph; its message states the count.
 
+**(merged 2026-11-15) Main's #96, the README's Vol. 2 line.** `main` moved
+from fa1ab63 to e5eaf81 with #96: one sentence under the README's Vol. 2
+list saying that each name opens the theme's own page, laid out as the
+list of fifty's pages are (a specimen, the commands that install the Vol. 2
+plugin, its palette and the measured contrast). Merged into #74 as e5c7166
+with no conflict; `verify` was green on the merge, so the count scan, which
+reads `README.md`, refuses nothing in the sentence, and nothing in #74's
+guards needed adapting. The full suite was run at the exact tree of the
+commit that carries this paragraph; its message states the count.
+
 **(added 2026-10-30) What the sitemap, `llms.txt` and robots.txt say the site
 holds is read against the pages.** WP10. `verify` compared the sitemap only
 with the builder that writes it, and read neither `llms.txt`'s links nor
