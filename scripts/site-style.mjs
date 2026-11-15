@@ -62,8 +62,9 @@
 //    browser ends it.
 // 6. Fonts. Every @font-face in the stylesheet points at a file in assets/fonts, every font file
 //    there is loaded by an @font-face (the stylesheet's, or one in a page's own <style> that has
-//    not moved onto the base yet), and every family in the stylesheet ships with its SIL Open Font
-//    License, which both fonts are under.
+//    not moved onto the base yet), and every family, the stylesheet's or a page's, ships with its
+//    SIL Open Font License, which both fonts are under. A page's own @font-face is held the same
+//    way: it loads a file, and that file is in assets/fonts and there.
 // 7. Requests. Those font files are the only requests the stylesheet makes: no @import, no url(),
 //    image-set() or src() outside an @font-face's src, every entry of a src read as url("…")
 //    with format() or tech(), or local(), each descriptor written once, and no backslash, which
@@ -1158,26 +1159,39 @@ export function fontFaces(css, base = STYLESHEET) {
 
 // The files a page's own <style> loads with @font-face, as paths from the repository root.
 export function pageFontFiles(html, path) {
-  return styleElements(html).flatMap(({ text }) => fontFaces(text, path).flatMap(({ urls }) => urls));
+  return pageFontFaces(html, path).flatMap(({ urls }) => urls);
+}
+
+// A page's own @font-face rules, each with the page it sits on, so fontProblems can hold them to
+// what it holds the stylesheet's to: a file in assets/fonts that is there, and the family's OFL.
+export function pageFontFaces(html, path) {
+  return styleElements(html).flatMap(({ text }) => fontFaces(text, path).map((face) => ({ ...face, path })));
 }
 
 // `files` maps each file name in assets/fonts to its text (licences) or to true (fonts);
-// `pageFonts` lists the files the pages' own @font-face rules load (pageFontFiles).
+// `pageFonts` lists the pages' own @font-face rules (pageFontFaces), each held as the
+// stylesheet's are: it loads a file, the file is in assets/fonts and there, and the family's
+// licence ships beside it. (A list of paths, pageFontFiles, still counts the files as used.)
 export function fontProblems(css, files, pageFonts = []) {
   const problems = [];
-  const faces = fontFaces(css);
-  const used = new Set([...faces.flatMap(({ urls }) => urls), ...pageFonts]);
-  for (const { family, urls, raw, unread } of faces) {
-    if (!urls.length) problems.push(`${STYLESHEET} @font-face for "${family}" loads no file.`);
-    for (const entry of unread) problems.push(`${STYLESHEET} @font-face for "${family}" has a src entry these rules cannot read, ${entry}; write each as url("…") with format("…"), or local("…").`);
+  const faces = fontFaces(css).map((face) => ({ ...face, path: STYLESHEET }));
+  const pageFaces = pageFonts.filter((face) => typeof face === "object");
+  const used = new Set([...faces, ...pageFaces].flatMap(({ urls }) => urls).concat(pageFonts.filter((face) => typeof face === "string")));
+  const licensed = new Set();
+  for (const { family, urls, raw, unread, path } of [...faces, ...pageFaces]) {
+    if (!urls.length) problems.push(`${path} @font-face for "${family}" loads no file.`);
+    if (path === STYLESHEET) for (const entry of unread) problems.push(`${STYLESHEET} @font-face for "${family}" has a src entry these rules cannot read, ${entry}; write each as url("…") with format("…"), or local("…").`);
     for (const [index, url] of urls.entries()) {
-      if (crossOrigin(raw[index])) problems.push(`${STYLESHEET} @font-face for "${family}" loads ${raw[index]} from another host; the site serves its own fonts from assets/fonts.`);
-      else if (!url.startsWith("assets/fonts/") || !(url.slice("assets/fonts/".length) in files)) problems.push(`${STYLESHEET} @font-face for "${family}" loads ${url}, which is not a file in assets/fonts.`);
+      if (crossOrigin(raw[index])) {
+        if (path === STYLESHEET) problems.push(`${STYLESHEET} @font-face for "${family}" loads ${raw[index]} from another host; the site serves its own fonts from assets/fonts.`);
+      } else if (!url.startsWith("assets/fonts/") || !(url.slice("assets/fonts/".length) in files)) problems.push(`${path} @font-face for "${family}" loads ${url}, which is not a file in assets/fonts.`);
     }
     const licence = `OFL-${family.replace(/\s+/g, "")}.txt`;
+    if (licensed.has(licence)) continue;
+    licensed.add(licence);
     const text = files[licence];
     if (typeof text !== "string" || !/SIL OPEN FONT LICENSE/i.test(text)) {
-      problems.push(`assets/fonts/${licence} is missing or is not the SIL Open Font License; "${family}" is served under the OFL, which travels with the font.`);
+      problems.push(`assets/fonts/${licence} is missing or is not the SIL Open Font License; "${family}" (${path}) is served under the OFL, which travels with the font.`);
     }
   }
   for (const name of Object.keys(files)) {
